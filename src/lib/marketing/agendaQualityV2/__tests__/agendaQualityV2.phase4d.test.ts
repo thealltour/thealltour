@@ -41,13 +41,14 @@ import { scoreMarketingAgendaV2 } from "@/lib/marketing/agendaQualityV2/scoring/
 import { assessAgendaReuse } from "@/lib/marketing/agendaQualityV2/memory/reuseDetection";
 import type { CompactManagerAgendaCandidate } from "@/lib/marketing/research/manager/types";
 import type { MarketingAgendaTransformerLlmOutput } from "@/lib/marketing/agendaQualityV2/contracts";
+import { goodLlmEditorial } from "@/lib/marketing/agendaQualityV2/__tests__/testHelpers";
 
 const NOW = "2026-09-17T00:05:00.000Z";
 
 function baseLlm(
   over: Partial<MarketingAgendaTransformerLlmOutput> = {},
 ): MarketingAgendaTransformerLlmOutput {
-  return {
+  return goodLlmEditorial({
     targetTravelerKo: "자유여행자",
     travelerProblemKo: "환불 규정 변화 때 예약을 지금 확정할지 어떻게 판단할까?",
     decisionAtStakeKo: "지금 예약할지 기다릴지 선택",
@@ -58,12 +59,11 @@ function baseLlm(
     researchQuestionsKo: ["어느 항공사가 적용되나?"],
     nonGoalsKo: ["특정 항공사 홍보"],
     genericRiskKo: "low",
-    storyArchetypeHint: "decision_guide",
-    freshnessClass: "timely",
+    storyArchetypeHint: "before_you_book",
     signalSummaryKo: "환불 정책 변경 보도",
     limitations: [],
     ...over,
-  };
+  });
 }
 
 function compactCand(
@@ -420,7 +420,7 @@ describe("AGENDA_QUALITY_V2 Phase4D manifest + fingerprint + drift", () => {
       },
     };
     await fs.writeFile(
-      path.join(tmp, "artifacts/agenda-quality-v2/live-shadow/validation-2026-09-17_2026-09-21.json"),
+      path.join(tmp, "artifacts/agenda-quality-v2/live-shadow/validation-editorial-v2a-2026-09-18_2026-09-22.json"),
       JSON.stringify(planted, null, 2),
       "utf8",
     );
@@ -431,7 +431,7 @@ describe("AGENDA_QUALITY_V2 Phase4D manifest + fingerprint + drift", () => {
     expect(mismatch.status).toBe("mismatch");
     const onDisk = JSON.parse(
       await fs.readFile(
-        path.join(tmp, "artifacts/agenda-quality-v2/live-shadow/validation-2026-09-17_2026-09-21.json"),
+        path.join(tmp, "artifacts/agenda-quality-v2/live-shadow/validation-editorial-v2a-2026-09-18_2026-09-22.json"),
         "utf8",
       ),
     );
@@ -457,6 +457,15 @@ describe("AGENDA_QUALITY_V2 Phase4D rerun + rollup", () => {
         nonGoalsKo: [],
         genericRiskKo: "low",
         storyArchetypeHint: "other",
+        editorialArchetype: "DECISION",
+        whyInterestingKo: "why",
+        curiosityHookKo: "hook",
+        hiddenDetailKo: "detail",
+        whyKoreanTravelerCaresKo: "kr",
+        familiarReferenceKo: null,
+        alternativeAppealKo: null,
+        explorationPayoffKo: "explore",
+        contentImaginabilityKo: "imagine",
         limitations: [],
         signalSummaryKo: "s",
         freshnessClass: "timely",
@@ -466,9 +475,9 @@ describe("AGENDA_QUALITY_V2 Phase4D rerun + rollup", () => {
         topicFingerprint: "tf",
         decisionAxisFingerprint: "da",
         storySeedFingerprint: "ss",
-        transformRevision: "agenda-transform-v1",
+        transformRevision: "agenda-transform-v2",
         transformerContractVersion: "marketing-agenda-candidate-v2",
-        promptVersion: "agenda-transform-prompt-v1",
+        promptVersion: "agenda-transform-prompt-v2",
         roleKey: "marketing_agenda_transformer",
         provider: null,
         model: null,

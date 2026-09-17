@@ -28,6 +28,7 @@ export type LiveShadowExclusionReason =
   | "slate_max_cap"
   | "reservoir_write_failed"
   | "not_transformed_budget"
+  | "version_incompatible_historical"
   | "other";
 
 export type LiveShadowCandidateObservation = {
@@ -57,6 +58,15 @@ export type LiveShadowCandidateObservation = {
     nonGoalsKo: string[];
     genericRiskKo: string | null;
     storyArchetypeHint: string | null;
+    editorialArchetype: string | null;
+    whyInterestingKo: string | null;
+    curiosityHookKo: string | null;
+    hiddenDetailKo: string | null;
+    whyKoreanTravelerCaresKo: string | null;
+    familiarReferenceKo: string | null;
+    alternativeAppealKo: string | null;
+    explorationPayoffKo: string | null;
+    contentImaginabilityKo: string | null;
     limitations: string[];
     signalSummaryKo: string | null;
     freshnessClass: string | null;
@@ -82,6 +92,27 @@ export type LiveShadowCandidateObservation = {
     marketingQualityScore: number | null;
     totalScore: number | null;
     qualityTier: string | null;
+    dimensions?: {
+      curiosityStrength?: number;
+      unexpectedness?: number;
+      hiddenDetailValue?: number;
+      koreanTravelerRelevanceDim?: number;
+      alternativeAppeal?: number;
+      explorationPull?: number;
+      contentImaginability?: number;
+      decisionUtility?: number;
+      tensionStrength?: number;
+      specificity?: number;
+      researchability?: number;
+      storyExpandability?: number;
+    } | null;
+  } | null;
+  promotional?: {
+    promotionalSource: boolean;
+    promotionalGenericRisk: boolean;
+    promotionalSpecificityPass: boolean;
+    sensationalUnsupported?: boolean;
+    certificationOnlyHiddenDetail?: boolean;
   } | null;
   penalties: {
     reusePenalty: number;
@@ -89,6 +120,7 @@ export type LiveShadowCandidateObservation = {
     genericRiskPenalty: number;
     staleTrendPenalty: number;
     decisionRepeatPenalty: number;
+    promotionalGenericRiskPenalty?: number;
   } | null;
   reservoir: {
     lifecycleStatus: string | null;
@@ -154,6 +186,15 @@ export function buildTransformObservationFromCandidate(
     nonGoalsKo: [...candidate.editorial.nonGoalsKo],
     genericRiskKo: candidate.editorial.genericRiskKo,
     storyArchetypeHint: String(candidate.editorial.storyArchetypeHint),
+    editorialArchetype: String(candidate.editorial.editorialArchetype ?? ""),
+    whyInterestingKo: candidate.editorial.whyInterestingKo ?? null,
+    curiosityHookKo: candidate.editorial.curiosityHookKo ?? null,
+    hiddenDetailKo: candidate.editorial.hiddenDetailKo ?? null,
+    whyKoreanTravelerCaresKo: candidate.editorial.whyKoreanTravelerCaresKo ?? null,
+    familiarReferenceKo: candidate.editorial.familiarReferenceKo || null,
+    alternativeAppealKo: candidate.editorial.alternativeAppealKo || null,
+    explorationPayoffKo: candidate.editorial.explorationPayoffKo ?? null,
+    contentImaginabilityKo: candidate.editorial.contentImaginabilityKo ?? null,
     limitations: [...candidate.provenance.limitations],
     signalSummaryKo: candidate.signalContext.signalSummaryKo,
     freshnessClass: candidate.signalContext.freshnessClass,
@@ -162,6 +203,7 @@ export function buildTransformObservationFromCandidate(
 
 export function mapExclusionReason(raw: string | null | undefined): LiveShadowExclusionReason | string {
   if (!raw) return "other";
+  if (raw === "version_incompatible_historical") return "version_incompatible_historical";
   if (raw === "unsupported_sensitive_claim") return "unsupported_sensitive_claim";
   if (raw.startsWith("transform_failed") || raw === "unparseable_transformer_output") {
     return "transform_failed";
@@ -216,7 +258,11 @@ export function buildObservationFromReservoirScore(params: {
       storySeedFingerprint: params.item.storySeedFingerprint,
       transformRevision: c.provenance.transformRevision || AGENDA_QUALITY_V2_TRANSFORM_REVISION,
       transformerContractVersion: AGENDA_QUALITY_V2_TRANSFORMER_CONTRACT_VERSION,
-      promptVersion: AGENDA_QUALITY_V2_PROMPT_VERSION,
+      promptVersion:
+        c.provenance.promptVersion ||
+        (c.provenance.transformRevision === "agenda-transform-v1"
+          ? "agenda-transform-prompt-v1"
+          : AGENDA_QUALITY_V2_PROMPT_VERSION),
       roleKey: MARKETING_AGENDA_TRANSFORMER_ROLE_KEY,
       provider: params.provider ?? null,
       model: params.model ?? c.provenance.transformModel,
@@ -230,13 +276,37 @@ export function buildObservationFromReservoirScore(params: {
       marketingQualityScore: params.score.marketingQualityScore,
       totalScore: params.score.totalScore,
       qualityTier: params.score.qualityTier,
+      dimensions: {
+        curiosityStrength: params.score.dimensions.curiosityStrength,
+        unexpectedness: params.score.dimensions.unexpectedness,
+        hiddenDetailValue: params.score.dimensions.hiddenDetailValue,
+        koreanTravelerRelevanceDim: params.score.dimensions.koreanTravelerRelevanceDim,
+        alternativeAppeal: params.score.dimensions.alternativeAppeal,
+        explorationPull: params.score.dimensions.explorationPull,
+        contentImaginability: params.score.dimensions.contentImaginability,
+        decisionUtility: params.score.dimensions.decisionUtility,
+        tensionStrength: params.score.dimensions.tensionStrength,
+        specificity: params.score.dimensions.specificity,
+        researchability: params.score.dimensions.researchability,
+        storyExpandability: params.score.dimensions.storyExpandability,
+      },
     },
+    promotional: params.score.promotional
+      ? {
+          promotionalSource: params.score.promotional.promotionalSource,
+          promotionalGenericRisk: params.score.promotional.promotionalGenericRisk,
+          promotionalSpecificityPass: params.score.promotional.promotionalSpecificityPass,
+          sensationalUnsupported: params.score.promotional.sensationalUnsupported,
+          certificationOnlyHiddenDetail: params.score.promotional.certificationOnlyHiddenDetail,
+        }
+      : null,
     penalties: {
       reusePenalty: params.score.penalties.reusePenalty,
       fatiguePenalty: params.score.penalties.fatiguePenalty,
       genericRiskPenalty: params.score.penalties.genericRiskPenalty,
       staleTrendPenalty: params.score.penalties.staleTrendPenalty,
       decisionRepeatPenalty: params.score.penalties.decisionAxisRepeatPenalty,
+      promotionalGenericRiskPenalty: params.score.penalties.promotionalGenericRiskPenalty,
     },
     reservoir: {
       lifecycleStatus: params.item.status,

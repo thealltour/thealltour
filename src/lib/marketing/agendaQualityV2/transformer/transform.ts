@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+  AGENDA_EDITORIAL_OBJECTIVE_VERSION,
   AGENDA_QUALITY_VERSION,
   MARKETING_AGENDA_CANDIDATE_V2_CONTRACT,
   MARKETING_AGENDA_TRANSFORM_REVISION,
+  parseAgendaEditorialArchetype,
   type MarketingAgendaCandidateV2,
   type MarketingAgendaTransformInput,
   type MarketingAgendaTransformerLlmOutput,
@@ -18,6 +20,10 @@ import { validateMarketingAgendaCandidateV2 } from "@/lib/marketing/agendaQualit
 import { buildTopicFingerprint } from "@/lib/marketing/agendaQualityV2/memory/topicFingerprint";
 import { buildDecisionAxisFingerprint } from "@/lib/marketing/agendaQualityV2/memory/decisionAxisFingerprint";
 import { enforceEvidenceSensitiveClaimPolicy } from "@/lib/marketing/agendaQualityV2/transformer/evidenceSensitiveClaims";
+import {
+  AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION,
+  AGENDA_QUALITY_V2_PROMPT_VERSION,
+} from "@/lib/marketing/agendaQualityV2/shadow/config";
 
 export type AgendaTransformInvokeResult = {
   text: string;
@@ -57,6 +63,66 @@ function fingerprintSource(input: MarketingAgendaTransformInput): string {
   return createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }
 
+export function llmOutputToCachePayload(
+  llm: MarketingAgendaTransformerLlmOutput,
+): Record<string, unknown> {
+  return {
+    targetTravelerKo: llm.targetTravelerKo,
+    travelerProblemKo: llm.travelerProblemKo,
+    decisionAtStakeKo: llm.decisionAtStakeKo,
+    audienceTensionKo: llm.audienceTensionKo,
+    readerPayoffKo: llm.readerPayoffKo,
+    marketingStorySeedKo: llm.marketingStorySeedKo,
+    whyNowKo: llm.whyNowKo,
+    researchQuestionsKo: llm.researchQuestionsKo,
+    nonGoalsKo: llm.nonGoalsKo,
+    genericRiskKo: llm.genericRiskKo,
+    storyArchetypeHint: llm.storyArchetypeHint,
+    freshnessClass: llm.freshnessClass,
+    signalSummaryKo: llm.signalSummaryKo,
+    limitations: llm.limitations,
+    editorialArchetype: llm.editorialArchetype,
+    whyInterestingKo: llm.whyInterestingKo,
+    curiosityHookKo: llm.curiosityHookKo,
+    hiddenDetailKo: llm.hiddenDetailKo,
+    whyKoreanTravelerCaresKo: llm.whyKoreanTravelerCaresKo,
+    familiarReferenceKo: llm.familiarReferenceKo,
+    alternativeAppealKo: llm.alternativeAppealKo,
+    explorationPayoffKo: llm.explorationPayoffKo,
+    contentImaginabilityKo: llm.contentImaginabilityKo,
+  };
+}
+
+export function candidateToLlmCachePayload(
+  candidate: MarketingAgendaCandidateV2,
+): Record<string, unknown> {
+  return {
+    targetTravelerKo: candidate.traveler.targetTravelerKo,
+    travelerProblemKo: candidate.traveler.travelerProblemKo,
+    decisionAtStakeKo: candidate.traveler.decisionAtStakeKo,
+    audienceTensionKo: candidate.traveler.audienceTensionKo,
+    readerPayoffKo: candidate.traveler.readerPayoffKo,
+    marketingStorySeedKo: candidate.editorial.marketingStorySeedKo,
+    whyNowKo: candidate.editorial.whyNowKo,
+    researchQuestionsKo: candidate.editorial.researchQuestionsKo,
+    nonGoalsKo: candidate.editorial.nonGoalsKo,
+    genericRiskKo: candidate.editorial.genericRiskKo,
+    storyArchetypeHint: candidate.editorial.storyArchetypeHint,
+    freshnessClass: candidate.signalContext.freshnessClass,
+    signalSummaryKo: candidate.signalContext.signalSummaryKo,
+    limitations: candidate.provenance.limitations,
+    editorialArchetype: candidate.editorial.editorialArchetype,
+    whyInterestingKo: candidate.editorial.whyInterestingKo,
+    curiosityHookKo: candidate.editorial.curiosityHookKo,
+    hiddenDetailKo: candidate.editorial.hiddenDetailKo,
+    whyKoreanTravelerCaresKo: candidate.editorial.whyKoreanTravelerCaresKo,
+    familiarReferenceKo: candidate.editorial.familiarReferenceKo,
+    alternativeAppealKo: candidate.editorial.alternativeAppealKo,
+    explorationPayoffKo: candidate.editorial.explorationPayoffKo,
+    contentImaginabilityKo: candidate.editorial.contentImaginabilityKo,
+  };
+}
+
 export function assembleMarketingAgendaCandidateV2(params: {
   input: MarketingAgendaTransformInput;
   llm: MarketingAgendaTransformerLlmOutput;
@@ -81,10 +147,14 @@ export function assembleMarketingAgendaCandidateV2(params: {
   const decisionAxisFingerprint = buildDecisionAxisFingerprint({
     decisionAtStakeKo: params.llm.decisionAtStakeKo,
     audienceTensionKo: params.llm.audienceTensionKo,
-    travelerProblemKo: params.llm.travelerProblemKo,
+    travelerProblemKo: params.llm.travelerProblemKo || params.llm.hiddenDetailKo,
     storyArchetypeHint: params.llm.storyArchetypeHint,
     targetTravelerKo: params.llm.targetTravelerKo,
   });
+
+  const editorialArchetype =
+    parseAgendaEditorialArchetype(params.llm.editorialArchetype) ??
+    String(params.llm.editorialArchetype || "DISCOVERY").toUpperCase();
 
   return {
     contract: MARKETING_AGENDA_CANDIDATE_V2_CONTRACT,
@@ -105,9 +175,9 @@ export function assembleMarketingAgendaCandidateV2(params: {
     },
     traveler: {
       targetTravelerKo: params.llm.targetTravelerKo,
-      travelerProblemKo: params.llm.travelerProblemKo,
-      decisionAtStakeKo: params.llm.decisionAtStakeKo,
-      audienceTensionKo: params.llm.audienceTensionKo,
+      travelerProblemKo: params.llm.travelerProblemKo ?? "",
+      decisionAtStakeKo: params.llm.decisionAtStakeKo ?? "",
+      audienceTensionKo: params.llm.audienceTensionKo ?? "",
       readerPayoffKo: params.llm.readerPayoffKo,
     },
     editorial: {
@@ -117,6 +187,15 @@ export function assembleMarketingAgendaCandidateV2(params: {
       nonGoalsKo: params.llm.nonGoalsKo,
       genericRiskKo: params.llm.genericRiskKo,
       storyArchetypeHint: params.llm.storyArchetypeHint,
+      editorialArchetype,
+      whyInterestingKo: params.llm.whyInterestingKo ?? "",
+      curiosityHookKo: params.llm.curiosityHookKo ?? "",
+      hiddenDetailKo: params.llm.hiddenDetailKo ?? "",
+      whyKoreanTravelerCaresKo: params.llm.whyKoreanTravelerCaresKo ?? "",
+      familiarReferenceKo: params.llm.familiarReferenceKo ?? "",
+      alternativeAppealKo: params.llm.alternativeAppealKo ?? "",
+      explorationPayoffKo: params.llm.explorationPayoffKo ?? "",
+      contentImaginabilityKo: params.llm.contentImaginabilityKo ?? "",
     },
     qualityInput: {
       sourceCredibility: params.input.sourceCredibility ?? null,
@@ -136,6 +215,9 @@ export function assembleMarketingAgendaCandidateV2(params: {
               : "mixed",
       transformModel: params.transformModel ?? null,
       transformRevision: MARKETING_AGENDA_TRANSFORM_REVISION,
+      promptVersion: AGENDA_QUALITY_V2_PROMPT_VERSION,
+      editorialObjectiveVersion:
+        AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION || AGENDA_EDITORIAL_OBJECTIVE_VERSION,
       sourceFingerprint,
       topicFingerprint: topic.topicFingerprint,
       decisionAxisFingerprint,

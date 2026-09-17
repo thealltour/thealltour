@@ -34,29 +34,24 @@ import {
 import { selectDailyAgendaSlateV2 } from "@/lib/marketing/agendaQualityV2/slate/selectDailySlateV2";
 import { runAgendaQualityV2ShadowPhase2 } from "@/lib/marketing/agendaQualityV2/shadow/runShadowPhase2";
 import { runAgendaQualityV2Backtest } from "@/lib/marketing/agendaQualityV2/shadow/backtest";
+import { goodLlmEditorial } from "@/lib/marketing/agendaQualityV2/__tests__/testHelpers";
 import { evaluateSupersedeEvidence } from "@/lib/marketing/agendaQualityV2/reservoir/supersede";
 
 const NOW = "2026-09-16T01:00:00.000Z";
 
 function goodLlm(overrides?: Partial<MarketingAgendaTransformerLlmOutput>): MarketingAgendaTransformerLlmOutput {
-  return {
+  return goodLlmEditorial({
     targetTravelerKo: "외부 관광이 많은 푸꾸옥 여행자",
-    travelerProblemKo:
-      "리조트 선택지가 늘어날수록 외부 관광이 많은 여행자는 숙소 위치를 어떻게 판단해야 하는가?",
-    decisionAtStakeKo: "숙소를 리조트 클러스터에 둘지, 관광 접근성 구역에 둘지",
-    audienceTensionKo: "편의·부대시설 집중 vs 이동시간·현지 동선 효율",
-    readerPayoffKo: "본인 스타일에 맞는 숙소 위치 판단 기준을 세운다",
     marketingStorySeedKo: "호텔 공급이 늘어난 지금, 숙소 위치는 무엇으로 고를까?",
+    readerPayoffKo: "본인 스타일에 맞는 숙소 위치 판단 기준을 세운다",
     whyNowKo: "공급 확대 신호가 관측되어 위치 선택 기준이 더 중요해질 수 있다",
     researchQuestionsKo: ["신규 공급 구역은?", "이동 수단은?"],
     nonGoalsKo: ["특정 호텔 추천"],
     genericRiskKo: "가설 유지",
-    storyArchetypeHint: "convenience_vs_experience",
-    freshnessClass: "timely",
     signalSummaryKo: "푸꾸옥 호텔 공급 관련 신호",
     limitations: ["요금 미확인"],
     ...overrides,
-  };
+  });
 }
 
 function makeCandidate(opts?: {

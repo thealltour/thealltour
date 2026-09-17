@@ -33,11 +33,12 @@ import { resolveAgendaTransformerRouteVisibility } from "@/lib/marketing/agendaQ
 import type { CompactManagerAgendaCandidate } from "@/lib/marketing/research/manager/types";
 import type { DailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import type { MarketingAgendaTransformerLlmOutput } from "@/lib/marketing/agendaQualityV2/contracts";
+import { goodLlmEditorial } from "@/lib/marketing/agendaQualityV2/__tests__/testHelpers";
 
 const NOW = "2026-09-17T01:00:00.000Z";
 
 function baseLlm(over: Partial<MarketingAgendaTransformerLlmOutput> = {}): MarketingAgendaTransformerLlmOutput {
-  return {
+  return goodLlmEditorial({
     targetTravelerKo: "푸꾸옥 외부관광형 여행자",
     travelerProblemKo: "리조트 선택지가 늘 때 숙소 위치를 어떻게 판단해야 하는가?",
     decisionAtStakeKo: "시내 접근성 우선 vs 프라이빗 휴양 우선",
@@ -49,11 +50,10 @@ function baseLlm(over: Partial<MarketingAgendaTransformerLlmOutput> = {}): Marke
     nonGoalsKo: ["특정 호텔 홍보"],
     genericRiskKo: "low",
     storyArchetypeHint: "decision_rule",
-    freshnessClass: "timely",
     signalSummaryKo: "푸꾸옥 호텔 공급 증가",
     limitations: [],
     ...over,
-  };
+  });
 }
 
 function compactCand(id: string, score = 0.8): CompactManagerAgendaCandidate {

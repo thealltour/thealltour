@@ -32,13 +32,19 @@ export type AgendaQualityV2BacktestResult = {
 };
 
 function llm(partial: Partial<MarketingAgendaTransformerLlmOutput>): MarketingAgendaTransformerLlmOutput {
+  const marketingStorySeedKo =
+    partial.marketingStorySeedKo ?? "이 신호에서 여행자는 무엇을 결정해야 할까?";
+  const targetTravelerKo = partial.targetTravelerKo ?? "한국인 여행자";
+  const travelerProblemKo = partial.travelerProblemKo ?? "무엇을 어떻게 판단해야 하는가?";
+  const decisionAtStakeKo = partial.decisionAtStakeKo ?? "선택 A vs 선택 B를 어떻게 결정할지";
+  const readerPayoffKo = partial.readerPayoffKo ?? "본인 조건에 맞는 판단 기준을 얻는다";
   return {
-    targetTravelerKo: partial.targetTravelerKo ?? "한국인 여행자",
-    travelerProblemKo: partial.travelerProblemKo ?? "무엇을 어떻게 판단해야 하는가?",
-    decisionAtStakeKo: partial.decisionAtStakeKo ?? "선택 A vs 선택 B를 어떻게 결정할지",
+    targetTravelerKo,
+    travelerProblemKo,
+    decisionAtStakeKo,
     audienceTensionKo: partial.audienceTensionKo ?? "편의 vs 경험의 트레이드오프",
-    readerPayoffKo: partial.readerPayoffKo ?? "본인 조건에 맞는 판단 기준을 얻는다",
-    marketingStorySeedKo: partial.marketingStorySeedKo ?? "이 신호에서 여행자는 무엇을 결정해야 할까?",
+    readerPayoffKo,
+    marketingStorySeedKo,
     whyNowKo: partial.whyNowKo ?? "관측된 신호가 의사결정 시점을 앞당길 수 있다",
     researchQuestionsKo: partial.researchQuestionsKo ?? ["근거는?", "조건이 바뀌면?"],
     nonGoalsKo: partial.nonGoalsKo ?? ["가격 단정"],
@@ -47,6 +53,21 @@ function llm(partial: Partial<MarketingAgendaTransformerLlmOutput>): MarketingAg
     freshnessClass: partial.freshnessClass ?? "timely",
     signalSummaryKo: partial.signalSummaryKo,
     limitations: partial.limitations ?? ["미확인 사실 단정 금지"],
+    editorialArchetype: partial.editorialArchetype ?? "DECISION",
+    whyInterestingKo:
+      partial.whyInterestingKo ??
+      `표면 신호 뒤에 여행자가 더 살펴볼 포인트가 있는지 본다: ${marketingStorySeedKo.slice(0, 40)}`,
+    curiosityHookKo: partial.curiosityHookKo ?? marketingStorySeedKo.slice(0, 80),
+    hiddenDetailKo:
+      partial.hiddenDetailKo ?? (decisionAtStakeKo || travelerProblemKo || marketingStorySeedKo).slice(0, 120),
+    whyKoreanTravelerCaresKo:
+      partial.whyKoreanTravelerCaresKo ?? `${targetTravelerKo}에게 실무적으로 연결되는지 확인한다`,
+    familiarReferenceKo: partial.familiarReferenceKo ?? "",
+    alternativeAppealKo: partial.alternativeAppealKo ?? "",
+    explorationPayoffKo: partial.explorationPayoffKo ?? readerPayoffKo,
+    contentImaginabilityKo:
+      partial.contentImaginabilityKo ??
+      "헤드라인·훅·2~3개 본문 섹션·체크리스트/사례 시각 구성을 바로 떠올릴 수 있다",
   };
 }
 

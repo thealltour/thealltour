@@ -180,17 +180,35 @@ export function formatLiveShadowMarkdown(snapshot: LiveShadowDailySnapshot): str
     lines.push(
       `### ${row.selection.finalRank ?? "?"}. [${row.scoring?.qualityTier ?? "?"}/${row.reservoir?.origin ?? "?"}] score=${Number(row.scoring?.totalScore ?? 0).toFixed(3)}`,
     );
+    lines.push(`- Archetype: ${t?.editorialArchetype ?? "—"}`);
     lines.push(`- Story seed: ${t?.marketingStorySeedKo ?? "—"}`);
-    lines.push(`- Traveler problem: ${t?.travelerProblemKo ?? "—"}`);
-    lines.push(`- Decision at stake: ${t?.decisionAtStakeKo ?? "—"}`);
-    lines.push(`- Tension: ${t?.audienceTensionKo ?? "—"}`);
+    lines.push(`- Why interesting: ${t?.whyInterestingKo ?? "—"}`);
+    lines.push(`- Curiosity hook: ${t?.curiosityHookKo ?? "—"}`);
+    lines.push(`- Hidden detail: ${t?.hiddenDetailKo ?? "—"}`);
+    lines.push(`- Why KR traveler cares: ${t?.whyKoreanTravelerCaresKo ?? "—"}`);
+    lines.push(`- Traveler problem: ${t?.travelerProblemKo || "—"}`);
+    lines.push(`- Decision at stake: ${t?.decisionAtStakeKo || "—"}`);
+    lines.push(`- Tension: ${t?.audienceTensionKo || "—"}`);
     lines.push(`- Payoff: ${t?.readerPayoffKo ?? "—"}`);
+    lines.push(`- Exploration payoff: ${t?.explorationPayoffKo ?? "—"}`);
+    lines.push(`- Content imaginability: ${t?.contentImaginabilityKo ?? "—"}`);
+    if (row.scoring?.dimensions) {
+      const d = row.scoring.dimensions;
+      lines.push(
+        `- Score dims: curiosity=${d.curiosityStrength ?? "—"} unexpected=${d.unexpectedness ?? "—"} hidden=${d.hiddenDetailValue ?? "—"} kr=${d.koreanTravelerRelevanceDim ?? "—"} alt=${d.alternativeAppeal ?? "—"} explore=${d.explorationPull ?? "—"} imagine=${d.contentImaginability ?? "—"} decision=${d.decisionUtility ?? "—"}`,
+      );
+    }
     lines.push(`- Source title: ${row.source.sourceTitle ?? "—"}`);
     lines.push(
       `- quality: ${row.scoring?.qualityTier ?? "—"} / total=${row.scoring?.totalScore ?? "—"}`,
     );
     lines.push(`- NEW/CARRYOVER: ${row.reservoir?.origin ?? "—"}`);
     lines.push(`- Inclusion reason: ${row.selection.inclusionReason ?? "—"}`);
+    if (row.promotional) {
+      lines.push(
+        `- Promotional: source=${row.promotional.promotionalSource} specificityPass=${row.promotional.promotionalSpecificityPass} genericRisk=${row.promotional.promotionalGenericRisk}`,
+      );
+    }
     lines.push("");
   }
 

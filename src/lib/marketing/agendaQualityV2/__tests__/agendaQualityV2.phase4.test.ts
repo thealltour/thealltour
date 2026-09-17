@@ -60,6 +60,15 @@ function llmJson(): string {
     freshnessClass: "timely",
     signalSummaryKo: "호텔 공급 신호",
     limitations: ["요금 미확인"],
+    editorialArchetype: "DECISION",
+    whyInterestingKo: "호텔이 늘수록 숙소 위치가 여행 체감을 가를 수 있다",
+    curiosityHookKo: "리조트가 늘면 어디에 묵을지가 더 중요해진다",
+    hiddenDetailKo: "공급 증가 뒤 구역별 접근성·프라이빗함 차이가 놓치기 쉬운 포인트",
+    whyKoreanTravelerCaresKo: "한국 여행자가 푸꾸옥 리조트를 고를 때 위치가 일정 효율을 좌우한다",
+    familiarReferenceKo: "올인클루시브 리조트 이미지",
+    alternativeAppealKo: "밀집 구역 대신 이동 쉬운 위치",
+    explorationPayoffKo: "구역별 숙소 위치를 더 비교해볼 수 있다",
+    contentImaginabilityKo: "헤드라인+위치 대비 섹션+체크리스트 구성",
   });
 }
 

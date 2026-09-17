@@ -38,29 +38,12 @@ import { resolveModelRoute } from "@/ai-runtime/router/role-routes";
 import { ROLE_MODEL_ROUTES } from "@/ai-runtime/router/role-routes";
 import { AI_MODEL_IDS } from "@/ai-runtime/registry/models";
 import type { AgendaCandidate } from "@/lib/marketing/research/types/researchBrief";
+import { goodLlmEditorial } from "@/lib/marketing/agendaQualityV2/__tests__/testHelpers";
 
 const NOW = "2026-09-16T01:00:00.000Z";
 
 function goodLlm(overrides?: Partial<MarketingAgendaTransformerLlmOutput>): MarketingAgendaTransformerLlmOutput {
-  return {
-    targetTravelerKo: "푸꾸옥에서 리조트 체류와 외부 관광을 병행하려는 한국인 여행자",
-    travelerProblemKo:
-      "리조트 선택지가 늘어날수록 외부 관광이 많은 여행자는 숙소 위치를 어떻게 판단해야 하는가?",
-    decisionAtStakeKo: "숙소를 리조트 클러스터에 둘지, 관광 접근성이 좋은 구역에 둘지",
-    audienceTensionKo: "편의·부대시설 집중 vs 이동시간·현지 동선 효율",
-    readerPayoffKo: "본인 여행 스타일에 맞는 숙소 위치 판단 기준을 세울 수 있다",
-    marketingStorySeedKo:
-      "호텔 공급이 늘어난 지금, 외부 관광형 여행자는 숙소 위치를 무엇으로 고를까?",
-    whyNowKo: "공급 확대 신호가 관측되어 위치 선택의 기준이 더 중요해질 수 있다",
-    researchQuestionsKo: ["신규 공급이 어느 구역에 집중되는가?", "이동 수단 옵션은?"],
-    nonGoalsKo: ["특정 호텔 추천", "가격 단정"],
-    genericRiskKo: "공급 증가를 사실처럼 단정하지 않고 가설로 유지",
-    storyArchetypeHint: "convenience_vs_experience",
-    freshnessClass: "timely",
-    signalSummaryKo: "푸꾸옥 호텔 공급 증가 관련 신호",
-    limitations: ["정확한 객실 수·요금은 미확인"],
-    ...overrides,
-  };
+  return goodLlmEditorial(overrides);
 }
 
 function validCandidate(
@@ -94,16 +77,18 @@ describe("AGENDA_QUALITY_V2 schema", () => {
     }
   });
 
-  it("missing decisionAtStake fails", () => {
+  it("missing decisionAtStake fails for DECISION archetype", () => {
     const c = validCandidate();
+    c.editorial.editorialArchetype = "DECISION";
     c.traveler.decisionAtStakeKo = "";
     const result = validateMarketingAgendaCandidateV2(c, { enforceGenericRisk: false });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reasons).toContain("missing_decisionAtStakeKo");
   });
 
-  it("missing tension fails", () => {
+  it("missing tension fails for DECISION archetype", () => {
     const c = validCandidate();
+    c.editorial.editorialArchetype = "DECISION";
     c.traveler.audienceTensionKo = "짧음";
     const result = validateMarketingAgendaCandidateV2(c, { enforceGenericRisk: false });
     expect(result.ok).toBe(false);

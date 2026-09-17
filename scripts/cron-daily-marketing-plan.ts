@@ -8,9 +8,10 @@
  *
  *   npx tsx scripts/cron-daily-marketing-plan.ts
  *
- * Manual acceptance only (optional):
+ * Manual recovery (optional):
  *   npx tsx scripts/cron-daily-marketing-plan.ts \
- *     --acceptance-run-key daily-marketing-plan:acceptance:2026-09-04:agenda-v1
+ *     --business-date 2026-09-17 \
+ *     --v2-shadow-run-type MANUAL_RERUN
  *
  * Feature flag (default off):
  *   AI_RUNTIME_MARKETING_CRON_ENABLED=true
@@ -20,7 +21,6 @@
  * dynamic import() inside main() (same pattern as generate-marketing-subtitles.ts).
  */
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,9 +44,18 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 
 function argValue(argv: string[], name: string): string | undefined {
+  const eq = argv.find((a) => a.startsWith(`${name}=`));
+  if (eq) return eq.slice(name.length + 1);
   const idx = argv.indexOf(name);
   if (idx < 0) return undefined;
   return argv[idx + 1];
+}
+
+function assertBusinessDateKst(raw: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    throw new Error(`invalid_business_date:${raw}`);
+  }
+  return raw;
 }
 
 async function main() {
@@ -91,26 +100,37 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
   const {
-    assertHermesSpawnSyncSuccess,
+    invokeHermesProfileWithRetry,
     resolveMarketingCronHermesTimeoutMs,
   } = await import("../src/lib/marketing/cron/hermesSpawnFailure");
+  const { resolveHermesExecutable } = await import(
+    "../src/lib/marketing/cron/resolveHermesExecutable"
+  );
+  const { formatMarketingCronEnvironmentLines, inspectMarketingCronEnvironment } = await import(
+    "../src/lib/marketing/cron/marketingCronEnvironment"
+  );
   const {
     defaultPerformanceBriefAbsolutePath,
     formatDailyPerformanceBriefMarkdown,
     readLatestPerformanceBrief,
   } = await import("../src/lib/marketing/cron/performanceBriefArtifact");
 
-  function invokeHermesProfile(profile: string, prompt: string): string {
+  async function invokeHermesProfile(profile: string, prompt: string): Promise<string> {
     const timeoutMs = resolveMarketingCronHermesTimeoutMs(
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      encoding: "utf8",
-      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-      timeout: timeoutMs,
+    return invokeHermesProfileWithRetry({
+      hermesBin: resolveHermesExecutable(process.env),
+      profile,
+      prompt,
+      timeoutMs,
+      onRetry: (attempt) => {
+        console.error(
+          `[hermes-retry] ${attempt.profile} attempt ${attempt.attempt}/${attempt.maxAttempts} failed (${attempt.message}); retrying in ${attempt.delayMs}ms`,
+        );
+      },
     });
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
   }
 
   function logOpsRuntimeTelemetry(useRuntime: boolean): void {
@@ -156,7 +176,15 @@ async function main() {
 
   const useRuntime = isAiRuntimeMarketingCronEnabled();
   const correlationId = createMarketingCronCorrelationId();
-  const businessDateKst = formatKstBusinessDate();
+  const businessDateOverride = argValue(argv, "--business-date");
+  const businessDateKst = businessDateOverride
+    ? assertBusinessDateKst(businessDateOverride)
+    : formatKstBusinessDate();
+  const v2ShadowRunTypeRaw = (argValue(argv, "--v2-shadow-run-type") ?? "SCHEDULED").trim();
+  if (v2ShadowRunTypeRaw !== "SCHEDULED" && v2ShadowRunTypeRaw !== "MANUAL_RERUN") {
+    throw new Error(`invalid_v2_shadow_run_type:${v2ShadowRunTypeRaw}`);
+  }
+  const v2ShadowRunType = v2ShadowRunTypeRaw as "SCHEDULED" | "MANUAL_RERUN";
   const acceptanceRunKeyRaw = argValue(argv, "--acceptance-run-key");
   const acceptanceLogicalRunKey = acceptanceRunKeyRaw
     ? assertAcceptanceLogicalRunKey(acceptanceRunKeyRaw)
@@ -180,13 +208,22 @@ async function main() {
   console.log(`- productId: ${productId}`);
   console.log(`- channel: ${channel}`);
   console.log(`- businessDateKst: ${businessDateKst}`);
+  console.log(`- businessDateOverride: ${businessDateOverride ? "yes" : "no"}`);
+  console.log(`- v2ShadowRunType: ${v2ShadowRunType}`);
   console.log(`- logicalRunKey: ${logicalRunKey}`);
   console.log(
     `- acceptanceRunKeyOverride: ${acceptanceLogicalRunKey ? "yes" : "no"}`,
   );
   console.log(`- performance handoff: ${brief ? "artifact_read" : "missing_fallback"}`);
   console.log(`- note: ${performanceNote}`);
-  console.log(`- inference_path: ${useRuntime ? "ai-runtime" : "hermes-cli"}`);
+  for (const line of formatMarketingCronEnvironmentLines(
+    inspectMarketingCronEnvironment({
+      entryPoint: "cron-daily-marketing-plan",
+      fallbackTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
+    }),
+  )) {
+    console.log(line);
+  }
   console.log(`- correlationId: ${correlationId}`);
   console.log(`- publication_flow_inactive: ${PUBLICATION_FLOW_INACTIVE}`);
   console.log(`- sns_side_effect: ${SNS_SIDE_EFFECTS_STEP_3_7}`);
@@ -227,6 +264,7 @@ async function main() {
     const { createMarketingAgendaTransformerInvoke } = await import(
       "../src/lib/marketing/agendaQualityV2/transformer/createInvoke"
     );
+    const runIdPrefix = v2ShadowRunType === "MANUAL_RERUN" ? "manual" : "scheduled";
     agendaQualityV2Shadow = {
       invoke: createMarketingAgendaTransformerInvoke({
         executor: runtimeExecutor,
@@ -234,8 +272,8 @@ async function main() {
         completionTimeoutMs: MARKETING_CRON_HERMES_TIMEOUT_MS,
       }),
       writeArtifacts: true,
-      runType: "SCHEDULED",
-      runId: `scheduled:${correlationId}`,
+      runType: v2ShadowRunType,
+      runId: `${runIdPrefix}:${correlationId}`,
     };
   }
 

@@ -228,6 +228,83 @@ describe("marketing cron runtime dispatch", () => {
     expect(result.status).not.toBe("publish_ready");
   });
 
+  it("repairs an unparsable governance response once instead of failing the run", async () => {
+    const executeAndWait = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "completed", requestId: "d", response: { content: draftJson } })
+      .mockResolvedValueOnce({
+        status: "completed",
+        requestId: "g1",
+        response: { content: "심사 의견을 정리하겠습니다." },
+      })
+      .mockResolvedValueOnce({ status: "completed", requestId: "g2", response: { content: governanceAllowJson } });
+
+    const formatRetries: string[] = [];
+    const dispatch = createMarketingPlanPipelineDispatch({
+      useRuntime: true,
+      correlationId: CORRELATION,
+      executor: { executeAndWait },
+      onGovernanceFormatRetry: (info) => formatRetries.push(info.message),
+    });
+
+    const result = await runDepartmentPipeline(
+      { productId: PRODUCT, channel: "threads", goal: "홍보" },
+      dispatch,
+    );
+
+    expect(result.status).toBe("publish_ready");
+    expect(executeAndWait).toHaveBeenCalledTimes(3);
+    expect(formatRetries).toHaveLength(1);
+    expect(String(executeAndWait.mock.calls[2]?.[0]?.messages?.[0]?.content)).toContain(
+      "FORMAT REPAIR",
+    );
+  });
+
+  it("repairs an unparsable governance response on the Hermes path too", async () => {
+    const invokeHermesProfile = vi
+      .fn()
+      .mockReturnValueOnce(draftJson)
+      .mockReturnValueOnce("결론을 내리기 어렵습니다.")
+      .mockReturnValueOnce(governanceAllowJson);
+
+    const dispatch = createMarketingPlanPipelineDispatch({
+      useRuntime: false,
+      correlationId: CORRELATION,
+      invokeHermesProfile,
+    });
+
+    const result = await runDepartmentPipeline(
+      { productId: PRODUCT, channel: "threads", goal: "홍보" },
+      dispatch,
+    );
+
+    expect(result.status).toBe("publish_ready");
+    expect(invokeHermesProfile).toHaveBeenCalledTimes(3);
+    expect(invokeHermesProfile.mock.calls[2]?.[0]).toBe("governance-auditor");
+    expect(String(invokeHermesProfile.mock.calls[2]?.[1])).toContain("FORMAT REPAIR");
+  });
+
+  it("still surfaces governance_unavailable when the repair also fails", async () => {
+    const invokeHermesProfile = vi
+      .fn()
+      .mockReturnValueOnce(draftJson)
+      .mockReturnValue("판단 보류");
+
+    const dispatch = createMarketingPlanPipelineDispatch({
+      useRuntime: false,
+      correlationId: CORRELATION,
+      invokeHermesProfile,
+    });
+
+    const result = await runDepartmentPipeline(
+      { productId: PRODUCT, channel: "threads", goal: "홍보" },
+      dispatch,
+    );
+
+    expect(result.failure?.code).toBe("governance_unavailable");
+    expect(invokeHermesProfile).toHaveBeenCalledTimes(3);
+  });
+
   it("does not expose secrets in runtime request payloads", async () => {
     const executeAndWait = vi
       .fn()

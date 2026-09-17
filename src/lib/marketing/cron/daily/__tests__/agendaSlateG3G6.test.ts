@@ -16,6 +16,7 @@ import {
   parseManagerAgendaSlateCuration,
 } from "@/lib/marketing/cron/daily/agendaSlate/curateManagerAgendaSlate";
 import { buildProductionLogicalRunKey } from "@/lib/marketing/cron/daily/agendaSlate/productionLogicalRunKey";
+import { MAX_SELECTED_TODAY } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import { createAgendaSlateService } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateService";
 import { runDailyMarketingAgendaSlate } from "@/lib/marketing/cron/daily/runDailyMarketingAgendaSlate";
 import { runDailyMarketingProductionFromSelection } from "@/lib/marketing/cron/daily/runDailyMarketingProductionFromSelection";
@@ -178,7 +179,7 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
     expect(await reviewRepo.listReviews({ limit: 10 })).toEqual([]);
   });
 
-  it("3-5: select 1/2/3 ok, 4th rejected, selection does not execute production", async () => {
+  it("3-5: selecting up to the cap is ok, one past it is rejected, and selection does not execute production", async () => {
     const slateRepo = createInMemoryDailyAgendaSlateRepository();
     const productionRequestRepo = createInMemoryMarketingProductionRequestRepository();
     const runRepo = createInMemoryDailyMarketingRunRepository();
@@ -188,7 +189,7 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
         repo: runRepo,
         slateRepo,
         now: NOW,
-        getResearchContext: async () => multiCandidateContext(6),
+        getResearchContext: async () => multiCandidateContext(MAX_SELECTED_TODAY + 2),
       },
     );
     const service = await createAgendaSlateService({
@@ -197,18 +198,21 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
       now: NOW,
     });
 
-    const ids = slateResult.slate!.candidates.slice(0, 4).map((c) => c.slateItemId);
-    await service.applyAction({ slateItemId: ids[0]!, action: "select_today", businessDateKst: DAY });
-    await service.applyAction({ slateItemId: ids[1]!, action: "select_today", businessDateKst: DAY });
-    const third = await service.applyAction({
-      slateItemId: ids[2]!,
-      action: "select_today",
-      businessDateKst: DAY,
-    });
-    expect(third.observability.selectedTodayCount).toBe(3);
+    const ids = slateResult
+      .slate!.candidates.slice(0, MAX_SELECTED_TODAY + 1)
+      .map((c) => c.slateItemId);
+    let last;
+    for (const slateItemId of ids.slice(0, MAX_SELECTED_TODAY)) {
+      last = await service.applyAction({ slateItemId, action: "select_today", businessDateKst: DAY });
+    }
+    expect(last!.observability.selectedTodayCount).toBe(MAX_SELECTED_TODAY);
 
     await expect(
-      service.applyAction({ slateItemId: ids[3]!, action: "select_today", businessDateKst: DAY }),
+      service.applyAction({
+        slateItemId: ids[MAX_SELECTED_TODAY]!,
+        action: "select_today",
+        businessDateKst: DAY,
+      }),
     ).rejects.toMatchObject({ code: "MAX_SELECTED" });
 
     // Selection alone must not create production candidate or queue.

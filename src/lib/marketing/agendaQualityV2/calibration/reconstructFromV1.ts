@@ -29,6 +29,42 @@ function hasDecisionLex(text: string): boolean {
   return /선택|결정|판단|vs|대비|언제|어디|누구|어떻게|무엇을|여부|맞는지|trade/i.test(text);
 }
 
+/** Phase 5 additive defaults for deterministic V1→V2 reconstruction (calibration only). */
+function withEditorialDefaults(
+  llm: Omit<
+    MarketingAgendaTransformerLlmOutput,
+    | "editorialArchetype"
+    | "whyInterestingKo"
+    | "curiosityHookKo"
+    | "hiddenDetailKo"
+    | "whyKoreanTravelerCaresKo"
+    | "explorationPayoffKo"
+    | "contentImaginabilityKo"
+  > &
+    Partial<MarketingAgendaTransformerLlmOutput>,
+): MarketingAgendaTransformerLlmOutput {
+  return {
+    ...llm,
+    editorialArchetype: llm.editorialArchetype ?? "DECISION",
+    whyInterestingKo:
+      llm.whyInterestingKo ??
+      `표면 뉴스 뒤에 여행자가 더 살펴볼 포인트가 있는지 본다: ${llm.marketingStorySeedKo.slice(0, 40)}`,
+    curiosityHookKo: llm.curiosityHookKo ?? llm.marketingStorySeedKo.slice(0, 80),
+    hiddenDetailKo:
+      llm.hiddenDetailKo ??
+      (llm.decisionAtStakeKo || llm.travelerProblemKo || llm.marketingStorySeedKo).slice(0, 120),
+    whyKoreanTravelerCaresKo:
+      llm.whyKoreanTravelerCaresKo ??
+      `${llm.targetTravelerKo || "한국 여행자"}에게 실무적으로 연결되는지 확인한다`,
+    familiarReferenceKo: llm.familiarReferenceKo ?? "",
+    alternativeAppealKo: llm.alternativeAppealKo ?? "",
+    explorationPayoffKo: llm.explorationPayoffKo ?? llm.readerPayoffKo,
+    contentImaginabilityKo:
+      llm.contentImaginabilityKo ??
+      "헤드라인·훅·2~3개 본문 섹션·체크리스트/사례 시각 구성을 바로 떠올릴 수 있다",
+  };
+}
+
 function reconstructLlmFields(c: AgendaSlateCandidate): {
   llm: MarketingAgendaTransformerLlmOutput;
   label: TransformerQualityLabel;
@@ -48,7 +84,7 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
     /크루즈/.test(c.title) ||
     topics.includes("activity_trend")
   ) {
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: topics.includes("family")
         ? "부산 출발을 고려하는 가족 여행 기획자"
         : "부산·근거리 출항을 검토하는 한국인 여행자",
@@ -72,11 +108,11 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["관측 신호만 존재; 요금·스케줄 미확인"],
     };
     notes.push("reconstructed_from_meta_topic_tags");
-    return { llm, label: "GOOD_TRANSFORMATION", notes };
+    return { llm: withEditorialDefaults(llm), label: "GOOD_TRANSFORMATION", notes };
   }
 
   if (topics.includes("fare_price_signal") || /9\.9|특가|프로모/.test(c.title)) {
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: "가성비 중시 단기 해외여행자",
       travelerProblemKo:
         "특가/프로모 가격이 일정 제약·숨은 비용 대비 실제로 이득인지 어떻게 판단할까?",
@@ -94,13 +130,13 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["실제 요금/좌석 미확인"],
     };
     notes.push("reconstructed_from_promo_signal");
-    return { llm, label: "GOOD_TRANSFORMATION", notes };
+    return { llm: withEditorialDefaults(llm), label: "GOOD_TRANSFORMATION", notes };
   }
 
   // Operational / visa / safety country briefs
   if (editorialClass === "OPERATIONAL_TRUTH" || topics.includes("visa") || topics.includes("safety")) {
     const dest = c.title.trim();
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: `${dest} 출국·체류를 앞둔 한국인 여행자`,
       travelerProblemKo: `공식/안전·입국 관련 변화가 내 일정·보험·환불 조건에 어떤 결정을 강제하는가?`,
       decisionAtStakeKo: "일정을 유지할지, 조정·보험·증빙을 강화할지 선택",
@@ -117,13 +153,13 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["원문 규정 세부는 추가 확인 필요"],
     };
     notes.push("reconstructed_operational_truth");
-    return { llm, label: "STRONG_STORY_SEED", notes };
+    return { llm: withEditorialDefaults(llm), label: "STRONG_STORY_SEED", notes };
   }
 
   // Phu Quoc / lodging supply with usable editorial
   if (/푸꾸옥|호텔|리조트|phu quoc|hotel|resort|공급/i.test(`${c.title} ${c.summary ?? ""}`)) {
     if (practical && hasDecisionLex(practical + rationale)) {
-      const llm: MarketingAgendaTransformerLlmOutput = {
+      const llm = {
         targetTravelerKo: "푸꾸옥에서 리조트 체류와 외부 관광을 병행하려는 한국인 여행자",
         travelerProblemKo:
           practical.length > 20
@@ -149,13 +185,13 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
         limitations: ["요금·재고 미확인"],
       };
       notes.push("reconstructed_from_editorial_lodging");
-      return { llm, label: "STRONG_STORY_SEED", notes };
+      return { llm: withEditorialDefaults(llm), label: "STRONG_STORY_SEED", notes };
     }
   }
 
   // Chuseok short-trip decision-ish
   if (/추석|3박|연휴|어디 갈까/.test(c.title)) {
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: "짧은 연휴로 해외 도시를 검토하는 직장인/가족",
       travelerProblemKo: "짧은 연휴에 해외 도시가 일정·피로도·비용 대비 맞는지 어떻게 고를까?",
       decisionAtStakeKo: "근거리 단기 도시 vs 국내/대안 일정",
@@ -172,12 +208,12 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["도시 리스트 원문은 홍보성일 수 있음"],
     };
     notes.push("reconstructed_chuseok_timing");
-    return { llm, label: "GOOD_TRANSFORMATION", notes };
+    return { llm: withEditorialDefaults(llm), label: "GOOD_TRANSFORMATION", notes };
   }
 
   // Airline supply Australia — decision frame possible
   if (/항공 공급|호주/.test(c.title)) {
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: "올겨울 호주행을 검토하는 한국인 여행자",
       travelerProblemKo:
         "항공 공급이 늘어난 지금, 가격보다 출도착 시간과 현지 첫날 동선을 먼저 봐야 하는가?",
@@ -195,12 +231,12 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["스케줄 팩트 미확인"],
     };
     notes.push("reconstructed_flight_supply");
-    return { llm, label: "GOOD_TRANSFORMATION", notes };
+    return { llm: withEditorialDefaults(llm), label: "GOOD_TRANSFORMATION", notes };
   }
 
   // Cancellation fee operational
   if (/취소|수수료|피해 구제/.test(c.title)) {
-    const llm: MarketingAgendaTransformerLlmOutput = {
+    const llm = {
       targetTravelerKo: "항공권 변경·취소를 고려하는 한국인 여행자",
       travelerProblemKo: "취소·변경 시 이중 수수료/규정 함정을 어떻게 피할까?",
       decisionAtStakeKo: "지금 취소 vs 규정 확인 후 변경 경로 선택",
@@ -217,11 +253,11 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
       limitations: ["개별 계약 조건 상이"],
     };
     notes.push("reconstructed_cancellation_ops");
-    return { llm, label: "STRONG_STORY_SEED", notes };
+    return { llm: withEditorialDefaults(llm), label: "STRONG_STORY_SEED", notes };
   }
 
   // Fallback: superficial — intentionally weak so gate rejects news-like items
-  const llm: MarketingAgendaTransformerLlmOutput = {
+  const llm = {
     targetTravelerKo: c.audienceHint || "해외여행을 검토하는 한국인",
     travelerProblemKo: `${c.title} — 여행자는 어떻게 해야 할까?`,
     decisionAtStakeKo: `${c.title}`,
@@ -242,7 +278,7 @@ function reconstructLlmFields(c: AgendaSlateCandidate): {
     editorialClass === "NEWS_HEADLINE_LIKE" || editorialClass === "GENERIC_INFORMATIONAL"
       ? "SUPERFICIAL_REWRITE"
       : "GENERIC_DECISION";
-  return { llm, label, notes };
+  return { llm: withEditorialDefaults(llm), label, notes };
 }
 
 export function reconstructV2FromV1Candidate(params: {

@@ -132,6 +132,14 @@ function collectCandidateTexts(candidate: MarketingAgendaCandidateV2): string[] 
     candidate.traveler.readerPayoffKo,
     candidate.editorial.marketingStorySeedKo,
     candidate.editorial.whyNowKo,
+    candidate.editorial.whyInterestingKo,
+    candidate.editorial.curiosityHookKo,
+    candidate.editorial.hiddenDetailKo,
+    candidate.editorial.whyKoreanTravelerCaresKo,
+    candidate.editorial.familiarReferenceKo,
+    candidate.editorial.alternativeAppealKo,
+    candidate.editorial.explorationPayoffKo,
+    candidate.editorial.contentImaginabilityKo,
     ...candidate.editorial.researchQuestionsKo,
   ];
 }
@@ -145,6 +153,14 @@ function collectLlmTexts(llm: MarketingAgendaTransformerLlmOutput): string[] {
     llm.readerPayoffKo,
     llm.marketingStorySeedKo,
     llm.whyNowKo,
+    llm.whyInterestingKo,
+    llm.curiosityHookKo,
+    llm.hiddenDetailKo,
+    llm.whyKoreanTravelerCaresKo,
+    llm.familiarReferenceKo ?? "",
+    llm.alternativeAppealKo ?? "",
+    llm.explorationPayoffKo,
+    llm.contentImaginabilityKo,
     ...llm.researchQuestionsKo,
   ];
 }
@@ -239,6 +255,14 @@ export function reframeUnsupportedSensitiveClaimsInLlm(params: {
     readerPayoffKo: mapField(params.llm.readerPayoffKo),
     marketingStorySeedKo: mapField(params.llm.marketingStorySeedKo),
     whyNowKo: mapField(params.llm.whyNowKo),
+    whyInterestingKo: mapField(params.llm.whyInterestingKo),
+    curiosityHookKo: mapField(params.llm.curiosityHookKo),
+    hiddenDetailKo: mapField(params.llm.hiddenDetailKo),
+    whyKoreanTravelerCaresKo: mapField(params.llm.whyKoreanTravelerCaresKo),
+    familiarReferenceKo: mapField(params.llm.familiarReferenceKo ?? ""),
+    alternativeAppealKo: mapField(params.llm.alternativeAppealKo ?? ""),
+    explorationPayoffKo: mapField(params.llm.explorationPayoffKo),
+    contentImaginabilityKo: mapField(params.llm.contentImaginabilityKo),
     signalSummaryKo: params.llm.signalSummaryKo
       ? mapField(params.llm.signalSummaryKo)
       : params.llm.signalSummaryKo,

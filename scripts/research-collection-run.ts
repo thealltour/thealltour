@@ -6,8 +6,8 @@
  */
 
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+
+import { loadLocalEnv } from "./loadLocalEnv";
 
 const require = createRequire(import.meta.url);
 try {
@@ -22,30 +22,7 @@ try {
   // ignore
 }
 
-function loadEnvIntoProcess(): void {
-  for (const file of [
-    resolve(process.cwd(), ".env.local"),
-    resolve(process.env.HOME || "/home/ysh", ".hermes/.env"),
-  ]) {
-    try {
-      for (const line of readFileSync(file, "utf8").split("\n")) {
-        const t = line.trim();
-        if (!t || t.startsWith("#") || !t.includes("=")) continue;
-        const i = t.indexOf("=");
-        const k = t.slice(0, i).trim();
-        let v = t.slice(i + 1).trim();
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-          v = v.slice(1, -1);
-        }
-        if (!process.env[k]) process.env[k] = v;
-      }
-    } catch {
-      // ignore missing env files
-    }
-  }
-}
-
-loadEnvIntoProcess();
+loadLocalEnv();
 
 async function main(): Promise<void> {
   const { runResearchCollectionCycle } = await import(

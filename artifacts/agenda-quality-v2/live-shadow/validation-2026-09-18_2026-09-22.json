@@ -1,23 +1,31 @@
 {
   "contract": "agenda-quality-v2-validation-manifest",
-  "validationId": "aqv2-live-20260917-20260921",
-  "createdAt": "2026-09-16T15:17:07.720Z",
-  "formalStartDate": "2026-09-17",
-  "formalEndDate": "2026-09-21",
+  "validationId": "aqv2-editorial-v2-live-20260918-20260922",
+  "lifecycleStatus": "SUPERSEDED_BY_PROMOTIONAL_SIGNAL_GUARD",
+  "supersedesValidationId": "aqv2-live-20260917-20260921",
+  "supersededByValidationId": "aqv2-editorial-v2a-live-20260918-20260922",
+  "createdAt": "2026-09-17T14:11:20.870Z",
+  "formalStartDate": "2026-09-18",
+  "formalEndDate": "2026-09-22",
   "formalDates": [
-    "2026-09-17",
     "2026-09-18",
     "2026-09-19",
     "2026-09-20",
-    "2026-09-21"
+    "2026-09-21",
+    "2026-09-22"
   ],
   "day0Excluded": "2026-09-16",
-  "validationConfigFingerprint": "aqv2cfg_1b1f1bdb396c398dee46772e",
+  "priorSamplesExcluded": [
+    "2026-09-16",
+    "2026-09-17"
+  ],
+  "validationConfigFingerprint": "aqv2cfg_6217ec73cb333bccf848fda7",
   "config": {
     "agendaQualityVersion": "v2",
     "transformerContractVersion": "marketing-agenda-candidate-v2",
-    "transformRevision": "agenda-transform-v1",
-    "promptVersion": "agenda-transform-prompt-v1",
+    "transformRevision": "agenda-transform-v2",
+    "promptVersion": "agenda-transform-prompt-v2",
+    "editorialObjectiveVersion": "travel-marketing-editorial-v2",
     "roleKey": "marketing_agenda_transformer",
     "thresholds": {
       "strong": 0.72,
@@ -70,7 +78,7 @@
     "AGENDA_QUALITY_V2_SHADOW_ENABLED": true
   },
   "code": {
-    "gitHead": "6092e2238ac1389c1ed5a64d58ec512d0ee9884f",
+    "gitHead": null,
     "workingTreeDirty": true
   },
   "artifactPolicy": {
@@ -78,7 +86,5 @@
     "manualRerunPath": "/home/ysh/thealltour/artifacts/agenda-quality-v2/live-shadow/reruns/YYYY-MM-DD/<timestamp>.{json,md}",
     "rollupSourcePolicy": "scheduled_canonical_preferred"
   },
-  "lifecycleStatus": "SUPERSEDED_BY_EDITORIAL_REFRAME",
-  "supersededByValidationId": "aqv2-editorial-v2-live-20260918-20260922",
-  "supersedeReason": "editorial objective changed after 2026-09-17 recovered sample (decision-centric → travel marketing editorial)"
+  "supersedeReason": "Phase 5A promotional signal guard: tourism-board certification laundering fix before formal 09/18–09/22 validation"
 }

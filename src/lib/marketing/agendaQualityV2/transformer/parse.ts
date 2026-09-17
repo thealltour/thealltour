@@ -52,5 +52,14 @@ export function parseMarketingAgendaTransformerOutput(
     freshnessClass: freshness,
     signalSummaryKo: asString(o.signalSummaryKo) || undefined,
     limitations: asStringArray(o.limitations),
+    editorialArchetype: asString(o.editorialArchetype).toUpperCase() || "DISCOVERY",
+    whyInterestingKo: asString(o.whyInterestingKo),
+    curiosityHookKo: asString(o.curiosityHookKo),
+    hiddenDetailKo: asString(o.hiddenDetailKo),
+    whyKoreanTravelerCaresKo: asString(o.whyKoreanTravelerCaresKo),
+    familiarReferenceKo: asString(o.familiarReferenceKo),
+    alternativeAppealKo: asString(o.alternativeAppealKo),
+    explorationPayoffKo: asString(o.explorationPayoffKo),
+    contentImaginabilityKo: asString(o.contentImaginabilityKo),
   };
 }

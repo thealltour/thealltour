@@ -216,6 +216,31 @@ export const RESERVOIR_SLATE_ELIGIBLE_STATUSES: AgendaReservoirLifecycleStatus[]
   "PRESENTED",
 ];
 
+export const RESERVOIR_VERSION_INCOMPATIBLE_REASON =
+  "version_incompatible_historical" as const;
+
+/**
+ * Phase 5: old prompt-v1 / transform-v1 reservoir rows remain historical
+ * but are ineligible for carryover into the new editorial-objective validation.
+ * Do NOT mark them REJECTED merely because the version changed.
+ */
+export function isAgendaReservoirVersionCompatible(
+  candidate: MarketingAgendaCandidateV2,
+  expected: {
+    transformRevision: string;
+    promptVersion: string;
+    editorialObjectiveVersion: string;
+  },
+): boolean {
+  const p = candidate.provenance;
+  if (p.transformRevision !== expected.transformRevision) return false;
+  if ((p.promptVersion ?? "") !== expected.promptVersion) return false;
+  if ((p.editorialObjectiveVersion ?? "") !== expected.editorialObjectiveVersion) {
+    return false;
+  }
+  return true;
+}
+
 export function isReservoirEligibleForFutureSlate(
   item: AgendaReservoirItem,
   nowIso?: string,

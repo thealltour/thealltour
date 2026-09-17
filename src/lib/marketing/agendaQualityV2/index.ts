@@ -1,3 +1,4 @@
+export * from "@/lib/marketing/agendaQualityV2/promotionalGuard";
 export * from "@/lib/marketing/agendaQualityV2/contracts";
 export * from "@/lib/marketing/agendaQualityV2/freshness";
 export * from "@/lib/marketing/agendaQualityV2/genericRisk";

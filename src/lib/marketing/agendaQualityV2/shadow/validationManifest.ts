@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION,
   AGENDA_QUALITY_V2_MAX_TRANSFORMS_DEFAULT,
   AGENDA_QUALITY_V2_PROMPT_VERSION,
   AGENDA_QUALITY_V2_SHADOW_ENV_KEY,
@@ -31,20 +32,37 @@ import { MARKETING_AGENDA_TRANSFORMER_ROLE_KEY } from "@/lib/marketing/agendaQua
 import { resolveAgendaTransformerRouteVisibility } from "@/lib/marketing/agendaQualityV2/shadow/routeVisibility";
 import { getRuntimeEnvBag } from "@/lib/runtimeEnvStore";
 
-export const AGENDA_QUALITY_V2_VALIDATION_ID = "aqv2-live-20260917-20260921" as const;
-export const AGENDA_QUALITY_V2_VALIDATION_START = "2026-09-17" as const;
-export const AGENDA_QUALITY_V2_VALIDATION_END = "2026-09-21" as const;
+/** Active formal validation — Phase 5A promotional signal guard. */
+export const AGENDA_QUALITY_V2_VALIDATION_ID = "aqv2-editorial-v2a-live-20260918-20260922" as const;
+export const AGENDA_QUALITY_V2_VALIDATION_START = "2026-09-18" as const;
+export const AGENDA_QUALITY_V2_VALIDATION_END = "2026-09-22" as const;
 export const AGENDA_QUALITY_V2_VALIDATION_DATES = [
-  "2026-09-17",
   "2026-09-18",
   "2026-09-19",
   "2026-09-20",
   "2026-09-21",
+  "2026-09-22",
 ] as const;
+
+/** Prior formal windows retained on disk. */
+export const AGENDA_QUALITY_V2_VALIDATION_ID_SUPERSEDED =
+  "aqv2-editorial-v2-live-20260918-20260922" as const;
+export const AGENDA_QUALITY_V2_VALIDATION_ID_SUPERSEDED_DECISION =
+  "aqv2-live-20260917-20260921" as const;
+export const AGENDA_QUALITY_V2_SUPERSEDED_STATUS =
+  "SUPERSEDED_BY_EDITORIAL_REFRAME" as const;
+export const AGENDA_QUALITY_V2_SUPERSEDED_BY_PROMOTIONAL_GUARD =
+  "SUPERSEDED_BY_PROMOTIONAL_SIGNAL_GUARD" as const;
+
 export const AGENDA_QUALITY_V2_TRANSFORMER_CONTRACT_VERSION =
   "marketing-agenda-candidate-v2" as const;
 
 export type ValidationConfigStatus = "MATCH" | "DRIFT" | "UNKNOWN";
+export type ValidationLifecycleStatus =
+  | "ACTIVE"
+  | typeof AGENDA_QUALITY_V2_SUPERSEDED_STATUS
+  | typeof AGENDA_QUALITY_V2_SUPERSEDED_BY_PROMOTIONAL_GUARD
+  | "ABORTED_BEFORE_FORMAL_VALIDATION";
 
 /** Stable subset used for fingerprint — no timestamps / volatile provider picks. */
 export type AgendaQualityV2ValidationSensitiveConfig = {
@@ -52,6 +70,7 @@ export type AgendaQualityV2ValidationSensitiveConfig = {
   transformerContractVersion: typeof AGENDA_QUALITY_V2_TRANSFORMER_CONTRACT_VERSION;
   transformRevision: typeof AGENDA_QUALITY_V2_TRANSFORM_REVISION;
   promptVersion: typeof AGENDA_QUALITY_V2_PROMPT_VERSION;
+  editorialObjectiveVersion: typeof AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION;
   roleKey: typeof MARKETING_AGENDA_TRANSFORMER_ROLE_KEY;
   thresholds: {
     strong: number;
@@ -91,12 +110,16 @@ export type AgendaQualityV2ValidationSensitiveConfig = {
 
 export type AgendaQualityV2ValidationManifest = {
   contract: "agenda-quality-v2-validation-manifest";
-  validationId: typeof AGENDA_QUALITY_V2_VALIDATION_ID;
+  validationId: typeof AGENDA_QUALITY_V2_VALIDATION_ID | string;
+  lifecycleStatus?: ValidationLifecycleStatus;
+  supersededByValidationId?: string | null;
+  supersedesValidationId?: string | null;
   createdAt: string;
-  formalStartDate: typeof AGENDA_QUALITY_V2_VALIDATION_START;
-  formalEndDate: typeof AGENDA_QUALITY_V2_VALIDATION_END;
-  formalDates: typeof AGENDA_QUALITY_V2_VALIDATION_DATES;
-  day0Excluded: "2026-09-16";
+  formalStartDate: string;
+  formalEndDate: string;
+  formalDates: readonly string[];
+  day0Excluded: string;
+  priorSamplesExcluded?: string[];
   validationConfigFingerprint: string;
   config: AgendaQualityV2ValidationSensitiveConfig;
   configuredRoute: string[];
@@ -113,6 +136,7 @@ export type AgendaQualityV2ValidationManifest = {
     manualRerunPath: string;
     rollupSourcePolicy: "scheduled_canonical_preferred";
   };
+  supersedeReason?: string | null;
 };
 
 export function snapshotAgendaQualityV2ValidationSensitiveConfig(
@@ -125,6 +149,7 @@ export function snapshotAgendaQualityV2ValidationSensitiveConfig(
     transformerContractVersion: AGENDA_QUALITY_V2_TRANSFORMER_CONTRACT_VERSION,
     transformRevision: AGENDA_QUALITY_V2_TRANSFORM_REVISION,
     promptVersion: AGENDA_QUALITY_V2_PROMPT_VERSION,
+    editorialObjectiveVersion: AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION,
     roleKey: MARKETING_AGENDA_TRANSFORMER_ROLE_KEY,
     thresholds: {
       strong: score.strongMin,
@@ -208,8 +233,82 @@ export function diffValidationSensitiveConfig(
 export function resolveValidationManifestPath(cwd: string = process.cwd()): string {
   return path.join(
     resolveAgendaQualityV2LiveShadowDir(cwd),
+    "validation-editorial-v2a-2026-09-18_2026-09-22.json",
+  );
+}
+
+export function resolveSupersededValidationManifestPath(cwd: string = process.cwd()): string {
+  return path.join(
+    resolveAgendaQualityV2LiveShadowDir(cwd),
     "validation-2026-09-17_2026-09-21.json",
   );
+}
+
+export function resolvePhase5EditorialValidationManifestPath(cwd: string = process.cwd()): string {
+  return path.join(
+    resolveAgendaQualityV2LiveShadowDir(cwd),
+    "validation-2026-09-18_2026-09-22.json",
+  );
+}
+
+async function markManifestFileSuperseded(params: {
+  filePath: string;
+  lifecycleStatus: ValidationLifecycleStatus;
+  reason: string;
+  supersededByValidationId?: string;
+}): Promise<{ path: string; status: "updated" | "missing" | "already_superseded" }> {
+  try {
+    const raw = await fs.readFile(params.filePath, "utf8");
+    const existing = JSON.parse(raw) as AgendaQualityV2ValidationManifest;
+    if (
+      existing.lifecycleStatus === AGENDA_QUALITY_V2_SUPERSEDED_STATUS ||
+      existing.lifecycleStatus === AGENDA_QUALITY_V2_SUPERSEDED_BY_PROMOTIONAL_GUARD ||
+      existing.lifecycleStatus === "ABORTED_BEFORE_FORMAL_VALIDATION"
+    ) {
+      return { path: params.filePath, status: "already_superseded" };
+    }
+    const updated: AgendaQualityV2ValidationManifest = {
+      ...existing,
+      lifecycleStatus: params.lifecycleStatus,
+      supersededByValidationId:
+        params.supersededByValidationId ?? AGENDA_QUALITY_V2_VALIDATION_ID,
+      supersedeReason: params.reason,
+    };
+    await fs.writeFile(params.filePath, JSON.stringify(updated, null, 2), "utf8");
+    return { path: params.filePath, status: "updated" };
+  } catch {
+    return { path: params.filePath, status: "missing" };
+  }
+}
+
+/**
+ * Mark prior decision-centric + Phase-5 editorial manifests superseded without deleting.
+ */
+export async function markPriorValidationManifestSuperseded(params: {
+  cwd?: string;
+  reason?: string;
+  supersededByValidationId?: string;
+}): Promise<{
+  decisionEra: { path: string; status: "updated" | "missing" | "already_superseded" };
+  phase5Editorial: { path: string; status: "updated" | "missing" | "already_superseded" };
+}> {
+  const cwd = params.cwd ?? process.cwd();
+  const decisionEra = await markManifestFileSuperseded({
+    filePath: resolveSupersededValidationManifestPath(cwd),
+    lifecycleStatus: AGENDA_QUALITY_V2_SUPERSEDED_STATUS,
+    reason:
+      params.reason ??
+      "editorial objective changed after 2026-09-17 recovered sample (decision-centric → travel marketing editorial)",
+    supersededByValidationId: params.supersededByValidationId ?? AGENDA_QUALITY_V2_VALIDATION_ID,
+  });
+  const phase5Editorial = await markManifestFileSuperseded({
+    filePath: resolvePhase5EditorialValidationManifestPath(cwd),
+    lifecycleStatus: AGENDA_QUALITY_V2_SUPERSEDED_BY_PROMOTIONAL_GUARD,
+    reason:
+      "Phase 5A promotional signal guard: tourism-board certification laundering fix before formal 09/18–09/22 validation",
+    supersededByValidationId: params.supersededByValidationId ?? AGENDA_QUALITY_V2_VALIDATION_ID,
+  });
+  return { decisionEra, phase5Editorial };
 }
 
 export async function readValidationManifest(
@@ -277,11 +376,15 @@ export async function writeValidationManifestIfAbsent(params: {
   const manifest: AgendaQualityV2ValidationManifest = {
     contract: "agenda-quality-v2-validation-manifest",
     validationId: AGENDA_QUALITY_V2_VALIDATION_ID,
+    lifecycleStatus: "ACTIVE",
+    supersedesValidationId: AGENDA_QUALITY_V2_VALIDATION_ID_SUPERSEDED,
+    supersededByValidationId: null,
     createdAt: params.createdAt ?? new Date().toISOString(),
     formalStartDate: AGENDA_QUALITY_V2_VALIDATION_START,
     formalEndDate: AGENDA_QUALITY_V2_VALIDATION_END,
     formalDates: AGENDA_QUALITY_V2_VALIDATION_DATES,
     day0Excluded: "2026-09-16",
+    priorSamplesExcluded: ["2026-09-16", "2026-09-17"],
     validationConfigFingerprint: fingerprint,
     config,
     configuredRoute: route.configuredRoute,
@@ -298,6 +401,7 @@ export async function writeValidationManifestIfAbsent(params: {
       manualRerunPath: `${resolveAgendaQualityV2LiveShadowDir()}/reruns/YYYY-MM-DD/<timestamp>.{json,md}`,
       rollupSourcePolicy: "scheduled_canonical_preferred",
     },
+    supersedeReason: null,
   };
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -434,6 +538,9 @@ export function assertFormalValidationConfigMatchesKnownFreeze(
     critical.push("transformRevision");
   }
   if (config.promptVersion !== AGENDA_QUALITY_V2_PROMPT_VERSION) critical.push("promptVersion");
+  if (config.editorialObjectiveVersion !== AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION) {
+    critical.push("editorialObjectiveVersion");
+  }
   if (config.transformBudget.maxTransformsPerRun !== 12) {
     critical.push("transformBudget.maxTransformsPerRun");
   }

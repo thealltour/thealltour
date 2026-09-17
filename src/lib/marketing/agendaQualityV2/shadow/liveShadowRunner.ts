@@ -35,6 +35,7 @@ import {
 import {
   transformMarketingAgendaFromLlmOutput,
   transformMarketingAgendaWithInvoke,
+  candidateToLlmCachePayload,
   type AgendaTransformInvoke,
 } from "@/lib/marketing/agendaQualityV2/transformer/transform";
 import { parseMarketingAgendaTransformerOutput } from "@/lib/marketing/agendaQualityV2/transformer/parse";
@@ -437,22 +438,7 @@ async function runLiveShadowInner(params: {
 
         if (transform.transformStatus === "valid" && transform.candidate) {
           const llm = parseMarketingAgendaTransformerOutput(
-            JSON.stringify({
-              targetTravelerKo: transform.candidate.traveler.targetTravelerKo,
-              travelerProblemKo: transform.candidate.traveler.travelerProblemKo,
-              decisionAtStakeKo: transform.candidate.traveler.decisionAtStakeKo,
-              audienceTensionKo: transform.candidate.traveler.audienceTensionKo,
-              readerPayoffKo: transform.candidate.traveler.readerPayoffKo,
-              marketingStorySeedKo: transform.candidate.editorial.marketingStorySeedKo,
-              whyNowKo: transform.candidate.editorial.whyNowKo,
-              researchQuestionsKo: transform.candidate.editorial.researchQuestionsKo,
-              nonGoalsKo: transform.candidate.editorial.nonGoalsKo,
-              genericRiskKo: transform.candidate.editorial.genericRiskKo,
-              storyArchetypeHint: transform.candidate.editorial.storyArchetypeHint,
-              freshnessClass: transform.candidate.signalContext.freshnessClass,
-              signalSummaryKo: transform.candidate.signalContext.signalSummaryKo,
-              limitations: transform.candidate.provenance.limitations,
-            }),
+            JSON.stringify(candidateToLlmCachePayload(transform.candidate)),
           );
           if (llm) {
             await transformCache.set({
@@ -682,6 +668,7 @@ async function runLiveShadowInner(params: {
         genericRiskPenalty: 0,
         staleTrendPenalty: 0,
         decisionAxisRepeatPenalty: 0,
+        promotionalGenericRiskPenalty: 0,
       },
       dimensions: {
         decisionUtility: 0,
@@ -694,6 +681,20 @@ async function runLiveShadowInner(params: {
         commercialRelevance: 0,
         specificity: 0,
         novelty: 0,
+        curiosityStrength: 0,
+        unexpectedness: 0,
+        hiddenDetailValue: 0,
+        koreanTravelerRelevanceDim: 0,
+        alternativeAppeal: 0,
+        explorationPull: 0,
+        contentImaginability: 0,
+      },
+      promotional: {
+        promotionalSource: false,
+        promotionalGenericRisk: false,
+        promotionalSpecificityPass: true,
+        sensationalUnsupported: false,
+        certificationOnlyHiddenDetail: false,
       },
     };
     const score = r.score ?? scoreFallback;

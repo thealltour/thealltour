@@ -1,7 +1,9 @@
 import type { MarketingAgendaCandidateV2 } from "@/lib/marketing/agendaQualityV2/contracts";
 import type { AgendaReservoirItem } from "@/lib/marketing/agendaQualityV2/reservoir/types";
 import {
+  isAgendaReservoirVersionCompatible,
   isReservoirEligibleForFutureSlate,
+  RESERVOIR_VERSION_INCOMPATIBLE_REASON,
   toMemorySnapshot,
 } from "@/lib/marketing/agendaQualityV2/reservoir/types";
 import { applyReservoirExpiryIfNeeded } from "@/lib/marketing/agendaQualityV2/reservoir/transitions";
@@ -14,6 +16,11 @@ import {
   type AgendaV2ScoreBreakdown,
 } from "@/lib/marketing/agendaQualityV2/scoring/storyabilityScore";
 import { AGENDA_V2_DECISION_AXIS_SOFT_CAP } from "@/lib/marketing/agendaQualityV2/scoring/calibrationConfig";
+import {
+  AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION,
+  AGENDA_QUALITY_V2_PROMPT_VERSION,
+  AGENDA_QUALITY_V2_TRANSFORM_REVISION,
+} from "@/lib/marketing/agendaQualityV2/shadow/config";
 
 export const AGENDA_V2_SLATE_MAX = 6;
 export const AGENDA_V2_SLATE_MIN = 0;
@@ -59,9 +66,18 @@ function softDiversityKey(item: AgendaReservoirItem): string {
   return item.decisionAxisFingerprint ?? "unknown_axis";
 }
 
+function currentObjectiveVersionExpectation() {
+  return {
+    transformRevision: AGENDA_QUALITY_V2_TRANSFORM_REVISION,
+    promptVersion: AGENDA_QUALITY_V2_PROMPT_VERSION,
+    editorialObjectiveVersion: AGENDA_QUALITY_V2_EDITORIAL_OBJECTIVE_VERSION,
+  };
+}
+
 /**
  * V2 shadow Daily Slate: max 6, min 0, NO weak backfill.
  * NEW + DEFERRED (+ PRESENTED undecided) compete on current score.
+ * Version-incompatible historical rows are excluded (not REJECTED).
  */
 export function selectDailyAgendaSlateV2(
   params: SelectDailyAgendaSlateV2Params,
@@ -71,21 +87,52 @@ export function selectDailyAgendaSlateV2(
   for (const item of params.reservoirItems) byId.set(item.agendaId, item);
   for (const item of params.newlyQualified) byId.set(item.agendaId, item);
 
+  const versionExpect = currentObjectiveVersionExpectation();
   const poolIds = new Set<string>();
-  for (const item of params.newlyQualified) poolIds.add(item.agendaId);
+  const rejected: DailyAgendaSlateV2["rejected"] = [];
+
+  for (const item of params.newlyQualified) {
+    if (!isAgendaReservoirVersionCompatible(item.candidate, versionExpect)) {
+      rejected.push({
+        agendaId: item.agendaId,
+        qualityTier: "REJECT",
+        reason: RESERVOIR_VERSION_INCOMPATIBLE_REASON,
+        totalScore: 0,
+        origin: "NEW",
+      });
+      continue;
+    }
+    poolIds.add(item.agendaId);
+  }
   for (const item of params.reservoirItems) {
     const expired = applyReservoirExpiryIfNeeded(item, params.nowIso);
     if (expired.status !== item.status) {
       byId.set(item.agendaId, expired);
     }
     const current = byId.get(item.agendaId)!;
-    if (isReservoirEligibleForFutureSlate(current, params.nowIso)) {
-      poolIds.add(current.agendaId);
+    if (!isReservoirEligibleForFutureSlate(current, params.nowIso)) continue;
+    if (!isAgendaReservoirVersionCompatible(current.candidate, versionExpect)) {
+      // Historical / wrong-objective rows: exclude neutrally; do not mutate status.
+      if (!params.newlyQualified.some((n) => n.agendaId === current.agendaId)) {
+        rejected.push({
+          agendaId: current.agendaId,
+          qualityTier: "REJECT",
+          reason: RESERVOIR_VERSION_INCOMPATIBLE_REASON,
+          totalScore: 0,
+          origin: "CARRYOVER",
+          carriedFromDate:
+            (current.deferredAt ?? current.lastPresentedAt ?? current.firstQualifiedAt)?.slice(
+              0,
+              10,
+            ) ?? null,
+        });
+      }
+      continue;
     }
+    poolIds.add(current.agendaId);
   }
 
   const scored: ScoredAgendaV2[] = [];
-  const rejected: DailyAgendaSlateV2["rejected"] = [];
 
   for (const id of poolIds) {
     const item = byId.get(id)!;
@@ -167,7 +214,6 @@ export function selectDailyAgendaSlateV2(
     }
     const axis = softDiversityKey(row.item);
     const count = axisCounts.get(axis) ?? 0;
-    // Allow at most soft-cap of same decision axis unless slate still empty of alternatives
     if (count >= AGENDA_V2_DECISION_AXIS_SOFT_CAP) {
       const remainingStrong = scored
         .slice(scored.indexOf(row) + 1)

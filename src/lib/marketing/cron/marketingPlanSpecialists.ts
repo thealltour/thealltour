@@ -30,8 +30,17 @@ import {
 } from "@/lib/marketing/content/proposition/storyLock";
 import type { EvidenceBackedStoryBrief } from "@/lib/marketing/storyPoint/contracts";
 
-/** Default Hermes oneshot timeout for Marketing Cron specialist profiles. */
-export const MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT = 180_000;
+/**
+ * Default Hermes oneshot timeout for Marketing Cron specialist profiles.
+ * 180s routinely expired mid-generation on the Pi and aborted the whole run.
+ */
+export const MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT = 300_000;
+
+/**
+ * Channel-scoped Human Review regenerate — an operator is waiting, so it gets more
+ * headroom than the batch cron default.
+ */
+export const CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT = 360_000;
 
 /** Resolved Hermes oneshot timeout (env MARKETING_CRON_HERMES_TIMEOUT_MS or default 180s). */
 export const MARKETING_CRON_HERMES_TIMEOUT_MS = resolveMarketingCronHermesTimeoutMs(
@@ -54,11 +63,16 @@ export const CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS = 2;
 export type ContentStrategistFinalParseMode =
   | JsonExtractMode
   | "format_retry"
-  | "grounding_retry";
+  | "grounding_retry"
+  | "schema_retry";
 
 export type ContentStrategistGroundingFailureClass =
   | "evidence_refs_absent"
   | "evidence_refs_empty";
+
+export type ContentStrategistSchemaFailureClass =
+  | "wrong_primitive_type"
+  | "schema_malformed";
 
 export type ContentStrategistRuntimeFailureClass =
   | "hermes_api_http_failure"
@@ -69,8 +83,10 @@ export type ContentStrategistParseDiagnostics = {
   contentStrategistAttemptCount: number;
   formatRetryUsed: boolean;
   groundingRetryUsed: boolean;
+  schemaRetryUsed: boolean;
   firstAttemptFailureClass: string | null;
   groundingFailureClass: ContentStrategistGroundingFailureClass | null;
+  schemaFailureClass: ContentStrategistSchemaFailureClass | null;
   finalParseMode: ContentStrategistFinalParseMode | null;
   stdoutLength: number;
   evidenceRefsPresence: "absent" | "empty" | "present" | "unknown";
@@ -199,10 +215,12 @@ function buildDiagnostics(partial: {
   attemptCount: number;
   firstAttemptFailureClass: string | null;
   groundingFailureClass?: ContentStrategistGroundingFailureClass | null;
+  schemaFailureClass?: ContentStrategistSchemaFailureClass | null;
   finalParseMode: ContentStrategistFinalParseMode | null;
   stdoutLength: number;
   formatRetryUsed: boolean;
   groundingRetryUsed?: boolean;
+  schemaRetryUsed?: boolean;
   contentPlan?: ContentStrategistOutput["contentPlan"];
   suppliedEvidenceRefCount?: number;
 }): ContentStrategistParseDiagnostics {
@@ -211,8 +229,10 @@ function buildDiagnostics(partial: {
     contentStrategistAttemptCount: partial.attemptCount,
     formatRetryUsed: partial.formatRetryUsed,
     groundingRetryUsed: partial.groundingRetryUsed ?? false,
+    schemaRetryUsed: partial.schemaRetryUsed ?? false,
     firstAttemptFailureClass: partial.firstAttemptFailureClass,
     groundingFailureClass: partial.groundingFailureClass ?? null,
+    schemaFailureClass: partial.schemaFailureClass ?? null,
     finalParseMode: partial.finalParseMode,
     stdoutLength: partial.stdoutLength,
     evidenceRefsPresence: evidenceRefsPresenceOf(plan),
@@ -519,6 +539,37 @@ export function buildContentDraftGroundingRepairPrompt(
     .join("\n");
 }
 
+/**
+ * One bounded schema-shape repair. Structurally invalid contentPlan field types.
+ */
+export function buildContentDraftSchemaRepairPrompt(
+  payload: ContentDraftRequest,
+  schemaFailureClass: ContentStrategistSchemaFailureClass,
+  zodPath?: string | null,
+): string {
+  const supplied = collectSuppliedEvidenceRefs(payload);
+  return [
+    "JSON only. Your previous Content Strategist response failed ContentPlan schema validation.",
+    `Failure class: ${schemaFailureClass}.`,
+    zodPath ? `Zod path: ${zodPath}.` : null,
+    "contentPlan.proposition MUST be an object (content-proposition-v1) or null — never a prose string.",
+    "contentPlan.proposition.proofRequirements MUST be an array of objects {claimArea,requiredProof,severity} — never bare strings.",
+    "contentPlan.recommendedFormats MUST be an array of objects {format,score,rationale} using ONLY threads_text|instagram_carousel|blog_article|short_video_concept.",
+    "Do NOT put checklist/quick_tips/app_notification into recommendedFormats (those are not ContentPlan formats).",
+    "contentPlan.evidenceRefs MUST be an array of supplied evidence ID strings or full evidence objects — never bare unrelated strings mixed incorrectly.",
+    "Return the COMPLETE JSON object again. No markdown fences. No prose before or after.",
+    formatDeliverableRequirementsSection(payload.deliverableRequirements),
+    formatEvidencePackSection(payload.evidencePack),
+    formatAvailableEvidenceSection(supplied),
+    PROPOSITION_RULES,
+    GROUNDING_RULES,
+    JSON.stringify(payload),
+    CONTENT_DRAFT_SHAPE,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function buildContentDraftTopicIdentityRepairPrompt(
   payload: ContentDraftRequest,
   reasons: string[],
@@ -756,7 +807,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Resolve model evidenceRefs string IDs → full AssignmentEvidenceRef from supplied set.
- * Unknown IDs fail closed. Does not invent refs when field is absent/empty.
+ * Supports all-string and mixed string/object arrays. Unknown IDs fail closed.
+ * Does not invent refs when field is absent/empty.
  */
 export function resolveProviderEvidenceRefsAgainstSupplied(
   contentPlan: unknown,
@@ -775,8 +827,10 @@ export function resolveProviderEvidenceRefsAgainstSupplied(
 
   const byId = new Map(supplied.map((ref) => [ref.evidenceId, ref]));
   const allowedIds = new Set(byId.keys());
+  const hasStringIds = refs.some((item) => typeof item === "string");
+  const hasObjects = refs.some((item) => isRecord(item));
 
-  if (refs.every((item) => typeof item === "string")) {
+  if (hasStringIds) {
     if (supplied.length === 0) {
       throw new ContentPlanContractError({
         incidentClass: "malformed_model_output",
@@ -786,22 +840,49 @@ export function resolveProviderEvidenceRefsAgainstSupplied(
       });
     }
     const resolved: AssignmentEvidenceRef[] = [];
-    for (const id of refs) {
-      const hit = byId.get(String(id));
-      if (!hit) {
-        throw new ContentPlanContractError({
-          incidentClass: "malformed_model_output",
-          validationIssue: "invalid_evidence_shape",
-          source: "provider_output",
-          message: `Fabricated or unknown evidence ID not in supplied set: ${String(id)}`,
-        });
+    const seen = new Set<string>();
+    for (const item of refs) {
+      if (typeof item === "string") {
+        const hit = byId.get(String(item));
+        if (!hit) {
+          throw new ContentPlanContractError({
+            incidentClass: "malformed_model_output",
+            validationIssue: "invalid_evidence_shape",
+            source: "provider_output",
+            message: `Fabricated or unknown evidence ID not in supplied set: ${String(item)}`,
+          });
+        }
+        if (seen.has(hit.evidenceId)) continue;
+        seen.add(hit.evidenceId);
+        resolved.push(hit);
+        continue;
       }
-      resolved.push(hit);
+      if (isRecord(item)) {
+        const evidenceId = String(item.evidenceId ?? "");
+        if (evidenceId && !allowedIds.has(evidenceId)) {
+          throw new ContentPlanContractError({
+            incidentClass: "malformed_model_output",
+            validationIssue: "invalid_evidence_shape",
+            source: "provider_output",
+            message: `Fabricated or unknown evidence ID not in supplied set: ${evidenceId}`,
+          });
+        }
+        if (!evidenceId || seen.has(evidenceId)) continue;
+        const fromSupplied = byId.get(evidenceId);
+        if (fromSupplied) {
+          seen.add(evidenceId);
+          resolved.push(fromSupplied);
+        } else {
+          // Object without matching supplied id already rejected above when id present.
+          seen.add(evidenceId);
+          resolved.push(item as unknown as AssignmentEvidenceRef);
+        }
+      }
     }
     return { ...contentPlan, evidenceRefs: resolved };
   }
 
-  if (supplied.length > 0 && refs.every((item) => isRecord(item))) {
+  if (hasObjects && supplied.length > 0 && refs.every((item) => isRecord(item))) {
     for (const item of refs) {
       const evidenceId = String((item as Record<string, unknown>).evidenceId ?? "");
       if (evidenceId && !allowedIds.has(evidenceId)) {
@@ -1011,6 +1092,29 @@ function groundingFailureClassOf(
   return null;
 }
 
+function schemaFailureClassOf(
+  detailed: Extract<ParseContentStrategistDetailedResult, { ok: false; kind: "semantic" }>,
+): ContentStrategistSchemaFailureClass | null {
+  const issue =
+    detailed.validationIssue ??
+    (detailed.error instanceof ContentPlanContractError
+      ? detailed.error.validationIssue
+      : null) ??
+    "";
+  if (issue === "wrong_primitive_type") return "wrong_primitive_type";
+  if (issue === "schema_malformed") return "schema_malformed";
+  return null;
+}
+
+function schemaFailureZodPathOf(
+  detailed: Extract<ParseContentStrategistDetailedResult, { ok: false; kind: "semantic" }>,
+): string | null {
+  if (detailed.error instanceof ContentPlanContractError) {
+    return detailed.error.zodPath ?? null;
+  }
+  return null;
+}
+
 function semanticErrorMessage(error: Error): string {
   if (error instanceof ContentPlanContractError) {
     return error.toPipelineMessage();
@@ -1022,8 +1126,9 @@ function semanticErrorMessage(error: Error): string {
  * Invoke CS raw → parse, with at most one bounded repair:
  * - format/JSON failure → format repair
  * - evidence_refs_absent/empty + supplied evidence → grounding repair
+ * - wrong_primitive_type/schema_malformed → schema repair
  * - topic identity violation on otherwise-valid JSON → identity repair
- * Never both format+grounding. Max invocations = CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS (2).
+ * Never chain format+grounding+schema. Max invocations = CONTENT_STRATEGIST_MAX_MODEL_INVOCATIONS (2).
  * Runtime/gateway stdout failures do not retry.
  */
 export async function requestContentStrategistDraftWithFormatRetry(input: {
@@ -1098,6 +1203,8 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
       formatRetryUsed: boolean;
       groundingRetryUsed: boolean;
       groundingFailureClass?: ContentStrategistGroundingFailureClass | null;
+      schemaRetryUsed?: boolean;
+      schemaFailureClass?: ContentStrategistSchemaFailureClass | null;
     },
     allowStrategyRepair: boolean,
   ): Promise<{
@@ -1222,75 +1329,147 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
       suppliedCount > 0 ? groundingFailureClassOf(first) : null;
 
     // Only absent/empty + canonical supplied evidence → one grounding repair.
-    if (!groundingClass) {
+    if (groundingClass) {
+      const raw2 = await input.invoke(
+        buildContentDraftGroundingRepairPrompt(input.payload, groundingClass),
+      );
+      const second = parseContentStrategistOutputDetailed(raw2, parseOpts);
+
+      if (second.ok) {
+        return finishOk(
+          second.output,
+          {
+            attemptCount: 2,
+            firstAttemptFailureClass: groundingClass,
+            groundingFailureClass: groundingClass,
+            finalParseMode: "grounding_retry",
+            stdoutLength: second.stdoutLength,
+            formatRetryUsed: false,
+            groundingRetryUsed: true,
+            schemaRetryUsed: false,
+          },
+          false,
+        );
+      }
+
+      if (second.kind === "runtime") {
+        throw new ContentStrategistRuntimeError({
+          failureClass: second.failureClass,
+          message: second.message,
+          diagnostics: buildDiagnostics({
+            attemptCount: 2,
+            firstAttemptFailureClass: groundingClass,
+            groundingFailureClass: groundingClass,
+            finalParseMode: null,
+            stdoutLength: second.stdoutLength,
+            formatRetryUsed: false,
+            groundingRetryUsed: true,
+            schemaRetryUsed: false,
+            suppliedEvidenceRefCount: suppliedCount,
+          }),
+        });
+      }
+
+      if (second.kind === "format") {
+        // Grounding repair returned non-JSON — fail closed (no chained format retry).
+        throw new ContentStrategistFormatError({
+          failureClass: second.failureClass,
+          message: second.message,
+          diagnostics: buildDiagnostics({
+            attemptCount: 2,
+            firstAttemptFailureClass: groundingClass,
+            groundingFailureClass: groundingClass,
+            finalParseMode: null,
+            stdoutLength: second.stdoutLength,
+            formatRetryUsed: false,
+            groundingRetryUsed: true,
+            schemaRetryUsed: false,
+            suppliedEvidenceRefCount: suppliedCount,
+          }),
+        });
+      }
+
+      // Second semantic failure (still absent/empty, fabricated, etc.) — no further retry.
+      const err =
+        second.error instanceof ContentPlanContractError
+          ? second.error
+          : new Error(semanticErrorMessage(second.error));
+      err.message = `${semanticErrorMessage(err)};content_strategist_grounding_retry_used=1;first=${groundingClass}`;
+      throw err;
+    }
+
+    const schemaClass = schemaFailureClassOf(first);
+    if (!schemaClass) {
       throw first.error instanceof ContentPlanContractError
         ? first.error
         : new Error(semanticErrorMessage(first.error));
     }
 
-    const raw2 = await input.invoke(
-      buildContentDraftGroundingRepairPrompt(input.payload, groundingClass),
+    const zodPath = schemaFailureZodPathOf(first);
+    const rawSchema = await input.invoke(
+      buildContentDraftSchemaRepairPrompt(input.payload, schemaClass, zodPath),
     );
-    const second = parseContentStrategistOutputDetailed(raw2, parseOpts);
+    const schemaSecond = parseContentStrategistOutputDetailed(rawSchema, parseOpts);
 
-    if (second.ok) {
+    if (schemaSecond.ok) {
       return finishOk(
-        second.output,
+        schemaSecond.output,
         {
           attemptCount: 2,
-          firstAttemptFailureClass: groundingClass,
-          groundingFailureClass: groundingClass,
-          finalParseMode: "grounding_retry",
-          stdoutLength: second.stdoutLength,
+          firstAttemptFailureClass: schemaClass,
+          schemaFailureClass: schemaClass,
+          finalParseMode: "schema_retry",
+          stdoutLength: schemaSecond.stdoutLength,
           formatRetryUsed: false,
-          groundingRetryUsed: true,
+          groundingRetryUsed: false,
+          schemaRetryUsed: true,
         },
         false,
       );
     }
 
-    if (second.kind === "runtime") {
+    if (schemaSecond.kind === "runtime") {
       throw new ContentStrategistRuntimeError({
-        failureClass: second.failureClass,
-        message: second.message,
+        failureClass: schemaSecond.failureClass,
+        message: schemaSecond.message,
         diagnostics: buildDiagnostics({
           attemptCount: 2,
-          firstAttemptFailureClass: groundingClass,
-          groundingFailureClass: groundingClass,
+          firstAttemptFailureClass: schemaClass,
+          schemaFailureClass: schemaClass,
           finalParseMode: null,
-          stdoutLength: second.stdoutLength,
+          stdoutLength: schemaSecond.stdoutLength,
           formatRetryUsed: false,
-          groundingRetryUsed: true,
+          groundingRetryUsed: false,
+          schemaRetryUsed: true,
           suppliedEvidenceRefCount: suppliedCount,
         }),
       });
     }
 
-    if (second.kind === "format") {
-      // Grounding repair returned non-JSON — fail closed (no chained format retry).
+    if (schemaSecond.kind === "format") {
       throw new ContentStrategistFormatError({
-        failureClass: second.failureClass,
-        message: second.message,
+        failureClass: schemaSecond.failureClass,
+        message: schemaSecond.message,
         diagnostics: buildDiagnostics({
           attemptCount: 2,
-          firstAttemptFailureClass: groundingClass,
-          groundingFailureClass: groundingClass,
+          firstAttemptFailureClass: schemaClass,
+          schemaFailureClass: schemaClass,
           finalParseMode: null,
-          stdoutLength: second.stdoutLength,
+          stdoutLength: schemaSecond.stdoutLength,
           formatRetryUsed: false,
-          groundingRetryUsed: true,
+          groundingRetryUsed: false,
+          schemaRetryUsed: true,
           suppliedEvidenceRefCount: suppliedCount,
         }),
       });
     }
 
-    // Second semantic failure (still absent/empty, fabricated, etc.) — no further retry.
-    const err =
-      second.error instanceof ContentPlanContractError
-        ? second.error
-        : new Error(semanticErrorMessage(second.error));
-    err.message = `${semanticErrorMessage(err)};content_strategist_grounding_retry_used=1;first=${groundingClass}`;
-    throw err;
+    const schemaErr =
+      schemaSecond.error instanceof ContentPlanContractError
+        ? schemaSecond.error
+        : new Error(semanticErrorMessage(schemaSecond.error));
+    schemaErr.message = `${semanticErrorMessage(schemaErr)};content_strategist_schema_retry_used=1;first=${schemaClass}`;
+    throw schemaErr;
   }
 
   // first.kind === "format" — exactly one bounded format-repair retry.
@@ -1394,6 +1573,65 @@ export function parseGovernanceAuditorOutput(raw: string): GovernanceReviewResul
     humanApprovalRequired: decision === "REVIEW",
     semanticAvailable: !/semanticAvailable["']?\s*[:=]\s*false/i.test(raw),
   };
+}
+
+/** Attempt 1 + at most one JSON format repair. Never more — GA must not stall a run. */
+export const GOVERNANCE_AUDITOR_MAX_MODEL_INVOCATIONS = 2;
+
+export const GOVERNANCE_AUDITOR_PARSE_FAILED = "governance-auditor returned no ALLOW/REVIEW/BLOCK";
+
+export function isGovernanceParseFailure(error: unknown): boolean {
+  return error instanceof Error && error.message.includes(GOVERNANCE_AUDITOR_PARSE_FAILED);
+}
+
+function buildGovernanceFormatRepairPrompt(
+  payload: GovernanceReviewRequest | import("@/lib/marketing/content/governance/types").StructuredGovernanceReviewRequest,
+  previousRaw: string,
+): string {
+  return [
+    buildGovernanceReviewPrompt(payload),
+    "",
+    "FORMAT REPAIR: your previous response could not be parsed as a governance decision.",
+    "Return ONE JSON object and nothing else — no prose, no markdown fence, no explanation.",
+    '"decision" MUST be exactly one of "ALLOW", "REVIEW", or "BLOCK".',
+    `previous unparsable response (truncated): ${previousRaw.trim().slice(0, 400)}`,
+  ].join("\n");
+}
+
+export type GovernanceReviewWithRetryResult = {
+  result: GovernanceReviewResult;
+  attempts: number;
+  usedFormatRetry: boolean;
+};
+
+/**
+ * Governance Auditor invoke with a single JSON format repair.
+ * Previously a one-shot: an unparsable response demoted the candidate to
+ * `governance_unavailable` even though the model would answer correctly on retry.
+ */
+export async function requestGovernanceReviewWithFormatRetry(input: {
+  payload:
+    | GovernanceReviewRequest
+    | import("@/lib/marketing/content/governance/types").StructuredGovernanceReviewRequest;
+  invoke: (prompt: string) => Promise<string>;
+  onFormatRetry?: (info: { message: string }) => void;
+}): Promise<GovernanceReviewWithRetryResult> {
+  const firstRaw = await input.invoke(buildGovernanceReviewPrompt(input.payload));
+  try {
+    return { result: parseGovernanceAuditorOutput(firstRaw), attempts: 1, usedFormatRetry: false };
+  } catch (error) {
+    if (!isGovernanceParseFailure(error)) throw error;
+    input.onFormatRetry?.({ message: error instanceof Error ? error.message : String(error) });
+
+    const repairRaw = await input.invoke(
+      buildGovernanceFormatRepairPrompt(input.payload, firstRaw),
+    );
+    return {
+      result: parseGovernanceAuditorOutput(repairRaw),
+      attempts: GOVERNANCE_AUDITOR_MAX_MODEL_INVOCATIONS,
+      usedFormatRetry: true,
+    };
+  }
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   assembleChannelComposerPromptParts,
   formatStoryLockForPrompt,
 } from "@/lib/marketing/publishable/channelEditorIdentity";
+import { channelTreatAsDiscoveryLike, channelTreatAsDecisionPractical } from "@/lib/marketing/publishable/editorialArchetype";
 
 export const PUBLISHABLE_MAX_INVOCATIONS_PER_CHANNEL = 2 as const;
 
@@ -36,18 +37,36 @@ export function formatCorePackPromptBlock(input: PublishableComposerInput): stri
   return input.corePack ? formatCoreContentPackPromptBlock(input.corePack) : "";
 }
 
-/** Human-review Marketing Value → Content Strategist quality repair block. */
+/** Human-review Marketing Value → Channel Editor quality repair block (archetype-aware). */
 export function formatQualityRevisionPromptBlock(
   quality: PublishableComposerInput["qualityRevision"],
+  editorialArchetype?: string | null,
 ): string {
   if (!quality || (!quality.hints?.length && !quality.priorBody && !quality.reasons?.length)) {
     return "";
   }
+  const discovery = channelTreatAsDiscoveryLike(editorialArchetype);
+  const decision = channelTreatAsDecisionPractical(editorialArchetype);
+  const repairGuidance = discovery
+    ? [
+        "Rewrite Body for discovery value: stronger hook, more concrete insight/detail, clearer contrast or recognition, preserve reader payoff.",
+        "Do NOT inject a checklist, compare/verify frame, or forced A-vs-B preference question.",
+        "Natural observation / relevant experience / no CTA are valid closes for discovery.",
+      ]
+    : decision
+      ? [
+          "Rewrite Body so it is worth saving — concrete checklist, criteria, or numbered takeaways grounded in usableFacts / approved asset.",
+          "CTA may use compare / verify / consult when grounded in the approved asset.",
+        ]
+      : [
+          "Rewrite Body for clearer specificity, stronger hook, and reader payoff grounded in the approved asset.",
+          "Do not invent a new Story. Prefer concrete detail over generic advice. Do not force a checklist unless the Story is practical/decision-like.",
+        ];
   return [
     "QUALITY_REVISION (from Marketing Value / human review):",
-    "Rewrite Body so it is worth saving — concrete checklist or numbered takeaways grounded in usableFacts.",
-    "Do not replace facts with '공식 채널에서 확인하세요' shells. Put the known visa/season/procedure points in the body; hedge only where facts are missing.",
-    "CTA must match desiredAudienceAction (comment / site visit / save) — not a generic 'official path check'.",
+    ...repairGuidance,
+    "Do not replace facts with '공식 채널에서 확인하세요' shells. Put known supported points in the body; hedge only where facts are missing.",
+    "desiredAudienceAction / engagementMechanism are advisory — approved Canonical + editorialArchetype win on conflict.",
     quality.reasons?.length ? `Issues: ${quality.reasons.slice(0, 4).join(" | ")}` : "",
     quality.hints?.length ? `Hints: ${quality.hints.slice(0, 6).join(" | ")}` : "",
     quality.priorBody ? `PRIOR_BODY_TO_IMPROVE:\n${quality.priorBody.slice(0, 1200)}` : "",
@@ -112,9 +131,9 @@ export function buildPropositionPromptSlice(
       audienceTension: proposition.audienceTension,
       contentPromise: proposition.contentPromise,
       readerGain: proposition.readerGain,
-      specificTakeaways: proposition.specificTakeaways.slice(0, 5),
+      specificTakeaways: (proposition.specificTakeaways ?? []).slice(0, 5),
       desiredAudienceAction: proposition.desiredAudienceAction,
-      limitations: proposition.limitations.slice(0, 8),
+      limitations: (proposition.limitations ?? []).slice(0, 8),
     };
   }
   return {
@@ -125,8 +144,8 @@ export function buildPropositionPromptSlice(
     whyNow: proposition.whyNow,
     contentPromise: proposition.contentPromise,
     readerGain: proposition.readerGain,
-    specificTakeaways: proposition.specificTakeaways.slice(0, 5),
-    proofRequirements: proposition.proofRequirements.slice(0, 8),
+    specificTakeaways: (proposition.specificTakeaways ?? []).slice(0, 5),
+    proofRequirements: (proposition.proofRequirements ?? []).slice(0, 8),
     contentGapUsed: proposition.contentGapUsed,
     engagementMechanism: proposition.engagementMechanism,
     desiredAudienceAction: proposition.desiredAudienceAction,
@@ -134,7 +153,7 @@ export function buildPropositionPromptSlice(
     keyMessage: proposition.keyMessage,
     commercialIntent: proposition.commercialIntent,
     propositionStrength: proposition.propositionStrength,
-    limitations: proposition.limitations.slice(0, 8),
+    limitations: (proposition.limitations ?? []).slice(0, 8),
     channelIntentHints: proposition.channelIntentHints ?? null,
   };
 }
@@ -169,6 +188,10 @@ export function channelComposerRules(input: PublishableComposerInput): string {
       APPROVED_ASSET_COMPOSER_RULES,
       "=== CONSISTENCY_LOCK_RULES ===",
       PROPOSITION_CONSISTENCY_LOCK_RULES,
+      "=== CORE_PACK_AUTHORITY ===",
+      "desiredAudienceAction / engagementMechanism / ctaIntent from CoreContentPack are advisory consistency context.",
+      "If they conflict with APPROVED_CANONICAL_MARKETING_ASSET or editorialArchetype, the approved asset + archetype win.",
+      "Example: discovery + save_worthy_checklist must NOT force a checklist; discovery + comment must NOT force A-vs-B preference questions.",
       "=== SAFETY_BOUNDARY ===",
       "Respect supportedClaimBoundaryKo, forbiddenClaimsKo, and limitationsKo from the approved asset.",
       "Do NOT invent booking-timing, future-price, urgency, or supply-competition angles unless present in the approved asset.",
@@ -186,6 +209,7 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
     return {
       compositionMode: "approved_asset_adapter",
       inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
+      editorialArchetype: input.storyLock?.editorialArchetype ?? null,
       channelFormatContext: {
         commercialIntent: input.commercialIntent,
         governanceDecision: input.governanceDecision,
@@ -222,6 +246,7 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
   return {
     compositionMode: "legacy_proposition_driven",
     inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
+    editorialArchetype: input.storyLock?.editorialArchetype ?? null,
     topic: input.topic,
     audience: input.audience,
     commercialIntent: input.commercialIntent,
@@ -280,9 +305,9 @@ export function buildPropositionProvenance(
   return {
     contract: prop.contract,
     selectedAngleRef: input.research?.selectedAngleId ?? null,
-    contentPromise: prop.contentPromise.slice(0, 240),
-    readerGain: prop.readerGain.slice(0, 240),
-    takeawayBasis: prop.specificTakeaways.slice(0, 5),
+    contentPromise: (prop.contentPromise ?? "").slice(0, 240),
+    readerGain: (prop.readerGain ?? "").slice(0, 240),
+    takeawayBasis: (prop.specificTakeaways ?? []).slice(0, 5),
     desiredAudienceAction: String(prop.desiredAudienceAction),
     engagementMechanism: String(prop.engagementMechanism),
     propositionStrength: prop.propositionStrength,

@@ -47,7 +47,7 @@ function tryReadBundle(packageRoot: string | null | undefined): PublishableConte
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as PublishableContentBundle;
     if (raw?.contract !== PUBLISHABLE_CONTENT_BUNDLE_CONTRACT) return null;
-    if (!raw.threads?.body || !raw.shortform?.body) return null;
+    if (!raw.threads || !raw.shortform) return null;
     return {
       ...raw,
       targetChannels: raw.targetChannels ?? ["threads", "shortform"],

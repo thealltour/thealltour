@@ -104,8 +104,8 @@ describe("channel distribution checklist", () => {
     );
     expect(checklist.rows[0]!.approvalBlockedReason).toContain("needs_improvement");
     expect(checklist.rows[1]!.approvalBlockedReason).toContain("재생성");
-    expect(checklist.rows[2]!.approvalBlockedReason).toBe("본문 생성 필요");
-    expect(checklist.rows[2]!.copyIssue).toBe("본문 생성 대기");
+    expect(checklist.rows[2]!.approvalBlockedReason).toBe("채널 생성 필요");
+    expect(checklist.rows[2]!.copyIssue).toBe("미생성");
     expect(checklist.blockedCount).toBe(3);
   });
 

@@ -527,9 +527,36 @@ export async function runDailyMarketingProductionPipeline(
         readHumanStorySelection,
         selectionIsActive,
       } = await import("@/lib/marketing/storyPoint/humanStorySelection");
+      const { readStoryPointCandidateSetFromProductionRequest } = await import(
+        "@/lib/marketing/storyPoint/persistence"
+      );
       const storyStartedAt = Date.now();
       const recentCandidates = await repo.listCandidates({ limit: 30 }).catch(() => []);
       const runStoryMine = async () => {
+        // Honor an already-stamped human selection before remine can replace the durable set.
+        const productionRequestEarly = await productionRequestRepo
+          .findByLogicalKey(logicalRunKey)
+          .catch(() => null);
+        const humanSelectionEarly = readHumanStorySelection(productionRequestEarly);
+        const durableEarly = readStoryPointCandidateSetFromProductionRequest(productionRequestEarly);
+        if (durableEarly?.outcome === "pass" && selectionIsActive(humanSelectionEarly)) {
+          const humanAppliedEarly = applyHumanSelectionToCandidateSet({
+            candidateSet: durableEarly,
+            selection: humanSelectionEarly!,
+          });
+          if (humanAppliedEarly) {
+            return {
+              candidateSet: durableEarly,
+              reused: true,
+              persisted: false,
+              effectiveCandidateSet: humanAppliedEarly,
+              humanSelection: humanSelectionEarly,
+              humanApplied: humanAppliedEarly,
+              selectionStatus: "human_selected" as const,
+            };
+          }
+        }
+
         const mined = await ensureStoryPointCandidateSet({
           handoff,
           logicalRunKey,
@@ -549,9 +576,6 @@ export async function runDailyMarketingProductionPipeline(
           .findByLogicalKey(logicalRunKey)
           .catch(() => null);
         const humanSelection = readHumanStorySelection(productionRequest);
-        const {
-          readStoryPointCandidateSetFromProductionRequest,
-        } = await import("@/lib/marketing/storyPoint/persistence");
         const durableSet = readStoryPointCandidateSetFromProductionRequest(productionRequest);
 
         // Prefer the durable request set when it still holds the human-selected point

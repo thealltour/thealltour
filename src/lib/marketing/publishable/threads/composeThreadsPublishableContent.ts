@@ -1,13 +1,16 @@
 /**
  * Threads publishable composer — production path requires LLM invoke.
  * Deterministic fallback is diagnostic-only (not publishable success).
+ * Optional mediaPlan is planning metadata only (no image generation/attachment).
  */
 
 import {
   PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
   type PublishableChannelContent,
+  type PublishableThreadsMediaPlan,
 } from "@/lib/marketing/publishable/contracts";
 import {
+  CHANNEL_INPUT_AUTHORITY_VERSION,
   bodyReflectsPropositionTakeaway,
   buildPropositionProvenance,
   buildChannelComposerPromptParts,
@@ -19,6 +22,10 @@ import {
 } from "@/lib/marketing/publishable/composerRuntime";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
+import {
+  SOCIAL_VISUAL_ASSET_FAMILY,
+  stableSocialVisualId,
+} from "@/lib/marketing/publishable/socialVisualPlan";
 import { composeThreadsPublishableDeterministic } from "@/lib/marketing/publishable/threads/deterministicThreads";
 import { THREADS_WRITING_CONTRACT } from "@/lib/marketing/publishable/threads/writingContract";
 import {
@@ -40,7 +47,10 @@ function buildThreadsPrompt(
     writingContract: [
       THREADS_WRITING_CONTRACT,
       formatCorePackPromptBlock(input),
-      formatQualityRevisionPromptBlock(input.qualityRevision),
+      formatQualityRevisionPromptBlock(
+        input.qualityRevision,
+        input.storyLock?.editorialArchetype,
+      ),
     ]
       .filter(Boolean)
       .join("\n"),
@@ -49,7 +59,61 @@ function buildThreadsPrompt(
   });
 }
 
-function parseThreadsJson(raw: string): { title: string | null; body: string } | null {
+function normalizeMediaPlan(raw: unknown): PublishableThreadsMediaPlan | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const recommended = Boolean(obj.recommended);
+  let imageCount =
+    typeof obj.imageCount === "number" && Number.isFinite(obj.imageCount)
+      ? Math.max(0, Math.min(3, Math.floor(obj.imageCount)))
+      : 0;
+  const visualsRaw = Array.isArray(obj.visuals) ? obj.visuals : [];
+  const visuals: PublishableThreadsMediaPlan["visuals"] = [];
+  for (let i = 0; i < Math.min(3, visualsRaw.length); i++) {
+    const row = visualsRaw[i];
+    if (!row || typeof row !== "object") continue;
+    const v = row as Record<string, unknown>;
+    const intent =
+      typeof v.visualIntent === "string" ? stripEvidenceIdsFromText(v.visualIntent).slice(0, 400) : "";
+    const role =
+      typeof v.role === "string" && v.role.trim()
+        ? stripEvidenceIdsFromText(v.role).slice(0, 64)
+        : "cover_context";
+    const visualId =
+      typeof v.visualId === "string" && /^social_visual_\d{2,}$/.test(v.visualId.trim())
+        ? v.visualId.trim()
+        : stableSocialVisualId(i + 1);
+    visuals.push({
+      visualId,
+      role,
+      visualIntent: intent,
+      reusableOnInstagram: Boolean(v.reusableOnInstagram),
+    });
+  }
+  if (!recommended && visuals.length === 0) {
+    return {
+      recommended: false,
+      assetFamily: SOCIAL_VISUAL_ASSET_FAMILY,
+      imageCount: 0,
+      visuals: [],
+    };
+  }
+  if (recommended && visuals.length === 0) {
+    imageCount = 0;
+  } else if (visuals.length > 0) {
+    imageCount = Math.min(3, visuals.length);
+  }
+  return {
+    recommended: recommended && imageCount > 0,
+    assetFamily: SOCIAL_VISUAL_ASSET_FAMILY,
+    imageCount,
+    visuals: visuals.slice(0, imageCount || visuals.length),
+  };
+}
+
+export function parseThreadsJson(
+  raw: string,
+): { title: string | null; body: string; mediaPlan: PublishableThreadsMediaPlan | null } | null {
   const trimmed = raw.trim();
   const start = trimmed.indexOf("{");
   const end = trimmed.lastIndexOf("}");
@@ -58,6 +122,7 @@ function parseThreadsJson(raw: string): { title: string | null; body: string } |
     const parsed = JSON.parse(trimmed.slice(start, end + 1)) as {
       title?: unknown;
       body?: unknown;
+      mediaPlan?: unknown;
     };
     const body = typeof parsed.body === "string" ? stripEvidenceIdsFromText(parsed.body) : "";
     if (!body) return null;
@@ -65,7 +130,11 @@ function parseThreadsJson(raw: string): { title: string | null; body: string } |
       typeof parsed.title === "string" && parsed.title.trim()
         ? stripEvidenceIdsFromText(parsed.title)
         : null;
-    return { title, body };
+    return {
+      title,
+      body,
+      mediaPlan: normalizeMediaPlan(parsed.mediaPlan),
+    };
   } catch {
     return null;
   }
@@ -76,6 +145,7 @@ function wrapResult(input: {
   nowIso: string;
   title: string | null;
   body: string;
+  mediaPlan?: PublishableThreadsMediaPlan | null;
   status: PublishableChannelContent["status"];
   composer: PublishableChannelContent["provenance"]["composer"];
   generationMode: NonNullable<PublishableChannelContent["provenance"]["generationMode"]>;
@@ -90,6 +160,9 @@ function wrapResult(input: {
     input.composer === "llm" &&
     (input.status === "generated" || input.status === "validated") &&
     validation.ok;
+  const compositionMode =
+    input.composerInput.compositionMode ??
+    (input.composerInput.approvedCanonicalAsset ? "approved_asset_adapter" : "legacy_proposition_driven");
   return {
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "threads",
@@ -114,10 +187,15 @@ function wrapResult(input: {
       failureMessage: input.failureMessage ?? null,
       propositionStrength: input.composerInput.contentProposition?.propositionStrength ?? null,
       proposition: buildPropositionProvenance(input.composerInput),
+      compositionMode,
+      inputAuthorityVersion: input.composerInput.approvedCanonicalAsset
+        ? CHANNEL_INPUT_AUTHORITY_VERSION
+        : null,
     },
     validation,
     publishableSuccess,
     needsRegeneration: !publishableSuccess,
+    mediaPlan: input.mediaPlan ?? null,
   };
 }
 
@@ -142,6 +220,7 @@ export async function composeThreadsPublishableContent(input: {
       nowIso,
       title: det.title,
       body: det.body || "[generation skipped: insufficient content proposition]",
+      mediaPlan: null,
       status: "generation_failed",
       composer: "deterministic_fallback",
       generationMode: "skipped",
@@ -189,6 +268,7 @@ export async function composeThreadsPublishableContent(input: {
         nowIso,
         title: parsed.title,
         body: parsed.body,
+        mediaPlan: parsed.mediaPlan,
         status: "generated",
         composer: "llm",
         generationMode: "llm",
@@ -211,6 +291,7 @@ export async function composeThreadsPublishableContent(input: {
       nowIso,
       title: det.title,
       body: det.body || "[generation failed]",
+      mediaPlan: null,
       status,
       composer: "deterministic_fallback",
       generationMode: "fallback",
@@ -228,6 +309,7 @@ export async function composeThreadsPublishableContent(input: {
     nowIso,
     title: det.title,
     body: det.body,
+    mediaPlan: null,
     status: "fallback_generated",
     composer: "deterministic_fallback",
     generationMode: "fallback",

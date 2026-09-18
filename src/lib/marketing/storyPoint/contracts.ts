@@ -58,6 +58,11 @@ export type StoryContentPoint = {
   channelPotential: ChannelPotentialProfile;
   nonGoals: string[];
   agendaFitNotes?: string | null;
+  /**
+   * Editorial archetype from upstream (Editorial Director / Phase5).
+   * Nullable for legacy StoryPoints; do not invent when absent.
+   */
+  editorialArchetype?: string | null;
 };
 
 export type StoryPointGateScores = {

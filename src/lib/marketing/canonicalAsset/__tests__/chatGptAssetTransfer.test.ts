@@ -149,6 +149,7 @@ function baseAsset(overrides: Partial<CanonicalMarketingAsset> = {}): CanonicalM
     evidenceRevision: writer.evidenceRevision,
     propositionRevision: writer.proposition.propositionRevision,
     supportedClaimBoundary: writer.supportedClaimBoundary,
+    editorialArchetype: writer.editorialArchetype,
   });
   return {
     contract: CANONICAL_MARKETING_ASSET_CONTRACT,
@@ -603,6 +604,7 @@ describe("CANONICAL_ASSET_CHATGPT_TRANSFER validation + workflow", () => {
       evidenceRevision: writer.evidenceRevision,
       propositionRevision: writer.proposition.propositionRevision,
       supportedClaimBoundary: boundary,
+      editorialArchetype: writer.editorialArchetype,
     });
     const asset = baseAsset({
       sourceRevision,

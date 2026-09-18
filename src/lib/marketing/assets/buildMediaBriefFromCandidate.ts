@@ -30,6 +30,7 @@ function collectEvidenceCatalog(candidate: CompletedMarketingCandidate): Map<str
     candidate.contentPlan?.evidenceRefs ?? [],
   ];
   for (const list of sources) {
+    if (!list) continue;
     for (const ref of list) {
       if (!catalog.has(ref.evidenceId)) catalog.set(ref.evidenceId, ref);
     }

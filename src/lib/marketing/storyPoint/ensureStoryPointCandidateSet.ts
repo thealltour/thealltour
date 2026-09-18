@@ -212,6 +212,19 @@ export async function ensureStoryPointCandidateSet(
     if (existing) {
       return { candidateSet: existing, reused: true, persisted: false };
     }
+    // External/ChatGPT-imported Stories are stamped under a prior inputRevision.
+    // Remine after human selection must not wipe them just because handoff hash drifted.
+    const durableAny = await loadDurableStoryPointCandidateSet({
+      repo: input.productionRequestRepo,
+      logicalRunKey: input.logicalRunKey,
+      expectedInputRevision: null,
+    });
+    const hasExternal = Boolean(
+      durableAny?.candidates.some((c) => String(c.pointId).startsWith("sp_ext_")),
+    );
+    if (durableAny && hasExternal) {
+      return { candidateSet: durableAny, reused: true, persisted: false };
+    }
   }
 
   const identity = deriveAgendaTopicIdentity({

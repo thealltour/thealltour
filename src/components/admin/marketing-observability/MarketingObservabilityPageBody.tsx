@@ -282,6 +282,72 @@ function RecentRunsList({
   nowMs: number;
   compact?: boolean;
 }) {
+  const partitioned = traces.reduce(
+    (acc, t) => {
+      const stale = assessStaleRunning({
+        status: t.status,
+        startedAt: t.startedAt,
+        endedAt: t.endedAt,
+        nowMs,
+      });
+      if (stale.isStale) acc.stale.push(t);
+      else acc.active.push(t);
+      return acc;
+    },
+    { active: [] as MarketingTraceListItemDto[], stale: [] as MarketingTraceListItemDto[] },
+  );
+
+  function renderRow(t: MarketingTraceListItemDto) {
+    const selected = t.traceId === selectedId;
+    const started = new Date(t.startedAt);
+    const timeLabel = Number.isFinite(started.getTime())
+      ? started.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : "—";
+    const stale = assessStaleRunning({
+      status: t.status,
+      startedAt: t.startedAt,
+      endedAt: t.endedAt,
+      nowMs,
+    });
+    const duration = formatLiveDurationMs(
+      computeLiveDurationMs(t.startedAt, t.endedAt, nowMs) ?? t.durationMs,
+    );
+    return (
+      <li key={t.traceId}>
+        <button
+          type="button"
+          onClick={() => onSelect(t.traceId)}
+          className={cn(
+            "flex w-full flex-col gap-0.5 border-b border-[var(--border)] px-3 py-2.5 text-left text-sm",
+            selected ? "bg-[var(--surface-muted)]" : "hover:bg-[var(--surface-muted)]/60",
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-[var(--text)]">{timeLabel}</span>
+            <span className="text-xs text-[var(--text-secondary)]">{duration}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span
+              className={cn(
+                "font-semibold tracking-wide",
+                stale.isStale ? adminToneText.warning : "text-[var(--text)]",
+              )}
+              title={stale.isStale ? stale.label ?? undefined : undefined}
+            >
+              {marketingTraceStatusDisplayLabel(t.status, stale)}
+              {stale.isStale ? (
+                <span className="ml-1 font-normal opacity-80">· {stale.label}</span>
+              ) : null}
+            </span>
+            <span className="truncate text-[var(--text-secondary)]">
+              {t.productionRequestId ? shortId(t.productionRequestId, 12) : shortId(t.traceId, 8)}
+            </span>
+          </div>
+        </button>
+      </li>
+    );
+  }
+
   return (
     <div className={cn("flex h-full min-h-0 flex-col", compact ? "" : "border-r border-[var(--border)]")}>
       <div className="border-b border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">
@@ -291,56 +357,20 @@ function RecentRunsList({
         {traces.length === 0 ? (
           <li className="px-3 py-6 text-sm text-[var(--text-secondary)]">저장된 trace가 없습니다</li>
         ) : (
-          traces.map((t) => {
-            const selected = t.traceId === selectedId;
-            const started = new Date(t.startedAt);
-            const timeLabel = Number.isFinite(started.getTime())
-              ? started.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })
-              : "—";
-            const stale = assessStaleRunning({
-              status: t.status,
-              startedAt: t.startedAt,
-              endedAt: t.endedAt,
-              nowMs,
-            });
-            const duration = formatLiveDurationMs(
-              computeLiveDurationMs(t.startedAt, t.endedAt, nowMs) ?? t.durationMs,
-            );
-            return (
-              <li key={t.traceId}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(t.traceId)}
-                  className={cn(
-                    "flex w-full flex-col gap-0.5 border-b border-[var(--border)] px-3 py-2.5 text-left text-sm",
-                    selected ? "bg-[var(--surface-muted)]" : "hover:bg-[var(--surface-muted)]/60",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-[var(--text)]">{timeLabel}</span>
-                    <span className="text-xs text-[var(--text-secondary)]">{duration}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span
-                      className={cn(
-                        "font-semibold tracking-wide",
-                        stale.isStale ? adminToneText.warning : "text-[var(--text)]",
-                      )}
-                      title={stale.isStale ? stale.label ?? undefined : undefined}
-                    >
-                      {marketingTraceStatusDisplayLabel(t.status, stale)}
-                      {stale.isStale ? (
-                        <span className="ml-1 font-normal opacity-80">· {stale.label}</span>
-                      ) : null}
-                    </span>
-                    <span className="truncate text-[var(--text-secondary)]">
-                      {t.productionRequestId ? shortId(t.productionRequestId, 12) : shortId(t.traceId, 8)}
-                    </span>
-                  </div>
-                </button>
+          <>
+            {partitioned.active.map(renderRow)}
+            {partitioned.stale.length > 0 ? (
+              <li className="border-b border-[var(--border)]">
+                <details className="group">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]/60">
+                    오래된 실행 {partitioned.stale.length}건
+                    <span className="ml-1 opacity-70">(접힘 · 워커가 주기적으로 정리)</span>
+                  </summary>
+                  <ul>{partitioned.stale.map(renderRow)}</ul>
+                </details>
               </li>
-            );
-          })
+            ) : null}
+          </>
         )}
       </ul>
     </div>

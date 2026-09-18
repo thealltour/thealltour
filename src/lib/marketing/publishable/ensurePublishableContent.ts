@@ -27,6 +27,7 @@ import {
   computePublishableSourceRevision,
 } from "@/lib/marketing/publishable/inputs";
 import { stampChannelFromApprovedAsset } from "@/lib/marketing/publishable/approvedAsset";
+import { createNotGeneratedChannelContent } from "@/lib/marketing/publishable/channelWorkspace";
 import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
 import { CHANNEL_INPUT_AUTHORITY_VERSION } from "@/lib/marketing/publishable/composerRuntime";
 import {
@@ -106,7 +107,8 @@ function tryReadBundle(packageRoot: string | null | undefined): PublishableConte
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as PublishableContentBundle;
     if (raw?.contract !== PUBLISHABLE_CONTENT_BUNDLE_CONTRACT) return null;
-    if (!raw.threads?.body || !raw.shortform?.body) return null;
+    // Baseline slots may be not_generated (empty body) after Canonical approve-only.
+    if (!raw.threads || !raw.shortform) return null;
     return {
       ...raw,
       targetChannels: raw.targetChannels ?? ["threads", "shortform"],
@@ -364,13 +366,23 @@ export async function ensurePublishableContent(
         resolvedChannels.set(channel, prior);
         return;
       }
-      // Scoped regenerate of other channels still needs a body for baseline slots.
+      // Scoped generate must not invent sibling channel bodies.
+      if (scopedOnly) {
+        resolvedChannels.set(
+          channel,
+          createNotGeneratedChannelContent({
+            channel,
+            candidateId: input.candidate.candidateId,
+            sourceRevision,
+            nowIso,
+            commercialIntent: input.candidate.contentAssignment.commercialIntent,
+          }),
+        );
+        return;
+      }
       composeTasks.push({
         channel,
-        run: () =>
-          composerFor[channel](
-            scopedOnly ? { ...composeOptsFor(channel), invoke: null } : composeOptsFor(channel),
-          ),
+        run: () => composerFor[channel](composeOptsFor(channel)),
       });
       return;
     }
@@ -436,19 +448,37 @@ export async function ensurePublishableContent(
   }
 
   if (approvedAsset) {
-    bundle.threads = stampChannelFromApprovedAsset(bundle.threads, approvedAsset);
-    bundle.shortform = stampChannelFromApprovedAsset(bundle.shortform, approvedAsset);
+    const approvedVersion = approvedAsset.approvedVersion ?? approvedAsset.version;
+    const applyAuthority = (channel: PublishableChannel, content: PublishableChannelContent) => {
+      if (freshlyComposed.has(channel)) {
+        return stampChannelFromApprovedAsset(content, approvedAsset);
+      }
+      if (content.status === "not_generated" || !content.body?.trim()) {
+        return {
+          ...content,
+          sourceAssetId: null,
+          sourceAssetVersion: null,
+          stale: false,
+        };
+      }
+      const same =
+        content.sourceAssetId === approvedAsset.assetId &&
+        content.sourceAssetVersion === approvedVersion;
+      return { ...content, stale: !same };
+    };
+    bundle.threads = applyAuthority("threads", bundle.threads);
+    bundle.shortform = applyAuthority("shortform", bundle.shortform);
     if (bundle.naver_blog) {
-      bundle.naver_blog = stampChannelFromApprovedAsset(bundle.naver_blog, approvedAsset);
+      bundle.naver_blog = applyAuthority("naver_blog", bundle.naver_blog);
     }
     if (bundle.naver_band) {
-      bundle.naver_band = stampChannelFromApprovedAsset(bundle.naver_band, approvedAsset);
+      bundle.naver_band = applyAuthority("naver_band", bundle.naver_band);
     }
     if (bundle.kakao_channel) {
-      bundle.kakao_channel = stampChannelFromApprovedAsset(bundle.kakao_channel, approvedAsset);
+      bundle.kakao_channel = applyAuthority("kakao_channel", bundle.kakao_channel);
     }
     if (bundle.instagram) {
-      bundle.instagram = stampChannelFromApprovedAsset(bundle.instagram, approvedAsset);
+      bundle.instagram = applyAuthority("instagram", bundle.instagram);
     }
   }
 
@@ -467,10 +497,13 @@ export async function ensurePublishableContent(
   }
   if (bundle.instagram) channelsToScore.push({ channel: "instagram", content: bundle.instagram });
   const assessments = evaluateBundleChannels({
-    channels: channelsToScore,
+    channels: channelsToScore.filter(
+      (row) => row.content.status !== "not_generated" && Boolean(row.content.body?.trim()),
+    ),
     proposition: composerInput.contentProposition,
     researchVerdict: acrb?.researchVerdict ?? null,
     usableFacts: composerInput.usableFacts.map((f) => f.statement),
+    editorialArchetype: composerInput.storyLock?.editorialArchetype ?? null,
     now,
   });
   const scoredBundle = attachAssessmentsToPublishableBundle(bundle, assessments);

@@ -235,7 +235,8 @@ export function MarketingReviewCanonicalAssetPanel({
         <div className="text-xs text-[var(--text-secondary)]">상태: {asset.statusLabelKo}</div>
       </div>
       <p className="text-xs text-[var(--text-secondary)]">
-        이 원문을 기준으로 채널 콘텐츠를 제작합니다
+        승인하면 공통 원문이 확정됩니다. 채널 콘텐츠는 자동 생성되지 않으며, 채널 탭에서 원하는
+        채널만 개별 생성하세요.
       </p>
       {asset.staleChannelNoticeKo ? (
         <p className="text-sm text-[var(--warning)]">{asset.staleChannelNoticeKo}</p>
@@ -337,6 +338,23 @@ export function MarketingReviewCanonicalAssetPanel({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy || !canEdit || !asset.canEdit}
+          onClick={() => {
+            if (
+              !window.confirm(
+                "현재 공통 원문을 새 Asset Source Writer 프롬프트로 다시 작성할까요?\n(Story/Evidence/Proposition 잠금은 유지됩니다. 채널은 생성하지 않습니다.)",
+              )
+            ) {
+              return;
+            }
+            void postAction({ action: "regenerate" });
+          }}
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
+        >
+          새 프롬프트로 다시 작성
+        </button>
         <button
           type="button"
           disabled={busy || !canEdit || !asset.canEdit}

@@ -38,6 +38,8 @@ export const PUBLISHABLE_FORMATS = [
 export type PublishableFormat = (typeof PUBLISHABLE_FORMATS)[number];
 
 export const PUBLISHABLE_CONTENT_STATUSES = [
+  /** Slot reserved after Canonical approve — operator has not generated yet. */
+  "not_generated",
   "generated",
   "human_edited",
   "validated",
@@ -118,15 +120,56 @@ export type PublishableNarrationSegment = {
  * Instagram-specific structured metadata (body remains the caption).
  * IG captions carry no clickable link, so the CTA must resolve to profile link /
  * save / comment, and hashtags are a first-class surface rather than decoration.
+ *
+ * Additive cardPlan / visual fields support Manual Astra handoff planning later.
+ * Renderer-facing CardNewsCard mapping uses role/headline/body/visualIntent only.
  */
+export type PublishableInstagramCardVisualPlan = {
+  visualId: string;
+  visualMode: string;
+  generatedVisualNeeded: boolean;
+  reusableOnThreads: boolean;
+  visualIntent: string;
+};
+
+export type PublishableInstagramCardPlan = {
+  cardId: string;
+  role: "cover" | "information" | "evidence" | "cta";
+  headline: string;
+  body: string;
+  visualIntent: string;
+  evidenceRefs?: string[];
+  visual?: PublishableInstagramCardVisualPlan;
+};
+
 export type PublishableInstagramMeta = {
   /** Shown before the "more" fold — the first 125 characters of the caption. */
   hook: string;
   hashtags: string[];
-  /** Ordered text overlays for the cardnews slides. */
+  /** Ordered text overlays for the cardnews slides (compat with existing mapper). */
   slideHeadlines: string[];
   cta: string | null;
   altText: string | null;
+  /** Default 4:5; all cards in one carousel share this ratio. */
+  aspectRatio?: "4:5" | "1:1";
+  /** Storyboard planning — preferred source for CardNewsCard mapping when present. */
+  cardPlan?: PublishableInstagramCardPlan[];
+};
+
+/**
+ * Optional Threads media planning metadata (planning only — no image generation).
+ * Stable visualId values align with Instagram card visuals for later upload mapping.
+ */
+export type PublishableThreadsMediaPlan = {
+  recommended: boolean;
+  assetFamily: "social_static";
+  imageCount: number;
+  visuals: Array<{
+    visualId: string;
+    role: string;
+    visualIntent: string;
+    reusableOnInstagram: boolean;
+  }>;
 };
 
 /** Blog-specific structured metadata (body remains the markdown export). */
@@ -199,6 +242,8 @@ export type PublishableChannelContent = {
   stale?: boolean;
   /** Instagram structured fields (optional). */
   instagramMeta?: PublishableInstagramMeta;
+  /** Threads optional visual planning (additive; no attachment yet). */
+  mediaPlan?: PublishableThreadsMediaPlan | null;
 };
 
 /**
@@ -211,7 +256,10 @@ export type PublishableContentBundle = {
   businessDateKst: string;
   generatedAt: string;
   sourceRevision: string;
-  /** Channels intentionally generated for this revision. */
+  /**
+   * Channels planned / available for this Canonical Asset.
+   * Not an auto-generation fan-out list — operator generates each channel explicitly.
+   */
   targetChannels: PublishableChannel[];
   threads: PublishableChannelContent;
   shortform: PublishableChannelContent;

@@ -151,6 +151,35 @@ async function main() {
   console.log(`- publish: forbidden`);
   console.log("");
 
+  // Best-effort: close orphaned running traces so org/control UI does not fill with STALE.
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const { reapStaleRunningMarketingTraces } = await import(
+      "../src/lib/marketing/observability/persistence/reapStaleRunning"
+    );
+    const { DEFAULT_STALE_RUNNING_MS } = await import(
+      "../src/lib/marketing/observability/viewer/live/staleRunning"
+    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    if (url && key) {
+      const reap = await reapStaleRunningMarketingTraces({
+        client: createClient(url, key, { auth: { persistSession: false } }),
+        thresholdMs: DEFAULT_STALE_RUNNING_MS,
+        limit: 100,
+        dryRun: false,
+      });
+      if (reap.tracesReaped > 0 || reap.staleTraceCount > 0) {
+        console.log(
+          `- stale_trace_reaper: found ${reap.staleTraceCount}, reaped ${reap.tracesReaped} traces / ${reap.spansReaped} spans`,
+        );
+      }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`- stale_trace_reaper: skipped (${message.slice(0, 160)})`);
+  }
+
   const productionRequestRepo = await createMarketingProductionRequestRepository(
     backend ? { backend } : {},
   );

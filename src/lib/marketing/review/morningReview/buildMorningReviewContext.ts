@@ -141,7 +141,7 @@ function buildCanonicalAssetView(input: {
   }
   const approved = isApprovedCanonicalAsset(asset);
   const staleChannels = (
-    ["threads", "shortform", "naver_blog", "naver_band", "kakao_channel"] as const
+    ["threads", "shortform", "naver_blog", "naver_band", "kakao_channel", "instagram"] as const
   ).filter((ch) => {
     const slot = input.publishableBundle?.[ch];
     return Boolean(slot?.stale);
@@ -395,9 +395,8 @@ export function buildMorningMarketingReviewContext(input: {
         emptyChannelReviewEntry(channel, { title: null, body: "" }, ["awaiting_generation"]);
       const eff = effectiveChannelDraft(entry);
       const awaitingGeneration = !eff.body.trim();
-      // Keyed lookup, not a ternary chain: the chain's final `else` silently
-      // handed every newly added channel kakao_channel's content.
       const slot = publishableBundle?.[channel];
+      const channelStale = Boolean(slot?.stale);
       const blogMeta =
         channel === "naver_blog" && publishableBundle?.naver_blog?.blogMeta
           ? {
@@ -407,21 +406,26 @@ export function buildMorningMarketingReviewContext(input: {
               searchIntent: publishableBundle.naver_blog.blogMeta.searchIntent,
             }
           : null;
-      const mv = entry.marketingValue ?? slot?.marketingValue ?? null;
+      const mv = awaitingGeneration
+        ? null
+        : entry.marketingValue ?? slot?.marketingValue ?? null;
       return {
         channel,
         label: channelLabel(channel),
         status: awaitingGeneration ? "draft" : entry.status ?? "needs_review",
         statusLabel: awaitingGeneration
           ? "미생성"
-          : channelStatusLabel(entry.status ?? "needs_review"),
+          : channelStale
+            ? `${channelStatusLabel(entry.status ?? "needs_review")} · stale`
+            : channelStatusLabel(entry.status ?? "needs_review"),
         title: eff.title,
         body: eff.body,
         aiTitle: entry.aiDraft?.title ?? null,
         aiBody: entry.aiDraft?.body ?? "",
         source: eff.source,
-        validationWarnings: entry.validationWarnings ?? [],
+        validationWarnings: awaitingGeneration ? [] : entry.validationWarnings ?? [],
         awaitingGeneration,
+        stale: channelStale,
         blogMeta,
         marketingValue: mv
           ? {

@@ -78,9 +78,22 @@ export function readStoryPointCandidateSetFromProductionRequest(
   request: MarketingProductionRequest | null | undefined,
 ): DurableStoryPointCandidateSet | null {
   if (!request?.metadata) return null;
-  return parseDurableStoryPointCandidateSet(
+  const primary = parseDurableStoryPointCandidateSet(
     request.metadata[PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY],
   );
+  const full = parseDurableStoryPointCandidateSet(
+    request.metadata.storyPointCandidateSetFull,
+  );
+  if (!primary && !full) return null;
+  if (!primary) return full;
+  if (!full) return primary;
+  const extCount = (set: DurableStoryPointCandidateSet) =>
+    set.candidates.filter((c) => String(c.pointId).startsWith("sp_ext_")).length;
+  const primaryExt = extCount(primary);
+  const fullExt = extCount(full);
+  if (fullExt > primaryExt) return full;
+  if (full.candidates.length > primary.candidates.length) return full;
+  return primary;
 }
 
 export async function loadDurableStoryPointCandidateSet(input: {

@@ -3,15 +3,17 @@ import { z } from "zod";
 import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 import { humanReviewErrorResponse } from "@/lib/marketing/review/apiErrors";
 import {
-  approveCanonicalAssetAndGenerateChannels,
+  approveCanonicalAsset,
   saveCanonicalAssetHumanEdit,
 } from "@/lib/marketing/canonicalAsset/approveAndGenerateChannels";
+import { regenerateCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/regenerateCanonicalMarketingAsset";
 import {
   formatCanonicalAssetValidationIssuesKo,
   STALE_ASSET_MESSAGE_KO,
 } from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
 import type { CanonicalAssetValidationIssue } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import {
+  createAssetSourceWriterInvoke,
   createMarketingCronCorrelationId,
   createPublishableComposerInvoke,
   isAiRuntimeMarketingCronEnabled,
@@ -22,6 +24,7 @@ import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfi
 import { createRuntimeExecutorStack } from "@/ai-runtime/integration/runtime-stack";
 import { ensureSharedObservabilityRecorder } from "@/ai-runtime/observability/persistence";
 import { createDailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
+import { createMarketingProductionRequestRepository } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +50,9 @@ const schema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("approve_edited"),
+  }),
+  z.object({
+    action: z.literal("regenerate"),
   }),
 ]);
 
@@ -124,30 +130,69 @@ export async function POST(request: Request, context: RouteContext) {
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const invoke = createPublishableComposerInvoke({
-      useRuntime,
-      correlationId: createMarketingCronCorrelationId(),
-      executor: useRuntime ? createRuntimeExecutorStack() : undefined,
-      completionTimeoutMs: timeoutMs,
-      invokeHermesProfile: useRuntime
-        ? undefined
-        : (profile, prompt) => invokeHermesProfileAsync(profile, prompt, timeoutMs),
-    });
-    if (!invoke) {
-      return Response.json(
-        { message: "채널 생성용 LLM invoke를 사용할 수 없습니다." },
-        { status: 503 },
-      );
+
+    if (parsed.data.action === "regenerate") {
+      const aswInvoke =
+        createAssetSourceWriterInvoke({
+          useRuntime,
+          correlationId: createMarketingCronCorrelationId(),
+          executor: useRuntime ? createRuntimeExecutorStack() : undefined,
+          completionTimeoutMs: timeoutMs,
+          invokeHermesProfile: useRuntime
+            ? undefined
+            : (profile, prompt) => invokeHermesProfileAsync(profile, prompt, timeoutMs),
+        }) ??
+        createPublishableComposerInvoke({
+          useRuntime,
+          correlationId: createMarketingCronCorrelationId(),
+          executor: useRuntime ? createRuntimeExecutorStack() : undefined,
+          completionTimeoutMs: timeoutMs,
+          invokeHermesProfile: useRuntime
+            ? undefined
+            : (profile, prompt) => invokeHermesProfileAsync(profile, prompt, timeoutMs),
+        });
+      if (!aswInvoke) {
+        return Response.json(
+          { message: "Asset Source Writer invoke를 사용할 수 없습니다." },
+          { status: 503 },
+        );
+      }
+      const prodRepo = await createMarketingProductionRequestRepository({});
+      const productionRequest = detail.candidate.logicalRunKey
+        ? await prodRepo.findByLogicalKey(detail.candidate.logicalRunKey)
+        : null;
+      const result = await regenerateCanonicalMarketingAsset({
+        candidate: detail.candidate,
+        runRepo,
+        invoke: aswInvoke,
+        productionRequest,
+      });
+      return Response.json({
+        ok: true,
+        action: "regenerate",
+        message: "공통 원문을 새 Asset Source Writer 프롬프트로 다시 작성했습니다.",
+        asset: {
+          assetId: result.asset.assetId,
+          version: result.asset.version,
+          status: result.asset.status,
+          statusLabelKo: "초안",
+          titleKo: result.asset.titleKo,
+          sourceRevision: result.asset.sourceRevision,
+        },
+        outcome: result.ensure.outcome,
+        llmCallCount: result.ensure.llmCallCount,
+        editorialArchetype: result.ensure.writerInput.editorialArchetype,
+        candidateId: result.candidate.candidateId,
+      });
     }
 
     const mode =
       parsed.data.action === "approve_original" ? "ai_original" : "human_edited";
-    const result = await approveCanonicalAssetAndGenerateChannels({
+    const result = await approveCanonicalAsset({
       candidate: detail.candidate,
       runRepo,
       mode,
       approvedBy: auth.session.username ?? auth.session.adminUserId ?? "human",
-      invoke,
       review: detail.review,
     });
 
@@ -156,8 +201,8 @@ export async function POST(request: Request, context: RouteContext) {
       action: parsed.data.action,
       message:
         mode === "ai_original"
-          ? "AI 원본을 승인했고 채널 콘텐츠 제작을 시작했습니다."
-          : "수정본을 승인했고 채널 콘텐츠 제작을 시작했습니다.",
+          ? "AI 원본을 승인했습니다. 채널 탭에서 원하는 채널만 생성하세요."
+          : "수정본을 승인했습니다. 채널 탭에서 원하는 채널만 생성하세요.",
       asset: {
         assetId: result.asset.assetId,
         version: result.asset.version,
@@ -168,6 +213,7 @@ export async function POST(request: Request, context: RouteContext) {
       sourceAssetVersion: result.bundle.sourceAssetVersion,
       targetChannels: result.bundle.targetChannels,
       staleChannels: result.staleChannels,
+      channelsAutoGenerated: false,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -201,10 +247,19 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json(
         {
           message:
-            "ChatGPT 수정본 검증에 필요한 Story/Evidence/Proposition 컨텍스트가 없습니다.",
+            "Story/Evidence/Proposition 컨텍스트가 없어 원문을 재작성할 수 없습니다.",
           code: "validation_context_missing",
         },
         { status: 422 },
+      );
+    }
+    if (message === "canonical_asset_regenerate_failed") {
+      return Response.json(
+        {
+          message: "공통 원문 재작성에 실패했습니다.",
+          code: "regenerate_failed",
+        },
+        { status: 502 },
       );
     }
     if (message === "validation_failed_asset_cannot_approve") {

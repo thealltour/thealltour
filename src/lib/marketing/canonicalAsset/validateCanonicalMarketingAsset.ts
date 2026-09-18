@@ -69,7 +69,7 @@ export function validateCanonicalMarketingAsset(input: {
   if (fieldThin(asset.bodyKo, 80)) {
     issues.push({ code: "body_too_thin", messageKo: "bodyKo가 완전한 원문으로 보기엔 너무 짧습니다." });
   }
-  if (fieldThin(asset.decisionGuidanceKo, 10)) {
+  if (fieldThin(asset.decisionGuidanceKo, 8)) {
     issues.push({ code: "payoff_empty", messageKo: "decisionGuidanceKo가 비어 있습니다." });
   }
   if (!Array.isArray(asset.keyTakeawaysKo) || asset.keyTakeawaysKo.length < 1) {

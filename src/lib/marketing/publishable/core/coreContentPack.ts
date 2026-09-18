@@ -257,6 +257,8 @@ export function formatCoreContentPackPromptBlock(pack: CoreContentPack): string 
       : "",
     pack.ctaIntent ? `CTA_INTENT: ${pack.ctaIntent}` : "",
     pack.desiredAudienceAction ? `desiredAudienceAction: ${pack.desiredAudienceAction}` : "",
+    "AUTHORITY: desiredAudienceAction / engagementMechanism / ctaIntent are advisory.",
+    "If they conflict with APPROVED_CANONICAL_MARKETING_ASSET or editorialArchetype, the approved asset + archetype win.",
   ];
 
   if (pack.factSufficiency.verdict === "thin") {

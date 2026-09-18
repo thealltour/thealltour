@@ -30,14 +30,15 @@ const CHANNELS: PublishableChannel[] = [
 describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
   it("story-lock identity forbids new Story / booking-timing / future-price drift", () => {
     const text = CHANNEL_EDITOR_COMMON_IDENTITY;
-    expect(text).toContain("You are a Channel Editor, not a Content Strategist");
+    expect(text).toMatch(/Channel Adapter|Channel Editor/i);
     expect(text).toContain("APPROVED_CANONICAL_MARKETING_ASSET is the sole final editorial authority");
     expect(text).toMatch(/inventing a new Story/i);
     expect(text).toMatch(/decisionAtStake/i);
-    expect(text).toMatch(/booking-timing/i);
-    expect(text).toMatch(/future-price/i);
-    expect(text).toContain("Should I book now or wait?");
-    expect(text).toContain("Will hotel prices fall?");
+    expect(text).toMatch(/booking\/purchase pressure|booking/i);
+    expect(text).toMatch(/editorialArchetype/i);
+    expect(text).toMatch(/DISCOVERY-LIKE/i);
+    expect(text).toMatch(/DECISION \/ PRACTICAL/i);
+    expect(text).toMatch(/desiredAudienceAction/);
   });
 
   it("every channel prompt includes Channel Editor identity", () => {
@@ -48,7 +49,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
         channelRules: "RULES",
         inputJson: { ok: true },
       });
-      expect(parts.system).toContain("You are a Channel Editor");
+      expect(parts.system).toMatch(/Channel Adapter|Channel Editor/i);
       expect(parts.system).toContain(buildChannelEditorIdentityPrompt(channel).slice(0, 40));
       expect(parts.text).toContain("=== CHANNEL_EDITOR_IDENTITY ===");
       expect(parts.text).toContain("CONTRACT");
@@ -81,7 +82,8 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
       const soulPath = join(hermesHome, "profiles", id, "SOUL.md");
       const soul = readFileSync(soulPath, "utf8");
       expect(soul).toBe(buildChannelEditorSoulMarkdown(channel) + "\n");
-      expect(soul).toContain("You are a Channel Editor, not a Content Strategist");
+      expect(soul).toMatch(/Channel Adapter|Channel Editor/i);
+      expect(soul).toMatch(/editorialArchetype/i);
       expect(soul).not.toMatch(/You are Content Strategist/i);
     }
   });
@@ -129,7 +131,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
         expect.arrayContaining([
           expect.objectContaining({
             role: "system",
-            content: expect.stringContaining("You are a Channel Editor"),
+            content: expect.stringMatching(/You are a Channel (Adapter|Editor)/),
           }),
           expect.objectContaining({
             role: "user",

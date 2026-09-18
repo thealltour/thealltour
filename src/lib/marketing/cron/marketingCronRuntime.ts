@@ -174,7 +174,7 @@ export function createPublishableComposerInvoke(
         typeof prompt === "string"
           ? { channel: "threads" as const, system: "", user: prompt, text: prompt }
           : prompt;
-      if (!parts.system || !parts.system.includes("You are a Channel Editor")) {
+      if (!parts.system || !/You are a Channel (Adapter|Editor)/.test(parts.system)) {
         throw new Error("channel_editor_identity_missing_from_runtime_prompt");
       }
       const messages = [

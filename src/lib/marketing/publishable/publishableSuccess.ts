@@ -22,6 +22,7 @@ export function channelCountsAsPublishableSuccess(
   content: Pick<PublishableChannelContent, "status" | "validation" | "provenance" | "publishableSuccess"> | null | undefined,
 ): boolean {
   if (!content) return false;
+  if (content.status === "not_generated") return false;
   if (typeof content.publishableSuccess === "boolean") return content.publishableSuccess;
   if (content.status === "human_edited") return content.validation?.ok !== false;
   if (content.provenance?.composer === "deterministic_fallback") return false;
@@ -48,6 +49,7 @@ export function approvalBlockedReasonForChannel(
   > | null | undefined,
 ): string | null {
   if (!content) return "regeneration_required:missing_channel_content";
+  if (content.status === "not_generated") return "generation_required:not_generated";
   if (content.status === "human_edited") return null;
   if (channelCountsAsPublishableSuccess(content)) return null;
   if (content.status === "fallback_generated" || content.provenance?.composer === "deterministic_fallback") {

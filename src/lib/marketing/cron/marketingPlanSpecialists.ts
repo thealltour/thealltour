@@ -29,6 +29,7 @@ import {
   validateContentPropositionAgainstStory,
 } from "@/lib/marketing/content/proposition/storyLock";
 import type { EvidenceBackedStoryBrief } from "@/lib/marketing/storyPoint/contracts";
+import { resolveStoryEditorialArchetype } from "@/lib/marketing/canonicalAsset/revisions";
 
 /**
  * Default Hermes oneshot timeout for Marketing Cron specialist profiles.
@@ -317,23 +318,59 @@ function formatEvidencePackSection(pack: ContentDraftRequest["evidencePack"]): s
 const CONTENT_DRAFT_SHAPE =
   'shape: {"title":"","body":"","channel":"threads","agenda":null,"sourceReferences":[],"contentPlan":{"assignmentId":"","factsToUse":[],"evidenceRefs":["<supplied-evidence-id>"],"targetChannels":["threads","shortform","naver_blog","naver_band","kakao_channel"],"primaryAngle":"","keyMessage":"","hook":"","outline":[],"ctaStrategy":"","targetAudience":"","proposition":{"contract":"content-proposition-v1","primaryAudience":"","audienceProblem":"","audienceTension":"","whyNow":null,"contentPromise":"","readerGain":"","specificTakeaways":[],"proofRequirements":[],"contentGapUsed":"","engagementMechanism":"save_worthy_checklist","desiredAudienceAction":"save","angle":"","keyMessage":"","commercialIntent":"informational","propositionStrength":"usable","limitations":[]}},"assignmentId":null}';
 
-const PROPOSITION_RULES = [
+/**
+ * Phase 5: decision is one Story type, not a universal proposition quality criterion.
+ * Discovery-like vs decision/practical semantics are conditional on STORY_POINT.editorialArchetype.
+ * Shared by initial draft + schema/topic-identity repair prompts.
+ */
+export const PROPOSITION_RULES = [
   "ContentProposition (content-proposition-v1) is REQUIRED inside contentPlan.proposition.",
   "Do NOT merely summarize ACRB. Decide what useful content should actually be made.",
   "Angle = editorial lens. ContentProposition = concrete value delivered through that lens.",
   "Forbidden as core value: '관측됨', '참고하면 좋다', '도움이 될 수 있다', '유용한 정보를 제공한다', '관련 정보를 정리한다'.",
   "primaryAudience: specific supported segment from ACRB audience.primary (not generic Korean travelers).",
-  "audienceProblem: one concrete decision problem (not '여행 준비가 어렵다').",
-  "audienceTension: decision-relevant tradeoff from anxieties/decisionTriggers.",
+  "",
+  "ARCHETYPE-AWARE PROPOSITION SEMANTICS (read STORY_POINT.editorialArchetype):",
+  "Decision is one Story type — not a universal quality criterion for every proposition.",
+  "Stay inside StoryPoint + supportedClaimBoundary. Do not invent stakes merely to make the proposition feel actionable.",
+  "",
+  "DISCOVERY-LIKE archetypes (discovery, hidden_detail, contrast, alternative, cultural_curiosity, experience_fit):",
+  "- audienceProblem: a concrete reader problem that is NOT a forced booking/selection decision —",
+  "  e.g. knowledge gap, mistaken assumption, overlooked context, unresolved question,",
+  "  or not understanding a little-known structure/context. Still specific (not '여행 준비가 어렵다').",
+  "  Do NOT invent a purchase/selection/decision problem the Story does not already imply.",
+  "- audienceTension: Story-native tension — curiosity gap, contrast, contradiction,",
+  "  surprising relationship, expectation vs reality, or unresolved tension already on the StoryPoint.",
+  "  Prefer curiosityGap / audienceTension / contrast on the Story over ACRB anxieties/decisionTriggers.",
+  "  Do NOT force A-vs-B comparison, regret/loss stakes, or trade-off language unsupported by the Story.",
+  "- contentPromise: what the reader will concretely understand, notice, distinguish, newly see, or reinterpret.",
+  "- readerGain: what concretely remains after reading (e.g. understanding, distinctions, questions,",
+  "  mental model, perspective, checklist, criteria). Match the Story archetype;",
+  "  do not force decision criteria / comparison checklists for discovery-like Stories.",
+  "- engagementMechanism: why someone would save/comment/share (e.g. insight worth remembering,",
+  "  surprising contrast, discussion prompt, recognition, share-worthiness, checklist, decision aid).",
+  "  Match the Story archetype — do NOT force decision aid for discovery-like Stories.",
+  "",
+  "DECISION / PRACTICAL-LIKE archetypes (practical, decision_rule, decision, worth_it_or_not,",
+  "who_is_it_for, who_should_avoid, hidden_cost, expectation_vs_reality, better_alternative,",
+  "common_mistake, tradeoff, myth_busting, before_you_book, premium_or_overpriced,",
+  "convenience_vs_experience, family_fit, parent_travel_fit, couple_fit) — and when archetype is",
+  "missing/null but the Story already clearly implies a traveler choice:",
+  "- audienceProblem: one concrete decision problem (not '여행 준비가 어렵다').",
+  "- audienceTension: decision-relevant tradeoff; anxieties/decisionTriggers from ACRB may be used when they fit the Story.",
+  "- readerGain: criteria / checks / questions / checklist / decision aid are appropriate when supported.",
+  "- engagementMechanism: compare / verify / shortlist / checklist / decision aid are appropriate when supported.",
+  "",
+  "If editorialArchetype is null/missing and the Story does not imply a decision: prefer discovery-like",
+  "semantics (knowledge gap / Story tension) rather than inventing a booking choice.",
+  "",
   "whyNow: only from real seasonality/promotion/decision-window signals; null if none. Never invent urgency (좌석 마감 etc.).",
-  "contentPromise: what the content helps the reader understand/do (concrete).",
-  "readerGain: what remains after reading (checklist/criteria/questions) — not abstract '도움이 된다'.",
-  "specificTakeaways: 2–5 when evidence allows; practical checks/rules/questions. Do NOT invent operational facts.",
+  "contentPromise (all archetypes): concrete — what the content helps the reader understand/notice/do. Not a research summary.",
+  "specificTakeaways: 2–5 when evidence allows; practical checks/rules/questions OR concrete observation/distinction points matching the archetype. Do NOT invent operational facts.",
   "proofRequirements: array of {claimArea, requiredProof, severity} objects (strings are accepted but objects preferred).",
   "Set contentPlan.targetChannels to the full configured set when eligible: threads, shortform, naver_blog, naver_band, kakao_channel. Do not silently omit Blog/Band/Kakao.",
   "contentGapUsed: which ACRB content gap this piece exploits (plain language).",
-  "engagementMechanism: why someone would save/comment/share (checklist, decision aid, etc.) — not just 'add CTA'.",
-  "desiredAudienceAction: save|compare|verify|comment|ask|click|consult|shortlist.",
+  "desiredAudienceAction: save|compare|verify|comment|ask|click|consult|shortlist — pick what fits the archetype (discovery may prefer save/comment/ask; decision may prefer compare/verify/shortlist).",
   "propositionStrength: strong|usable|weak|insufficient. If research cannot support useful takeaways without invention → insufficient/weak. Do NOT polish a fake strong plan.",
   "outline: derive from proposition (not generic Context/Facts/CTA template).",
   "hook: connect audience tension + content promise; no unsupported urgency.",
@@ -411,6 +448,7 @@ function formatStoryLockBrief(payload: ContentDraftRequest): string | null {
           researchQuestions: story.researchQuestions,
           mechanisms: story.mechanisms,
           nonGoals: story.nonGoals,
+          editorialArchetype: resolveStoryEditorialArchetype(story),
           storyPointHash: acrb?.storyPointHash ?? null,
         })}`
       : `STORY_POINT_REF: ${JSON.stringify(acrb?.storyPointRef ?? null)}`,
@@ -421,6 +459,7 @@ function formatStoryLockBrief(payload: ContentDraftRequest): string | null {
     `unresolvedQuestions=${JSON.stringify((acrb?.unresolvedQuestions ?? []).slice(0, 6))}`,
     `evidenceLimitations=${JSON.stringify((brief?.limitations ?? acrb?.limitations ?? []).slice(0, 8))}`,
     "This StoryPoint is the hypothesis/editorial scope being verified. Interpret evidence relative to it.",
+    "Match ContentProposition semantics to editorialArchetype (see ARCHETYPE-AWARE PROPOSITION SEMANTICS).",
   ].join("\n");
 }
 

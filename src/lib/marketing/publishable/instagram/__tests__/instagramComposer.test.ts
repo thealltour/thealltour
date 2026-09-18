@@ -63,7 +63,7 @@ describe("Instagram slide headlines", () => {
 
   it("rejects too few, too many, overlong, and duplicated overlays", () => {
     expect(slideHeadlineIssues(["하나", "둘"])).toContain("slides_too_few");
-    expect(slideHeadlineIssues(Array.from({ length: 8 }, (_, i) => `카드${i}`))).toContain(
+    expect(slideHeadlineIssues(Array.from({ length: 11 }, (_, i) => `카드${i}`))).toContain(
       "slides_too_many",
     );
     expect(
@@ -72,6 +72,12 @@ describe("Instagram slide headlines", () => {
     expect(slideHeadlineIssues(["탑승 동선", "탑승 동선", "수속 순서", "수하물"])).toContain(
       "slide_headline_duplicate",
     );
+  });
+
+  it("allows up to 10 cards for complex evidence explainers", () => {
+    expect(
+      slideHeadlineIssues(Array.from({ length: 10 }, (_, i) => `카드${i}`)),
+    ).toEqual([]);
   });
 });
 

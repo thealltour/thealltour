@@ -67,10 +67,10 @@ export function MarketingReviewChannelTabs({
     setShowAiOriginal(false);
   }, [active?.channel, active?.title, active?.body, active?.source]);
 
-  const editable = canEdit && active && active.channel !== "shortform";
+  const editable = canEdit && active && active.channel !== "shortform" && !active.awaitingGeneration;
 
   async function saveChannel() {
-    if (!active || active.channel === "shortform") return;
+    if (!active || active.channel === "shortform" || active.awaitingGeneration) return;
     onBusy(true);
     onMessage(null);
     try {
@@ -130,7 +130,7 @@ export function MarketingReviewChannelTabs({
     allowOverwriteHuman = false,
     options?: { qualityRevision?: boolean },
   ) {
-    if (!active || active.channel === "shortform") return;
+    if (!active) return;
     onBusy(true);
     onMessage(null);
     try {
@@ -160,13 +160,13 @@ export function MarketingReviewChannelTabs({
           throw new Error(
             typeof data.message === "string"
               ? data.message
-              : "공통 원문 승인 후 채널을 재생성하세요.",
+              : "공통 원문 승인 후 채널을 생성하세요.",
           );
         }
         if (data.message === "human_edited_channel_requires_confirm") {
           const ok = window.confirm(
             qualityRevision
-              ? "이 채널에 사람 수정본이 있습니다. Content Strategist가 Value 피드백을 반영해 Body를 덮어쓸까요?"
+              ? "이 채널에 사람 수정본이 있습니다. Channel Editor가 Value 피드백을 반영해 Body를 덮어쓸까요?"
               : "이 채널에 사람 수정본이 있습니다. AI 초안으로 덮어쓸까요?",
           );
           if (ok) {
@@ -189,8 +189,10 @@ export function MarketingReviewChannelTabs({
       await onReload();
       onMessage(
         qualityRevision
-          ? `${active.label} Body 품질 재생성 완료 (Content Strategist · Value 힌트 반영).`
-          : `${active.label} 재생성 완료 (외부 리서치 0회).`,
+          ? `${active.label} Body 재생성 완료 (Channel Editor · Value 힌트 반영).`
+          : active.awaitingGeneration
+            ? `${active.label} 생성 완료.`
+            : `${active.label} 재생성 완료.`,
       );
     } catch (error) {
       onMessage(error instanceof Error ? error.message : "regenerate_failed");
@@ -269,14 +271,23 @@ export function MarketingReviewChannelTabs({
                 {active.marketingValue.stale ? " · stale" : ""}
               </span>
             ) : null}
-            {active.validationWarnings.length > 0 ? (
+            {active.awaitingGeneration ? (
+              <span className="text-[var(--text-secondary)]">생성 대기 (정상)</span>
+            ) : active.validationWarnings.length > 0 ? (
               <span className="text-amber-700">경고 {active.validationWarnings.length}건</span>
             ) : (
               <span className="text-emerald-700">검증 통과</span>
             )}
           </div>
 
-          {active.marketingValue ? (
+          {active.stale && !active.awaitingGeneration ? (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-950">
+              공통 원문이 갱신되어 이 채널 초안이 stale입니다. 필요하면 재생성하세요. 자동 재생성하지
+              않습니다.
+            </div>
+          ) : null}
+
+          {active.marketingValue && !active.awaitingGeneration ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs space-y-1">
               <div className="font-medium">Marketing Value (≠ Governance)</div>
               {(active.marketingValue.reasons ?? []).slice(0, 3).map((r) => (
@@ -290,27 +301,27 @@ export function MarketingReviewChannelTabs({
             </div>
           ) : null}
 
-          {active.awaitingGeneration && active.channel !== "shortform" ? (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
-              <p className="text-sm text-amber-950">
-                이 채널 초안은 아직 없습니다. Content Strategist로 채널 본문을 생성할 수 있습니다
-                (프로덕션 기본은 Threads+Shortform만 자동 생성).
+          {active.awaitingGeneration ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 space-y-2">
+              <p className="text-sm text-[var(--text-secondary)]">
+                아직 생성하지 않은 채널입니다. Canonical 승인만으로 자동 생성되지 않습니다. 원할 때
+                Channel Editor로 이 채널만 생성하세요.
               </p>
               <button
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
-                onClick={() => void regenerate(false, { qualityRevision: true })}
-                className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                onClick={() => void regenerate(false)}
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                채널 초안 생성 (Content Strategist)
+                생성
               </button>
             </div>
           ) : null}
 
-          {bodyQualityWeak && !active.awaitingGeneration && active.channel !== "shortform" ? (
+          {bodyQualityWeak && !active.awaitingGeneration ? (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
               <p className="text-sm text-amber-950">
-                Body 품질이 게시 기준에 못 미칩니다. Content Strategist에게 Marketing Value 피드백을 넘겨
+                Body 품질이 게시 기준에 못 미칩니다. Channel Editor에 Marketing Value 피드백을 넘겨
                 Body만 재생성할 수 있습니다.
               </p>
               <button
@@ -319,7 +330,7 @@ export function MarketingReviewChannelTabs({
                 onClick={() => void regenerate(false, { qualityRevision: true })}
                 className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                Body 품질 재생성 (Content Strategist)
+                채널 Body 재생성
               </button>
             </div>
           ) : null}
@@ -478,7 +489,7 @@ export function MarketingReviewChannelTabs({
             >
               채널 Skip
             </button>
-            {active.channel !== "shortform" ? (
+            {active.channel !== "shortform" && !active.awaitingGeneration ? (
               <button
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
@@ -486,6 +497,16 @@ export function MarketingReviewChannelTabs({
                 className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 채널만 재생성
+              </button>
+            ) : null}
+            {active.channel === "shortform" && !active.awaitingGeneration ? (
+              <button
+                type="button"
+                disabled={busy || context.governance.decision === "BLOCK"}
+                onClick={() => void regenerate(false)}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
+              >
+                Shortform 나레이션 재생성
               </button>
             ) : null}
             <button

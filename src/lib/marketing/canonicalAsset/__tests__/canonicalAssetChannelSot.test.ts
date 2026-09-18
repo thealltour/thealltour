@@ -210,9 +210,10 @@ describe("canonical asset SoT → channel generation gate", () => {
       candidate: candidateStub(null),
       packageRoot,
       approvedCanonicalAsset: approved,
-      forceRegenerate: true,
+      forceRegenerateChannels: ["threads"],
       explicitTargetChannels: ["threads"],
       persist: false,
+      allowDeterministicFallback: false,
       invoke: async (prompt) => {
         const text =
           typeof prompt === "string"

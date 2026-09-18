@@ -141,6 +141,8 @@ export type MorningChannelReviewView = {
   validationWarnings: string[];
   /** True when target/offerable slot has no body yet — regenerate to fill. */
   awaitingGeneration?: boolean;
+  /** Channel body was generated from an older Canonical Asset version. */
+  stale?: boolean;
   blogMeta?: {
     selectedTitle?: string | null;
     titleCandidates?: string[];

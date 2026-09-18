@@ -9,21 +9,42 @@ function norm(text: string | null | undefined): string {
   return (text ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Resolve Story editorialArchetype for the locked writer input.
+ * Preserves exact upstream value; never invents a default archetype.
+ * Legacy external imports may only have `archetype:` in agendaFitNotes.
+ */
+export function resolveStoryEditorialArchetype(
+  storyPoint: Pick<StoryContentPoint, "editorialArchetype" | "agendaFitNotes">,
+): string | null {
+  const direct = storyPoint.editorialArchetype?.trim();
+  if (direct) return direct;
+  const notes = storyPoint.agendaFitNotes ?? "";
+  const match = notes.match(/(?:^|\|\s*)archetype:([^\s|]+)/i);
+  const fromNotes = match?.[1]?.trim();
+  return fromNotes || null;
+}
+
 export function computeCanonicalAssetSourceRevision(input: {
   storyPointId: string;
   storyPointHash: string;
   evidenceRevision: string;
   propositionRevision: string;
   supportedClaimBoundary: string | null;
+  editorialArchetype?: string | null;
 }): string {
-  const payload = [
+  const parts = [
     input.storyPointId.trim(),
     input.storyPointHash.trim(),
     input.evidenceRevision.trim(),
     input.propositionRevision.trim(),
     norm(input.supportedClaimBoundary),
-  ].join("\n");
-  return createHash("sha256").update(payload, "utf8").digest("hex").slice(0, 24);
+  ];
+  // Only fold archetype into the lock when present so legacy null stays hash-stable;
+  // a later archetype set/change still stales the Canonical Asset.
+  const archetype = (input.editorialArchetype ?? "").trim();
+  if (archetype) parts.push(norm(archetype));
+  return createHash("sha256").update(parts.join("\n"), "utf8").digest("hex").slice(0, 24);
 }
 
 export function computeEvidenceRevision(brief: EvidenceBackedStoryBrief | null): string {
@@ -78,6 +99,7 @@ export function buildCanonicalAssetWriterInput(input: {
     audienceTension: input.storyPoint.audienceTension,
     curiosityGap: input.storyPoint.curiosityGap,
     readerPayoff: input.storyPoint.readerPayoff,
+    editorialArchetype: resolveStoryEditorialArchetype(input.storyPoint),
     storySupportVerdict:
       input.evidenceBrief?.storySupportVerdict ??
       input.proposition.storySupportVerdict ??

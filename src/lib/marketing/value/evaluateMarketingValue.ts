@@ -12,6 +12,9 @@ import {
   bodyReflectsPropositionTakeaway,
   checkShortformHookPayoff,
 } from "@/lib/marketing/publishable/composerRuntime";
+import {
+  channelTreatAsDiscoveryLike,
+} from "@/lib/marketing/publishable/editorialArchetype";
 import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
 import {
   MARKETING_VALUE_ASSESSMENT_CONTRACT,
@@ -36,6 +39,10 @@ const ACTIONABLE_RE =
 const CONCRETE_NOUN_RE =
   /(일정|직항|포함|불포함|출발|터미널|수속|수하물|패키지|가족|부모님|아이|체크리스트|예약|여행사|공식)/;
 
+/** Discovery-like positive signals — insight/contrast/recognition without checklist pressure. */
+const DISCOVERY_VALUE_RE =
+  /(하지만|그런데|알고\s*보면|의외로|생각보다|놓치기\s*쉬운|다른\s*점|차이|관점|눈에\s*띄|익숙한|실제로|구체적으로|세부|디테일|맥락|대비)/;
+
 export type EvaluateMarketingValueInput = {
   channel: PublishableChannel;
   body: string;
@@ -47,6 +54,11 @@ export type EvaluateMarketingValueInput = {
   researchVerdict?: string | null;
   /** Allowed facts the composer should have embodied — used to detect verify-only shells. */
   usableFacts?: Array<string | { statement?: string | null }> | null;
+  /**
+   * From StoryPoint.editorialArchetype (channel layer).
+   * Discovery-like Stories are not penalized solely for lacking checklist/actionable language.
+   */
+  editorialArchetype?: string | null;
 };
 
 function normalizeUsableFactStatements(
@@ -144,11 +156,27 @@ function assessPromiseDelivery(
 function engagementScore(
   body: string,
   proposition: ContentProposition | null | undefined,
+  editorialArchetype?: string | null,
 ): { score: number; weakness?: string; hint?: string } {
   const mechanism = String(proposition?.engagementMechanism ?? "");
   const action = String(proposition?.desiredAudienceAction ?? "");
+  const discovery = channelTreatAsDiscoveryLike(editorialArchetype);
 
   if (/^comment$/i.test(action) || /experience_sharing|comment/i.test(mechanism)) {
+    if (discovery) {
+      // Discovery: do not require A-vs-B preference questions from old comment CTA pressure.
+      if (DISCOVERY_VALUE_RE.test(body) || /경험|관점|인상|느꼈|다르게/.test(body)) {
+        return { score: 78 };
+      }
+      if (GENERIC_CTA_RE.test(body)) {
+        return {
+          score: 45,
+          weakness: "generic comment CTA without discovery discussion point",
+          hint: "Invite another perspective on the same Story — not a forced A-vs-B preference.",
+        };
+      }
+      return { score: 62 };
+    }
     if (GENERIC_CTA_RE.test(body) && !ACTIONABLE_RE.test(body) && !/어떤\s*경험|걱정|동반/.test(body)) {
       return {
         score: 35,
@@ -178,6 +206,16 @@ function engagementScore(
   }
 
   if (/save_worthy_checklist|checklist/i.test(mechanism)) {
+    if (discovery) {
+      // Discovery + old save_worthy_checklist: do NOT require checklist.
+      if (DISCOVERY_VALUE_RE.test(body) || CONCRETE_NOUN_RE.test(body)) {
+        return { score: 78 };
+      }
+      return {
+        score: 58,
+        hint: "Discovery Stories earn save-worthiness via concrete insight — not forced checklists.",
+      };
+    }
     if (hasNumberedStructure(body) || /체크리스트|저장/.test(body)) {
       return { score: 82 };
     }
@@ -196,11 +234,18 @@ function engagementScore(
     };
   }
   if (/decision_aid|compare|verify/i.test(mechanism) || /compare|verify|shortlist/.test(action)) {
+    if (discovery) {
+      if (DISCOVERY_VALUE_RE.test(body) || CONCRETE_NOUN_RE.test(body)) return { score: 70 };
+      return { score: 55 };
+    }
     if (ACTIONABLE_RE.test(body)) return { score: 75 };
     return { score: 45, hint: "Desired action needs a concrete next step or decision rule." };
   }
   if (GENERIC_CTA_RE.test(body) && body.length < 220) {
     return { score: 40, weakness: "generic CTA", hint: "Replace generic CTA with a useful next action." };
+  }
+  if (discovery) {
+    return { score: DISCOVERY_VALUE_RE.test(body) || CONCRETE_NOUN_RE.test(body) ? 68 : 52 };
   }
   return { score: ACTIONABLE_RE.test(body) ? 62 : 48 };
 }
@@ -357,13 +402,18 @@ export function evaluateMarketingValue(
   }
 
   // Generic-only core → hard toward reject
+  const archetype = input.editorialArchetype ?? null;
+  const discoveryLike = channelTreatAsDiscoveryLike(archetype);
   const actionable = ACTIONABLE_RE.test(full);
   const concrete = CONCRETE_NOUN_RE.test(full);
+  const discoveryValue = DISCOVERY_VALUE_RE.test(full);
   const genericHeavy = GENERIC_ADVICE_RE.test(full) && !hasNumberedStructure(full);
-  if (genericHeavy && !actionable) {
+  if (genericHeavy && !actionable && !(discoveryLike && (discoveryValue || concrete))) {
     hardFailReasons.push("no_useful_takeaway");
     improvementHints.push(
-      "The post is generic advice; add concrete what/why/how or decision rules.",
+      discoveryLike
+        ? "The post is generic; add concrete insight, contrast, or overlooked detail."
+        : "The post is generic advice; add concrete what/why/how or decision rules.",
     );
   }
 
@@ -397,7 +447,12 @@ export function evaluateMarketingValue(
     specificityScore += 8; // structure alone is weak without fact density
   }
   if (concrete) specificityScore += 15;
-  if (actionable) specificityScore += 15;
+  if (discoveryLike) {
+    if (discoveryValue) specificityScore += 18;
+    else if (actionable) specificityScore += 8;
+  } else if (actionable) {
+    specificityScore += 15;
+  }
   if (factOverlap >= 0.15) specificityScore += 12;
   if (genericHeavy) specificityScore -= 25;
   if (verifyOnlyShell) specificityScore -= 20;
@@ -406,12 +461,19 @@ export function evaluateMarketingValue(
 
   let usefulnessScore = 30;
   if (promise.delivered) usefulnessScore += 25;
-  if (actionable) usefulnessScore += 20;
+  if (discoveryLike) {
+    if (discoveryValue || concrete) usefulnessScore += 22;
+    else if (actionable) usefulnessScore += 10;
+  } else if (actionable) {
+    usefulnessScore += 20;
+  }
   if (prop?.readerGain && tokenOverlapRatio(body, prop.readerGain) >= 0.12) usefulnessScore += 15;
   if (factOverlap >= 0.15) usefulnessScore += 15;
   if (genericHeavy) usefulnessScore -= 20;
   if (verifyOnlyShell) usefulnessScore -= 25;
-  if (RESEARCH_RESTATE_RE.test(body) && !actionable) usefulnessScore -= 25;
+  if (RESEARCH_RESTATE_RE.test(body) && !(discoveryLike ? discoveryValue || concrete : actionable)) {
+    usefulnessScore -= 25;
+  }
   usefulnessScore = clampScore(usefulnessScore);
 
   let noveltyScore = 55;
@@ -438,7 +500,7 @@ export function evaluateMarketingValue(
   if (verifyOnlyShell) payoffScore -= 20;
   payoffScore = clampScore(payoffScore);
 
-  const engagement = engagementScore(body, prop);
+  const engagement = engagementScore(body, prop, archetype);
   let engagementPotentialScore = engagement.score;
   if (engagement.weakness) weaknesses.push(engagement.weakness);
   if (engagement.hint) improvementHints.push(engagement.hint);
@@ -508,7 +570,7 @@ export function evaluateMarketingValue(
       "The post repeats the research observation instead of solving the audience problem.",
     );
   }
-  if (GENERIC_CTA_RE.test(body) && !ACTIONABLE_RE.test(body)) {
+  if (GENERIC_CTA_RE.test(body) && !ACTIONABLE_RE.test(body) && !discoveryLike) {
     weaknesses.push("generic CTA without value");
   }
 
@@ -591,6 +653,7 @@ export function evaluateBundleChannels(input: {
   proposition: ContentProposition | null | undefined;
   researchVerdict?: string | null;
   usableFacts?: EvaluateMarketingValueInput["usableFacts"];
+  editorialArchetype?: string | null;
   now?: Date;
 }): Partial<Record<PublishableChannel, MarketingValueAssessment>> {
   const out: Partial<Record<PublishableChannel, MarketingValueAssessment>> = {};
@@ -603,6 +666,7 @@ export function evaluateBundleChannels(input: {
       proposition: input.proposition,
       researchVerdict: input.researchVerdict,
       usableFacts: input.usableFacts,
+      editorialArchetype: input.editorialArchetype,
       now: input.now,
     });
   }

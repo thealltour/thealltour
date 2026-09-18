@@ -4,19 +4,23 @@ import type {
   PublishableChannelContent,
   PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
+import { PUBLISHABLE_CHANNELS } from "@/lib/marketing/publishable/contracts";
 
-const CHANNEL_KEYS: PublishableChannel[] = [
-  "threads",
-  "shortform",
-  "naver_blog",
-  "naver_band",
-  "kakao_channel",
-];
+/** All orchestrated channels — keep Instagram in stale / list helpers. */
+export const CHANNEL_KEYS: readonly PublishableChannel[] = PUBLISHABLE_CHANNELS;
 
 export function stampChannelFromApprovedAsset(
   content: PublishableChannelContent,
   asset: CanonicalMarketingAsset,
 ): PublishableChannelContent {
+  if (content.status === "not_generated" || !content.body?.trim()) {
+    return {
+      ...content,
+      sourceAssetId: null,
+      sourceAssetVersion: null,
+      stale: false,
+    };
+  }
   return {
     ...content,
     sourceAssetId: asset.assetId,
@@ -32,6 +36,15 @@ export function markPublishableBundleStaleForAsset(
   const approvedVersion = asset.approvedVersion ?? asset.version;
   const mark = (c: PublishableChannelContent | undefined): PublishableChannelContent | undefined => {
     if (!c) return c;
+    // Empty / not_generated slots track the new approved workspace — not stale content.
+    if (c.status === "not_generated" || !c.body?.trim()) {
+      return {
+        ...c,
+        stale: false,
+        sourceAssetId: null,
+        sourceAssetVersion: null,
+      };
+    }
     if (c.sourceAssetVersion === approvedVersion && c.sourceAssetId === asset.assetId) {
       return { ...c, stale: false };
     }
@@ -44,6 +57,10 @@ export function markPublishableBundleStaleForAsset(
     naver_blog: mark(bundle.naver_blog),
     naver_band: mark(bundle.naver_band),
     kakao_channel: mark(bundle.kakao_channel),
+    instagram: mark(bundle.instagram),
+    sourceAssetId: asset.assetId,
+    sourceAssetVersion: approvedVersion,
+    sourceAssetRevision: asset.sourceRevision,
   };
 }
 

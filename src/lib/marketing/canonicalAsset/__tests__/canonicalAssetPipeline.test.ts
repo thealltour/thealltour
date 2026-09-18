@@ -163,6 +163,7 @@ function baseAsset(overrides: Partial<CanonicalMarketingAsset> = {}): CanonicalM
     evidenceRevision: writer.evidenceRevision,
     propositionRevision: writer.proposition.propositionRevision,
     supportedClaimBoundary: writer.supportedClaimBoundary,
+    editorialArchetype: writer.editorialArchetype,
   });
   const parsed = JSON.parse(goodKoreanAssetJson()) as Record<string, unknown>;
   return {
@@ -279,6 +280,7 @@ describe("CANONICAL_ASSET_PIPELINE contract", () => {
       evidenceRevision: writer.evidenceRevision,
       propositionRevision: writer.proposition.propositionRevision,
       supportedClaimBoundary: boundary,
+      editorialArchetype: writer.editorialArchetype,
     });
     const asset = baseAsset({
       sourceRevision,
@@ -333,6 +335,29 @@ describe("CANONICAL_ASSET_PIPELINE generation + repair", () => {
     });
     expect(result.outcome).toBe("reused");
     expect(result.llmCallCount).toBe(0);
+  });
+
+  it("forceRegenerate skips reuse even when sourceRevision matches", async () => {
+    const existing = baseAsset({ status: "draft" });
+    let calls = 0;
+    const result = await ensureCanonicalMarketingAsset({
+      agendaId: "ag",
+      storyPoint: BANGKOK,
+      storyPointHash: createStoryPointHash(BANGKOK),
+      evidenceBrief: evidence("SUPPORTED"),
+      proposition: proposition(),
+      topicIdentitySummary: "방콕",
+      existing,
+      forceRegenerate: true,
+      invoke: async () => {
+        calls += 1;
+        return goodKoreanAssetJson();
+      },
+    });
+    expect(result.outcome).toBe("generated");
+    expect(calls).toBe(1);
+    expect(result.llmCallCount).toBe(1);
+    expect(result.asset?.titleKo).toContain("방콕");
   });
 
   it("invalid first then valid repair passes (max 1)", async () => {

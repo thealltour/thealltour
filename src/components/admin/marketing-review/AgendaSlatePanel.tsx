@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
+import { StoryPassCandidateCard } from "@/components/admin/marketing-review/StoryPassCandidateCard";
+import { parseArchetypeFromAgendaFitNotes } from "@/components/admin/marketing-review/storyEditorialArchetypeLabel";
 import type {
   AgendaSlateAction,
   AgendaSlateCandidate,
@@ -90,6 +92,8 @@ type PassStoryCandidateView = {
   gateRanking: number | null;
   researchRejected: boolean;
   sourceLabel: string;
+  /** Display-only; read from provenance / agendaFitNotes — not mutated. */
+  editorialArchetype: string | null;
 };
 
 function extractPassStoryCandidates(
@@ -113,7 +117,12 @@ function extractPassStoryCandidates(
   const rejected = new Set(human?.researchRejectedStoryPointIds ?? []);
   const provenance = (request.metadata.externalStoryProvenance ?? {}) as Record<
     string,
-    { source?: string; provider?: string; storyTitleKo?: string | null }
+    {
+      source?: string;
+      provider?: string;
+      storyTitleKo?: string | null;
+      editorialArchetype?: string | null;
+    }
   >;
   const gateById = new Map(
     (set.gateResults ?? [])
@@ -136,6 +145,17 @@ function extractPassStoryCandidates(
     const gate = gateById.get(id);
     const prov = provenance[id];
     const isExternal = prov?.source === "external_editorial_director" || String(id).startsWith("sp_ext_");
+    const fromProv =
+      typeof prov?.editorialArchetype === "string" && prov.editorialArchetype.trim()
+        ? prov.editorialArchetype.trim()
+        : null;
+    const fromPoint =
+      typeof point.editorialArchetype === "string" && point.editorialArchetype.trim()
+        ? point.editorialArchetype.trim()
+        : null;
+    const fromNotes = parseArchetypeFromAgendaFitNotes(
+      typeof point.agendaFitNotes === "string" ? point.agendaFitNotes : null,
+    );
     out.push({
       pointId: id,
       storyQuestion: typeof point.storyQuestion === "string" ? point.storyQuestion : null,
@@ -165,6 +185,7 @@ function extractPassStoryCandidates(
       sourceLabel: isExternal
         ? "ChatGPT 수동 Editorial Director"
         : "내부 Story Miner",
+      editorialArchetype: fromProv ?? fromPoint ?? fromNotes,
     });
   }
   return out;
@@ -272,15 +293,27 @@ function ProductionPipelineBanner(props: {
             Story 선택 대기 {awaitingStory.length}건 — 아직 공통 원문/후보 검토 화면이 아닙니다.
           </div>
           <div className="opacity-90">
-            아래 해당 후보 카드의 「Story 후보」에서 하나를 고른 뒤 「이 Story로 제작」을 누르세요.
-            (카드 상태가 「대기」여도 Story 선택은 가능합니다.)
+            아래 해당 후보 카드에서 Story를 고른 뒤 「이 Story로 제작」/「제작 재개」를 누르세요.
+            이미 선택했는데도 이 문구가 보이면, 카드의 「선택 Story로 제작 재개」로 파이프라인을
+            다시 돌리세요. (카드 상태가 「대기」여도 Story 선택은 가능합니다.)
           </div>
           <ul className="list-disc space-y-0.5 pl-4 font-medium">
-            {awaitingStory.map((pr) => (
-              <li key={pr.requestId}>
-                {pr.selection?.title?.trim() || pr.slateItemId}
-              </li>
-            ))}
+            {awaitingStory.map((pr) => {
+              const selectedId =
+                typeof (pr.metadata?.humanStorySelection as { selectedStoryPointId?: unknown } | undefined)
+                  ?.selectedStoryPointId === "string"
+                  ? String(
+                      (pr.metadata?.humanStorySelection as { selectedStoryPointId?: string })
+                        .selectedStoryPointId,
+                    )
+                  : null;
+              return (
+                <li key={pr.requestId}>
+                  {pr.selection?.title?.trim() || pr.slateItemId}
+                  {selectedId ? ` · Story 선택됨(${selectedId.slice(0, 12)}…)` : ""}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -350,6 +383,12 @@ function CandidateCard(props: {
   const humanSelectionMeta = pr?.metadata?.humanStorySelection as
     | { selectedStoryPointId?: string | null; lastResearchRejectReason?: string | null }
     | undefined;
+  const activeHumanSelectionId =
+    typeof humanSelectionMeta?.selectedStoryPointId === "string" &&
+    humanSelectionMeta.selectedStoryPointId.trim() &&
+    storyCandidates.some((c) => c.pointId === humanSelectionMeta.selectedStoryPointId)
+      ? humanSelectionMeta.selectedStoryPointId.trim()
+      : null;
   const staleHumanSelectionId =
     typeof humanSelectionMeta?.selectedStoryPointId === "string" &&
     humanSelectionMeta.selectedStoryPointId.trim() &&
@@ -460,7 +499,9 @@ function CandidateCard(props: {
             <div className="mt-3 space-y-3 border-t border-[var(--success)]/30 pt-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium text-[var(--success)]">
-                  Story 후보 — 연구/콘텐츠 전에 하나를 선택하세요.
+                  {activeHumanSelectionId
+                    ? "Story는 이미 선택됨 — 공통 원문 단계는 아직 아닙니다. 제작을 재개하세요."
+                    : "Story 후보 — 연구/콘텐츠 전에 하나를 선택하세요."}
                 </p>
                 {onImportExternalStory ? (
                   <button
@@ -473,6 +514,22 @@ function CandidateCard(props: {
                   </button>
                 ) : null}
               </div>
+              {activeHumanSelectionId && onSelectStory ? (
+                <div className="rounded border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-2 text-[var(--primary)]">
+                  <p className="font-medium">
+                    선택 Story로 연구·공통 원문 생성을 재개해야 「공통 원문 수정·승인」 버튼이
+                    나타납니다.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onSelectStory(activeHumanSelectionId)}
+                    className="mt-2 min-h-11 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+                  >
+                    선택 Story로 제작 재개
+                  </button>
+                </div>
+              ) : null}
               {rejectReason ? (
                 <p className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1.5 text-[var(--warning)]">
                   이전 선택 Story 연구 거부: {rejectReason}. 다른 PASS 후보를 고르세요.
@@ -496,85 +553,25 @@ function CandidateCard(props: {
                     c.storyClaim?.trim() ||
                     c.curiosityGap?.trim() ||
                     `Story 후보 #${index + 1}`;
-                  const hasDetails =
-                    Boolean(c.whyInteresting?.trim()) ||
-                    c.mechanisms.length > 0 ||
-                    c.researchQuestions.length > 0;
                   return (
-                  <div
-                    key={c.pointId}
-                    className={cn(
-                      "rounded border border-[var(--success)]/30 bg-white/60 px-2.5 py-2",
-                      c.researchRejected && "opacity-60",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[11px] text-[var(--text-secondary)]">
-                          후보 #{index + 1}
-                          {c.researchRejected ? " · 연구 거부됨" : ""}
-                          {" · "}
-                          <span className="font-medium text-[var(--text-primary)]">{c.sourceLabel}</span>
-                        </div>
-                        <p className="mt-0.5 font-medium text-[var(--text-primary)]">{headline}</p>
-                      </div>
-                      {onSelectStory && !c.researchRejected ? (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => onSelectStory(c.pointId)}
-                          className="min-h-11 shrink-0 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-                        >
-                          이 Story로 제작
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="mt-2 space-y-1 text-[12px] text-[var(--text-secondary)]">
-                      {c.audienceTension ? (
-                        <p>
-                          <span className="font-medium text-[var(--text-primary)]">긴장 </span>
-                          {c.audienceTension}
-                        </p>
-                      ) : null}
-                      {c.readerPayoff ? (
-                        <p>
-                          <span className="font-medium text-[var(--text-primary)]">얻는 것 </span>
-                          {c.readerPayoff}
-                        </p>
-                      ) : null}
-                      {c.genericRisk ? (
-                        <p className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1 text-[var(--warning)]">
-                          <span className="font-medium">주의 </span>
-                          {c.genericRisk}
-                        </p>
-                      ) : null}
-                    </div>
-                    {hasDetails ? (
-                      <details className="mt-2 text-[11px] text-[var(--text-secondary)]">
-                        <summary className="cursor-pointer text-[var(--primary)]">상세 보기</summary>
-                        <dl className="mt-1.5 grid gap-1 sm:grid-cols-2">
-                          {c.whyInteresting ? (
-                            <div className="sm:col-span-2">
-                              <dt className="inline font-medium text-[var(--text-primary)]">왜 흥미로운가 </dt>
-                              <dd className="inline">{c.whyInteresting}</dd>
-                            </div>
-                          ) : null}
-                          {c.mechanisms.length > 0 ? (
-                            <div className="sm:col-span-2">
-                              <dt className="inline font-medium text-[var(--text-primary)]">메커니즘 </dt>
-                              <dd className="inline">{c.mechanisms.join(", ")}</dd>
-                            </div>
-                          ) : null}
-                          {c.researchQuestions.length > 0 ? (
-                            <div className="sm:col-span-2">
-                              <dt className="inline font-medium text-[var(--text-primary)]">연구 질문 </dt>
-                              <dd className="inline">{c.researchQuestions.join(" · ")}</dd>
-                            </div>
-                          ) : null}
-                        </dl>
-                      </details>
-                    ) : null}
-                  </div>
+                    <StoryPassCandidateCard
+                      key={c.pointId}
+                      pointId={c.pointId}
+                      index={index}
+                      sourceLabel={c.sourceLabel}
+                      editorialArchetype={c.editorialArchetype}
+                      headline={headline}
+                      audienceTension={c.audienceTension}
+                      readerPayoff={c.readerPayoff}
+                      genericRisk={c.genericRisk}
+                      whyInteresting={c.whyInteresting}
+                      mechanisms={c.mechanisms}
+                      researchQuestions={c.researchQuestions}
+                      researchRejected={c.researchRejected}
+                      alreadySelected={c.pointId === activeHumanSelectionId}
+                      busy={busy}
+                      onSelectStory={onSelectStory}
+                    />
                   );
                 })
               )}

@@ -204,9 +204,18 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_2 input authority", () => {
     expect(composer.storyLock?.storyPointHash).toBe("hash_phuquoc_location_fit");
     expect(composer.storyLock?.storyQuestionKo).toBe(STORY_QUESTION);
     expect(composer.storyLock?.audienceProblemKo).toMatch(/관광|식사|동선/);
-    expect(composer.storyLock?.decisionAtStakeKo).toMatch(/휴식|관광|식사/);
+    // decisionAtStake only when decision/practical; discovery-like / unknown keep tension separate.
+    if (
+      composer.storyLock?.editorialArchetype &&
+      /practical|decision|worth_it|tradeoff/i.test(composer.storyLock.editorialArchetype)
+    ) {
+      expect(composer.storyLock.decisionAtStakeKo).toMatch(/휴식|관광|식사/);
+    } else {
+      expect(composer.storyLock?.decisionAtStakeKo).toBeNull();
+    }
     expect(composer.storyLock?.audienceTensionKo).toMatch(/휴식|관광|식사/);
     expect(composer.storyLock?.readerPayoffKo).toBeTruthy();
+    expect(composer.storyLock).toHaveProperty("editorialArchetype");
 
     const json = buildChannelComposerInputJson(composer);
     const assetSlice = json.approvedCanonicalAsset as Record<string, unknown>;
@@ -262,7 +271,8 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_2 input authority", () => {
     expect(kakaoChannelWritingContract({ hasApprovedCanonicalAsset: true })).toMatch(
       /Do NOT choose a new angle/i,
     );
-    expect(THREADS_WRITING_CONTRACT).toMatch(/Story\/긴장\/판단/);
+    expect(THREADS_WRITING_CONTRACT).toMatch(/Channel Adapter/i);
+    expect(THREADS_WRITING_CONTRACT).toMatch(/editorialArchetype|approved Canonical/i);
     expect(SHORTFORM_NARRATION_WRITING_CONTRACT).toMatch(/Story를 바꾸지/);
   });
 

@@ -40,6 +40,11 @@ export type EnsureCanonicalMarketingAssetInput = {
   brandContextKo?: string | null;
   /** Existing durable asset — reuse when sourceRevision matches (0 LLM). */
   existing?: CanonicalMarketingAsset | null;
+  /**
+   * Skip reuse and always call Asset Source Writer (operator rewrite / prompt bump).
+   * Does not change Story/Evidence/Proposition locks.
+   */
+  forceRegenerate?: boolean;
   invoke: AssetSourceWriterInvoke | null;
   now?: Date;
 };
@@ -145,10 +150,12 @@ export async function ensureCanonicalMarketingAsset(
     evidenceRevision: writerInput.evidenceRevision,
     propositionRevision: writerInput.proposition.propositionRevision,
     supportedClaimBoundary: writerInput.supportedClaimBoundary,
+    editorialArchetype: writerInput.editorialArchetype,
   });
 
   // Preserve human edits / approvals when upstream lock unchanged.
   if (
+    !input.forceRegenerate &&
     input.existing &&
     input.existing.sourceRevision === sourceRevision &&
     (input.existing.status === "approved" ||

@@ -92,6 +92,9 @@ export function normalizeExternalStoryToPoint(
     genericRiskMitigation: candidate.channelReasonKo,
     channelPotential: channelPotentialFromRecommended(candidate),
     nonGoals: candidate.nonGoalsKo,
+    editorialArchetype: candidate.editorialArchetype?.trim()
+      ? candidate.editorialArchetype.trim()
+      : null,
     agendaFitNotes: [
       candidate.storyTitleKo ? `title:${candidate.storyTitleKo}` : null,
       candidate.editorialArchetype ? `archetype:${candidate.editorialArchetype}` : null,

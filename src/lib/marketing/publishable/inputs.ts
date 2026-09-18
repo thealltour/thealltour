@@ -8,11 +8,13 @@ import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResea
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import type { HumanReviewDraft } from "@/lib/marketing/review/types";
+import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
+import { resolveCanonicalAssetDomainContext } from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 import { resolveTargetPublishableChannels } from "@/lib/marketing/publishable/selectTargetChannels";
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
-import { resolveCanonicalAssetDomainContext } from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
-import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
+import { resolveStoryEditorialArchetype } from "@/lib/marketing/canonicalAsset/revisions";
+import { isDecisionPracticalArchetype } from "@/lib/marketing/publishable/editorialArchetype";
 
 export type PublishableComposerFact = {
   statement: string;
@@ -50,9 +52,15 @@ export type PublishableStoryLock = {
   storyTitleKo: string | null;
   storyQuestionKo: string | null;
   audienceProblemKo: string | null;
+  /**
+   * Meaningful for decision/practical archetypes only.
+   * Discovery-like Stories keep this null so tension is not re-framed as a decision stake.
+   */
   decisionAtStakeKo: string | null;
   audienceTensionKo: string | null;
   readerPayoffKo: string | null;
+  /** From StoryContentPoint via domain context — not stored on Canonical asset. */
+  editorialArchetype: string | null;
 };
 
 export type PublishableComposerInput = {
@@ -424,6 +432,10 @@ function buildPublishableStoryLock(input: {
     null;
   const propTension = prop?.audienceTension?.trim() || null;
   const storyTension = story?.audienceTension?.trim() || null;
+  const editorialArchetype = story
+    ? resolveStoryEditorialArchetype(story)
+    : null;
+  const decisionMeaningful = isDecisionPracticalArchetype(editorialArchetype);
   return {
     role: "STORY_LOCK_READ_ONLY",
     storyPointId:
@@ -440,13 +452,14 @@ function buildPublishableStoryLock(input: {
     storyTitleKo: storyTitle,
     storyQuestionKo: storyQuestion,
     audienceProblemKo: prop?.audienceProblem?.trim() || null,
-    // Consistency lock: tension doubles as decision-at-stake when no richer Story field exists.
-    decisionAtStakeKo: propTension || storyTension || null,
+    // Decision stake only when archetype is decision/practical — do not alias tension for discovery.
+    decisionAtStakeKo: decisionMeaningful ? propTension || storyTension || null : null,
     audienceTensionKo: storyTension || propTension || null,
     readerPayoffKo:
       story?.readerPayoff?.trim() ||
       prop?.readerGain?.trim() ||
       input.approvedAsset?.decisionGuidanceKo?.trim() ||
       null,
+    editorialArchetype,
   };
 }

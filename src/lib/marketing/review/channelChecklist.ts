@@ -64,7 +64,7 @@ function assetRequirementFor(channel: ReviewablePublishableChannel): ChannelAsse
 }
 
 function copyIssueFor(channel: MorningChannelReviewView, charCount: CharCount): string | null {
-  if (channel.awaitingGeneration) return "본문 생성 대기";
+  if (channel.awaitingGeneration) return "미생성";
   if (!channel.body.trim()) return "본문 없음";
   if (charCount.status === "over_limit") return `글자수 초과 (${charCount.label})`;
   if (channel.validationWarnings.length > 0) return `검증 경고 ${channel.validationWarnings.length}건`;
@@ -81,7 +81,7 @@ function approvalBlockedReasonFor(input: {
   copyIssue: string | null;
 }): string | null {
   if (input.candidateBlockedReason) return input.candidateBlockedReason;
-  if (input.channel.awaitingGeneration) return "본문 생성 필요";
+  if (input.channel.awaitingGeneration) return "채널 생성 필요";
   if (!input.channel.body.trim()) return "본문 없음";
   const value = input.channel.marketingValue;
   if (value) {

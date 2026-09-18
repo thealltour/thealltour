@@ -176,6 +176,12 @@ export function parseStoryContentPoint(
         : typeof o.agenda_fit_notes === "string"
           ? o.agenda_fit_notes
           : null,
+    editorialArchetype:
+      typeof o.editorialArchetype === "string" && o.editorialArchetype.trim()
+        ? o.editorialArchetype.trim()
+        : typeof o.editorial_archetype === "string" && o.editorial_archetype.trim()
+          ? o.editorial_archetype.trim()
+          : null,
   };
 }
 

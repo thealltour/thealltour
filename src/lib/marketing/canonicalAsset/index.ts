@@ -21,6 +21,10 @@ export {
   type AssetSourceWriterInvoke,
 } from "@/lib/marketing/canonicalAsset/ensureCanonicalMarketingAsset";
 export {
+  regenerateCanonicalMarketingAsset,
+  type RegenerateCanonicalMarketingAssetResult,
+} from "@/lib/marketing/canonicalAsset/regenerateCanonicalMarketingAsset";
+export {
   applyHumanCanonicalAssetEdit,
   approveCanonicalMarketingAsset,
   canFeedChannelsFromCanonicalAsset,
@@ -28,7 +32,9 @@ export {
   rejectCanonicalAsset,
 } from "@/lib/marketing/canonicalAsset/humanAssetApproval";
 export {
+  approveCanonicalAsset,
   approveCanonicalAssetAndGenerateChannels,
+  generateChannelAsset,
   saveCanonicalAssetHumanEdit,
 } from "@/lib/marketing/canonicalAsset/approveAndGenerateChannels";
 export {
@@ -46,13 +52,19 @@ export {
   computeCanonicalAssetSourceRevision,
   computeEvidenceRevision,
   computePropositionRevision,
+  resolveStoryEditorialArchetype,
 } from "@/lib/marketing/canonicalAsset/revisions";
 export { parseDurableCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/parseCanonicalMarketingAsset";
 export {
   CANONICAL_MARKETING_ASSET_RELATIVE_PATH,
   CANONICAL_MARKETING_ASSET_MEDIA_TYPE,
 } from "@/lib/marketing/canonicalAsset/paths";
-export { buildAssetSourceWriterPrompt } from "@/lib/marketing/canonicalAsset/prompt";
+export {
+  buildAssetSourceWriterPrompt,
+  ASSET_SOURCE_WRITER_CONTRACT_PROMPT,
+  isAsWDiscoveryLikeArchetype,
+  isAsWDecisionPracticalArchetype,
+} from "@/lib/marketing/canonicalAsset/prompt";
 export {
   CANONICAL_ASSET_CHATGPT_EDIT_CONTRACT,
   STALE_ASSET_MESSAGE_KO,

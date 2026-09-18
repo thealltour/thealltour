@@ -1,21 +1,20 @@
 /**
- * Instagram publishable composer — caption + slide headlines for the cardnews.
- *
- * IG differs from the other channels in two ways that the validator enforces:
- * the first 125 characters are the whole first impression, and a caption cannot
- * carry a clickable link, so the CTA has to resolve to comment / save / profile.
+ * Instagram publishable composer — caption + storyboard/card planning.
+ * Migrated to approved-asset Channel Editor path (buildChannelComposerPromptParts).
+ * Does NOT generate images; visual fields are planning metadata only.
  */
 
 import {
   PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
   type PublishableChannelContent,
+  type PublishableInstagramCardPlan,
   type PublishableInstagramMeta,
 } from "@/lib/marketing/publishable/contracts";
 import {
-  PROPOSITION_COMPOSER_RULES,
+  CHANNEL_INPUT_AUTHORITY_VERSION,
   bodyReflectsPropositionTakeaway,
-  buildPropositionPromptSlice,
   buildPropositionProvenance,
+  buildChannelComposerPromptParts,
   formatCorePackPromptBlock,
   formatQualityRevisionPromptBlock,
   invokeWithBoundedRepair,
@@ -25,7 +24,12 @@ import {
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeInstagramPublishableDeterministic } from "@/lib/marketing/publishable/instagram/deterministicInstagram";
 import { INSTAGRAM_WRITING_CONTRACT } from "@/lib/marketing/publishable/instagram/writingContract";
+import {
+  stableSocialVisualId,
+  type InstagramVisualMode,
+} from "@/lib/marketing/publishable/socialVisualPlan";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
+import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 import {
   INSTAGRAM_HASHTAG_MAX,
   extractInstagramHashtags,
@@ -33,44 +37,29 @@ import {
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
 
-const SLIDE_HEADLINE_MAX_CHARS = 24;
+const SLIDE_HEADLINE_MAX_CHARS = 28;
 const SLIDE_MIN = 4;
-const SLIDE_MAX = 7;
+const SLIDE_MAX = 10;
 
-function buildPrompt(input: PublishableComposerInput, repairHint?: string | null): string {
-  return [
-    INSTAGRAM_WRITING_CONTRACT,
-    PROPOSITION_COMPOSER_RULES,
-    "Channel: visual-first carousel. One idea per slide; the caption adds the context the cards cannot fit.",
-    formatCorePackPromptBlock(input),
-    formatQualityRevisionPromptBlock(input.qualityRevision),
-    repairHint ?? "",
-    "INPUT_JSON:",
-    JSON.stringify({
-      topic: input.topic,
-      audience: input.audience,
-      commercialIntent: input.commercialIntent,
-      hookHint: input.hookHint,
-      keyMessage: input.keyMessage,
-      destinations: input.destinations,
-      contentProposition: buildPropositionPromptSlice(input.contentProposition),
-      research: {
-        selectedAngle: input.research?.selectedAngle,
-        selectedAngleTension: input.research?.selectedAngleTension,
-        motivations: input.research?.motivations,
-        contentGaps: input.research?.contentGaps,
-        limitations: input.research?.limitations,
-      },
-      usableFacts: input.usableFacts.map((fact) => ({
-        statement: fact.statement,
-        type: fact.epistemicType ?? null,
-      })),
-      avoidedStatements: input.avoidedStatements,
-      unsupportedClaims: input.unsupportedClaims,
-    }),
-  ]
-    .filter(Boolean)
-    .join("\n");
+function buildInstagramPrompt(
+  input: PublishableComposerInput,
+  repairHint?: string | null,
+): ChannelComposerPromptParts {
+  return buildChannelComposerPromptParts({
+    channel: "instagram",
+    writingContract: [
+      INSTAGRAM_WRITING_CONTRACT,
+      formatCorePackPromptBlock(input),
+      formatQualityRevisionPromptBlock(
+        input.qualityRevision,
+        input.storyLock?.editorialArchetype,
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    composerInput: input,
+    repairHint,
+  });
 }
 
 type ParsedInstagram = {
@@ -87,6 +76,85 @@ function asStringArray(value: unknown, limit: number): string[] {
     .slice(0, limit);
 }
 
+function normalizeCardPlan(
+  raw: unknown,
+  fallbackHeadlines: string[],
+): PublishableInstagramCardPlan[] | undefined {
+  const cards: PublishableInstagramCardPlan[] = [];
+  if (Array.isArray(raw)) {
+    for (let i = 0; i < Math.min(SLIDE_MAX, raw.length); i++) {
+      const row = raw[i];
+      if (!row || typeof row !== "object") continue;
+      const c = row as Record<string, unknown>;
+      const headline =
+        typeof c.headline === "string" ? stripEvidenceIdsFromText(c.headline).slice(0, 80) : "";
+      if (!headline) continue;
+      const roleRaw = typeof c.role === "string" ? c.role : "";
+      const role: PublishableInstagramCardPlan["role"] =
+        roleRaw === "cover" ||
+        roleRaw === "information" ||
+        roleRaw === "evidence" ||
+        roleRaw === "cta"
+          ? roleRaw
+          : i === 0
+            ? "cover"
+            : "information";
+      const visualIntent =
+        typeof c.visualIntent === "string"
+          ? stripEvidenceIdsFromText(c.visualIntent).slice(0, 400)
+          : "";
+      const evidenceRefs = asStringArray(c.evidenceRefs, 8);
+      let visual: PublishableInstagramCardPlan["visual"];
+      if (c.visual && typeof c.visual === "object") {
+        const v = c.visual as Record<string, unknown>;
+        const visualId =
+          typeof v.visualId === "string" && /^social_visual_\d{2,}$/.test(v.visualId.trim())
+            ? v.visualId.trim()
+            : stableSocialVisualId(i + 1);
+        const mode =
+          typeof v.visualMode === "string" && v.visualMode.trim()
+            ? (stripEvidenceIdsFromText(v.visualMode).slice(0, 64) as InstagramVisualMode | string)
+            : "typography";
+        visual = {
+          visualId,
+          visualMode: mode,
+          generatedVisualNeeded: Boolean(v.generatedVisualNeeded),
+          reusableOnThreads: Boolean(v.reusableOnThreads),
+          visualIntent:
+            typeof v.visualIntent === "string"
+              ? stripEvidenceIdsFromText(v.visualIntent).slice(0, 400)
+              : visualIntent,
+        };
+      }
+      cards.push({
+        cardId:
+          typeof c.cardId === "string" && c.cardId.trim()
+            ? c.cardId.trim().slice(0, 64)
+            : `card-${String(i + 1).padStart(2, "0")}`,
+        role,
+        headline,
+        body: typeof c.body === "string" ? stripEvidenceIdsFromText(c.body).slice(0, 400) : "",
+        visualIntent,
+        evidenceRefs,
+        visual,
+      });
+    }
+  }
+
+  if (cards.length === 0 && fallbackHeadlines.length >= SLIDE_MIN) {
+    return fallbackHeadlines.slice(0, SLIDE_MAX).map((headline, i) => ({
+      cardId: `card-${String(i + 1).padStart(2, "0")}`,
+      role: (i === 0 ? "cover" : "information") as PublishableInstagramCardPlan["role"],
+      headline,
+      body: "",
+      visualIntent: "",
+      evidenceRefs: [],
+    }));
+  }
+
+  return cards.length >= SLIDE_MIN ? cards : undefined;
+}
+
 export function parseInstagramJson(raw: string): ParsedInstagram | null {
   const trimmed = raw.trim();
   const start = trimmed.indexOf("{");
@@ -98,10 +166,18 @@ export function parseInstagramJson(raw: string): ParsedInstagram | null {
     if (!body) return null;
 
     const slideHeadlines = asStringArray(parsed.slideHeadlines, SLIDE_MAX);
+    const cardPlan = normalizeCardPlan(parsed.cardPlan, slideHeadlines);
+    const headlinesFromPlan = cardPlan?.map((c) => c.headline) ?? [];
+    const resolvedHeadlines =
+      headlinesFromPlan.length >= SLIDE_MIN
+        ? headlinesFromPlan
+        : slideHeadlines.length
+          ? slideHeadlines
+          : [];
+
     const declaredHashtags = asStringArray(parsed.hashtags, INSTAGRAM_HASHTAG_MAX).map((tag) =>
       tag.startsWith("#") ? tag : `#${tag.replace(/^#+/, "")}`,
     );
-    // The caption is the source of truth for what actually publishes.
     const hashtags = declaredHashtags.length ? declaredHashtags : extractInstagramHashtags(body);
 
     const hook =
@@ -109,17 +185,21 @@ export function parseInstagramJson(raw: string): ParsedInstagram | null {
         ? stripEvidenceIdsFromText(parsed.hook)
         : body.split(/\n/)[0] ?? "";
 
+    const aspectRatio = parsed.aspectRatio === "1:1" ? "1:1" : "4:5";
+
     return {
       body,
       meta: {
         hook,
         hashtags,
-        slideHeadlines,
+        slideHeadlines: resolvedHeadlines,
         cta: typeof parsed.cta === "string" && parsed.cta.trim() ? stripEvidenceIdsFromText(parsed.cta) : null,
         altText:
           typeof parsed.altText === "string" && parsed.altText.trim()
             ? stripEvidenceIdsFromText(parsed.altText)
             : null,
+        aspectRatio,
+        cardPlan,
       },
     };
   } catch {
@@ -127,7 +207,7 @@ export function parseInstagramJson(raw: string): ParsedInstagram | null {
   }
 }
 
-/** Slide overlays must fit the card and cover more than one point. */
+/** Slide overlays must fit the card; prefer smallest sufficient count. */
 export function slideHeadlineIssues(slideHeadlines: string[]): string[] {
   const issues: string[] = [];
   if (slideHeadlines.length < SLIDE_MIN) issues.push("slides_too_few");
@@ -158,6 +238,9 @@ function wrap(input: {
   const validation = validatePublishableText(input.body, { channel: "instagram" });
   const publishableSuccess =
     input.composer === "llm" && input.status === "generated" && validation.ok;
+  const compositionMode =
+    input.composerInput.compositionMode ??
+    (input.composerInput.approvedCanonicalAsset ? "approved_asset_adapter" : "legacy_proposition_driven");
   return {
     contract: PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
     channel: "instagram",
@@ -182,6 +265,10 @@ function wrap(input: {
       failureMessage: input.failureMessage ?? null,
       propositionStrength: input.composerInput.contentProposition?.propositionStrength ?? null,
       proposition: buildPropositionProvenance(input.composerInput),
+      compositionMode,
+      inputAuthorityVersion: input.composerInput.approvedCanonicalAsset
+        ? CHANNEL_INPUT_AUTHORITY_VERSION
+        : null,
     },
     validation,
     publishableSuccess,
@@ -225,7 +312,7 @@ export async function composeInstagramPublishableContent(input: {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
       channel: "instagram",
-      buildPrompt: (hint) => buildPrompt(input.composerInput, hint),
+      buildPrompt: (hint) => buildInstagramPrompt(input.composerInput, hint),
       parseAndValidate: (raw) => {
         const parsed = parseInstagramJson(raw);
         if (!parsed) {

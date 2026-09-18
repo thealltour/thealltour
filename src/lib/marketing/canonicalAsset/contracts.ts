@@ -88,6 +88,8 @@ export type CanonicalAssetWriterInput = {
   audienceTension: string;
   curiosityGap: string;
   readerPayoff: string;
+  /** Exact upstream Story archetype; null for legacy / unknown. Never invent. */
+  editorialArchetype: string | null;
   storySupportVerdict: string;
   supportedClaimBoundary: string | null;
   evidenceBriefRef: string | null;

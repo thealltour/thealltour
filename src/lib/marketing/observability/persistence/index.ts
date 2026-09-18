@@ -39,3 +39,8 @@ export {
   createTestDurableMarketingTraceStack,
   type ResolveMarketingTraceRecorderOptions,
 } from "@/lib/marketing/observability/persistence/factory";
+export {
+  reapStaleRunningMarketingTraces,
+  type ReapStaleRunningMarketingTracesResult,
+  type ReapStaleDbClient,
+} from "@/lib/marketing/observability/persistence/reapStaleRunning";

@@ -185,7 +185,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         context.governance.blockKind === "pipeline_blocked_without_governance" ? (
           <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
             후보가 blocked이지만 AI 거버넌스 판정은 없습니다(품질·완성도 게이트에서 중단된 경우가 많습니다).
-            Body 품질이 낮으면 채널 탭에서 Content Strategist 재생성을 먼저 시도하세요. 일반 후보자 승인은
+            Body 품질이 낮으면 채널 탭에서 Channel Editor 재생성을 먼저 시도하세요. 일반 후보자 승인은
             이 상태에서는 비활성입니다.
           </AdminCard>
         ) : null}
@@ -421,7 +421,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         <AdminCard className="space-y-3 p-4">
           <h2 className="text-base font-semibold">2. 채널별 검토</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            전 채널 탭을 표시합니다. 미생성 채널은 Content Strategist 재생성으로 채울 수 있습니다. 채널
+            전 채널 탭을 표시합니다. 미생성 채널은 채널 탭의 [생성]으로 개별 생성하세요. 채널
             저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
           </p>
           <MarketingReviewChannelChecklist

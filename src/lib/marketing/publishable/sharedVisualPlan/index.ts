@@ -31,6 +31,7 @@ export {
   computeSourceChannelSnapshotFingerprint,
   sourceChannelSnapshotsEqual,
   parseSourceChannelSnapshot,
+  isChannelPresentForVisualPlanning,
   type SourceChannelSnapshot,
   type SourceChannelSnapshotEntry,
   type SourceChannelSnapshotKey,

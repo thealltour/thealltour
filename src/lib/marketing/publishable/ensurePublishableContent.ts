@@ -411,7 +411,16 @@ export async function ensurePublishableContent(
       resolvedChannels.set(channel, prev);
       continue;
     }
-    if (targetChannels.includes(channel)) planChannel(channel);
+    if (targetChannels.includes(channel)) {
+      planChannel(channel);
+      continue;
+    }
+    // Preserve previously generated optional siblings even when the current
+    // contentPlan/targetChannels omit them (e.g. Threads regenerate must not
+    // wipe an existing Instagram slot from publishable-content.json).
+    if (prev && prev.status !== "not_generated") {
+      resolvedChannels.set(channel, prev);
+    }
   }
 
   const composed = await runWithConcurrency(
@@ -445,6 +454,17 @@ export async function ensurePublishableContent(
     bundle[channel] =
       freshlyComposed.has(channel) && !humanOwned.has(channel) ? stampBlock(content) : content;
   }
+
+  // Persist targetChannels must reflect every optional slot that actually has content,
+  // so subsequent scoped regenerates keep planning/preserving Instagram etc.
+  const persistedTargets = new Set<PublishableChannel>(targetChannels);
+  for (const channel of optionalChannels) {
+    const slot = bundle[channel];
+    if (slot && slot.status !== "not_generated" && (slot.body?.trim() || slot.instagramMeta?.cardPlan?.length)) {
+      persistedTargets.add(channel);
+    }
+  }
+  bundle.targetChannels = [...persistedTargets];
 
   if (approvedAsset) {
     const approvedVersion = approvedAsset.approvedVersion ?? approvedAsset.version;
@@ -522,17 +542,32 @@ export async function ensurePublishableContent(
           shortform: channelForPersist("shortform", bundle.shortform, existing?.shortform),
           naver_blog: bundle.naver_blog
             ? channelForPersist("naver_blog", bundle.naver_blog, existing?.naver_blog)
-            : bundle.naver_blog,
+            : existing?.naver_blog,
           naver_band: bundle.naver_band
             ? channelForPersist("naver_band", bundle.naver_band, existing?.naver_band)
-            : bundle.naver_band,
+            : existing?.naver_band,
           kakao_channel: bundle.kakao_channel
             ? channelForPersist("kakao_channel", bundle.kakao_channel, existing?.kakao_channel)
-            : bundle.kakao_channel,
+            : existing?.kakao_channel,
+          // Critical: omit → undefined previously wiped Instagram from disk when
+          // Threads/Blog regenerate ran without instagram in targetChannels.
           instagram: bundle.instagram
             ? channelForPersist("instagram", bundle.instagram, existing?.instagram)
-            : bundle.instagram,
+            : existing?.instagram,
         };
+        // Recompute targetChannels after optional carry-forward from existing.
+        const persistTargets = new Set<PublishableChannel>(persistBundle.targetChannels ?? []);
+        for (const channel of ["naver_blog", "naver_band", "kakao_channel", "instagram"] as const) {
+          const slot = persistBundle[channel];
+          if (
+            slot &&
+            slot.status !== "not_generated" &&
+            (slot.body?.trim() || (slot.instagramMeta?.cardPlan?.length ?? 0) > 0)
+          ) {
+            persistTargets.add(channel);
+          }
+        }
+        persistBundle.targetChannels = [...persistTargets];
         persistPublishableContentBundle({
           packageRoot: input.packageRoot,
           bundle: persistBundle,

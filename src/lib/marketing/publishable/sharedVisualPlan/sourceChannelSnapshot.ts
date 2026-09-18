@@ -43,11 +43,24 @@ function hashPayload(payload: unknown): string {
   return createHash("sha256").update(JSON.stringify(payload), "utf8").digest("hex").slice(0, 32);
 }
 
-function isGeneratedChannel(slot: PublishableChannelContent | null | undefined): boolean {
+/**
+ * Shared Visual Planner presence: channel content exists for planning input.
+ * Body OR card structure is enough — do NOT require Worker visual hints.
+ */
+export function isChannelPresentForVisualPlanning(
+  slot: PublishableChannelContent | null | undefined,
+): boolean {
   if (!slot) return false;
   if (slot.status === "not_generated") return false;
-  if (!slot.body?.trim() && !(slot.instagramMeta?.cardPlan?.length ?? 0)) return false;
-  return true;
+  if (slot.body?.trim()) return true;
+  if ((slot.instagramMeta?.cardPlan?.length ?? 0) > 0) return true;
+  // needs_review / generated / validation_failed with empty body still absent
+  return false;
+}
+
+/** @deprecated Use isChannelPresentForVisualPlanning — name kept for local callers. */
+function isGeneratedChannel(slot: PublishableChannelContent | null | undefined): boolean {
+  return isChannelPresentForVisualPlanning(slot);
 }
 
 /**

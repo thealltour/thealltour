@@ -1,11 +1,15 @@
 /**
  * Build Shared Visual Planner LLM input from Canonical + present channel outputs.
  * Channel Worker visual metadata is nested under visualHints (advisory only).
+ * Presence = channel content exists (body or cardPlan) — not Worker visual hints.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
-import { buildSourceChannelSnapshot } from "@/lib/marketing/publishable/sharedVisualPlan/sourceChannelSnapshot";
+import {
+  buildSourceChannelSnapshot,
+  isChannelPresentForVisualPlanning,
+} from "@/lib/marketing/publishable/sharedVisualPlan/sourceChannelSnapshot";
 
 function clip(text: string | null | undefined, max = 1200): string | null {
   const t = (text ?? "").trim();
@@ -33,7 +37,7 @@ export function buildSharedVisualPlannerInput(input: {
   const bundle = input.bundle;
   const channels: Record<string, unknown> = {};
 
-  if (bundle.threads?.status !== "not_generated" && bundle.threads?.body?.trim()) {
+  if (isChannelPresentForVisualPlanning(bundle.threads)) {
     const mediaPlan = bundle.threads.mediaPlan ?? null;
     channels.threads = {
       content: {
@@ -61,11 +65,13 @@ export function buildSharedVisualPlannerInput(input: {
           },
     };
   }
-  if (bundle.instagram?.status !== "not_generated" && bundle.instagram?.body?.trim()) {
+
+  if (isChannelPresentForVisualPlanning(bundle.instagram)) {
+    const cards = bundle.instagram!.instagramMeta?.cardPlan ?? [];
     channels.instagram = {
       content: {
-        caption: clip(bundle.instagram.body, 800),
-        cards: (bundle.instagram.instagramMeta?.cardPlan ?? []).map((c) => ({
+        caption: clip(bundle.instagram!.body, 800),
+        cards: cards.map((c) => ({
           cardId: c.cardId,
           role: c.role,
           headline: clip(c.headline, 200),
@@ -74,7 +80,7 @@ export function buildSharedVisualPlannerInput(input: {
         })),
       },
       visualHints: {
-        cards: (bundle.instagram.instagramMeta?.cardPlan ?? []).map((c) => ({
+        cards: cards.map((c) => ({
           cardId: c.cardId,
           sourceVisualId: c.visual?.visualId ?? null,
           visualMode: c.visual?.visualMode ?? null,
@@ -82,19 +88,20 @@ export function buildSharedVisualPlannerInput(input: {
           reusableOnThreads: c.visual?.reusableOnThreads ?? null,
           visualIntent: c.visual?.visualIntent ?? c.visualIntent ?? null,
         })),
-        note: "generatedVisualNeeded/visualMode/reusableOn*/sourceVisualId are advisory only",
+        note: "generatedVisualNeeded/visualMode/reusableOn*/sourceVisualId are advisory only — card content alone is enough for planning",
       },
     };
   }
-  if (bundle.naver_blog?.status !== "not_generated" && bundle.naver_blog?.body?.trim()) {
+
+  if (isChannelPresentForVisualPlanning(bundle.naver_blog)) {
     channels.naver_blog = {
       content: {
-        title: clip(bundle.naver_blog.title, 200),
-        body: clip(bundle.naver_blog.body, 600),
-        blogMeta: bundle.naver_blog.blogMeta
+        title: clip(bundle.naver_blog!.title, 200),
+        body: clip(bundle.naver_blog!.body, 600),
+        blogMeta: bundle.naver_blog!.blogMeta
           ? {
-              searchIntent: bundle.naver_blog.blogMeta.searchIntent,
-              sectionPlan: bundle.naver_blog.blogMeta.sectionPlan,
+              searchIntent: bundle.naver_blog!.blogMeta.searchIntent,
+              sectionPlan: bundle.naver_blog!.blogMeta.sectionPlan,
             }
           : null,
       },
@@ -103,25 +110,28 @@ export function buildSharedVisualPlannerInput(input: {
       },
     };
   }
-  if (bundle.naver_band?.status !== "not_generated" && bundle.naver_band?.body?.trim()) {
+
+  if (isChannelPresentForVisualPlanning(bundle.naver_band)) {
     channels.naver_band = {
       content: {
-        title: clip(bundle.naver_band.title, 200),
-        body: clip(bundle.naver_band.body, 500),
+        title: clip(bundle.naver_band!.title, 200),
+        body: clip(bundle.naver_band!.body, 500),
       },
       visualHints: { note: "No visual attachment contract — omit Band from usages" },
     };
   }
-  if (bundle.kakao_channel?.status !== "not_generated" && bundle.kakao_channel?.body?.trim()) {
+
+  if (isChannelPresentForVisualPlanning(bundle.kakao_channel)) {
     channels.kakao_channel = {
       content: {
-        title: clip(bundle.kakao_channel.title, 200),
-        body: clip(bundle.kakao_channel.body, 500),
+        title: clip(bundle.kakao_channel!.title, 200),
+        body: clip(bundle.kakao_channel!.body, 500),
       },
       visualHints: { note: "No visual attachment contract — omit Kakao from usages" },
     };
   }
-  if (bundle.shortform?.status !== "not_generated" && bundle.shortform?.body?.trim()) {
+
+  if (isChannelPresentForVisualPlanning(bundle.shortform)) {
     channels.shortform = {
       content: {
         body: clip(bundle.shortform.body, 500),

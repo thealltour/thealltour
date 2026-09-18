@@ -1,0 +1,206 @@
+/**
+ * Build Shared Visual Planner LLM input from Canonical + present channel outputs.
+ * Channel Worker visual metadata is nested under visualHints (advisory only).
+ */
+
+import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
+import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import { buildSourceChannelSnapshot } from "@/lib/marketing/publishable/sharedVisualPlan/sourceChannelSnapshot";
+
+function clip(text: string | null | undefined, max = 1200): string | null {
+  const t = (text ?? "").trim();
+  if (!t) return null;
+  return t.length > max ? `${t.slice(0, max)}…` : t;
+}
+
+const VISUAL_HINTS_AUTHORITY_NOTE =
+  "visualHints are non-authoritative suggestions from channel adapters. " +
+  "You may ignore, merge, split, override, or replace them when designing the " +
+  "cross-channel master visual strategy. Channel content (title/body/cards) is primary input.";
+
+export function buildSharedVisualPlannerInput(input: {
+  approvedAsset: CanonicalMarketingAsset;
+  bundle: PublishableContentBundle;
+}): {
+  task: "shared_visual_plan";
+  authority: Record<string, string>;
+  canonical: Record<string, unknown>;
+  channels: Record<string, unknown>;
+  sourceChannelSnapshot: ReturnType<typeof buildSourceChannelSnapshot>;
+  outputSchema: Record<string, unknown>;
+} {
+  const asset = input.approvedAsset;
+  const bundle = input.bundle;
+  const channels: Record<string, unknown> = {};
+
+  if (bundle.threads?.status !== "not_generated" && bundle.threads?.body?.trim()) {
+    const mediaPlan = bundle.threads.mediaPlan ?? null;
+    channels.threads = {
+      content: {
+        title: clip(bundle.threads.title, 200),
+        body: clip(bundle.threads.body, 800),
+      },
+      visualHints: mediaPlan
+        ? {
+            recommended: Boolean(mediaPlan.recommended),
+            imageCount: mediaPlan.imageCount ?? 0,
+            requests: (mediaPlan.visuals ?? []).map((v, i) => ({
+              slotIndex: i,
+              sourceVisualId: v.visualId ?? null,
+              role: v.role ?? null,
+              visualIntent: v.visualIntent ?? null,
+              reusableOnInstagram: Boolean(v.reusableOnInstagram),
+            })),
+            note: "imageCount/recommended/sourceVisualId/reusableOn* are advisory only",
+          }
+        : {
+            recommended: false,
+            imageCount: 0,
+            requests: [],
+            note: "no worker mediaPlan — Planner may still assign Threads slot 0 when useful",
+          },
+    };
+  }
+  if (bundle.instagram?.status !== "not_generated" && bundle.instagram?.body?.trim()) {
+    channels.instagram = {
+      content: {
+        caption: clip(bundle.instagram.body, 800),
+        cards: (bundle.instagram.instagramMeta?.cardPlan ?? []).map((c) => ({
+          cardId: c.cardId,
+          role: c.role,
+          headline: clip(c.headline, 200),
+          body: clip(c.body, 400),
+          cardVisualIntent: c.visualIntent ?? null,
+        })),
+      },
+      visualHints: {
+        cards: (bundle.instagram.instagramMeta?.cardPlan ?? []).map((c) => ({
+          cardId: c.cardId,
+          sourceVisualId: c.visual?.visualId ?? null,
+          visualMode: c.visual?.visualMode ?? null,
+          generatedVisualNeeded: c.visual?.generatedVisualNeeded ?? null,
+          reusableOnThreads: c.visual?.reusableOnThreads ?? null,
+          visualIntent: c.visual?.visualIntent ?? c.visualIntent ?? null,
+        })),
+        note: "generatedVisualNeeded/visualMode/reusableOn*/sourceVisualId are advisory only",
+      },
+    };
+  }
+  if (bundle.naver_blog?.status !== "not_generated" && bundle.naver_blog?.body?.trim()) {
+    channels.naver_blog = {
+      content: {
+        title: clip(bundle.naver_blog.title, 200),
+        body: clip(bundle.naver_blog.body, 600),
+        blogMeta: bundle.naver_blog.blogMeta
+          ? {
+              searchIntent: bundle.naver_blog.blogMeta.searchIntent,
+              sectionPlan: bundle.naver_blog.blogMeta.sectionPlan,
+            }
+          : null,
+      },
+      visualHints: {
+        note: "No formal hero placement contract yet — do not invent Blog usages",
+      },
+    };
+  }
+  if (bundle.naver_band?.status !== "not_generated" && bundle.naver_band?.body?.trim()) {
+    channels.naver_band = {
+      content: {
+        title: clip(bundle.naver_band.title, 200),
+        body: clip(bundle.naver_band.body, 500),
+      },
+      visualHints: { note: "No visual attachment contract — omit Band from usages" },
+    };
+  }
+  if (bundle.kakao_channel?.status !== "not_generated" && bundle.kakao_channel?.body?.trim()) {
+    channels.kakao_channel = {
+      content: {
+        title: clip(bundle.kakao_channel.title, 200),
+        body: clip(bundle.kakao_channel.body, 500),
+      },
+      visualHints: { note: "No visual attachment contract — omit Kakao from usages" },
+    };
+  }
+  if (bundle.shortform?.status !== "not_generated" && bundle.shortform?.body?.trim()) {
+    channels.shortform = {
+      content: {
+        body: clip(bundle.shortform.body, 500),
+        narrationSegments: (bundle.shortform.narrationSegments ?? []).slice(0, 8).map((s, i) => ({
+          i,
+          segmentId: s.segmentId,
+          text: clip(s.narrationText, 160),
+          visualIntent: clip(s.visualIntent, 120),
+        })),
+      },
+      visualHints: { note: "No shared-static attachment contract — omit Shortform from usages" },
+    };
+  }
+
+  return {
+    task: "shared_visual_plan",
+    authority: {
+      finalVisualAuthority: "shared_visual_planner",
+      channelVisualMetadata: "advisory_hint_only",
+      evidenceAuthority: "approved_canonical",
+      visualHintsNote: VISUAL_HINTS_AUTHORITY_NOTE,
+    },
+    canonical: {
+      titleKo: asset.titleKo ?? null,
+      openingHookKo: asset.openingHookKo ?? null,
+      bodyKo: clip(asset.bodyKo, 1600),
+      keyTakeawaysKo: asset.keyTakeawaysKo ?? null,
+      decisionGuidanceKo: asset.decisionGuidanceKo ?? null,
+      editorialArchetype: asset.editorialArchetype ?? null,
+      supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo ?? null,
+      limitationsKo: asset.limitationsKo ?? null,
+      forbiddenClaimsKo: asset.forbiddenClaimsKo ?? null,
+      supportVerdict: asset.storySupportVerdict ?? null,
+    },
+    channels,
+    sourceChannelSnapshot: buildSourceChannelSnapshot(bundle),
+    outputSchema: {
+      strategySummary: "string — why this smallest sufficient set",
+      visuals: [
+        {
+          role: "string e.g. context_cover | subject_detail | architecture_detail",
+          visualMode:
+            "editorial_photo | object_or_detail | icon_infographic | contrast_diagram | map_context | fact_card | evidence_boundary | minimal_closing",
+          generatedVisualNeeded: "boolean — YOUR decision, not Worker hint",
+          visualIntent:
+            "concrete editorial brief: subject + context + purpose + composition + evidence limits",
+          usages: [
+            { channel: "threads", slotIndex: 0 },
+            { channel: "instagram", cardId: "card-01" },
+          ],
+        },
+      ],
+    },
+  };
+}
+
+export function formatSharedVisualPlannerPrompt(
+  plannerInput: ReturnType<typeof buildSharedVisualPlannerInput>,
+): string {
+  return [
+    "TASK: Design the smallest sufficient Shared Visual Plan for the channel outputs below.",
+    "",
+    "AUTHORITY:",
+    "- You are the sole final editorial authority for the cross-channel visual plan.",
+    "- Channel visualHints are ADVISORY ONLY — not hard constraints.",
+    "- You MAY ignore, merge, split, override, or replace visualHints.",
+    "- You MAY choose a different master count than Threads imageCount.",
+    "- You MAY override generatedVisualNeeded / visualMode / reusable flags.",
+    "- You MAY add a justified master visual based on actual channel content even if Worker omitted a hint.",
+    "- You MUST NOT invent nonexistent channel slots/cardIds.",
+    "- You MUST NOT invent factual claims beyond Canonical evidence boundaries.",
+    "- Do NOT treat Worker sourceVisualId as master identity (IDs are assigned downstream).",
+    "",
+    "Return ONLY JSON: { strategySummary: string, visuals: [...] }",
+    "Supported usages ONLY: threads.slotIndex (0-based; currently slot 0 when Threads content exists) or instagram.cardId that exists in content.cards.",
+    "Do not invent Blog/Band/Kakao/Shortform usages.",
+    "visualIntent must be concrete — reject vague intents.",
+    "",
+    "INPUT_JSON:",
+    JSON.stringify(plannerInput, null, 2),
+  ].join("\n");
+}

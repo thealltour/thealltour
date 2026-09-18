@@ -7,7 +7,7 @@ import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 
 export const MARKETING_VALUE_ASSESSMENT_CONTRACT = "marketing-value-assessment-v1" as const;
 export const MARKETING_VALUE_BUNDLE_CONTRACT = "marketing-value-bundle-v1" as const;
-export const MARKETING_VALUE_EVALUATOR_VERSION = "mq5-deterministic-v1" as const;
+export const MARKETING_VALUE_EVALUATOR_VERSION = "mq5-deterministic-v1.1" as const;
 
 export const MARKETING_VALUE_VERDICTS = [
   "strong",

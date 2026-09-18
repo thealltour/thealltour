@@ -61,7 +61,6 @@ import {
   evaluateBundleChannels,
   persistMarketingValueBundle,
 } from "@/lib/marketing/value";
-
 export type EnsurePublishableContentInput = {
   candidate: CompletedMarketingCandidate;
   packageRoot?: string | null;
@@ -503,7 +502,10 @@ export async function ensurePublishableContent(
     proposition: composerInput.contentProposition,
     researchVerdict: acrb?.researchVerdict ?? null,
     usableFacts: composerInput.usableFacts.map((f) => f.statement),
-    editorialArchetype: composerInput.storyLock?.editorialArchetype ?? null,
+    editorialArchetype:
+      composerInput.storyLock?.editorialArchetype ??
+      composerInput.approvedCanonicalAsset?.editorialArchetype ??
+      null,
     now,
   });
   const scoredBundle = attachAssessmentsToPublishableBundle(bundle, assessments);
@@ -571,6 +573,10 @@ export async function ensurePublishableContent(
             createdAt: nowIso,
           });
         }
+
+        // Shared Visual Plan / Astra Handoff are explicit operator stages.
+        // Channel persist must NOT auto-rebuild them; existing artifacts become stale
+        // via sourceChannelSnapshot mismatch on next read.
       }
     } catch {
       /* best-effort persist */

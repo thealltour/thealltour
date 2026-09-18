@@ -54,3 +54,72 @@ export {
   applyPublishableContentToMediaBrief,
   buildThreadsPostText,
 } from "@/lib/marketing/publishable/applyToMediaBrief";
+export {
+  SHARED_VISUAL_PLAN_CONTRACT,
+  SHARED_VISUAL_PLAN_RELATIVE_PATH,
+  buildSharedVisualPlan,
+  readSharedVisualPlan,
+  persistSharedVisualPlan,
+  computeVisualPlanFingerprint,
+  isSharedVisualPlanStale,
+} from "@/lib/marketing/publishable/sharedVisualPlan";
+export {
+  MANUAL_ASTRA_HANDOFF_CONTRACT,
+  MANUAL_ASTRA_HANDOFF_RELATIVE_PATH,
+  buildManualAstraHandoff,
+  readManualAstraHandoff,
+  persistManualAstraHandoff,
+  isManualAstraHandoffStale,
+} from "@/lib/marketing/publishable/manualAstraHandoff";
+export {
+  SHARED_VISUAL_ASSETS_CONTRACT,
+  SHARED_VISUAL_ASSETS_RELATIVE_PATH,
+  SHARED_VISUAL_MEDIA_DIR,
+  MAX_SHARED_VISUAL_UPLOAD_BYTES,
+  computeManualAstraHandoffFingerprint,
+  getSharedVisualUploadStatus,
+  isSharedVisualAssetsStale,
+  isManualAstraHandoffSourceStale,
+  formatUsageLine,
+  parseSharedVisualAssetsManifest,
+  readSharedVisualAssetsManifest,
+  persistSharedVisualAssetsManifest,
+  upsertSharedVisualAsset,
+  uploadSharedVisualAsset,
+  validateSharedVisualUploadBytes,
+  sharedVisualStoredRelativePath,
+  SharedVisualUploadError,
+} from "@/lib/marketing/publishable/sharedVisualAssets";
+export {
+  buildInstagramRendererVisualMap,
+  buildInstagramRendererVisualMapSafe,
+  resolveThreadsSharedVisualAssets,
+  isSharedVisualAssetsManifestStaleVsPlan,
+  normalizeSharedVisualToPngPath,
+  type InstagramRendererVisualMapResult,
+  type ThreadsSharedVisualResolveResult,
+  type ResolvedThreadsSharedVisual,
+} from "@/lib/marketing/publishable/sharedVisualDelivery";
+export {
+  refreshDerivedVisualArtifacts,
+  approvedAssetToManualAstraContext,
+  type DerivedVisualArtifactsRefreshResult,
+} from "@/lib/marketing/publishable/refreshDerivedVisualArtifacts";
+export {
+  SHARED_VISUAL_PLANNER_HERMES_PROFILE,
+  ASTRA_HANDOFF_WRITER_HERMES_PROFILE,
+  ensureSharedVisualPlannerHermesReady,
+  ensureAstraHandoffWriterHermesReady,
+  generateSharedVisualPlanWithLlm,
+  generateManualAstraHandoffWithLlm,
+  materializeSharedVisualPlanFromLlm,
+  materializeManualAstraHandoffFromLlm,
+  resolveSharedVisualPlanLifecycle,
+  resolveManualAstraHandoffLifecycle,
+  lifecycleLabelKo,
+  type VisualArtifactLifecycleStatus,
+} from "@/lib/marketing/publishable/visualOrchestration";
+export {
+  buildSourceChannelSnapshot,
+  computePlanSourceFingerprintFromBundle,
+} from "@/lib/marketing/publishable/sharedVisualPlan";

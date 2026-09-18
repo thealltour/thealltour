@@ -49,6 +49,7 @@ body = full caption including hook and hashtags, max ${INSTAGRAM_CAPTION_MAX_CHA
 Instagram hides everything after the first ${INSTAGRAM_HOOK_VISIBLE_CHARS} characters — hook MUST be a complete, standalone reason to tap "more".
 Open with the hook. Do not open with hashtags, emoji rows, or a greeting.
 hashtags: ${INSTAGRAM_HASHTAG_MIN}–${INSTAGRAM_HASHTAG_MAX} specific tags. No generic filler stacks.
+Put the same ${INSTAGRAM_HASHTAG_MIN}+ hashtags in BOTH the hashtags array AND at the end of body (caption validation reads body).
 Never write '링크 클릭', '아래 링크', or a raw https:// URL.
 
 CTA (optional):
@@ -58,13 +59,32 @@ Decision/practical: save checks, compare, verify, consult, ask — when grounded
 desiredAudienceAction / engagementMechanism are advisory; approved Canonical + editorialArchetype win.
 
 VISUAL PLANNING (planning only — NO image generation):
-Each card may carry visual metadata:
-- visualId: stable social_visual_01, social_visual_02, … (shared with Threads when reusable)
-- visualMode: typography | editorial_photo | object_or_detail | icon_infographic | contrast_diagram | map_context | fact_card | evidence_boundary | minimal_closing
-- generatedVisualNeeded: true only when an external editorial visual would help (still planning only)
-- reusableOnThreads: true when Threads mediaPlan can reuse the same visualId
-Evidence-safe: do not request unverified village/activity/service visuals or invented documentary proof.
-Distinguish representational vs illustrative vs infographic intent.
+Goal: hybrid editorial carousel — NOT all-local, NOT all-Astra.
+Some cards use external editorial visuals; others stay typography / infographic / evidence local-render.
+
+Each card MUST include visual metadata with an explicit boolean generatedVisualNeeded (required — do not omit).
+
+visualMode guidance:
+- External visual candidates (usually generatedVisualNeeded=true when evidence-safe):
+  editorial_photo | object_or_detail
+- Local-render candidates (usually generatedVisualNeeded=false):
+  typography | icon_infographic | contrast_diagram | map_context | fact_card | evidence_boundary | minimal_closing
+
+Decision rules:
+- If visualMode is editorial_photo or object_or_detail AND an external visual materially improves comprehension/editorial quality → generatedVisualNeeded=true (default for those modes when evidence-safe).
+- Cover/context cards on travel discovery / cultural curiosity Stories with a concrete place or environment → prefer editorial_photo + generatedVisualNeeded=true.
+- Named architecture / object / environmental detail (e.g. traditional house form) → prefer object_or_detail + generatedVisualNeeded=true when evidence-safe.
+- Contrast / explainer / evidence-boundary / limitation / payoff / closing → usually local-render + generatedVisualNeeded=false.
+- Typical 4–6 card discovery carousel: often 1–3 external visuals; remaining cards local. This is guidance, not a quota.
+- Invalid extremes: every card generatedVisualNeeded=true; OR every card false despite clear visual subjects (cover atmosphere, architecture/detail).
+
+Evidence safety (does NOT force all cards to false):
+- Prefer generic regional mountain/border atmosphere, architectural detail of verified concepts, non-documentary illustrative framing.
+- Avoid: unverified specific village identity; invented tourist activities; staged "authentic daily life" documentary claims; unsupported ceremonial/costume scenes.
+- If human cultural depiction is unsafe/uncertain, prefer architecture/environment/detail visual with generatedVisualNeeded=true rather than collapsing everything to typography/false.
+
+reusableOnThreads: true when Threads mediaPlan can reuse the same visualId.
+Do NOT invent provider-specific image-prompt syntax.
 
 JSON only:
 {

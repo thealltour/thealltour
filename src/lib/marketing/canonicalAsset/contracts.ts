@@ -69,6 +69,13 @@ export type CanonicalMarketingAsset = {
   repairCount: number;
   validationIssues: string[];
 
+  /**
+   * Exact Story editorialArchetype locked at ASW generation time.
+   * Optional for legacy packages — never invent when absent.
+   * Not part of Korean body content; used by channel StoryLock / Marketing Value.
+   */
+  editorialArchetype?: string | null;
+
   /** Prior approved channel bundle revisions keyed by sourceAssetVersion (optional). */
   downstreamChannelSourceVersions?: number[];
 };

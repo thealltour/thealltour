@@ -137,6 +137,7 @@ export function parseDurableCanonicalMarketingAsset(
     generatedBy: asString(row.generatedBy) || ASSET_SOURCE_WRITER_ROLE,
     repairCount: typeof row.repairCount === "number" ? Math.max(0, Math.floor(row.repairCount)) : 0,
     validationIssues: asStringArray(row.validationIssues, 24),
+    editorialArchetype: asString(row.editorialArchetype) || null,
     downstreamChannelSourceVersions: Array.isArray(row.downstreamChannelSourceVersions)
       ? row.downstreamChannelSourceVersions.filter((n): n is number => typeof n === "number")
       : undefined,

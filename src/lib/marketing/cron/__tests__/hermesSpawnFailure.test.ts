@@ -80,6 +80,32 @@ describe("hermesSpawnFailure classification", () => {
     ).toThrow("marketing-manager timed out after 180000ms");
   });
 
+  it("rejects exit-0 empty stdout / No LLM provider as false success", () => {
+    expect(() =>
+      assertHermesSpawnSyncSuccess(
+        "channel-editor-instagram",
+        {
+          status: 0,
+          signal: null,
+          error: null,
+          stdout: "",
+          stderr: "hermes -z: agent failed: No LLM provider configured. Run `hermes model`",
+        },
+        180_000,
+      ),
+    ).toThrow(/no usable model output|No LLM provider/i);
+  });
+
+  it("rejects exit-0 HTTP 401 body as false success", () => {
+    expect(() =>
+      assertHermesSpawnSyncSuccess(
+        "channel-editor-threads",
+        { status: 0, signal: null, error: null, stdout: "HTTP 401: unauthorized", stderr: "" },
+        180_000,
+      ),
+    ).toThrow(/no usable model output|HTTP 401/i);
+  });
+
   it("resolveMarketingCronHermesTimeoutMs defaults to 300s and honors env", () => {
     expect(resolveMarketingCronHermesTimeoutMs({}, 180_000)).toBe(180_000);
     expect(resolveMarketingCronHermesTimeoutMs({})).toBe(300_000);
@@ -113,6 +139,8 @@ describe("isRetryableHermesFailure", () => {
       "content-strategist exited 1: 401 unauthorized",
       "content-strategist exited 1: model refused to answer",
       "content-strategist exited 2: invalid prompt",
+      "channel-editor-instagram returned no usable model output (No LLM provider configured)",
+      "channel_editor_hermes_config_missing:channel-editor-instagram",
     ]) {
       expect(isRetryableHermesFailure(new Error(message))).toBe(false);
     }

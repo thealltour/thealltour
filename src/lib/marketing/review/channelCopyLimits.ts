@@ -10,9 +10,11 @@ import type { ReviewablePublishableChannel } from "@/lib/marketing/review/channe
 import {
   INSTAGRAM_CAPTION_MAX_CHARS,
   INSTAGRAM_HOOK_VISIBLE_CHARS,
+  THREADS_BODY_MAX_CHARS,
 } from "@/lib/marketing/publishable/validate";
 
-export const THREADS_BODY_MAX_CHARS = 500;
+/** Re-export publishability SSoT so review UI stays aligned with validate.ts. */
+export { THREADS_BODY_MAX_CHARS };
 export const NAVER_BAND_BODY_MAX_CHARS = 2200;
 export const KAKAO_CHANNEL_BODY_MAX_CHARS = 900;
 export const NAVER_BLOG_TITLE_MAX_CHARS = 100;

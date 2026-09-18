@@ -121,13 +121,18 @@ export type PublishableNarrationSegment = {
  * IG captions carry no clickable link, so the CTA must resolve to profile link /
  * save / comment, and hashtags are a first-class surface rather than decoration.
  *
- * Additive cardPlan / visual fields support Manual Astra handoff planning later.
+ * cardPlan[].visual fields are Channel Worker ADVISORY hints only.
+ * Shared Visual Planner decides final generated vs local, mode, reuse, and master IDs.
  * Renderer-facing CardNewsCard mapping uses role/headline/body/visualIntent only.
  */
 export type PublishableInstagramCardVisualPlan = {
+  /** Request-local / provenance only — NEVER master SharedVisual.visualId. */
   visualId: string;
+  /** Advisory mode preference — Planner may override. */
   visualMode: string;
+  /** Advisory generation preference — NOT final generation authority. */
   generatedVisualNeeded: boolean;
+  /** Advisory reuse hint — Planner may share with Threads anyway when justified. */
   reusableOnThreads: boolean;
   visualIntent: string;
 };
@@ -157,17 +162,23 @@ export type PublishableInstagramMeta = {
 };
 
 /**
- * Optional Threads media planning metadata (planning only — no image generation).
- * Stable visualId values align with Instagram card visuals for later upload mapping.
+ * Optional Threads media planning metadata (Channel Worker advisory hints only).
+ * Shared Visual Planner is the final cross-channel visual authority.
+ * These fields must NOT be treated as hard constraints on master plan count,
+ * generation decisions, reuse, or master visual IDs.
  */
 export type PublishableThreadsMediaPlan = {
+  /** Advisory: Worker thinks visuals may help. Not a usage ban when false. */
   recommended: boolean;
   assetFamily: "social_static";
+  /** Advisory demand estimate — NOT final master visual count. */
   imageCount: number;
   visuals: Array<{
+    /** Request-local / provenance only — NEVER master SharedVisual.visualId. */
     visualId: string;
     role: string;
     visualIntent: string;
+    /** Advisory reuse hint — Planner may share anyway when justified. */
     reusableOnInstagram: boolean;
   }>;
 };

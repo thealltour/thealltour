@@ -82,6 +82,14 @@ export const INSTAGRAM_CAPTION_MAX_CHARS = 2200;
 export const INSTAGRAM_HASHTAG_MIN = 3;
 export const INSTAGRAM_HASHTAG_MAX = 12;
 
+/**
+ * Threads body hard limit — single source of truth for publishability + review UI.
+ * Prefer the preferred band in prompts; never exceed the hard max.
+ */
+export const THREADS_BODY_MAX_CHARS = 500;
+export const THREADS_BODY_PREFERRED_MIN_CHARS = 350;
+export const THREADS_BODY_PREFERRED_MAX_CHARS = 450;
+
 /** Captions render links as plain text, so "링크 클릭" is a dead end for the reader. */
 const INSTAGRAM_LINK_CTA_RE =
   /(?:아래|하단|본문)?\s*링크\s*(?:를\s*)?(?:클릭|눌러|타고|접속)|링크\s*참고|https?:\/\//;
@@ -225,6 +233,15 @@ export function validatePublishableText(
   if (channel === "naver_band") {
     if (trimmed.length > 2200) {
       issues.push({ code: "too_long", message: "Band post excessively long" });
+    }
+  }
+
+  if (channel === "threads") {
+    if (trimmed.length > THREADS_BODY_MAX_CHARS) {
+      issues.push({
+        code: "too_long",
+        message: `Threads body exceeds ${THREADS_BODY_MAX_CHARS} characters (${trimmed.length}/${THREADS_BODY_MAX_CHARS})`,
+      });
     }
   }
 

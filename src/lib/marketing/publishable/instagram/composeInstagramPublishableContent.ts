@@ -32,6 +32,7 @@ import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/c
 import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
 import {
   INSTAGRAM_HASHTAG_MAX,
+  INSTAGRAM_HASHTAG_MIN,
   extractInstagramHashtags,
   stripEvidenceIdsFromText,
   validatePublishableText,
@@ -40,6 +41,50 @@ import {
 const SLIDE_HEADLINE_MAX_CHARS = 28;
 const SLIDE_MIN = 4;
 const SLIDE_MAX = 10;
+
+/**
+ * Models often put tags only in the `hashtags` JSON field while leaving `body` tag-free.
+ * Publishability validates the caption body, so merge declared tags into body when missing.
+ */
+export function mergeInstagramHashtagsIntoBody(
+  body: string,
+  declaredHashtags: string[],
+): { body: string; hashtags: string[] } {
+  const normalize = (tag: string): string => {
+    const trimmed = tag.trim();
+    if (!trimmed) return "";
+    return trimmed.startsWith("#") ? trimmed : `#${trimmed.replace(/^#+/, "")}`;
+  };
+
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of [...extractInstagramHashtags(body), ...declaredHashtags]) {
+    const tag = normalize(raw);
+    if (!tag) continue;
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(tag);
+    if (merged.length >= INSTAGRAM_HASHTAG_MAX) break;
+  }
+
+  const inBody = extractInstagramHashtags(body).map((tag) => tag.toLowerCase());
+  const missing = merged.filter((tag) => !inBody.includes(tag.toLowerCase()));
+  if (missing.length === 0) {
+    return { body, hashtags: merged.length ? merged : extractInstagramHashtags(body) };
+  }
+
+  // Only append when the caption would otherwise fail the minimum hashtag gate.
+  if (inBody.length >= INSTAGRAM_HASHTAG_MIN) {
+    return { body, hashtags: merged.length ? merged : extractInstagramHashtags(body) };
+  }
+
+  const nextBody = `${body.trimEnd()}\n\n${missing.join(" ")}`;
+  return {
+    body: nextBody,
+    hashtags: extractInstagramHashtags(nextBody).slice(0, INSTAGRAM_HASHTAG_MAX),
+  };
+}
 
 function buildInstagramPrompt(
   input: PublishableComposerInput,
@@ -74,6 +119,13 @@ function asStringArray(value: unknown, limit: number): string[] {
     .map((item) => stripEvidenceIdsFromText(item))
     .filter(Boolean)
     .slice(0, limit);
+}
+
+function asExplicitBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (value === "true" || value === "TRUE" || value === 1) return true;
+  if (value === "false" || value === "FALSE" || value === 0) return false;
+  return undefined;
 }
 
 function normalizeCardPlan(
@@ -115,11 +167,14 @@ function normalizeCardPlan(
           typeof v.visualMode === "string" && v.visualMode.trim()
             ? (stripEvidenceIdsFromText(v.visualMode).slice(0, 64) as InstagramVisualMode | string)
             : "typography";
+        // Preserve explicit true/false. Missing → conservative false (prompt requires explicit field).
+        const needed = asExplicitBoolean(v.generatedVisualNeeded) ?? false;
+        const reusable = asExplicitBoolean(v.reusableOnThreads) ?? false;
         visual = {
           visualId,
           visualMode: mode,
-          generatedVisualNeeded: Boolean(v.generatedVisualNeeded),
-          reusableOnThreads: Boolean(v.reusableOnThreads),
+          generatedVisualNeeded: needed,
+          reusableOnThreads: reusable,
           visualIntent:
             typeof v.visualIntent === "string"
               ? stripEvidenceIdsFromText(v.visualIntent).slice(0, 400)
@@ -178,20 +233,20 @@ export function parseInstagramJson(raw: string): ParsedInstagram | null {
     const declaredHashtags = asStringArray(parsed.hashtags, INSTAGRAM_HASHTAG_MAX).map((tag) =>
       tag.startsWith("#") ? tag : `#${tag.replace(/^#+/, "")}`,
     );
-    const hashtags = declaredHashtags.length ? declaredHashtags : extractInstagramHashtags(body);
+    const merged = mergeInstagramHashtagsIntoBody(body, declaredHashtags);
 
     const hook =
       typeof parsed.hook === "string" && parsed.hook.trim()
         ? stripEvidenceIdsFromText(parsed.hook)
-        : body.split(/\n/)[0] ?? "";
+        : merged.body.split(/\n/)[0] ?? "";
 
     const aspectRatio = parsed.aspectRatio === "1:1" ? "1:1" : "4:5";
 
     return {
-      body,
+      body: merged.body,
       meta: {
         hook,
-        hashtags,
+        hashtags: merged.hashtags,
         slideHeadlines: resolvedHeadlines,
         cta: typeof parsed.cta === "string" && parsed.cta.trim() ? stripEvidenceIdsFromText(parsed.cta) : null,
         altText:

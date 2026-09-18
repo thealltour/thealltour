@@ -25,6 +25,8 @@ import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validat
 import { tryReadAudienceContentResearchBriefFromPackage } from "@/lib/marketing/audienceResearch/readPackageAcrb";
 import { generateChannelAsset } from "@/lib/marketing/canonicalAsset/approveAndGenerateChannels";
 import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
+import { readManualAstraHandoff } from "@/lib/marketing/publishable/manualAstraHandoff";
+import { readSharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan";
 
 export const dynamic = "force-dynamic";
 
@@ -261,6 +263,24 @@ export async function POST(request: Request, context: RouteContext) {
       updatedAt: new Date().toISOString(),
     });
 
+    const sharedVisualPlan = readSharedVisualPlan(packageRoot);
+    const manualAstraHandoff = readManualAstraHandoff(packageRoot);
+    const threadsMediaPlan = bundle.threads?.mediaPlan ?? null;
+
+    // Channel regenerate does NOT rebuild Shared Visual Plan / Astra Handoff.
+    // Existing artifacts become stale when sourceChannelSnapshot no longer matches.
+    const { resolveSharedVisualPlanLifecycle, resolveManualAstraHandoffLifecycle } =
+      await import("@/lib/marketing/publishable/visualOrchestration/lifecycle");
+    const planLifecycle = resolveSharedVisualPlanLifecycle({
+      plan: sharedVisualPlan,
+      bundle,
+    });
+    const handoffLifecycle = resolveManualAstraHandoffLifecycle({
+      handoff: manualAstraHandoff,
+      plan: sharedVisualPlan,
+      planLifecycle,
+    });
+
     return Response.json({
       review: updated,
       regeneratedChannel: channel,
@@ -272,6 +292,23 @@ export async function POST(request: Request, context: RouteContext) {
       completionTimeoutMs: timeoutMs,
       acrbLoaded: Boolean(audienceContentResearchBrief),
       modelProfile: hermesProfile,
+      derivedVisualArtifacts: {
+        autoRefresh: false,
+        sharedVisualPlanPresent: Boolean(sharedVisualPlan),
+        manualAstraHandoffPresent: Boolean(manualAstraHandoff),
+        planLifecycle,
+        handoffLifecycle,
+        planVisualCount: sharedVisualPlan?.visuals.length ?? 0,
+        handoffVisualCount: manualAstraHandoff?.visualCount ?? 0,
+        threadsMediaPlan: threadsMediaPlan
+          ? threadsMediaPlan.recommended && (threadsMediaPlan.visuals?.length ?? 0) > 0
+            ? "present"
+            : "empty"
+          : bundle.threads
+            ? "null"
+            : "absent",
+        instagramPresent: Boolean(bundle.instagram),
+      },
     });
   } catch (error) {
     if (error instanceof Error && error.message === "canonical_asset_unapproved") {

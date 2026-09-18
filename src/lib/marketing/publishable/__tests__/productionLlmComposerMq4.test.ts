@@ -481,7 +481,7 @@ describe("MQ-4 channel differentiation + proposition consumption", () => {
     const invoke = async (prompt) => {
       prompts.push(asPromptText(prompt));
       if (asPromptText(prompt).includes("segments") || asPromptText(prompt).includes("숏폼")) return goodShortformJson();
-      if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드") || asPromptText(prompt).includes("community")) {
+      if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드") || asPromptText(prompt).includes("naver_band")) {
         return goodBandJson();
       }
       return goodThreadsJson();

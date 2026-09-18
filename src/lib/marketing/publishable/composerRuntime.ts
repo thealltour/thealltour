@@ -47,6 +47,11 @@ export function formatQualityRevisionPromptBlock(
   }
   const discovery = channelTreatAsDiscoveryLike(editorialArchetype);
   const decision = channelTreatAsDecisionPractical(editorialArchetype);
+  const prior = quality.priorBody ?? "";
+  const priorLooksDiscovery =
+    !decision &&
+    /(하지만|그런데|알고\s*보면|익숙한|맥락|시선|대비|달라집니다|보여줍|흥미)/.test(prior);
+  const suppressChecklistHints = discovery || priorLooksDiscovery;
   const repairGuidance = discovery
     ? [
         "Rewrite Body for discovery value: stronger hook, more concrete insight/detail, clearer contrast or recognition, preserve reader payoff.",
@@ -62,13 +67,17 @@ export function formatQualityRevisionPromptBlock(
           "Rewrite Body for clearer specificity, stronger hook, and reader payoff grounded in the approved asset.",
           "Do not invent a new Story. Prefer concrete detail over generic advice. Do not force a checklist unless the Story is practical/decision-like.",
         ];
+  const filteredHints = (quality.hints ?? []).filter((hint) => {
+    if (!suppressChecklistHints) return true;
+    return !/checklist|save-worthy checklist|numbered takeaway/i.test(hint);
+  });
   return [
     "QUALITY_REVISION (from Marketing Value / human review):",
     ...repairGuidance,
     "Do not replace facts with '공식 채널에서 확인하세요' shells. Put known supported points in the body; hedge only where facts are missing.",
     "desiredAudienceAction / engagementMechanism are advisory — approved Canonical + editorialArchetype win on conflict.",
     quality.reasons?.length ? `Issues: ${quality.reasons.slice(0, 4).join(" | ")}` : "",
-    quality.hints?.length ? `Hints: ${quality.hints.slice(0, 6).join(" | ")}` : "",
+    filteredHints.length ? `Hints: ${filteredHints.slice(0, 6).join(" | ")}` : "",
     quality.priorBody ? `PRIOR_BODY_TO_IMPROVE:\n${quality.priorBody.slice(0, 1200)}` : "",
   ]
     .filter(Boolean)
@@ -99,6 +108,9 @@ export function classifyPublishableLlmFailure(error: unknown): {
     return { category: "timeout", message: message.slice(0, 240) };
   }
   if (/unauthorized|auth|api[_ -]?key|forbidden|401|403/i.test(lower)) {
+    return { category: "auth", message: message.slice(0, 240) };
+  }
+  if (/no (llm )?provider|no models provided|returned no usable model output|channel_editor_hermes_config_missing/i.test(lower)) {
     return { category: "auth", message: message.slice(0, 240) };
   }
   if (/rate.?limit|429|too many requests/i.test(lower)) {

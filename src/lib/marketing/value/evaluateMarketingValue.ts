@@ -14,6 +14,7 @@ import {
 } from "@/lib/marketing/publishable/composerRuntime";
 import {
   channelTreatAsDiscoveryLike,
+  isDecisionPracticalArchetype,
 } from "@/lib/marketing/publishable/editorialArchetype";
 import { channelCountsAsPublishableSuccess } from "@/lib/marketing/publishable/publishableSuccess";
 import {
@@ -41,7 +42,37 @@ const CONCRETE_NOUN_RE =
 
 /** Discovery-like positive signals — insight/contrast/recognition without checklist pressure. */
 const DISCOVERY_VALUE_RE =
-  /(하지만|그런데|알고\s*보면|의외로|생각보다|놓치기\s*쉬운|다른\s*점|차이|관점|눈에\s*띄|익숙한|실제로|구체적으로|세부|디테일|맥락|대비)/;
+  /(하지만|그런데|알고\s*보면|의외로|생각보다|놓치기\s*쉬운|다른\s*점|차이|관점|시선|눈에\s*띄|익숙한|실제로|구체적으로|세부|디테일|맥락|대비|달라집니다|보여줍|흥미)/;
+
+/** Named cultural / architectural / regional discovery specificity (not price/ops). */
+const DISCOVERY_CULTURAL_SPECIFIC_RE =
+  /(Dao족|다오족|Dao\b|nhà\s*trình|흙다짐|국경지대|랑선|산악|전통\s*(?:건축|주택|흙)|소수민족|생활문화|건축적)/i;
+
+/** Familiar assumption → contrast / overlooked context (discovery hook). */
+const DISCOVERY_HOOK_RE =
+  /(익숙한|흔히|보통|우리가\s*아는).{0,90}(그런데|하지만|달라|의외|알고\s*보면|시선|관점|옮겨)|(?:그런데|하지만).{0,50}(달라|시선|관점|옮겨|의외|알고\s*보면)/;
+
+/** Recognizable reader context for discovery audience relevance. */
+const DISCOVERY_AUDIENCE_CONTEXT_RE =
+  /(한국\s*여행자|여행자(?:에게|가|들)|익숙한\s*(?:휴양|이미지|모습|풍경)|휴양(?:지|과)|리조트|해변)/;
+
+/**
+ * Discovery engagement/scoring posture.
+ * Explicit discovery-like archetypes always qualify.
+ * When archetype is unknown/null, require a strong discovery body signal —
+ * a single weak token (e.g. "구체적으로") must not disable checklist pressure.
+ * Explicit decision/practical archetypes never take this fallback.
+ */
+function engagementTreatAsDiscovery(
+  editorialArchetype: string | null | undefined,
+  body: string,
+): boolean {
+  if (isDecisionPracticalArchetype(editorialArchetype)) return false;
+  if (channelTreatAsDiscoveryLike(editorialArchetype)) return true;
+  if (DISCOVERY_HOOK_RE.test(body)) return true;
+  if (DISCOVERY_VALUE_RE.test(body) && DISCOVERY_CULTURAL_SPECIFIC_RE.test(body)) return true;
+  return false;
+}
 
 export type EvaluateMarketingValueInput = {
   channel: PublishableChannel;
@@ -160,7 +191,7 @@ function engagementScore(
 ): { score: number; weakness?: string; hint?: string } {
   const mechanism = String(proposition?.engagementMechanism ?? "");
   const action = String(proposition?.desiredAudienceAction ?? "");
-  const discovery = channelTreatAsDiscoveryLike(editorialArchetype);
+  const discovery = engagementTreatAsDiscovery(editorialArchetype, body);
 
   if (/^comment$/i.test(action) || /experience_sharing|comment/i.test(mechanism)) {
     if (discovery) {
@@ -207,13 +238,13 @@ function engagementScore(
 
   if (/save_worthy_checklist|checklist/i.test(mechanism)) {
     if (discovery) {
-      // Discovery + old save_worthy_checklist: do NOT require checklist.
+      // Discovery (+ stale save_worthy_checklist): do NOT require checklist.
       if (DISCOVERY_VALUE_RE.test(body) || CONCRETE_NOUN_RE.test(body)) {
         return { score: 78 };
       }
       return {
         score: 58,
-        hint: "Discovery Stories earn save-worthiness via concrete insight — not forced checklists.",
+        hint: "Strengthen curiosity contrast or a concrete overlooked detail — not a checklist.",
       };
     }
     if (hasNumberedStructure(body) || /체크리스트|저장/.test(body)) {
@@ -255,11 +286,13 @@ function channelAdjustments(input: {
   body: string;
   content: PublishableChannelContent | null;
   scores: Record<string, number>;
+  editorialArchetype?: string | null;
 }): { scores: Record<string, number>; hints: string[]; weaknesses: string[] } {
   const hints: string[] = [];
   const weaknesses: string[] = [];
   const scores = { ...input.scores };
   const body = input.body;
+  const discovery = engagementTreatAsDiscovery(input.editorialArchetype, body);
 
   switch (input.channel) {
     case "threads": {
@@ -267,7 +300,14 @@ function channelAdjustments(input: {
         scores.usefulnessScore = Math.min(scores.usefulnessScore, 40);
         weaknesses.push("Threads body too thin for a concrete takeaway");
       }
-      if (!ACTIONABLE_RE.test(body)) {
+      if (discovery) {
+        if (!DISCOVERY_VALUE_RE.test(body) && !CONCRETE_NOUN_RE.test(body)) {
+          scores.engagementPotentialScore = Math.min(scores.engagementPotentialScore, 50);
+          hints.push(
+            "Threads needs a clearer curiosity contrast, overlooked detail, or concrete recognition.",
+          );
+        }
+      } else if (!ACTIONABLE_RE.test(body)) {
         scores.engagementPotentialScore = Math.min(scores.engagementPotentialScore, 45);
         hints.push("Threads needs one sharp insight plus a concrete takeaway.");
       }
@@ -403,7 +443,7 @@ export function evaluateMarketingValue(
 
   // Generic-only core → hard toward reject
   const archetype = input.editorialArchetype ?? null;
-  const discoveryLike = channelTreatAsDiscoveryLike(archetype);
+  const discoveryLike = engagementTreatAsDiscovery(archetype, body);
   const actionable = ACTIONABLE_RE.test(full);
   const concrete = CONCRETE_NOUN_RE.test(full);
   const discoveryValue = DISCOVERY_VALUE_RE.test(full);
@@ -436,9 +476,26 @@ export function evaluateMarketingValue(
 
   // Dimension scores
   const audienceText = prop?.primaryAudience || prop?.audienceProblem || "";
-  const audienceRelevanceScore = clampScore(
-    audienceText ? 35 + tokenOverlapRatio(full, `${audienceText} ${prop?.audienceProblem ?? ""}`) * 65 : 40,
+  const literalAudienceOverlap = audienceText
+    ? tokenOverlapRatio(full, `${audienceText} ${prop?.audienceProblem ?? ""}`)
+    : 0;
+  let audienceRelevanceScore = clampScore(
+    audienceText ? 35 + literalAudienceOverlap * 65 : 40,
   );
+  if (discoveryLike) {
+    // Discovery: recognizable reader context / familiar assumption / perspective expansion
+    // count even when literal audienceProblem tokens do not morphologically overlap.
+    let discoveryAudience = 38;
+    if (DISCOVERY_AUDIENCE_CONTEXT_RE.test(full)) discoveryAudience += 18;
+    if (/(익숙한|흔히|보통).{0,80}(다른|밖에|달리|시선|관점)/.test(full)) discoveryAudience += 14;
+    if (/(시선|관점|넓어|다르게\s*보|여행\s*경험|문화적)/.test(full)) discoveryAudience += 12;
+    if (literalAudienceOverlap >= 0.12) discoveryAudience += 10;
+    // Generic travel filler without audience context stays near the literal floor.
+    if (!DISCOVERY_AUDIENCE_CONTEXT_RE.test(full) && !/(시선|관점|익숙한)/.test(full)) {
+      discoveryAudience = Math.min(discoveryAudience, 48);
+    }
+    audienceRelevanceScore = clampScore(Math.max(audienceRelevanceScore, discoveryAudience));
+  }
 
   let specificityScore = 35;
   if (hasNumberedStructure(body) && (factOverlap >= 0.1 || operational || concrete)) {
@@ -450,6 +507,8 @@ export function evaluateMarketingValue(
   if (discoveryLike) {
     if (discoveryValue) specificityScore += 18;
     else if (actionable) specificityScore += 8;
+    // Cultural/architectural named detail is discovery specificity (not only price/ops).
+    if (DISCOVERY_CULTURAL_SPECIFIC_RE.test(body)) specificityScore += 14;
   } else if (actionable) {
     specificityScore += 15;
   }
@@ -482,6 +541,15 @@ export function evaluateMarketingValue(
   if (verifyOnlyShell) noveltyScore -= 15;
   if (prop?.contentGapUsed && tokenOverlapRatio(body, prop.contentGapUsed) >= 0.1) noveltyScore += 15;
   if (hasNumberedStructure(body) && (concrete || operational || factOverlap >= 0.1)) noveltyScore += 10;
+  if (discoveryLike) {
+    // Overlooked cultural/named context counts as novelty without literal "새로운/의외".
+    if (DISCOVERY_CULTURAL_SPECIFIC_RE.test(body) && discoveryValue) noveltyScore += 18;
+    if (/(몰랐|의외|놓치|밖에\s*또|다른\s*생활문화)/.test(body)) noveltyScore += 8;
+  }
+  // Literal novelty adjectives alone must not inflate a generic body.
+  if (/새로운\s*여행|새로운\s*경험/.test(body) && !DISCOVERY_CULTURAL_SPECIFIC_RE.test(body) && !discoveryValue) {
+    noveltyScore = Math.min(noveltyScore, 58);
+  }
   noveltyScore = clampScore(noveltyScore);
 
   const open = opening(body);
@@ -491,7 +559,18 @@ export function evaluateMarketingValue(
     hookStrengthScore -= 10;
   }
   if (/가격|일정|막막|처음|직항|포함|불안|꼬일/.test(open)) hookStrengthScore += 20;
+  if (discoveryLike) {
+    if (DISCOVERY_HOOK_RE.test(open) || DISCOVERY_HOOK_RE.test(body.slice(0, 180))) {
+      hookStrengthScore += 22;
+    } else if (DISCOVERY_VALUE_RE.test(open)) {
+      hookStrengthScore += 10;
+    }
+  }
   if (open.length < 8) hookStrengthScore = 25;
+  // Generic destination intro stays low even if long.
+  if (/^오늘\s*(은|의)|소개할\s*곳|아름다운\s*(여행|풍경)/.test(open) && !DISCOVERY_HOOK_RE.test(open)) {
+    hookStrengthScore = Math.min(hookStrengthScore, 42);
+  }
   hookStrengthScore = clampScore(hookStrengthScore);
 
   let payoffScore = promise.delivered ? 70 : 40;
@@ -505,14 +584,18 @@ export function evaluateMarketingValue(
   if (engagement.weakness) weaknesses.push(engagement.weakness);
   if (engagement.hint) improvementHints.push(engagement.hint);
 
-  const propositionAlignmentScore = clampScore(
-    promise.score * 0.7 +
-      (bodyReflectsPropositionTakeaway(body, prop) ? 30 : 0) +
-      (prop?.desiredAudienceAction &&
-      new RegExp(String(prop.desiredAudienceAction), "i").test(body)
-        ? 5
-        : 0),
-  );
+  // Promise / takeaway / readerGain remain alignment sources.
+  // desiredAudienceAction / engagementMechanism are advisory — do not reward stale compare/save wording for discovery.
+  const takeawayHit = bodyReflectsPropositionTakeaway(body, prop);
+  const actionBonus =
+    !discoveryLike &&
+    prop?.desiredAudienceAction &&
+    new RegExp(String(prop.desiredAudienceAction).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(
+      body,
+    )
+      ? 5
+      : 0;
+  const propositionAlignmentScore = clampScore(promise.score * 0.7 + (takeawayHit ? 30 : 0) + actionBonus);
 
   let evidenceAdequacyForPromiseScore = 65;
   const proofCount = prop?.proofRequirements?.length ?? 0;
@@ -558,6 +641,7 @@ export function evaluateMarketingValue(
     body,
     content: input.content,
     scores,
+    editorialArchetype: archetype,
   });
   scores = adjusted.scores as typeof scores;
   improvementHints.push(...adjusted.hints);
@@ -617,6 +701,46 @@ export function evaluateMarketingValue(
   }
   if (scores.hookStrengthScore >= 70) reasons.push("Opening creates a reason to continue");
   if (scores.engagementPotentialScore >= 70) reasons.push("Engagement mechanism is usable");
+  if (discoveryLike && DISCOVERY_CULTURAL_SPECIFIC_RE.test(body)) {
+    reasons.push("Grounds discovery in concrete cultural/regional detail");
+  }
+
+  // needs_improvement with only positive reasons and no hints is operator-hostile.
+  if (verdict === "needs_improvement" && improvementHints.length === 0 && !hardFail) {
+    if (scores.hookStrengthScore < 65) {
+      improvementHints.push(
+        discoveryLike
+          ? "Opening contrast could be sharper — make the familiar→shift turn clearer in the first lines."
+          : "Strengthen the opening with a concrete tension or reason to continue.",
+      );
+    }
+    if (scores.audienceRelevanceScore < 55) {
+      improvementHints.push(
+        discoveryLike
+          ? "Reader relevance is implicit; name why this matters to the stated audience earlier."
+          : "Tie the takeaway more explicitly to the audience problem.",
+      );
+    }
+    if (scores.noveltyScore < 60 && discoveryLike) {
+      improvementHints.push(
+        "Foreground one concrete overlooked detail earlier so the discovery lands sooner.",
+      );
+    }
+    if (scores.specificityScore < 55) {
+      improvementHints.push(
+        discoveryLike
+          ? "Add one named place, group, or cultural form so the insight is not abstract."
+          : "Add measurable checks (price, duration, criteria) the reader can use.",
+      );
+    }
+    if (improvementHints.length === 0 && scored < 70) {
+      improvementHints.push(
+        discoveryLike
+          ? "Clarify the reader payoff of the perspective shift in one concrete sentence."
+          : "Raise usefulness with one actionable next step grounded in the Story.",
+      );
+    }
+  }
 
   const unique = (items: string[]) => [...new Set(items.map((x) => x.trim()).filter(Boolean))];
 

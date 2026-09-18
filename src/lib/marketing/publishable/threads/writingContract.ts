@@ -1,6 +1,13 @@
+import {
+  THREADS_BODY_MAX_CHARS,
+  THREADS_BODY_PREFERRED_MAX_CHARS,
+  THREADS_BODY_PREFERRED_MIN_CHARS,
+} from "@/lib/marketing/publishable/validate";
+
 /**
  * Durable Threads writing contract — Channel Adapter for Korean Threads.
  * Planning metadata (mediaPlan) is optional; no image generation.
+ * Length limits reuse THREADS_BODY_* from validate.ts (same as review UI).
  */
 
 export const THREADS_WRITING_CONTRACT = `
@@ -39,16 +46,27 @@ Decision/practical Stories may use verification, comparison, useful experience s
 desiredAudienceAction / engagementMechanism are advisory. Approved Canonical + editorialArchetype win on conflict.
 
 VISUAL PLANNING (optional mediaPlan — planning only, NO image generation):
-- media is optional; recommended false and imageCount 0 when text alone is enough
-- imageCount range 0–3
-- when recommended, emit stable visualId values social_visual_01, social_visual_02, …
+- media remains optional: text-only posts may use mediaPlan null or recommended=false
+- Prefer recommended=true with imageCount 1–2 (max 3) when the Story has a concrete visual subject
+  (place/context atmosphere, architecture/detail, cultural environment) AND an image materially
+  strengthens discovery/context beyond text alone
+- Travel discovery / cultural curiosity with named visual subjects should usually recommend media
+  rather than defaulting to null
+- Do NOT force media for every Threads post (practical/checklist/text-only observations may stay null)
+- When recommended, emit stable visualId values social_visual_01, social_visual_02, …
 - roles: cover_context | subject_detail | evidence_context | cultural_detail | architecture_detail | simple_comparison
 - visualIntent: evidence-safe; distinguish representational vs illustrative vs infographic intent
-- Do NOT request visuals of unverified villages/activities/services or invented documentary proof
+- Prefer 1 cover/context visual; optionally 1 architecture/detail visual — do not mirror every Instagram card
 - reusableOnInstagram: true when the same visual can serve Instagram card planning
+- Do NOT request visuals of unverified villages/activities/services or invented documentary proof
 - Do NOT include provider-specific prompt syntax
+- If you recommend media, return a mediaPlan object (not null) with recommended=true and non-empty visuals
 
-분량: 대략 한글 250–700자, 문단 3–8개. 해시태그 기본 없음.
+LENGTH (hard limits — never exceed publishability):
+- Preferred target: ${THREADS_BODY_PREFERRED_MIN_CHARS}–${THREADS_BODY_PREFERRED_MAX_CHARS} Korean characters
+- Hard maximum: ${THREADS_BODY_MAX_CHARS} characters (downstream publishability / review UI)
+- Never exceed ${THREADS_BODY_MAX_CHARS}. If over, remove repetition first; keep Story, evidence boundary, and concrete detail; do NOT convert discovery into checklist/decision CTA.
+- Paragraphs: typically 3–6. No hashtags by default.
 
 JSON only:
 {"title": string|null, "body": string, "mediaPlan": {"recommended": boolean, "assetFamily": "social_static", "imageCount": number, "visuals": [{"visualId": string, "role": string, "visualIntent": string, "reusableOnInstagram": boolean}]} | null}

@@ -29,6 +29,10 @@ import {
   type PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import { buildInstagramRendererVisualMapSafe } from "@/lib/marketing/publishable/sharedVisualDelivery";
+import { getSharedVisualRenderCacheDir } from "@/lib/marketing/publishable/sharedVisualDelivery/normalizeImageForRenderer";
+import { readSharedVisualAssetsManifest } from "@/lib/marketing/publishable/sharedVisualAssets";
+import { readSharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan";
 
 export function readPackagePublishableBundle(
   packageRoot: string,
@@ -61,6 +65,14 @@ export type RenderInstagramCardnewsResult = {
   aspectRatios: CardNewsAspectRatio[];
   cardCount: number;
   renders: RenderCardNewsPackageResult[];
+  /** Shared visual injection provenance (additive; render still succeeds without uploads). */
+  sharedVisualInjection?: {
+    injected: boolean;
+    stale: boolean;
+    cardIds: string[];
+    warnings: string[];
+    skippedReason?: string;
+  };
 };
 
 /**
@@ -106,6 +118,38 @@ export async function renderInstagramCardnewsForPackage(input: {
     ? input.aspectRatios
     : INSTAGRAM_CARDNEWS_ASPECT_RATIOS;
 
+  // Shared Visual Plan + Manifest → cardId → local PNG path (read-only).
+  // Stale / missing / ambiguous → empty visuals; geometric fallback still works.
+  const sharedVisualPlan = readSharedVisualPlan(input.packageRoot);
+  const sharedVisualManifest = readSharedVisualAssetsManifest(input.packageRoot);
+  const visualMap = input.graphicOnly
+    ? {
+        visuals: {} as Record<string, string>,
+        injected: false,
+        stale: false,
+        warnings: ["graphic_only"],
+        skippedReason: "none_uploaded" as const,
+      }
+    : await buildInstagramRendererVisualMapSafe({
+        packageRoot: input.packageRoot,
+        sharedVisualPlan,
+        manifest: sharedVisualManifest,
+      });
+
+  if (visualMap.warnings.length > 0) {
+    console.info(
+      "[instagram-cardnews] shared visual injection",
+      JSON.stringify({
+        candidateId: bundle.candidateId,
+        injected: visualMap.injected,
+        stale: visualMap.stale,
+        skippedReason: visualMap.skippedReason ?? null,
+        warnings: visualMap.warnings,
+        cardIds: Object.keys(visualMap.visuals),
+      }),
+    );
+  }
+
   const renders: RenderCardNewsPackageResult[] = [];
   for (const aspectRatio of aspectRatios) {
     renders.push(
@@ -115,6 +159,8 @@ export async function renderInstagramCardnewsForPackage(input: {
         aspectRatio,
         dryRun: input.dryRun,
         graphicOnly: input.graphicOnly,
+        visuals: visualMap.visuals,
+        allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
         now: input.now,
       }),
     );
@@ -127,6 +173,13 @@ export async function renderInstagramCardnewsForPackage(input: {
     aspectRatios,
     cardCount: brief.formats.cardnews.cards.length,
     renders,
+    sharedVisualInjection: {
+      injected: visualMap.injected,
+      stale: visualMap.stale,
+      cardIds: Object.keys(visualMap.visuals).sort(),
+      warnings: visualMap.warnings,
+      skippedReason: visualMap.skippedReason,
+    },
   };
 }
 

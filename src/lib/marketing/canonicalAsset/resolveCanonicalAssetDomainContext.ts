@@ -86,6 +86,8 @@ function lockOnlyStoryPoint(asset: CanonicalMarketingAsset): StoryContentPoint {
     },
     nonGoals: [],
     agendaFitNotes: null,
+    // Recover authoritative archetype from approved asset provenance when Story set is missing.
+    editorialArchetype: asset.editorialArchetype?.trim() || null,
   };
 }
 

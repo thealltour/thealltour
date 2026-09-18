@@ -9,6 +9,7 @@ import AdminButton from "@/components/admin/ui/AdminButton";
 import { adminToneBorderBg, adminToneText } from "@/components/admin/ui/adminStatusTone";
 import { cn } from "@/lib/cn";
 import { MarketingReviewAssetsPanel } from "@/components/admin/marketing-review/MarketingReviewAssetsPanel";
+import { MarketingReviewAstraHandoffPanel } from "@/components/admin/marketing-review/MarketingReviewAstraHandoffPanel";
 import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketing-review/MarketingReviewShortformSourcesPanel";
 import { MarketingReviewChannelChecklist } from "@/components/admin/marketing-review/MarketingReviewChannelChecklist";
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
@@ -61,6 +62,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   const [selectedChannel, setSelectedChannel] = useState<string>(
     (context.channelReviews ?? [])[0]?.channel ?? context.draft.channel ?? "threads",
   );
+  const [artifactRefreshKey, setArtifactRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +117,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
     if (!(next.channelReviews ?? []).some((c) => c.channel === selectedChannel) && next.channelReviews?.[0]) {
       setSelectedChannel(next.channelReviews[0].channel);
     }
+    setArtifactRefreshKey((k) => k + 1);
   }
 
   async function run(action: string, body: Record<string, unknown> = {}) {
@@ -456,6 +459,11 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         </AdminCard>
 
         <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
+
+        <MarketingReviewAstraHandoffPanel
+          candidateId={candidate.candidateId}
+          refreshKey={artifactRefreshKey}
+        />
 
         <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
 

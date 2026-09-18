@@ -26,9 +26,14 @@ import {
   SOCIAL_VISUAL_ASSET_FAMILY,
   stableSocialVisualId,
 } from "@/lib/marketing/publishable/socialVisualPlan";
+import {
+  compressThreadsBodyToLimit,
+  threadsLengthRepairHint,
+} from "@/lib/marketing/publishable/threads/compressThreadsBody";
 import { composeThreadsPublishableDeterministic } from "@/lib/marketing/publishable/threads/deterministicThreads";
 import { THREADS_WRITING_CONTRACT } from "@/lib/marketing/publishable/threads/writingContract";
 import {
+  THREADS_BODY_MAX_CHARS,
   stripEvidenceIdsFromText,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
@@ -42,6 +47,17 @@ function buildThreadsPrompt(
   input: PublishableComposerInput,
   repairHint?: string | null,
 ): ChannelComposerPromptParts {
+  let lengthRepair: string | null = null;
+  if (repairHint) {
+    const match = /too_long:(\d+)>(\d+)/i.exec(repairHint);
+    if (match) {
+      const actual = Number(match[1]);
+      const max = Number(match[2]);
+      lengthRepair = threadsLengthRepairHint(Math.max(0, actual - max), actual);
+    } else if (/too_long/i.test(repairHint)) {
+      lengthRepair = threadsLengthRepairHint(1, THREADS_BODY_MAX_CHARS + 1);
+    }
+  }
   return buildChannelComposerPromptParts({
     channel: "threads",
     writingContract: [
@@ -55,14 +71,22 @@ function buildThreadsPrompt(
       .filter(Boolean)
       .join("\n"),
     composerInput: input,
-    repairHint,
+    repairHint: [repairHint, lengthRepair].filter(Boolean).join("\n") || null,
   });
+}
+
+function asExplicitBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (value === "true" || value === "TRUE" || value === 1) return true;
+  if (value === "false" || value === "FALSE" || value === 0) return false;
+  return undefined;
 }
 
 function normalizeMediaPlan(raw: unknown): PublishableThreadsMediaPlan | null {
   if (!raw || typeof raw !== "object") return null;
   const obj = raw as Record<string, unknown>;
-  const recommended = Boolean(obj.recommended);
+  const recommendedExplicit = asExplicitBoolean(obj.recommended);
+  const recommended = recommendedExplicit ?? false;
   let imageCount =
     typeof obj.imageCount === "number" && Number.isFinite(obj.imageCount)
       ? Math.max(0, Math.min(3, Math.floor(obj.imageCount)))
@@ -87,7 +111,7 @@ function normalizeMediaPlan(raw: unknown): PublishableThreadsMediaPlan | null {
       visualId,
       role,
       visualIntent: intent,
-      reusableOnInstagram: Boolean(v.reusableOnInstagram),
+      reusableOnInstagram: asExplicitBoolean(v.reusableOnInstagram) ?? false,
     });
   }
   if (!recommended && visuals.length === 0) {
@@ -155,7 +179,7 @@ function wrapResult(input: {
   failureMessage?: string | null;
   modelProfile?: string | null;
 }): PublishableChannelContent {
-  const validation = validatePublishableText(input.body);
+  const validation = validatePublishableText(input.body, { channel: "threads" });
   const publishableSuccess =
     input.composer === "llm" &&
     (input.status === "generated" || input.status === "validated") &&
@@ -233,6 +257,14 @@ export async function composeThreadsPublishableContent(input: {
   }
 
   if (input.invoke) {
+    const acceptedHolder: {
+      current: {
+        title: string | null;
+        body: string;
+        mediaPlan: PublishableThreadsMediaPlan | null;
+      } | null;
+    } = { current: null };
+
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
       channel: "threads",
@@ -242,33 +274,47 @@ export async function composeThreadsPublishableContent(input: {
         if (!parsed) {
           return { ok: false, category: "invalid_json", message: "threads_json_parse_failed" };
         }
-        const validation = validatePublishableText(parsed.body);
+        let body = parsed.body;
+        if (body.length > THREADS_BODY_MAX_CHARS) {
+          // Compress before treating length as a hard publishability failure.
+          body = compressThreadsBodyToLimit(body, THREADS_BODY_MAX_CHARS);
+        }
+        const validation = validatePublishableText(body, { channel: "threads" });
         if (!validation.ok) {
+          const codes = validation.issues.map((i) => i.code);
+          const tooLong = validation.issues.find((i) => i.code === "too_long");
           return {
             ok: false,
             category: "publishability_validation",
-            message: validation.issues.map((i) => i.code).join(",") || "validation_failed",
+            message: tooLong
+              ? `too_long:${parsed.body.length}>${THREADS_BODY_MAX_CHARS}`
+              : codes.join(",") || "validation_failed",
           };
         }
-        if (!bodyReflectsPropositionTakeaway(parsed.body, input.composerInput.contentProposition)) {
+        if (!bodyReflectsPropositionTakeaway(body, input.composerInput.contentProposition)) {
           return {
             ok: false,
             category: "publishability_validation",
             message: "proposition_takeaway_not_reflected",
           };
         }
+        acceptedHolder.current = {
+          title: parsed.title,
+          body,
+          mediaPlan: parsed.mediaPlan,
+        };
         return { ok: true };
       },
     });
 
-    if (result.success && result.raw) {
-      const parsed = parseThreadsJson(result.raw)!;
+    if (result.success && acceptedHolder.current) {
+      const accepted = acceptedHolder.current;
       const content = wrapResult({
         composerInput: input.composerInput,
         nowIso,
-        title: parsed.title,
-        body: parsed.body,
-        mediaPlan: parsed.mediaPlan,
+        title: accepted.title,
+        body: accepted.body,
+        mediaPlan: accepted.mediaPlan,
         status: "generated",
         composer: "llm",
         generationMode: "llm",

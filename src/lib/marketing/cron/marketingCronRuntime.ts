@@ -20,7 +20,7 @@ import {
 } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import {
   assertChannelEditorHermesProfile,
-  resolveChannelEditorHermesProfile,
+  ensureChannelEditorHermesOneshotReady,
   type ChannelComposerPromptParts,
 } from "@/lib/marketing/publishable/channelEditorIdentity";
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
@@ -208,7 +208,7 @@ export function createPublishableComposerInvoke(
     if (!channel) {
       throw new Error("channel_editor_oneshot_requires_channel");
     }
-    const profile = resolveChannelEditorHermesProfile(channel);
+    const { profile } = ensureChannelEditorHermesOneshotReady(channel);
     assertChannelEditorHermesProfile(profile);
     const text = typeof prompt === "string" ? prompt : prompt.text;
     return Promise.resolve(invokeHermes(profile, text));

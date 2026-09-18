@@ -28,6 +28,16 @@ function spawnDetailTail(result: HermesSpawnSyncResultLike, limit = 400): string
   return (result.stderr || result.stdout || "").trim().slice(0, limit);
 }
 
+/** Hermes sometimes exits 0 while returning a transport/config error as the "response". */
+const HERMES_FALSE_SUCCESS_BODY_RE =
+  /^(HTTP\s+\d{3}\b|No LLM provider configured|No models provided|unauthorized|agent failed:)/i;
+
+export function isHermesFalseSuccessBody(stdout: string | null | undefined): boolean {
+  const text = (stdout ?? "").trim();
+  if (!text) return true;
+  return HERMES_FALSE_SUCCESS_BODY_RE.test(text);
+}
+
 /**
  * Build a concise operator-safe error message for a failed Hermes profile invoke.
  */
@@ -77,7 +87,14 @@ export function assertHermesSpawnSyncSuccess(
   if (!ok) {
     throw new Error(formatHermesProfileFailure(profile, result, timeoutMs));
   }
-  return result.stdout ?? "";
+  const stdout = result.stdout ?? "";
+  if (isHermesFalseSuccessBody(stdout)) {
+    const detail = spawnDetailTail(result) || stdout.trim() || "empty stdout";
+    throw new Error(
+      `${profile} returned no usable model output (${detail.slice(0, 240)}). Check ~/.hermes/profiles/${profile}/config.yaml model provider.`,
+    );
+  }
+  return stdout;
 }
 
 /**
@@ -173,6 +190,7 @@ const NON_RETRYABLE_FAILURE_PATTERNS: RegExp[] = [
   /\b(ENOENT|EACCES|EPERM|ENOTDIR)\b/,
   /spawn failed/i,
   /\b(401|403)\b|unauthorized|forbidden|invalid api key|permission denied/i,
+  /no (llm )?provider configured|no models provided|returned no usable model output|channel_editor_hermes_config_missing/i,
 ];
 
 export function isRetryableHermesFailure(error: unknown): boolean {

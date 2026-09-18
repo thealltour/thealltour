@@ -4,6 +4,9 @@
  * Phase5 social: archetype-aware preserve/forbid (decisionAtStake is not universal).
  */
 
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
 
 export const CHANNEL_EDITOR_HERMES_PROFILES = {
@@ -20,6 +23,9 @@ export type ChannelEditorHermesProfile =
 
 /** Content Strategist must never be used as the final-channel oneshot profile. */
 export const FORBIDDEN_CHANNEL_COMPOSER_HERMES_PROFILE = "content-strategist" as const;
+
+/** Donor profile for cloning oneshot model wiring when a channel profile is incomplete. */
+export const CHANNEL_EDITOR_HERMES_CONFIG_DONOR_PROFILE = "channel-editor-threads" as const;
 
 export function resolveChannelEditorHermesProfile(
   channel: PublishableChannel,
@@ -41,6 +47,57 @@ export function assertChannelEditorHermesProfile(
   if (profile === FORBIDDEN_CHANNEL_COMPOSER_HERMES_PROFILE) {
     throw new Error("channel_editor_profile_forbidden_content_strategist");
   }
+}
+
+/**
+ * Hermes oneshot requires profile config.yaml (model provider). Instagram previously
+ * had SOUL.md only → Hermes exited 0 with empty stdout → composer misclassified as invalid_json.
+ * Clone model wiring from threads when missing; never overwrite an existing config.
+ */
+export function ensureChannelEditorHermesOneshotReady(
+  channel: PublishableChannel,
+  hermesHome: string = process.env.HERMES_HOME ?? "/home/ysh/.hermes",
+): { profile: ChannelEditorHermesProfile; configPath: string; repaired: boolean } {
+  const profile = resolveChannelEditorHermesProfile(channel);
+  assertChannelEditorHermesProfile(profile);
+  const dir = join(hermesHome, "profiles", profile);
+  const configPath = join(dir, "config.yaml");
+  const profileYamlPath = join(dir, "profile.yaml");
+  let repaired = false;
+
+  if (!existsSync(configPath)) {
+    const donor = join(
+      hermesHome,
+      "profiles",
+      CHANNEL_EDITOR_HERMES_CONFIG_DONOR_PROFILE,
+      "config.yaml",
+    );
+    if (!existsSync(donor)) {
+      throw new Error(
+        `channel_editor_hermes_config_missing:${profile} (donor ${CHANNEL_EDITOR_HERMES_CONFIG_DONOR_PROFILE} also missing)`,
+      );
+    }
+    mkdirSync(dir, { recursive: true });
+    copyFileSync(donor, configPath);
+    repaired = true;
+  }
+
+  if (!existsSync(profileYamlPath)) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      profileYamlPath,
+      [
+        `description: "Oneshot Channel Editor (${channel}). Not a Desktop Bot."`,
+        "description_auto: false",
+        "# No ui_meta.hermes-bots — oneshot-only; not a top-level marketing bot.",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    repaired = true;
+  }
+
+  return { profile, configPath, repaired };
 }
 
 /**

@@ -128,6 +128,7 @@ function mergeParsed(
     generatedBy: ASSET_SOURCE_WRITER_ROLE,
     repairCount,
     validationIssues,
+    editorialArchetype: writerInput.editorialArchetype?.trim() || null,
   };
 }
 

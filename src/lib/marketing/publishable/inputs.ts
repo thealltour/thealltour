@@ -432,9 +432,10 @@ function buildPublishableStoryLock(input: {
     null;
   const propTension = prop?.audienceTension?.trim() || null;
   const storyTension = story?.audienceTension?.trim() || null;
-  const editorialArchetype = story
-    ? resolveStoryEditorialArchetype(story)
-    : null;
+  const editorialArchetype =
+    (story ? resolveStoryEditorialArchetype(story) : null) ||
+    input.approvedAsset?.editorialArchetype?.trim() ||
+    null;
   const decisionMeaningful = isDecisionPracticalArchetype(editorialArchetype);
   return {
     role: "STORY_LOCK_READ_ONLY",

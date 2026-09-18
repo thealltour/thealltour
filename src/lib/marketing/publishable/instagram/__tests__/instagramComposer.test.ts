@@ -100,6 +100,22 @@ describe("parseInstagramJson", () => {
     expect(parsed?.meta.hashtags).toEqual(["#부산크루즈", "#부산항"]);
   });
 
+  it("merges declared hashtags into body when caption omits them (hashtag_policy gate)", () => {
+    const parsed = parseInstagramJson(
+      JSON.stringify({
+        hook: HOOK,
+        body: HOOK,
+        hashtags: ["#부산크루즈", "#부산항", "#여행준비"],
+        slideHeadlines: ["탑승 동선", "수속 순서", "수하물 규정", "대기 시간"],
+      }),
+    );
+    expect(parsed?.meta.hashtags).toEqual(["#부산크루즈", "#부산항", "#여행준비"]);
+    expect(parsed?.body).toContain("#부산크루즈");
+    expect(parsed?.body).toContain("#부산항");
+    expect(parsed?.body).toContain("#여행준비");
+    expect(codes(parsed!.body)).not.toContain("hashtag_policy");
+  });
+
   it("returns null without a body", () => {
     expect(parseInstagramJson(JSON.stringify({ hook: HOOK }))).toBeNull();
     expect(parseInstagramJson("no json here")).toBeNull();

@@ -186,6 +186,78 @@ function validInstagramJson(): string {
   });
 }
 
+/** Multi-stage editorial mock: Narrative → Carousel → CardCopy → Caption. */
+function editorialStageResponse(prompt: unknown): string {
+  const parts = prompt as { hermesProfile?: string; user?: string; text?: string };
+  const profile = (parts.hermesProfile ?? "").trim();
+  if (profile === "editorial-narrative-planner") {
+    return JSON.stringify({
+      narrativePromise: "온천으로만 아는 바냐를 건축·문화 디테일로 다시 읽게 한다",
+      audienceTakeaway: "같은 장소를 건축 비율로 다르게 본다",
+      beats: [
+        { beatId: "beat_01", purpose: "hook", message: "온천으로만 알면 놓치는 디테일이 있다" },
+        { beatId: "beat_02", purpose: "familiar_frame", message: "익숙한 온천·목욕 이미지" },
+        { beatId: "beat_03", purpose: "reframe", message: "천장과 창문 비율이 먼저 보인다" },
+        { beatId: "beat_04", purpose: "payoff", message: "건축 디테일과 문화 맥락으로 다시 읽는다" },
+      ],
+    });
+  }
+  if (profile === "instagram-carousel-planner") {
+    return JSON.stringify({
+      cards: [
+        {
+          cardId: "card-01",
+          role: "hook_cover",
+          beatIds: ["beat_01"],
+          communicationGoal: "놓치는 디테일로 스와이프 유도",
+          visualPriority: "hero",
+        },
+        {
+          cardId: "card-02",
+          role: "reframe",
+          beatIds: ["beat_02"],
+          communicationGoal: "익숙한 온천 프레임",
+          visualPriority: "useful",
+        },
+        {
+          cardId: "card-03",
+          role: "evidence_detail",
+          beatIds: ["beat_03"],
+          communicationGoal: "천장·창문 비율",
+          visualPriority: "strong",
+        },
+        {
+          cardId: "card-04",
+          role: "closing",
+          beatIds: ["beat_04"],
+          communicationGoal: "건축·문화 payoff",
+          visualPriority: "optional",
+        },
+      ],
+    });
+  }
+  if (profile === "instagram-card-copy-writer") {
+    return JSON.stringify({
+      cards: [
+        { cardId: "card-01", headline: "놓치는 디테일", body: "온천으로만 보면 놓칩니다" },
+        { cardId: "card-02", headline: "익숙한 이미지", body: "목욕·온천 프레임이 먼저 옵니다" },
+        { cardId: "card-03", headline: "천장과 창문", body: "비율이 공간을 말해 줍니다" },
+        { cardId: "card-04", headline: "다르게 보기", body: "건축 디테일과 문화 맥락" },
+      ],
+    });
+  }
+  if (profile === "instagram-caption-writer") {
+    return JSON.stringify({
+      opening: "온천으로만 알면 놓치는 디테일이 있다.",
+      body: "천장과 창문 비율이 먼저 보인다. 건축 디테일과 문화 맥락으로 같은 장소를 다시 읽는다.",
+      cta: "저장해 두세요",
+      hashtags: ["부다페스트", "바냐", "건축"],
+      altText: "바냐 건축 디테일을 소개하는 카드뉴스",
+    });
+  }
+  return validInstagramJson();
+}
+
 function baseComposer(approved: CanonicalMarketingAsset): PublishableComposerInput {
   return {
     candidateId: "cmc_ig_runtime",
@@ -197,7 +269,14 @@ function baseComposer(approved: CanonicalMarketingAsset): PublishableComposerInp
     keyMessage: approved.titleKo,
     destinations: [],
     entities: [],
-    usableFacts: [{ statement: "공개 후기에서 건축 디테일이 관측된다" }],
+    usableFacts: [
+      {
+        statement: "공개 후기에서 건축 디테일이 관측된다",
+        confidence: "high",
+        evidenceRefIds: ["ev1"],
+        usable: true,
+      },
+    ],
     avoidedStatements: [],
     unsupportedClaims: [],
     governanceDecision: "ALLOW",
@@ -232,11 +311,9 @@ describe("Instagram generate runtime", () => {
     const approved = seed(packageRoot);
 
     const invoke = vi.fn(async (prompt: unknown) => {
-      const parts = prompt as { channel?: string; text?: string; system?: string };
-      const text = typeof prompt === "string" ? prompt : (parts.text ?? "");
+      const parts = prompt as { channel?: string };
       expect(parts.channel ?? "threads").toBe("instagram");
-      expect(text).toContain("CHANNEL_EDITOR_IDENTITY");
-      return validInstagramJson();
+      return editorialStageResponse(prompt);
     });
 
     const bundle = await generateChannelAsset({
@@ -247,9 +324,9 @@ describe("Instagram generate runtime", () => {
       approvedCanonicalAsset: approved,
     });
 
-    // Happy path should succeed on first attempt; bounded repair allows at most 2.
-    expect(invoke.mock.calls.length).toBeGreaterThanOrEqual(1);
-    expect(invoke.mock.calls.length).toBeLessThanOrEqual(2);
+    // Common Narrative + Carousel + CardCopy + Caption (bounded repair may add calls).
+    expect(invoke.mock.calls.length).toBeGreaterThanOrEqual(4);
+    expect(invoke.mock.calls.length).toBeLessThanOrEqual(8);
     expect(invoke.mock.calls.every((call) => {
       const p = call[0] as { channel?: string };
       return p?.channel === "instagram";
@@ -295,7 +372,7 @@ describe("Instagram generate runtime", () => {
       candidate: candidateStub(approved),
       packageRoot,
       channel: "instagram",
-      invoke: async () => validInstagramJson(),
+      invoke: async (prompt) => editorialStageResponse(prompt),
       approvedCanonicalAsset: approved,
     });
 
@@ -318,6 +395,9 @@ describe("Instagram generate runtime", () => {
     expect(disk.instagram?.instagramMeta?.cardPlan).toBeTruthy();
     expect(disk.instagram?.provenance?.composer).toBe("llm");
     expect(disk.instagram?.sourceAssetVersion).toBe(approved.approvedVersion);
+    expect(
+      readFileSync(join(packageRoot, "context", "editorial-narrative-plan.json"), "utf8"),
+    ).toContain("editorial-narrative-plan-v1");
   });
 
   it("5. Instagram failure leaves other channels unchanged", async () => {
@@ -371,11 +451,12 @@ describe("Instagram generate runtime", () => {
       candidate: candidateStub(approved),
       packageRoot,
       channel: "instagram",
-      invoke: async () => validInstagramJson(),
+      invoke: async (prompt) => editorialStageResponse(prompt),
       approvedCanonicalAsset: approved,
     });
     expect(["generated", "validation_failed", "generation_failed"]).toContain(ok.instagram?.status);
     expect(ok.instagram?.status).not.toBe("not_generated");
+    expect(ok.instagram?.status).toBe("generated");
   });
 
   it("7. Threads regression still passes compose path", async () => {

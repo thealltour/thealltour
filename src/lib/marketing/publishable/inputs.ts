@@ -15,6 +15,8 @@ import { resolveTargetPublishableChannels } from "@/lib/marketing/publishable/se
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import { resolveStoryEditorialArchetype } from "@/lib/marketing/canonicalAsset/revisions";
 import { isDecisionPracticalArchetype } from "@/lib/marketing/publishable/editorialArchetype";
+import { dedupeEvidenceRefsForPrompt } from "@/lib/marketing/publishable/editorialNarrative/evidencePromptDedup";
+import type { EditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/contracts";
 
 export type PublishableComposerFact = {
   statement: string;
@@ -97,6 +99,11 @@ export type PublishableComposerInput = {
    * Composers must treat this as the only fact source they may state.
    */
   corePack?: import("@/lib/marketing/publishable/core/coreContentPack").CoreContentPack | null;
+  /**
+   * Channel-agnostic Editorial Narrative Plan — story progression SoT.
+   * Attached by ensurePublishableContent before channel fan-out.
+   */
+  editorialNarrativePlan?: EditorialNarrativePlan | null;
   /** Human-review quality repair: Marketing Value hints → Content Strategist composer. */
   qualityRevision?: {
     hints: string[];
@@ -118,6 +125,7 @@ export function computePublishableSourceRevision(
   humanDraft?: HumanReviewDraft | null,
   acrb?: AudienceContentResearchBrief | null,
   approvedAsset?: CanonicalMarketingAsset | null,
+  narrativeContentFingerprint?: string | null,
 ): string {
   const proposition = candidate.contentPlan?.proposition;
   const asset = approvedAsset ?? candidate.canonicalMarketingAsset ?? null;
@@ -159,6 +167,7 @@ export function computePublishableSourceRevision(
     humanTitle: humanDraft?.title ?? null,
     acrbId: acrb?.id ?? candidate.audienceContentResearchRef?.researchBriefId ?? null,
     acrbAngle: acrb?.recommendedAngleId ?? null,
+    narrativeContentFingerprint: narrativeContentFingerprint ?? null,
   };
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 24);
 }
@@ -276,7 +285,33 @@ export function buildPublishableComposerInput(
   }
 
   const evidenceRefIds = approvedAsset
-    ? [...new Set(approvedAsset.evidenceRefs.map((e) => e.evidenceId).filter(Boolean))].slice(0, 24)
+    ? (() => {
+        const catalog = new Map<string, { url: string | null; excerpt: string | null }>();
+        for (const list of [
+          candidate.contentAssignment?.evidenceRefs ?? [],
+          candidate.selectedAgenda?.evidenceRefs ?? [],
+          candidate.contentPlan?.evidenceRefs ?? [],
+        ]) {
+          for (const ref of list) {
+            if (!catalog.has(ref.evidenceId)) {
+              catalog.set(ref.evidenceId, { url: ref.url ?? null, excerpt: ref.excerpt ?? null });
+            }
+          }
+        }
+        const enriched = approvedAsset.evidenceRefs.map((e) => ({
+          evidenceId: e.evidenceId,
+          noteKo: e.noteKo,
+          url: catalog.get(e.evidenceId)?.url ?? null,
+          excerpt: catalog.get(e.evidenceId)?.excerpt ?? null,
+        }));
+        return [
+          ...new Set(
+            dedupeEvidenceRefsForPrompt(enriched)
+              .map((e) => e.evidenceId)
+              .filter(Boolean),
+          ),
+        ].slice(0, 24);
+      })()
     : [...new Set(usableFacts.flatMap((f) => f.evidenceRefIds).filter(Boolean))].slice(0, 24);
 
   const destinations = approvedAsset

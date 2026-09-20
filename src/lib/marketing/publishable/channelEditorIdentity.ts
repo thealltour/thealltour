@@ -4,7 +4,7 @@
  * Phase5 social: archetype-aware preserve/forbid (decisionAtStake is not universal).
  */
 
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
@@ -97,6 +97,15 @@ export function ensureChannelEditorHermesOneshotReady(
     repaired = true;
   }
 
+  const soulPath = join(dir, "SOUL.md");
+  const soulBody = buildChannelEditorSoulMarkdown(channel) + "\n";
+  const existingSoul = existsSync(soulPath) ? readFileSync(soulPath, "utf8") : null;
+  if (existingSoul !== soulBody) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(soulPath, soulBody, "utf8");
+    repaired = true;
+  }
+
   return { profile, configPath, repaired };
 }
 
@@ -107,7 +116,7 @@ export function ensureChannelEditorHermesOneshotReady(
 export const CHANNEL_EDITOR_COMMON_IDENTITY = `
 You are a Channel Adapter / Channel Editor, not a Content Strategist and not a new Story author.
 
-APPROVED_CANONICAL_MARKETING_ASSET is the sole final editorial authority.
+APPROVED_CANONICAL_MARKETING_ASSET is the sole factual / evidence-boundary authority.
 
 You do NOT decide:
 - which Story to tell
@@ -125,6 +134,12 @@ Primary authoritative fields (adapt expression only):
 StoryLock / ContentProposition / CoreContentPack / desiredAudienceAction / engagementMechanism
 are advisory consistency context ONLY.
 If they conflict with the approved Canonical or editorialArchetype, the approved Canonical + archetype win.
+
+When editorialNarrativePlan is provided, it is the sole narrative-sequence authority
+(promise → beats → audienceTakeaway) after story angle.
+You may compress, select, or reorder beats for the channel, but do not invent a new story premise.
+ContentPlan hook/outline/CTA and media-brief creative text are NOT editorial authority
+(legacy snapshot / export compatibility only).
 
 You MUST preserve:
 - Story identity
@@ -173,6 +188,7 @@ export const CHANNEL_EDITOR_CHANNEL_EXTENSIONS: Record<PublishableChannel, strin
 CHANNEL: Threads
 Purpose: adapt the same approved Story into Korean Threads.
 Primary job: discovery / perspective / conversation / lightweight brand familiarity — not a mini blog or sales script.
+Production package paths use threads-copy-writer (Narrative → conversational body). This adapter identity is legacy / no-packageRoot compatibility.
 Priorities: approved tension or curiosity in first 1–2 sentences; conversational Korean; one central Story; short paragraphs; optional natural close.
 Do not: create a mini blog; broaden into generic advice; introduce a new angle; force checklist or A-vs-B unless the Story is decision/practical.
 `.trim(),
@@ -180,6 +196,8 @@ Do not: create a mini blog; broaden into generic advice; introduce a new angle; 
   naver_blog: `
 CHANNEL: Naver Blog
 Purpose: adapt the same approved Story into a useful Korean Naver Blog article.
+Production package paths use naver-blog-structure-planner + naver-blog-copy-writer.
+This adapter identity is legacy / no-packageRoot compatibility.
 Priority order: (1) approved Story (2) reader payoff (3) useful article structure (4) search readability / SEO.
 Approved Story first. Use search-native structure without changing the Story.
 SEO/search intent is formatting/discoverability guidance, not editorial authority.
@@ -189,8 +207,10 @@ Do not derive a new primaryTopic/angle from ACRB searchIntent when an approved a
   naver_band: `
 CHANNEL: Naver Band
 Purpose: adapt the same Story for Korean Band community context.
-Priorities: relatable family/group planning problem; practical usefulness; warm community-native tone.
-Do not: shorten a blog mechanically; use "selected angle" as permission to re-plan; broaden into general family travel advice.
+Production package paths use naver-band-copy-writer (Narrative → short community body).
+This adapter identity is legacy / no-packageRoot compatibility.
+Priorities: short mobile-scannable opener; 2–3 key points; warm community-native tone; optional natural ending.
+Do not: reprint Canonical as a mini blog; force comment/save CTA; use "selected angle" as permission to re-plan; broaden into general family travel advice; convert discovery into checklist.
 `.trim(),
 
   kakao_channel: `
@@ -248,6 +268,11 @@ export type ChannelComposerPromptParts = {
   user: string;
   /** Deterministic full text for Hermes -z oneshot. */
   text: string;
+  /**
+   * Optional Hermes profile override for editorial split workers
+   * (narrative planner, carousel, card-copy, caption). Channel adapters omit this.
+   */
+  hermesProfile?: string;
 };
 
 export function assembleChannelComposerPromptParts(input: {

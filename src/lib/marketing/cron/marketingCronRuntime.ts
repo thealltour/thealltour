@@ -23,7 +23,31 @@ import {
   ensureChannelEditorHermesOneshotReady,
   type ChannelComposerPromptParts,
 } from "@/lib/marketing/publishable/channelEditorIdentity";
+import {
+  ensureInstagramEditorialHermesProfilesReady,
+  INSTAGRAM_EDITORIAL_HERMES_PROFILE_SET,
+} from "@/lib/marketing/publishable/instagramEditorial/hermesIdentity";
+import {
+  ensureThreadsCopyWriterHermesReady,
+  THREADS_COPY_HERMES_PROFILE_SET,
+} from "@/lib/marketing/publishable/threadsCopy/hermesIdentity";
+import {
+  ensureNaverBlogEditorialHermesProfilesReady,
+  NAVER_BLOG_EDITORIAL_HERMES_PROFILE_SET,
+} from "@/lib/marketing/publishable/naverBlogEditorial/hermesIdentity";
+import {
+  ensureNaverBandCopyWriterHermesReady,
+  NAVER_BAND_COPY_HERMES_PROFILE_SET,
+} from "@/lib/marketing/publishable/naverBandCopy/hermesIdentity";
+
 export { MARKETING_CRON_SPECIALIST_USES_HERMES_TOOLS };
+
+const SPECIALIST_HERMES_PROFILE_SET = new Set<string>([
+  ...INSTAGRAM_EDITORIAL_HERMES_PROFILE_SET,
+  ...THREADS_COPY_HERMES_PROFILE_SET,
+  ...NAVER_BLOG_EDITORIAL_HERMES_PROFILE_SET,
+  ...NAVER_BAND_COPY_HERMES_PROFILE_SET,
+]);
 
 export function isAiRuntimeMarketingCronEnabled(
   env: Record<string, string | undefined> = process.env,
@@ -174,11 +198,22 @@ export function createPublishableComposerInvoke(
         typeof prompt === "string"
           ? { channel: "threads" as const, system: "", user: prompt, text: prompt }
           : prompt;
-      if (!parts.system || !/You are a Channel (Adapter|Editor)/.test(parts.system)) {
+      const editorialOverride =
+        parts.hermesProfile && SPECIALIST_HERMES_PROFILE_SET.has(parts.hermesProfile)
+          ? parts.hermesProfile
+          : null;
+      if (
+        !editorialOverride &&
+        (!parts.system || !/You are a Channel (Adapter|Editor)/.test(parts.system))
+      ) {
         throw new Error("channel_editor_identity_missing_from_runtime_prompt");
       }
+      const systemContent = editorialOverride
+        ? parts.system ||
+          `Hermes editorial worker profile: ${editorialOverride}. Follow SOUL role for this profile.`
+        : parts.system;
       const messages = [
-        { role: "system" as const, content: parts.system },
+        { role: "system" as const, content: systemContent },
         { role: "user" as const, content: parts.user || parts.text },
       ];
       const request = createCronRuntimeRequest(
@@ -208,8 +243,25 @@ export function createPublishableComposerInvoke(
     if (!channel) {
       throw new Error("channel_editor_oneshot_requires_channel");
     }
-    const { profile } = ensureChannelEditorHermesOneshotReady(channel);
-    assertChannelEditorHermesProfile(profile);
+    const overrideProfile =
+      typeof prompt === "string" ? undefined : prompt.hermesProfile?.trim() || undefined;
+    let profile: string;
+    if (overrideProfile && SPECIALIST_HERMES_PROFILE_SET.has(overrideProfile)) {
+      if (THREADS_COPY_HERMES_PROFILE_SET.has(overrideProfile)) {
+        ensureThreadsCopyWriterHermesReady();
+      } else if (NAVER_BLOG_EDITORIAL_HERMES_PROFILE_SET.has(overrideProfile)) {
+        ensureNaverBlogEditorialHermesProfilesReady();
+      } else if (NAVER_BAND_COPY_HERMES_PROFILE_SET.has(overrideProfile)) {
+        ensureNaverBandCopyWriterHermesReady();
+      } else {
+        ensureInstagramEditorialHermesProfilesReady();
+      }
+      profile = overrideProfile;
+    } else {
+      const ready = ensureChannelEditorHermesOneshotReady(channel);
+      assertChannelEditorHermesProfile(ready.profile);
+      profile = ready.profile;
+    }
     const text = typeof prompt === "string" ? prompt : prompt.text;
     return Promise.resolve(invokeHermes(profile, text));
   };

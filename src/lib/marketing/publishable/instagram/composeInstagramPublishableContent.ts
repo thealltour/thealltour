@@ -338,6 +338,13 @@ export async function composeInstagramPublishableContent(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
+  /**
+   * Default true when approved Canonical is present and invoke is supplied.
+   * Legacy single-shot channel-editor-instagram remains for tests / no-asset paths.
+   */
+  useEditorialSplit?: boolean;
+  /** Persist editorial artifacts when set. */
+  packageRoot?: string | null;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -361,6 +368,28 @@ export async function composeInstagramPublishableContent(input: {
       failureMessage: "propositionStrength=insufficient",
       modelProfile: input.modelProfile,
     });
+  }
+
+  const preferEditorialSplit =
+    input.useEditorialSplit !== false &&
+    (input.useEditorialSplit === true || Boolean(input.packageRoot)) &&
+    Boolean(input.invoke) &&
+    Boolean(input.composerInput.approvedCanonicalAsset);
+
+  if (preferEditorialSplit && input.invoke) {
+    const { runInstagramEditorialPipeline } = await import(
+      "@/lib/marketing/publishable/instagramEditorial/pipeline"
+    );
+    const result = await runInstagramEditorialPipeline({
+      composerInput: input.composerInput,
+      invoke: input.invoke,
+      now: input.now,
+      modelProfile: input.modelProfile,
+      packageRoot: input.packageRoot,
+      narrativePlan: input.composerInput.editorialNarrativePlan,
+    });
+    // Fail-closed: do not quietly fall back to caption/slide heuristics.
+    return result.content;
   }
 
   if (input.invoke) {

@@ -176,6 +176,12 @@ export async function composeNaverBlogPublishableContent(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
+  /**
+   * Production packageRoot path uses Structure Planner + Copy Writer (fail-closed).
+   * Legacy single-shot channel-editor-naver-blog remains for tests / no-packageRoot.
+   */
+  useNaverBlogEditorialSplit?: boolean;
+  packageRoot?: string | null;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -187,7 +193,7 @@ export async function composeNaverBlogPublishableContent(input: {
       ? fallbackDet()
       : {
           title: null,
-          body: "[generation skipped: insufficient content proposition]",
+          body: "",
           blogMeta: {
             selectedTitle: "",
             titleCandidates: [],
@@ -202,7 +208,7 @@ export async function composeNaverBlogPublishableContent(input: {
       composerInput: input.composerInput,
       nowIso,
       title: det.title,
-      body: det.body,
+      body: det.body || "[generation skipped: insufficient content proposition]",
       blogMeta: det.blogMeta,
       status: "generation_failed",
       composer: "deterministic_fallback",
@@ -213,6 +219,27 @@ export async function composeNaverBlogPublishableContent(input: {
       failureMessage: "propositionStrength=insufficient",
       modelProfile: input.modelProfile,
     });
+  }
+
+  const preferSplit =
+    input.useNaverBlogEditorialSplit !== false &&
+    (input.useNaverBlogEditorialSplit === true || Boolean(input.packageRoot)) &&
+    Boolean(input.invoke) &&
+    Boolean(input.composerInput.approvedCanonicalAsset) &&
+    Boolean(input.composerInput.editorialNarrativePlan);
+
+  if (preferSplit && input.invoke) {
+    const { runNaverBlogEditorialPipeline } = await import(
+      "@/lib/marketing/publishable/naverBlogEditorial/pipeline"
+    );
+    const result = await runNaverBlogEditorialPipeline({
+      composerInput: input.composerInput,
+      invoke: input.invoke,
+      now: input.now,
+      packageRoot: input.packageRoot,
+      modelProfile: input.modelProfile,
+    });
+    return result.content;
   }
 
   if (input.invoke) {

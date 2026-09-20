@@ -9,6 +9,7 @@ import {
   assertChannelEditorHermesProfile,
   buildChannelEditorIdentityPrompt,
   buildChannelEditorSoulMarkdown,
+  ensureChannelEditorHermesOneshotReady,
   resolveChannelEditorHermesProfile,
 } from "@/lib/marketing/publishable/channelEditorIdentity";
 import { createPublishableComposerInvoke } from "@/lib/marketing/cron/marketingCronRuntime";
@@ -31,7 +32,8 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
   it("story-lock identity forbids new Story / booking-timing / future-price drift", () => {
     const text = CHANNEL_EDITOR_COMMON_IDENTITY;
     expect(text).toMatch(/Channel Adapter|Channel Editor/i);
-    expect(text).toContain("APPROVED_CANONICAL_MARKETING_ASSET is the sole final editorial authority");
+    expect(text).toContain("APPROVED_CANONICAL_MARKETING_ASSET is the sole factual / evidence-boundary authority");
+    expect(text).toMatch(/narrative-sequence authority/i);
     expect(text).toMatch(/inventing a new Story/i);
     expect(text).toMatch(/decisionAtStake/i);
     expect(text).toMatch(/booking\/purchase pressure|booking/i);
@@ -78,6 +80,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
   it("Hermes SOUL files on disk match canonical identity semantics", () => {
     const hermesHome = process.env.HERMES_HOME ?? "/home/ysh/.hermes";
     for (const channel of CHANNELS) {
+      ensureChannelEditorHermesOneshotReady(channel, hermesHome);
       const id = resolveChannelEditorHermesProfile(channel);
       const soulPath = join(hermesHome, "profiles", id, "SOUL.md");
       const soul = readFileSync(soulPath, "utf8");
@@ -90,13 +93,14 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
 
   it("Runtime invoke sends system Channel Editor identity and keeps roleKey/workload", async () => {
     const executeAndWait = vi.fn(async () => ({
-      status: "completed",
+      requestId: "req-test",
+      status: "completed" as const,
       response: { content: '{"title":null,"body":"ok"}' },
     }));
     const invoke = createPublishableComposerInvoke({
       useRuntime: true,
       correlationId: "test-corr",
-      executor: { executeAndWait },
+      executor: { executeAndWait } as never,
       completionTimeoutMs: 5_000,
     });
     expect(invoke).toBeTruthy();
@@ -110,7 +114,8 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
       });
       await invoke!(parts);
       expect(executeAndWait).toHaveBeenCalledTimes(1);
-      const req = executeAndWait.mock.calls[0]?.[0] as {
+      const callArgs = executeAndWait.mock.calls as unknown as Array<[unknown]>;
+      const req = callArgs[0]![0] as {
         workload: string;
         metadata?: { roleKey?: string };
         messages: Array<{ role: string; content: string }>;
@@ -123,7 +128,7 @@ describe("CHANNEL_EDITOR_PROFILE_SPLIT_STEP_1 identity", () => {
         req.metadata?.roleKey ??
         (req as { routing?: { roleKey?: string } }).routing?.roleKey;
       // createCronRuntimeRequest puts roleKey on input → check messages + call args deeply
-      const raw = executeAndWait.mock.calls[0]?.[0] as Record<string, unknown>;
+      const raw = callArgs[0]![0] as Record<string, unknown>;
       const serialized = JSON.stringify(raw);
       expect(serialized).toContain("channel_editor");
       expect(serialized).toContain("content_draft");

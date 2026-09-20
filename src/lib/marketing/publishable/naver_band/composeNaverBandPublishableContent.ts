@@ -122,6 +122,12 @@ export async function composeNaverBandPublishableContent(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
+  /**
+   * Production packageRoot path uses Naver Band Copy Specialist (fail-closed).
+   * Legacy single-shot channel-editor-naver-band remains for tests / no-packageRoot.
+   */
+  useNaverBandCopySpecialist?: boolean;
+  packageRoot?: string | null;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -145,6 +151,28 @@ export async function composeNaverBandPublishableContent(input: {
       failureMessage: "propositionStrength=insufficient",
       modelProfile: input.modelProfile,
     });
+  }
+
+  const preferSpecialist =
+    input.useNaverBandCopySpecialist !== false &&
+    (input.useNaverBandCopySpecialist === true || Boolean(input.packageRoot)) &&
+    Boolean(input.invoke) &&
+    Boolean(input.composerInput.approvedCanonicalAsset) &&
+    Boolean(input.composerInput.editorialNarrativePlan);
+
+  if (preferSpecialist && input.invoke) {
+    const { runNaverBandCopySpecialist } = await import(
+      "@/lib/marketing/publishable/naverBandCopy/pipeline"
+    );
+    const result = await runNaverBandCopySpecialist({
+      composerInput: input.composerInput,
+      invoke: input.invoke,
+      now: input.now,
+      packageRoot: input.packageRoot,
+      modelProfile: input.modelProfile,
+    });
+    // Fail-closed: do not quietly fall back to channel-editor-naver-band / deterministic.
+    return result.content;
   }
 
   if (input.invoke) {

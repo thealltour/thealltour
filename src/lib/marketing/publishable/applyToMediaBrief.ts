@@ -32,8 +32,16 @@ export function applyPublishableContentToMediaBrief(
 
   const withCardnews = applyInstagramCardnewsToBrief(mediaBrief, bundle);
 
+  // Bundle targetChannels win; media-brief creative fields are non-authoritative for channel generation.
+  const syncedTargetChannels = [
+    ...new Set((bundle.targetChannels ?? []).filter(Boolean)),
+  ];
+  const targetChannels =
+    syncedTargetChannels.length > 0 ? syncedTargetChannels : mediaBrief.targetChannels;
+
   return parseMediaBrief({
     ...withCardnews,
+    targetChannels,
     formats: {
       ...withCardnews.formats,
       text: {

@@ -230,6 +230,12 @@ export async function composeThreadsPublishableContent(input: {
   modelProfile?: string | null;
   /** Tests/diagnostics only — never counts as publishable success. */
   allowDeterministicFallback?: boolean;
+  /**
+   * Production packageRoot path uses Threads Copy Specialist (fail-closed).
+   * Legacy single-shot channel-editor-threads remains for tests / no-packageRoot.
+   */
+  useThreadsCopySpecialist?: boolean;
+  packageRoot?: string | null;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -254,6 +260,28 @@ export async function composeThreadsPublishableContent(input: {
       failureMessage: "propositionStrength=insufficient; polished channel generation skipped",
       modelProfile: input.modelProfile,
     });
+  }
+
+  const preferSpecialist =
+    input.useThreadsCopySpecialist !== false &&
+    (input.useThreadsCopySpecialist === true || Boolean(input.packageRoot)) &&
+    Boolean(input.invoke) &&
+    Boolean(input.composerInput.approvedCanonicalAsset) &&
+    Boolean(input.composerInput.editorialNarrativePlan);
+
+  if (preferSpecialist && input.invoke) {
+    const { runThreadsCopySpecialist } = await import(
+      "@/lib/marketing/publishable/threadsCopy/pipeline"
+    );
+    const result = await runThreadsCopySpecialist({
+      composerInput: input.composerInput,
+      invoke: input.invoke,
+      now: input.now,
+      packageRoot: input.packageRoot,
+      modelProfile: input.modelProfile,
+    });
+    // Fail-closed: do not quietly fall back to channel-editor-threads / deterministic.
+    return result.content;
   }
 
   if (input.invoke) {

@@ -27,6 +27,9 @@ function baseComposer(overrides: Partial<PublishableComposerInput> = {}): Publis
       {
         statement: "한국 여행자에게 익숙한 베트남 풍경은 해변과 리조트 쪽으로 기운다",
         epistemicType: "observed",
+        confidence: "medium",
+        evidenceRefIds: ["ev-1"],
+        usable: true,
       },
     ],
     avoidedStatements: [],

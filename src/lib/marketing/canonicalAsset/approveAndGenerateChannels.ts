@@ -355,6 +355,8 @@ export async function generateChannelAsset(input: {
   invoke: PublishableLlmInvoke;
   approvedCanonicalAsset: CanonicalMarketingAsset;
   allowOverwriteHuman?: boolean;
+  /** Prefer false in unit tests that mock legacy single-shot Instagram JSON. */
+  useInstagramEditorialSplit?: boolean;
   qualityRevision?: {
     hints: string[];
     priorBody?: string | null;
@@ -380,6 +382,7 @@ export async function generateChannelAsset(input: {
     invoke: input.invoke,
     persist: true,
     qualityRevision: input.qualityRevision ?? null,
+    useInstagramEditorialSplit: input.useInstagramEditorialSplit,
     now: input.now,
   });
 }

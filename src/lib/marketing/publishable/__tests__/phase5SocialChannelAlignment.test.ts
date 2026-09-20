@@ -49,7 +49,15 @@ function baseComposer(overrides: Partial<PublishableComposerInput> = {}): Publis
     keyMessage: "바냐는 단순한 온천이 아니다",
     destinations: ["부다페스트"],
     entities: ["바냐"],
-    usableFacts: [{ statement: "공개 후기에서 건축 디테일이 자주 언급된다", epistemicType: "observed" }],
+    usableFacts: [
+      {
+        statement: "공개 후기에서 건축 디테일이 자주 언급된다",
+        epistemicType: "observed",
+        confidence: "medium",
+        evidenceRefIds: ["ev-1"],
+        usable: true,
+      },
+    ],
     avoidedStatements: [],
     unsupportedClaims: ["특정 마을 방문 확정"],
     governanceDecision: "allow",

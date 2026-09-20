@@ -258,6 +258,104 @@ describe("Marketing Value discovery Threads (Dao fixture)", () => {
 });
 
 describe("editorialArchetype provenance recovery", () => {
+  function stubCandidate(asset: CanonicalMarketingAsset): CompletedMarketingCandidate {
+    return {
+      contract: "completed-marketing-candidate-v1",
+      candidateId: "cand_1",
+      runId: "run_1",
+      logicalRunKey: "lrk_1",
+      businessDateKst: "2026-09-18",
+      createdAt: "2026-09-18T00:00:00.000Z",
+      updatedAt: "2026-09-18T00:00:00.000Z",
+      selectedAgenda: {
+        contract: "selected-agenda-v1",
+        id: "sa_1",
+        decidedAt: "2026-09-18T00:00:00.000Z",
+        title: "t",
+        summary: "s",
+        rationale: [],
+        destinations: [],
+        topics: [],
+        entities: [],
+        contentObjective: "inform",
+        audienceHint: null,
+        commercialIntent: "informational",
+        matchedProductIds: [],
+        evidenceRefs: [],
+        constraints: [],
+        urgency: "normal",
+        timelinessNote: null,
+        provenance: {
+          decidedBy: "marketing-manager",
+          managerDecisionSource: "explicit",
+          researchScoreAtSelection: null,
+          agendaCandidateId: null,
+          researchBriefId: null,
+        },
+      },
+      contentAssignment: {
+        contract: "content-assignment-v1",
+        assignmentId: "asg_1",
+        createdAt: "2026-09-18T00:00:00.000Z",
+        selectedAgendaId: "sa_1",
+        selectedAgendaTitle: "t",
+        objective: "inform",
+        topic: "t",
+        audience: null,
+        destinations: [],
+        facts: [],
+        commercialIntent: "informational",
+        matchedProductIds: [],
+        constraints: [],
+        formatHints: [],
+        requiredOutputs: ["text_draft"],
+        deadline: null,
+        evidenceRefs: [],
+        riskNotes: [],
+        provenance: {
+          selectedAgendaId: "sa_1",
+          createdBy: "marketing-manager-handoff",
+          idempotencyKey: "asg_1",
+        },
+      },
+      contentPlan: null,
+      draft: {
+        body: "body",
+        channel: "threads",
+        agenda: null,
+        sourceReferences: [],
+      },
+      governanceDecision: null,
+      status: "ready_for_human_review",
+      revisionHistory: [],
+      provenance: {
+        routineId: "daily",
+        correlationId: "corr",
+        researchStatus: null,
+        governanceReviewId: null,
+      },
+      observability: {
+        runId: "run_1",
+        logicalRunKey: "lrk_1",
+        businessDateKst: "2026-09-18",
+        correlationId: "corr",
+        researchStatus: null,
+        candidateCount: 1,
+        selectedAgendaId: "sa_1",
+        assignmentId: "asg_1",
+        governanceReviewId: null,
+        revisionCount: 0,
+        governanceDecision: null,
+        finalCandidateId: "cand_1",
+        finalStatus: "ready_for_human_review",
+        startedAt: "2026-09-18T00:00:00.000Z",
+        completedAt: "2026-09-18T00:00:00.000Z",
+        failureReason: null,
+      },
+      canonicalMarketingAsset: asset,
+    };
+  }
+
   function approvedAsset(archetype: string): CanonicalMarketingAsset {
     return {
       contract: CANONICAL_MARKETING_ASSET_CONTRACT,
@@ -302,10 +400,7 @@ describe("editorialArchetype provenance recovery", () => {
   it("lock-only Story stub recovers archetype from approved asset field", () => {
     const asset = approvedAsset("discovery");
     const ctx = resolveCanonicalAssetDomainContext({
-      candidate: {
-        id: "cand_1",
-        canonicalMarketingAsset: asset,
-      } as CompletedMarketingCandidate,
+      candidate: stubCandidate(asset),
       packageRoot: null,
       storyPointCandidateSet: null,
     });
@@ -316,10 +411,7 @@ describe("editorialArchetype provenance recovery", () => {
     const asset = approvedAsset("discovery");
     delete (asset as { editorialArchetype?: string | null }).editorialArchetype;
     const ctx = resolveCanonicalAssetDomainContext({
-      candidate: {
-        id: "cand_1",
-        canonicalMarketingAsset: asset,
-      } as CompletedMarketingCandidate,
+      candidate: stubCandidate(asset),
       packageRoot: null,
       storyPointCandidateSet: null,
     });

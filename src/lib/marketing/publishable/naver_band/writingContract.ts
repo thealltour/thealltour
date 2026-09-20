@@ -7,15 +7,16 @@ export function naverBandWritingContract(options?: {
     : "Stay within provided topic/keyMessage; do not invent a new Story.";
 
   return [
-    "You write a Korean Naver Band community post — NOT a shortened blog article.",
+    "You write a Korean Naver Band community post — NOT a shortened blog article and NOT a Canonical reprint.",
     "JSON only. Return: { title: string|null, body: string }.",
-    "Tone: friendly community post for family/travel groups. Conversational, mobile-readable.",
-    "Typical shape: short hook → useful context → 2–5 practical items if helpful → natural question/CTA.",
-    "Do not force the same structure every time. Do not copy Blog markdown headings.",
+    "Tone: friendly community post. Conversational, mobile-readable, short paragraphs.",
+    "Typical shape: short opener → 2–3 key points → one takeaway → optional natural ending (question not required).",
+    "Do not restate the entire Canonical in 5–6 paragraphs. Do not copy Blog markdown headings.",
+    "discovery: curiosity / concrete detail / perspective — never invent checklist / A-vs-B / '이런 분께 추천'.",
     angleLine,
-    "Soft community CTA (의견/경험/궁금한 점). Hard sell only if commercialIntent supports; no '좋아요와 댓글 부탁드립니다'.",
+    "Soft community tone OK. Forbidden: '댓글 달아주세요', '의견 남겨주세요', '저장하고 공유', sales CTA when informational.",
     "Emoji optional 0–3. No evidence IDs, no fake first-person travel claims, no invented prices.",
-    "Keep moderately short — not an essay.",
+    "Prefer roughly 250–700 characters; keep scannable.",
   ].join("\n");
 }
 

@@ -30,6 +30,8 @@ import { stampChannelFromApprovedAsset } from "@/lib/marketing/publishable/appro
 import { createNotGeneratedChannelContent } from "@/lib/marketing/publishable/channelWorkspace";
 import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
 import { CHANNEL_INPUT_AUTHORITY_VERSION } from "@/lib/marketing/publishable/composerRuntime";
+import { ensureEditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/ensureEditorialNarrativePlan";
+import { buildEditorialNarrativeContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import {
   buildCoreContentPack,
   resolveCoreGateDecision,
@@ -91,6 +93,24 @@ export type EnsurePublishableContentInput = {
    * Defaults to false for channel-scoped regenerate; true otherwise.
    */
   allowDeterministicFallback?: boolean;
+  /**
+   * When false, Instagram uses legacy single-shot channel-editor-instagram path.
+   * Default true for production ensure (packageRoot present). Unit tests that mock
+   * a single Instagram JSON blob should set false.
+   */
+  useInstagramEditorialSplit?: boolean;
+  /**
+   * When false, Threads uses legacy single-shot channel-editor-threads path.
+   * Default true for production ensure (packageRoot present).
+   */
+  useThreadsCopySpecialist?: boolean;
+  /**
+   * When false, Naver Blog uses legacy single-shot channel-editor-naver-blog path.
+   * Default true for production ensure (packageRoot present).
+   */
+  useNaverBlogEditorialSplit?: boolean;
+  /** Prefer Naver Band Copy Specialist when packageRoot + Narrative are present. */
+  useNaverBandCopySpecialist?: boolean;
   /** Marketing Value / human review quality repair hints for Content Strategist composer. */
   qualityRevision?: {
     hints: string[];
@@ -184,12 +204,6 @@ export async function ensurePublishableContent(
     throw err;
   }
 
-  const sourceRevision = computePublishableSourceRevision(
-    input.candidate,
-    input.humanDraft,
-    acrb,
-    approvedAsset,
-  );
   const existing = tryReadBundle(input.packageRoot);
   const baseComposerInput = {
     ...buildPublishableComposerInput(input.candidate, {
@@ -209,11 +223,41 @@ export async function ensurePublishableContent(
       : {}),
   };
   const corePack = buildCoreContentPack({ composerInput: baseComposerInput, now });
-  const composerInput = { ...baseComposerInput, corePack };
+  const governanceDecision = input.candidate.governanceDecision?.decision ?? null;
+  const blockedEarly = governanceDecision === "BLOCK";
+  const narrativeInvoke = blockedEarly ? null : (input.invoke ?? null);
+
+  let editorialNarrativePlan = baseComposerInput.editorialNarrativePlan ?? null;
+  if (approvedAsset && (narrativeInvoke || input.packageRoot)) {
+    const ensured = await ensureEditorialNarrativePlan({
+      composerInput: { ...baseComposerInput, corePack },
+      invoke: narrativeInvoke,
+      packageRoot: input.packageRoot ?? null,
+      now,
+      forceRegenerate: Boolean(input.forceRegenerate) && !input.forceRegenerateChannels?.length,
+    });
+    editorialNarrativePlan = ensured.plan;
+  }
+
+  const narrativeContentFingerprint = editorialNarrativePlan
+    ? buildEditorialNarrativeContentFingerprint(editorialNarrativePlan)
+    : null;
+  const sourceRevision = computePublishableSourceRevision(
+    input.candidate,
+    input.humanDraft,
+    acrb,
+    approvedAsset,
+    narrativeContentFingerprint,
+  );
+  const composerInput = {
+    ...baseComposerInput,
+    corePack,
+    editorialNarrativePlan,
+    sourceRevision,
+  };
   const targetChannels = composerInput.targetChannels;
   const modelProfileFor = (channel: PublishableChannel) =>
     input.modelProfile ?? resolveChannelEditorHermesProfile(channel);
-  const governanceDecision = input.candidate.governanceDecision?.decision ?? null;
 
   const humanOwnsThreads =
     Boolean(input.humanEditedAfterGovernance) &&
@@ -246,7 +290,7 @@ export async function ensurePublishableContent(
   }
 
   // Governance BLOCK — do not polish channel copy for publication.
-  const blocked = governanceDecision === "BLOCK";
+  const blocked = blockedEarly;
   const invoke = blocked ? null : input.invoke;
   const allowDeterministicFallback =
     input.allowDeterministicFallback ?? !scopedOnly;
@@ -256,6 +300,30 @@ export async function ensurePublishableContent(
     invoke,
     modelProfile: modelProfileFor(channel),
     allowDeterministicFallback,
+    ...(channel === "instagram"
+      ? {
+          useEditorialSplit: input.useInstagramEditorialSplit !== false,
+          packageRoot: input.packageRoot ?? null,
+        }
+      : {}),
+    ...(channel === "threads"
+      ? {
+          useThreadsCopySpecialist: input.useThreadsCopySpecialist !== false,
+          packageRoot: input.packageRoot ?? null,
+        }
+      : {}),
+    ...(channel === "naver_blog"
+      ? {
+          useNaverBlogEditorialSplit: input.useNaverBlogEditorialSplit !== false,
+          packageRoot: input.packageRoot ?? null,
+        }
+      : {}),
+    ...(channel === "naver_band"
+      ? {
+          useNaverBandCopySpecialist: input.useNaverBandCopySpecialist !== false,
+          packageRoot: input.packageRoot ?? null,
+        }
+      : {}),
   });
 
   /**

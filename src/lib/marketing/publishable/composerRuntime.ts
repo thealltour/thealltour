@@ -191,13 +191,17 @@ export const PROPOSITION_CONSISTENCY_LOCK_RULES = [
   "Do NOT call web search or invent sources.",
 ].join("\n");
 
-export const CHANNEL_INPUT_AUTHORITY_VERSION = "channel-input-authority-v1" as const;
+export const CHANNEL_INPUT_AUTHORITY_VERSION = "channel-input-authority-v2" as const;
 
 export function channelComposerRules(input: PublishableComposerInput): string {
   if (input.approvedCanonicalAsset || input.compositionMode === "approved_asset_adapter") {
     return [
       "=== APPROVED_ASSET_AUTHORITY_RULES ===",
       APPROVED_ASSET_COMPOSER_RULES,
+      "=== EDITORIAL_NARRATIVE_AUTHORITY ===",
+      "When editorialNarrativePlan is provided, it owns story progression (promise → beats → takeaway).",
+      "Do not invent a new premise or redesign the narrative arc; you may compress or select beats for this channel.",
+      "ContentPlan / media-brief creative fields (hook, outline, keyMessage, recommendedFormats) are NOT authority for channel generation.",
       "=== CONSISTENCY_LOCK_RULES ===",
       PROPOSITION_CONSISTENCY_LOCK_RULES,
       "=== CORE_PACK_AUTHORITY ===",
@@ -218,6 +222,7 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
     (input.approvedCanonicalAsset ? "approved_asset_adapter" : "legacy_proposition_driven");
 
   if (mode === "approved_asset_adapter") {
+    const narrative = input.editorialNarrativePlan ?? null;
     return {
       compositionMode: "approved_asset_adapter",
       inputAuthorityVersion: CHANNEL_INPUT_AUTHORITY_VERSION,
@@ -232,6 +237,19 @@ export function buildChannelComposerInputJson(input: PublishableComposerInput): 
       keyMessage: input.approvedCanonicalAsset?.titleKo ?? input.keyMessage,
       approvedCanonicalAsset: buildApprovedAssetPromptSlice(input.approvedCanonicalAsset),
       storyLock: input.storyLock ?? null,
+      editorialNarrativePlan: narrative
+        ? {
+            narrativePromise: narrative.narrativePromise,
+            audienceTakeaway: narrative.audienceTakeaway,
+            beats: narrative.beats,
+          }
+        : null,
+      editorialAuthority: {
+        factualBoundary: "approved_canonical",
+        narrativeSequence: narrative ? "editorial_narrative_plan" : null,
+        channelStructure: "channel_worker",
+        wording: "channel_worker",
+      },
       contentProposition: buildPropositionPromptSlice(input.contentProposition, mode),
       safetyBoundary: {
         avoidedStatements: input.avoidedStatements,

@@ -167,6 +167,9 @@ function busanAcrb(): AudienceContentResearchBrief {
     sourceCoverage: {
       assignmentEvidence: true,
       metaEditorial: true,
+      internalResearchSignals: false,
+      semanticRetrieval: false,
+      historicalContent: false,
       externalWebSearch: true,
       notes: [],
     },
@@ -184,7 +187,7 @@ function busanAcrb(): AudienceContentResearchBrief {
       officialSourceCount: 0,
       socialCommunitySourceCount: 1,
     },
-  } as AudienceContentResearchBrief;
+  } as unknown as AudienceContentResearchBrief;
 }
 
 function makeCandidate(

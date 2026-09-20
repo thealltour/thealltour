@@ -313,7 +313,7 @@ describe("MQ-4 export / persistence / idempotency", () => {
     mkdirSync(join(dir, "context"), { recursive: true });
     const cand = candidate();
     let calls = 0;
-    const invoke = async (prompt) => {
+    const invoke = async (prompt: unknown) => {
       calls += 1;
       if (asPromptText(prompt).includes("숏폼") || asPromptText(prompt).includes("나레이션") || asPromptText(prompt).includes("segments")) {
         return goodShortformJson();
@@ -348,7 +348,7 @@ describe("MQ-4 export / persistence / idempotency", () => {
     mkdirSync(join(dir, "context"), { recursive: true });
     const cand = candidate();
     let calls = 0;
-    const invoke = async (prompt) => {
+    const invoke = async (prompt: unknown) => {
       calls += 1;
       if (asPromptText(prompt).includes("segments")) return goodShortformJson();
       if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드")) return goodBandJson();
@@ -478,7 +478,7 @@ describe("MQ-4 channel differentiation + proposition consumption", () => {
     const input = buildPublishableComposerInput(candidate());
     expect(input.contentProposition?.contentPromise).toBeTruthy();
     const prompts: string[] = [];
-    const invoke = async (prompt) => {
+    const invoke = async (prompt: unknown) => {
       prompts.push(asPromptText(prompt));
       if (asPromptText(prompt).includes("segments") || asPromptText(prompt).includes("숏폼")) return goodShortformJson();
       if (asPromptText(prompt).includes("Band") || asPromptText(prompt).includes("밴드") || asPromptText(prompt).includes("naver_band")) {

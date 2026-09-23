@@ -124,6 +124,7 @@ describe("prepareContentToGovernanceHandoff", () => {
       channel: "threads",
       agenda: "Japan autumn",
       assignmentId: mm.contentAssignment.assignmentId,
+      sourceReferences: [],
     };
     expect(() =>
       prepareContentToGovernanceHandoff({
@@ -132,7 +133,7 @@ describe("prepareContentToGovernanceHandoff", () => {
         channel: "threads",
         assignment: mm.contentAssignment,
         selectedAgenda: mm.selectedAgenda,
-        contentPlan: scaffoldWithoutRefs,
+        contentPlan: { ...scaffoldWithoutRefs, evidenceRefs: [] },
         contentPlanScaffold: mm.contentPlanScaffold,
       }),
     ).not.toThrow();
@@ -157,6 +158,7 @@ describe("prepareContentToGovernanceHandoff", () => {
         factsToUse: ["Autumn travel planning is easier per official guidance."],
       } as ContentStrategistOutput["contentPlan"],
       assignmentId: mm.contentAssignment.assignmentId,
+      sourceReferences: [],
     };
     expect(() =>
       prepareContentToGovernanceHandoff({
@@ -195,6 +197,7 @@ describe("prepareContentToGovernanceHandoff", () => {
         draftInstructions: [],
       },
       assignmentId: "ca_test",
+      sourceReferences: [],
     };
     expect(() =>
       prepareContentToGovernanceHandoff({

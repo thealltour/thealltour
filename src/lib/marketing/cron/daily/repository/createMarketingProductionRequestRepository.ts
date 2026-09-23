@@ -10,6 +10,10 @@ import {
   normalizeProductionRequest,
   sanitizeProductionWorkerError,
 } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
+
+/** Re-export for callers/tests that historically imported the contract from this module. */
+export { MARKETING_PRODUCTION_REQUEST_CONTRACT };
+
 import type { AgendaSlateCandidate, DailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import { buildProductionLogicalRunKey } from "@/lib/marketing/cron/daily/agendaSlate/productionLogicalRunKey";
 

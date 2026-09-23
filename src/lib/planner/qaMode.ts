@@ -1,10 +1,12 @@
+import type { EnvBag } from "@/lib/envBag";
+
 /**
  * Planner QA Mode — server/runtime gate only.
  * Never enable on production deployments even if PLANNER_QA_MODE is accidentally true.
  */
 
 export function isPlannerQaModeEnabled(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvBag = process.env,
 ): boolean {
   const vercelEnv = (env.VERCEL_ENV ?? "").trim().toLowerCase();
   const nodeEnv = (env.NODE_ENV ?? "").trim().toLowerCase();

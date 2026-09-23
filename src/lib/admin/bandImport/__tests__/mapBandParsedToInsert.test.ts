@@ -411,44 +411,44 @@ describe("mapBandParsedToInsert", () => {
         price: 999000,
         departure_schedules: [
           {
-            departure_date: "7/23(수)",
+            departure_date: "11/23(월)",
             return_date: null,
             price: 890000,
-            label: "7/23(수)",
+            label: "11/23(월)",
             status: "AVAILABLE",
           },
           {
-            departure_date: "7/30(수)",
+            departure_date: "11/30(월)",
             return_date: null,
             price: 920000,
-            label: "7/30(수)",
+            label: "11/30(월)",
             status: null,
           },
         ],
         departure_from_date: null,
       }),
-      bandText: "2026년 여름 골프투어",
+      bandText: "2026년 가을 골프투어",
       hwpText: "",
     });
 
     expect(payload.departure_schedules_json).toEqual([
       {
-        departureDate: "2026-07-23",
+        departureDate: "2026-11-23",
         returnDate: null,
         price: 890000,
-        label: "7/23(수)",
+        label: "11/23(월)",
         status: "AVAILABLE",
       },
       {
-        departureDate: "2026-07-30",
+        departureDate: "2026-11-30",
         returnDate: null,
         price: 920000,
-        label: "7/30(수)",
+        label: "11/30(월)",
         status: "AVAILABLE",
       },
     ]);
     expect(payload.price).toBe(890000);
-    expect(payload.departure_from_date).toBe("2026-07-23");
+    expect(payload.departure_from_date).toBe("2026-11-23");
   });
 
   it("overrides AI-hallucinated year when source has no explicit year", () => {

@@ -269,6 +269,8 @@ function planGeneratedArtifacts(input: {
   return planned;
 }
 
+// Non-authoritative snapshot/debug/export only.
+// ContentPlan creative fields must not drive channel generation after Approved Canonical.
 function buildExportContext(
   candidate: CompletedMarketingCandidate,
   audienceContentResearchBrief?: AudienceContentResearchBrief | null,
@@ -279,6 +281,12 @@ function buildExportContext(
       : candidate.audienceContentResearchRef ?? null;
   const context = {
     contract: MARKETING_ASSET_EXPORT_CONTEXT_CONTRACT,
+    /**
+     * Snapshot / debug / export only.
+     * contentPlan hook/outline/ctaStrategy and draft creative fields are
+     * non-authoritative for Approved Canonical → Narrative → channel generation.
+     */
+    authorityRole: "non_authoritative_export_snapshot" as const,
     candidateId: candidate.candidateId,
     businessDateKst: candidate.businessDateKst,
     status: candidate.status,

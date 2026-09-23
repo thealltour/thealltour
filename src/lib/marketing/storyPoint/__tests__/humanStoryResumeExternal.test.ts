@@ -106,7 +106,6 @@ function baseRequest(set: DurableStoryPointCandidateSet): MarketingProductionReq
     businessDateKst: "2026-09-18",
     slateItemId: "si_1",
     slateId: "slate_1",
-    correlationId: "corr",
     status: "QUEUED",
     createdAt: "2026-09-18T00:00:00.000Z",
     updatedAt: "2026-09-18T00:00:00.000Z",
@@ -120,11 +119,19 @@ function baseRequest(set: DurableStoryPointCandidateSet): MarketingProductionReq
     errorMessage: null,
     workerId: null,
     completedCandidateId: null,
-    selection: { title: "heritage" },
+    selection: {
+      title: "heritage",
+      summary: "heritage story",
+      agendaCandidateId: null,
+      researchBriefId: null,
+      rationale: [],
+      recommendedChannel: null,
+      recommendedFormats: [],
+    },
     metadata: {
       [PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY]: set,
     },
-  } as MarketingProductionRequest;
+  };
 }
 
 describe("human story resume after external import", () => {

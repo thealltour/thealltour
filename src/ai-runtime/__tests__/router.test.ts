@@ -233,7 +233,7 @@ describe("FallbackRuntimeRouter", () => {
   });
 
   it("skips entire provider on AUTH_ERROR", async () => {
-    const primaryGenerate = vi.fn(async () => {
+    const primaryGenerate = vi.fn(async (_request?: unknown, _model?: unknown) => {
       throw new RuntimeError("AUTH_ERROR", "invalid key", false);
     });
     const secondaryGenerate = vi.fn();

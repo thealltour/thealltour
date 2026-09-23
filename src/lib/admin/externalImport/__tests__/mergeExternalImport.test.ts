@@ -2,29 +2,60 @@ import { describe, expect, it } from "vitest";
 import { mergeExternalImport } from "@/lib/admin/externalImport/mergeExternalImport";
 import type { ExternalParsedMeta } from "@/lib/admin/externalImport/externalProductMetaSchema";
 import type { ItineraryBlock } from "@/lib/admin/externalImport/itineraryBlockTypes";
+import type { ItineraryV2, ItineraryV2Event } from "@/types/product";
+
+/** merge returns ExternalParsedProduct but itinerary is ItineraryV2 at runtime. */
+function asItineraryV2(
+  merged: ReturnType<typeof mergeExternalImport>,
+): ItineraryV2 | null {
+  return (merged.itinerary_v2_json as ItineraryV2 | null) ?? null;
+}
+
+function dayEvents(
+  merged: ReturnType<typeof mergeExternalImport>,
+  dayIndex: number,
+): ItineraryV2Event[] {
+  return asItineraryV2(merged)?.days[dayIndex]?.events ?? [];
+}
 
 function minimalMeta(overrides: Partial<ExternalParsedMeta> = {}): ExternalParsedMeta {
-  return {
+  const base: ExternalParsedMeta = {
     title: "계림 5일",
     description: "패키지",
     price: 1290000,
     duration: "3박5일",
     theme: "중국",
+    departure_region: null,
     included_items: "항공+숙박",
     excluded_items: "개인경비",
+    optional_expenses: null,
     booking_notes: null,
     status: "AVAILABLE",
+    airline_name: null,
     departure_flight_number: null,
     departure_from_airport: null,
     departure_to_airport: null,
+    departure_from_date: null,
+    departure_from_time: null,
+    departure_to_date: null,
+    departure_to_time: null,
+    departure_duration: null,
+    arrival_flight_number: null,
+    arrival_from_airport: null,
+    arrival_to_airport: null,
+    arrival_from_date: null,
+    arrival_from_time: null,
+    arrival_to_date: null,
+    arrival_to_time: null,
+    arrival_duration: null,
     departure_time: null,
     arrival_time: null,
     seo_hashtags: null,
     one_liner: null,
     meta_description: null,
     selling_points_json: null,
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 const SANG_BI_SHAN_BLOCK: ItineraryBlock = {
@@ -58,13 +89,10 @@ describe("mergeExternalImport", () => {
 
     expect(merged.image_url).toBe("https://cdn.example.com/gallery-1.jpg");
     expect(merged.images_json).toHaveLength(3);
-    expect(merged.itinerary_v2_json?.days).toHaveLength(1);
-    expect(merged.itinerary_v2_json?.days[0].events[0].heading).toBe("상비산");
-    expect(merged.itinerary_v2_json?.days[0].events[0].description).toContain("200m");
-    const firstImages =
-      merged.itinerary_v2_json?.days[0].events[0].images ??
-      (merged.itinerary_v2_json?.days[0].events[0] as { imageUrls?: string[] }).imageUrls;
-    expect(firstImages).toHaveLength(3);
+    expect(asItineraryV2(merged)?.days).toHaveLength(1);
+    expect(dayEvents(merged, 0)[0]?.heading).toBe("상비산");
+    expect(dayEvents(merged, 0)[0]?.description).toContain("200m");
+    expect(dayEvents(merged, 0)[0]?.images).toHaveLength(3);
   });
 
   it("enriches matching AI events with richer DOM blocks", () => {
@@ -99,7 +127,7 @@ describe("mergeExternalImport", () => {
       },
     });
 
-    const events = merged.itinerary_v2_json?.days[0].events ?? [];
+    const events = dayEvents(merged, 0);
     expect(events).toHaveLength(2);
     const sangbishan = events.find((e) => e.heading === "상비산");
     expect(sangbishan?.description).toContain("석회암");
@@ -132,7 +160,7 @@ describe("mergeExternalImport", () => {
       },
     });
 
-    expect(merged.itinerary_v2_json?.days[0].events[0].heading).toBe("출발");
+    expect(dayEvents(merged, 0)[0]?.heading).toBe("출발");
   });
 
   it("uses AI itinerary by default when no legacy blocks", () => {
@@ -169,14 +197,11 @@ describe("mergeExternalImport", () => {
       },
     });
 
-    const events = merged.itinerary_v2_json?.days[0].events ?? [];
+    const events = dayEvents(merged, 0);
     expect(events).toHaveLength(2);
     expect(events[0].heading).toBe("상비산");
     expect(events[1].heading).toBe("첩채산");
-    const sangbishanImages =
-      events[0].images ??
-      (events[0] as { imageUrls?: string[] }).imageUrls;
-    expect(sangbishanImages).toHaveLength(2);
+    expect(events[0].images).toHaveLength(2);
   });
 
   it("merges itinerary with meal-only blocks", () => {
@@ -201,7 +226,7 @@ describe("mergeExternalImport", () => {
       ],
     });
 
-    const day2Events = merged.itinerary_v2_json?.days[0].events ?? [];
+    const day2Events = dayEvents(merged, 0);
     expect(day2Events.map((e) => e.heading)).toEqual(
       expect.arrayContaining(["상비산", "조식", "석식"]),
     );
@@ -241,7 +266,7 @@ describe("mergeExternalImport", () => {
       },
     });
 
-    const events = merged.itinerary_v2_json?.days[0].events ?? [];
+    const events = dayEvents(merged, 0);
     expect(events.map((e) => e.heading)).toContain("출입국 정보");
     const notice = events.find((e) => e.heading === "출입국 정보");
     expect(notice?.description).toContain("무비자");
@@ -293,11 +318,11 @@ describe("mergeExternalImport", () => {
       ],
     });
 
-    expect(merged.itinerary_v2_json?.days).toHaveLength(2);
-    expect(merged.itinerary_v2_json?.days[0].day).toBe(1);
-    expect(merged.itinerary_v2_json?.days[1].events.find((e) => e.heading === "상비산")).toBeTruthy();
-    const hotel = merged.itinerary_v2_json?.days[1].events.find((e) => e.heading === "호텔");
-    const meal = merged.itinerary_v2_json?.days[1].events.find((e) => e.heading === "식사");
+    expect(asItineraryV2(merged)?.days).toHaveLength(2);
+    expect(asItineraryV2(merged)?.days[0].day).toBe(1);
+    expect(dayEvents(merged, 1).find((e) => e.heading === "상비산")).toBeTruthy();
+    const hotel = dayEvents(merged, 1).find((e) => e.heading === "호텔");
+    const meal = dayEvents(merged, 1).find((e) => e.heading === "식사");
     expect(hotel?.displayRole).toBe("summary");
     expect(hotel?.iconKey).toBe("hotel");
     expect(meal?.displayRole).toBe("summary");

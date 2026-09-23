@@ -8,7 +8,8 @@ type RouteContext = { params: Promise<{ candidateId: string }> };
 
 /**
  * Export CompletedMarketingCandidate package under MARKETING_ASSET_ROOT.
- * Idempotent: identical repeat returns reused=true without rewriting digest-equal content.
+ * Operator re-export overwrites sha-mismatched context/copy (overwriteArtifacts=true).
+ * Shared visuals / plan / handoff JSON are outside the planned set and are preserved.
  * Does not mutate Human Review / SNS / publication state.
  */
 export async function POST(request: Request, context: RouteContext) {
@@ -25,7 +26,11 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const result = await exportCandidateAssetPackage({ candidateId, dryRun });
+    const result = await exportCandidateAssetPackage({
+      candidateId,
+      dryRun,
+      overwriteArtifacts: true,
+    });
     if (!result.ok) {
       return Response.json({ message: "후보를 찾을 수 없습니다.", code: "candidate_not_found" }, { status: 404 });
     }
@@ -45,6 +50,8 @@ export async function POST(request: Request, context: RouteContext) {
         stage: exportResult.manifest.stage,
         integrityDigest: exportResult.manifest.integrity.digest,
         updatedAt: exportResult.manifest.updatedAt,
+        overwriteArtifacts: true,
+        note: "context/copy를 최신 후보 상태로 덮어썼습니다. 공유 비주얼(media/shared-visuals)은 유지됩니다.",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

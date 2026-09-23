@@ -1,3 +1,9 @@
+/**
+ * Template-driven CardNews SVG renderer (PR2).
+ * Executes ResolvedCardRenderSpec only — no editorial decisions.
+ * Removes the legacy fixed 904×300 image strip as primary path.
+ */
+
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -5,19 +11,25 @@ import type { CardNewsRole } from "@/lib/marketing/assets/contracts";
 import {
   CARDNEWS_BRAND,
   CARDNEWS_FONT_FAMILY,
-  CARDNEWS_SAFE,
   CARDNEWS_WORDMARK_RELATIVE,
   CARDNEWS_WORDMARK_TEXT,
   resolveCardNewsGeometry,
   type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
 import type { FittedText } from "@/lib/marketing/assets/cardnews/textLayout";
+import {
+  buildDeterministicCardPresentationPlan,
+  legacyRoleToPresentationHint,
+} from "@/lib/marketing/assets/cardnews/presentation/deterministic";
+import type { ResolvedCardRenderSpec } from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";
+import { resolveTemplateLayout, type ResolvedTemplateLayout } from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
 
 export type CardCitation = {
   label: string;
   detail: string;
 };
 
+/** @deprecated Prefer ResolvedCardRenderSpec — kept for transitional callers. */
 export type CardRenderModel = {
   cardId: string;
   role: CardNewsRole;
@@ -29,6 +41,8 @@ export type CardRenderModel = {
   citation: CardCitation | null;
   visualDataUri: string | null;
   wordmarkDataUri: string | null;
+  layout?: ResolvedTemplateLayout;
+  presentation?: ResolvedCardRenderSpec["presentation"];
 };
 
 function escapeXml(value: string): string {
@@ -59,44 +73,92 @@ function textBlock(input: {
   return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}">${tspans}</text>`;
 }
 
-function wordmark(model: CardRenderModel, x: number, y: number): string {
+function wordmark(
+  model: Pick<ResolvedCardRenderSpec, "wordmarkDataUri">,
+  placement: ResolvedTemplateLayout["brand"]["wordmark"],
+): string {
+  const opacity = placement.opacity;
   if (model.wordmarkDataUri) {
-    return `<image href="${model.wordmarkDataUri}" x="${x}" y="${y}" width="320" height="58" preserveAspectRatio="xMinYMid meet"/>`;
+    return `<image href="${model.wordmarkDataUri}" x="${placement.x}" y="${placement.y}" width="${placement.width}" height="${placement.height}" opacity="${opacity}" preserveAspectRatio="xMinYMid meet"/>`;
   }
-  return `<text x="${x}" y="${y + 36}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="28" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(CARDNEWS_WORDMARK_TEXT)}</text>`;
+  return `<text x="${placement.x}" y="${placement.y + 24}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="${opacity}">${escapeXml(CARDNEWS_WORDMARK_TEXT)}</text>`;
 }
 
-function progress(model: CardRenderModel, y: number): string {
-  const startX = CARDNEWS_SAFE.padX;
-  return model.index
-    ? Array.from({ length: model.total }, (_, offset) => {
-        const cx = startX + 10 + offset * 22;
-        const fill = offset + 1 === model.index ? CARDNEWS_BRAND.blue : CARDNEWS_BRAND.line;
-        return `<circle cx="${cx}" cy="${y}" r="5" fill="${fill}"/>`;
-      }).join("")
-    : "";
+function progress(index: number, total: number, y: number, x: number): string {
+  return Array.from({ length: total }, (_, offset) => {
+    const cx = x + 8 + offset * 18;
+    const fill = offset + 1 === index ? CARDNEWS_BRAND.blue : "rgba(0,0,0,0.12)";
+    return `<circle cx="${cx}" cy="${y}" r="4" fill="${fill}"/>`;
+  }).join("");
 }
 
-function geometricFallback(role: CardNewsRole, index: number, geometry: CardNewsGeometry): string {
-  const numeral = String(index).padStart(2, "0");
-  const accent =
-    role === "cta"
-      ? `<rect x="${geometry.width - 196}" y="96" width="108" height="18" fill="${CARDNEWS_BRAND.orange}"/>`
-      : `<rect x="${geometry.width - 176}" y="96" width="88" height="18" fill="${CARDNEWS_BRAND.blue}"/>`;
+/** Subtle editorial accent for text_statement — bars only, never behind headline. */
+function textStatementAccent(geo: CardNewsGeometry, y: number): string {
   return [
-    `<text x="${CARDNEWS_SAFE.padX}" y="${geometry.scaleY(430)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="188" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="0.08">${numeral}</text>`,
-    `<rect x="${CARDNEWS_SAFE.padX}" y="96" width="72" height="72" fill="${CARDNEWS_BRAND.blue}"/>`,
-    `<rect x="${CARDNEWS_SAFE.padX + 54}" y="132" width="36" height="36" fill="${CARDNEWS_BRAND.orange}"/>`,
-    accent,
-    `<rect x="${CARDNEWS_SAFE.padX}" y="184" width="160" height="4" fill="${CARDNEWS_BRAND.blue}"/>`,
+    `<rect x="80" y="${y}" width="56" height="5" fill="${CARDNEWS_BRAND.blue}"/>`,
+    `<rect x="80" y="${y + 12}" width="28" height="5" fill="${CARDNEWS_BRAND.orange}" fill-opacity="0.85"/>`,
   ].join("");
 }
 
-function visualSlot(model: CardRenderModel, x: number, y: number, width: number, height: number): string {
-  if (!model.visualDataUri) return "";
+/**
+ * Opaque paper band under the text zone for split photo templates so no
+ * image/decor bleeds behind headline/kicker glyphs.
+ */
+function textZoneBackdrop(
+  layout: ResolvedTemplateLayout,
+  geo: CardNewsGeometry,
+): string {
+  if (
+    layout.template === "cover_full_bleed" ||
+    layout.template === "photo_overlay_editorial" ||
+    layout.text.fill === "transparent"
+  ) {
+    return "";
+  }
+  if (layout.template === "photo_top_story" && layout.image) {
+    const y = layout.image.y + layout.image.height;
+    return `<rect x="0" y="${y}" width="${geo.width}" height="${geo.height - y}" fill="${CARDNEWS_BRAND.paper}"/>`;
+  }
+  if (layout.template === "evidence_detail" && layout.image) {
+    const y = layout.image.y + layout.image.height;
+    return `<rect x="0" y="${y}" width="${geo.width}" height="${geo.height - y}" fill="${CARDNEWS_BRAND.paper}"/>`;
+  }
+  if (layout.template === "photo_bottom_story" && layout.image) {
+    return `<rect x="0" y="0" width="${geo.width}" height="${layout.image.y}" fill="${CARDNEWS_BRAND.paper}"/>`;
+  }
+  return "";
+}
+
+function overlayGradient(
+  cardId: string,
+  overlay: NonNullable<ResolvedTemplateLayout["overlay"]>,
+  width: number,
+): string {
+  if (overlay.mode === "none") return "";
+  const dark = overlay.mode === "gradient_dark";
+  const id = `ov-${escapeXml(cardId)}`;
+  const c0 = dark ? "rgba(10,16,24,0)" : "rgba(255,255,255,0)";
+  const c1 = dark ? "rgba(10,16,24,0.78)" : "rgba(255,255,255,0.82)";
   return [
-    `<clipPath id="visual-${escapeXml(model.cardId)}"><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="8"/></clipPath>`,
-    `<image href="${model.visualDataUri}" x="${x}" y="${y}" width="${width}" height="${height}" clip-path="url(#visual-${escapeXml(model.cardId)})" preserveAspectRatio="xMidYMid slice"/>`,
+    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">`,
+    `<stop offset="0%" stop-color="${c0}"/>`,
+    `<stop offset="55%" stop-color="${c1}"/>`,
+    `<stop offset="100%" stop-color="${c1}"/>`,
+    `</linearGradient></defs>`,
+    `<rect x="0" y="${overlay.y}" width="${width}" height="${overlay.height}" fill="url(#${id})"/>`,
+  ].join("");
+}
+
+function visualSlot(
+  cardId: string,
+  dataUri: string,
+  image: NonNullable<ResolvedTemplateLayout["image"]>,
+  preserveAspectRatio: string,
+): string {
+  const clipId = `visual-${escapeXml(cardId)}`;
+  return [
+    `<clipPath id="${clipId}"><rect x="${image.x}" y="${image.y}" width="${image.width}" height="${image.height}" rx="${image.rx}"/></clipPath>`,
+    `<image href="${dataUri}" x="${image.x}" y="${image.y}" width="${image.width}" height="${image.height}" clip-path="url(#${clipId})" preserveAspectRatio="${preserveAspectRatio}"/>`,
   ].join("");
 }
 
@@ -107,53 +169,118 @@ export function loadWordmarkDataUri(repoRoot = process.cwd()): string | null {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeometry): string {
+export function buildCardNewsSvgFromSpec(
+  spec: ResolvedCardRenderSpec,
+  geometry?: CardNewsGeometry,
+): string {
   const geo = geometry ?? resolveCardNewsGeometry();
-  const hasVisual = Boolean(model.visualDataUri);
-  const contentTop = geo.scaleY(hasVisual ? 620 : 470);
-  const headlineY = contentTop;
-  const bodyY = headlineY + model.headline.height + 36;
-  const citationY = geo.height - geo.scaleY(210);
-  const kickerFill = model.role === "cta" ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue;
-  const kickerY = geo.scaleY(hasVisual ? 236 : 250);
+  const layout = spec.layout;
+  const hasVisual = Boolean(spec.visualDataUri) && layout.image != null;
 
-  const citation = model.citation
-    ? [
-        `<rect x="${CARDNEWS_SAFE.padX}" y="${citationY - 28}" width="${geo.width - CARDNEWS_SAFE.padX * 2}" height="4" fill="${CARDNEWS_BRAND.line}"/>`,
-        `<text x="${CARDNEWS_SAFE.padX}" y="${citationY + 16}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="20" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(model.citation.label)}</text>`,
-        `<text x="${CARDNEWS_SAFE.padX}" y="${citationY + 48}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(model.citation.detail)}</text>`,
-      ].join("")
-    : "";
+  const headlineY = layout.text.y;
+  const bodyY = headlineY + (spec.headline.lines.length ? spec.headline.height + 36 : 0);
+
+  // Accent sits above the headline (and above kicker when present).
+  const accentY =
+    layout.template === "text_statement"
+      ? Math.max(
+          28,
+          (spec.kicker ? layout.text.kickerY : layout.text.y) -
+            Math.round((spec.kicker ? 20 : spec.headline.fontSize) * 0.82) -
+            geo.scaleY(36),
+        )
+      : 0;
+
+  const citation =
+    spec.citation && layout.template !== "cover_full_bleed"
+      ? [
+          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(140)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(spec.citation.label)}</text>`,
+          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(112)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(spec.citation.detail)}</text>`,
+        ].join("")
+      : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${geo.width}" height="${geo.height}" viewBox="0 0 ${geo.width} ${geo.height}">
-  <rect width="${geo.width}" height="${geo.height}" fill="${CARDNEWS_BRAND.paper}"/>
-  <rect width="${geo.width}" height="18" fill="${CARDNEWS_BRAND.blue}"/>
-  ${model.role === "cta" ? `<rect x="0" y="${geo.height - 18}" width="${geo.width}" height="18" fill="${CARDNEWS_BRAND.orange}"/>` : ""}
-  ${hasVisual ? "" : geometricFallback(model.role, model.index, geo)}
-  ${visualSlot(model, CARDNEWS_SAFE.padX, geo.scaleY(280), geo.width - CARDNEWS_SAFE.padX * 2, geo.scaleY(300))}
-  <text x="${CARDNEWS_SAFE.padX}" y="${kickerY}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="700" fill="${kickerFill}">${escapeXml(model.kicker)}</text>
+  <rect width="${geo.width}" height="${geo.height}" fill="${layout.text.fill === "transparent" ? CARDNEWS_BRAND.navy : CARDNEWS_BRAND.paper}"/>
+  ${layout.brand.showTopBar ? `<rect width="${geo.width}" height="12" fill="${CARDNEWS_BRAND.blue}"/>` : ""}
+  ${layout.brand.showBottomAccent ? `<rect x="0" y="${geo.height - 12}" width="${geo.width}" height="12" fill="${CARDNEWS_BRAND.orange}"/>` : ""}
+  ${hasVisual && layout.image && spec.visualDataUri ? visualSlot(spec.cardId, spec.visualDataUri, layout.image, layout.preserveAspectRatio) : ""}
+  ${textZoneBackdrop(layout, geo)}
+  ${layout.overlay ? overlayGradient(spec.cardId, layout.overlay, geo.width) : ""}
+  ${layout.template === "text_statement" ? textStatementAccent(geo, accentY) : ""}
+  ${spec.kicker ? `<text x="${layout.text.x}" y="${layout.text.kickerY}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="20" font-weight="700" fill="${layout.text.kickerFill}">${escapeXml(spec.kicker)}</text>` : ""}
   ${textBlock({
-    lines: model.headline.lines,
-    x: CARDNEWS_SAFE.padX,
+    lines: spec.headline.lines,
+    x: layout.text.x,
     y: headlineY,
-    fontSize: model.headline.fontSize,
-    lineHeight: model.headline.lineHeight,
+    fontSize: spec.headline.fontSize,
+    lineHeight: spec.headline.lineHeight,
     weight: 700,
-    fill: CARDNEWS_BRAND.ink,
+    fill: layout.text.headlineFill,
   })}
   ${textBlock({
-    lines: model.body.lines,
-    x: CARDNEWS_SAFE.padX,
+    lines: spec.body.lines,
+    x: layout.text.x,
     y: bodyY,
-    fontSize: model.body.fontSize,
-    lineHeight: model.body.lineHeight,
+    fontSize: spec.body.fontSize,
+    lineHeight: spec.body.lineHeight,
     weight: 400,
-    fill: CARDNEWS_BRAND.ink,
+    fill: layout.text.bodyFill,
   })}
   ${citation}
-  ${progress(model, geo.height - geo.scaleY(118))}
-  ${wordmark(model, CARDNEWS_SAFE.padX, geo.height - geo.scaleY(96))}
+  ${progress(spec.index, spec.total, layout.brand.progressY, layout.text.x)}
+  ${wordmark(spec, layout.brand.wordmark)}
 </svg>
 `;
+}
+
+/**
+ * Back-compat entry: if model already carries layout, use template path;
+ * otherwise callers must migrate to buildCardNewsSvgFromSpec.
+ */
+export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeometry): string {
+  if (model.layout && model.presentation) {
+    return buildCardNewsSvgFromSpec(
+      {
+        cardId: model.cardId,
+        role: model.role,
+        index: model.index,
+        total: model.total,
+        kicker: model.kicker,
+        headline: model.headline,
+        body: model.body,
+        citation: model.citation,
+        visualDataUri: model.visualDataUri,
+        wordmarkDataUri: model.wordmarkDataUri,
+        presentation: model.presentation,
+        layout: model.layout,
+      },
+      geometry,
+    );
+  }
+  // Emergency: build a minimal photo_top / text_statement without presentation plan
+  const geo = geometry ?? resolveCardNewsGeometry();
+  const hasVisual = Boolean(model.visualDataUri);
+  const plan = buildDeterministicCardPresentationPlan({
+    assetId: "legacy",
+    assetVersion: 0,
+    sourceInstagramFingerprint: "legacy",
+    cards: [
+      {
+        cardId: model.cardId,
+        role: legacyRoleToPresentationHint(model.role),
+        hasVisual,
+      },
+    ],
+  });
+  const presentation = plan.cards[0]!;
+  const layout = resolveTemplateLayout({ presentation, geometry: geo, hasVisual });
+  return buildCardNewsSvgFromSpec(
+    {
+      ...model,
+      presentation,
+      layout,
+    },
+    geo,
+  );
 }

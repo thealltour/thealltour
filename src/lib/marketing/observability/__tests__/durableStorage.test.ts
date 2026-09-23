@@ -196,7 +196,6 @@ describe("OBS-3 durable marketing trace storage", () => {
         evidencePack: handoff.evidencePack,
       },
       {
-        now: () => NOW,
         requestDraft: async () => {
           csCalls += 1;
           return csCalls === 1 ? incompleteDraft(handoff) : coveringDraft(handoff);
@@ -237,7 +236,6 @@ describe("OBS-3 durable marketing trace storage", () => {
         evidencePack: handoff.evidencePack,
       },
       {
-        now: () => NOW,
         requestDraft: async () => {
           throw new Error("Bearer sk-secret-token boom");
         },
@@ -305,7 +303,6 @@ describe("OBS-3 durable marketing trace storage", () => {
         evidencePack: handoff.evidencePack,
       },
       {
-        now: () => NOW,
         requestDraft: async () => coveringDraft(handoff),
         requestGovernance: async () => allow(),
         trace: { recorder: durable },
@@ -423,7 +420,6 @@ describe("OBS-3 durable marketing trace storage", () => {
         evidencePack: handoff.evidencePack,
       },
       {
-        now: () => NOW,
         requestDraft: async () => coveringDraft(handoff),
         requestGovernance: async () => allow(),
         trace: { recorder },

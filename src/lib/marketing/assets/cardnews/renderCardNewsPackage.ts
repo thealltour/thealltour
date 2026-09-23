@@ -11,14 +11,24 @@ import {
   CARDNEWS_MEDIA_TYPE,
   CARDNEWS_RENDER_CONTRACT,
   CARDNEWS_RENDERER_VERSION,
-  CARDNEWS_SAFE,
   resolveCardNewsGeometry,
   type CardNewsAspectRatio,
   type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
 import { encodeLocalVisualDataUri, rasterizeCardNewsSvg } from "@/lib/marketing/assets/cardnews/raster";
-import { buildCardNewsSvg, loadWordmarkDataUri, type CardCitation, type CardRenderModel } from "@/lib/marketing/assets/cardnews/svg";
-import { fitText } from "@/lib/marketing/assets/cardnews/textLayout";
+import {
+  buildCardNewsSvgFromSpec,
+  loadWordmarkDataUri,
+  type CardCitation,
+} from "@/lib/marketing/assets/cardnews/svg";
+import {
+  buildDeterministicCardPresentationPlan,
+  legacyRoleToPresentationHint,
+} from "@/lib/marketing/assets/cardnews/presentation/deterministic";
+import { buildInstagramPresentationSourceFingerprint, buildCardPresentationContentFingerprint } from "@/lib/marketing/assets/cardnews/presentation/fingerprint";
+import { persistCardPresentationPlan } from "@/lib/marketing/assets/cardnews/presentation/persist";
+import { buildResolvedCardRenderSpec } from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";
+import type { CardPresentationPlan } from "@/lib/marketing/assets/cardnews/presentation/contracts";
 import { assertLocalVisualPath, readLocalVisualPng } from "@/lib/marketing/assets/cardnews/visuals";
 import { resolveMarketingAssetRoot, type MarketingAssetEnv } from "@/lib/marketing/assets/config";
 import {
@@ -40,6 +50,7 @@ import { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
 import {
   assertPackageArtifactWritable,
   describePlannedArtifact,
+  overwritePackageArtifact,
   writePackageArtifact,
   type PlannedPackageArtifact,
 } from "@/lib/marketing/assets/writeArtifact";
@@ -58,6 +69,8 @@ export type CardNewsRenderCardMeta = {
   fontFamily: typeof CARDNEWS_FONT_FAMILY;
   headlineFontSize: number;
   bodyFontSize: number;
+  /** PR2 presentation template used for this card. */
+  presentationTemplate?: string | null;
 };
 
 export type CardNewsRenderDocument = {
@@ -72,6 +85,8 @@ export type CardNewsRenderDocument = {
   wordmark: "thealltour_logo_trp.png" | "text:thealltour";
   graphicOnly: boolean;
   cards: CardNewsRenderCardMeta[];
+  /** PR2 — presentation plan fingerprint when present. */
+  presentationPlanFingerprint?: string | null;
 };
 
 export type RenderCardNewsPackageInput = {
@@ -81,9 +96,15 @@ export type RenderCardNewsPackageInput = {
   dryRun?: boolean;
   graphicOnly?: boolean;
   visuals?: Record<string, string>;
+  /** Optional shared-visual id per cardId (for presentation plan). */
+  visualIdsByCard?: Record<string, string | null>;
   allowedVisualRoots?: string[];
   /** Overrides the brief's aspect ratio (e.g. rendering a 1:1 variant of the same cards). */
   aspectRatio?: CardNewsAspectRatio | null;
+  /** Precomputed presentation plan; if absent, deterministic layout fallback is used. */
+  presentationPlan?: CardPresentationPlan | null;
+  /** Persist presentation plan to package when rendering (default true when package writable). */
+  persistPresentationPlan?: boolean;
   now?: Date;
 };
 
@@ -110,6 +131,14 @@ const ROLE_KICKER: Record<CardNewsCard["role"], string> = {
   evidence: "근거",
   cta: "다음 단계",
 };
+
+/**
+ * @deprecated Internal role labels must never appear on rendered cards.
+ * Kept only so accidental call sites fail loudly in tests if reintroduced.
+ */
+export function cardnewsRoleKicker(role: CardNewsCard["role"]): string {
+  return ROLE_KICKER[role];
+}
 
 /** 4:5 keeps the historical flat paths; other ratios get their own subdirectory. */
 function cardnewsDirectory(geometry: CardNewsGeometry): string {
@@ -150,68 +179,44 @@ function citationForCard(card: CardNewsCard, catalog: Map<string, AssignmentEvid
   return { label, detail: detail || label };
 }
 
-function preferredSizes(role: CardNewsCard["role"]): { headline: number; body: number } {
-  switch (role) {
-    case "cover":
-      return { headline: 58, body: 32 };
-    case "cta":
-      return { headline: 50, body: 30 };
-    case "evidence":
-      return { headline: 44, body: 30 };
-    default:
-      return { headline: 46, body: 30 };
+function resolvePresentationPlanForRender(input: {
+  brief: MediaBrief;
+  cards: CardNewsCard[];
+  visuals: Record<string, string>;
+  visualIdsByCard: Record<string, string | null>;
+  graphicOnly: boolean;
+  presentationPlan?: CardPresentationPlan | null;
+}): CardPresentationPlan {
+  if (input.presentationPlan?.cards?.length === input.cards.length) {
+    const ids = new Set(input.presentationPlan.cards.map((c) => c.cardId));
+    if (input.cards.every((c) => ids.has(c.cardId))) {
+      return input.presentationPlan;
+    }
   }
-}
 
-function buildRenderModel(input: {
-  card: CardNewsCard;
-  index: number;
-  total: number;
-  citation: CardCitation | null;
-  visualDataUri: string | null;
-  wordmarkDataUri: string | null;
-  geometry: CardNewsGeometry;
-}): CardRenderModel {
-  const sizes = preferredSizes(input.card.role);
-  const textWidth = input.geometry.width - CARDNEWS_SAFE.padX * 2;
-  const hasVisual = Boolean(input.visualDataUri);
-  // The text box has to shrink with the canvas or a 1:1 card overruns its footer.
-  const headlineMaxHeight = input.geometry.scaleY(hasVisual ? 180 : 240);
-  const bodyMaxHeight = input.geometry.scaleY(hasVisual ? 240 : 360);
-  const headline = fitText({
-    text: input.card.headline,
-    preferredFontSize: sizes.headline,
-    minFontSize: CARDNEWS_SAFE.minHeadlinePx,
-    maxWidth: textWidth,
-    maxHeight: headlineMaxHeight,
-    maxLines: input.card.role === "cover" ? 4 : 5,
-    overflow: "error",
-    cardId: input.card.cardId,
-    field: "headline",
+  const visualIds = input.cards.map((c) =>
+    input.graphicOnly ? null : (input.visualIdsByCard[c.cardId] ?? (input.visuals[c.cardId] ? `local:${c.cardId}` : null)),
+  );
+  const sourceFp = buildInstagramPresentationSourceFingerprint({
+    cardIds: input.cards.map((c) => c.cardId),
+    headlines: input.cards.map((c) => c.headline),
+    bodies: input.cards.map((c) => c.body),
+    roles: input.cards.map((c) => c.role),
+    visualIds,
   });
-  const body = fitText({
-    text: input.card.body,
-    preferredFontSize: sizes.body,
-    minFontSize: CARDNEWS_SAFE.minBodyPx,
-    maxWidth: textWidth,
-    maxHeight: bodyMaxHeight,
-    maxLines: input.card.role === "cta" ? 6 : 8,
-    overflow: input.card.role === "cta" ? "ellipsis" : "error",
-    cardId: input.card.cardId,
-    field: "body",
+
+  return buildDeterministicCardPresentationPlan({
+    assetId: input.brief.candidateId,
+    assetVersion: 1,
+    sourceInstagramFingerprint: sourceFp,
+    cards: input.cards.map((card, i) => ({
+      cardId: card.cardId,
+      role: legacyRoleToPresentationHint(card.role),
+      hasVisual: !input.graphicOnly && Boolean(input.visuals[card.cardId]),
+      visualId: visualIds[i],
+      headlineHint: card.headline,
+    })),
   });
-  return {
-    cardId: input.card.cardId,
-    role: input.card.role,
-    index: input.index,
-    total: input.total,
-    kicker: `${String(input.index).padStart(2, "0")}  ${ROLE_KICKER[input.card.role]}`,
-    headline,
-    body,
-    citation: input.citation,
-    visualDataUri: input.visualDataUri,
-    wordmarkDataUri: input.wordmarkDataUri,
-  };
 }
 
 async function resolveVisualDataUri(input: {
@@ -327,22 +332,48 @@ export async function renderCardNewsPackage(
   const allowedVisualRoots = input.allowedVisualRoots?.length ? input.allowedVisualRoots : [packageRoot];
   const graphicOnly = Boolean(input.graphicOnly);
   const timestamp = (input.now ?? new Date()).toISOString();
+  const cards = brief.formats.cardnews.cards;
+  const visuals = input.visuals ?? {};
+  const visualIdsByCard = input.visualIdsByCard ?? {};
 
-  const models: CardRenderModel[] = [];
+  const presentationPlan = resolvePresentationPlanForRender({
+    brief,
+    cards,
+    visuals,
+    visualIdsByCard,
+    graphicOnly,
+    presentationPlan: input.presentationPlan,
+  });
+  const presentationByCard = new Map(presentationPlan.cards.map((c) => [c.cardId, c]));
+
+  if (input.persistPresentationPlan !== false && !input.dryRun) {
+    persistCardPresentationPlan({
+      packageRoot,
+      plan: presentationPlan,
+      createdAt: timestamp,
+    });
+  }
+
+  const specs: ReturnType<typeof buildResolvedCardRenderSpec>[] = [];
   const visualIds: Array<string | null> = [];
-  for (const [offset, card] of brief.formats.cardnews.cards.entries()) {
+  for (const [offset, card] of cards.entries()) {
     const visual = await resolveVisualDataUri({
       card,
       graphicOnly,
-      visuals: input.visuals ?? {},
+      visuals,
       allowedVisualRoots,
     });
     visualIds.push(visual.visualAssetId);
-    models.push(
-      buildRenderModel({
+    const presentation = presentationByCard.get(card.cardId);
+    if (!presentation) {
+      throw new MarketingAssetContractError(`presentation missing for ${card.cardId}`);
+    }
+    specs.push(
+      buildResolvedCardRenderSpec({
         card,
         index: offset + 1,
-        total: brief.formats.cardnews.cards.length,
+        total: cards.length,
+        presentation,
         citation: citationForCard(card, catalog),
         visualDataUri: visual.dataUri,
         wordmarkDataUri,
@@ -353,8 +384,8 @@ export async function renderCardNewsPackage(
 
   const pngs: Buffer[] = [];
   if (!input.dryRun) {
-    for (const model of models) {
-      pngs.push(await rasterizeCardNewsSvg(buildCardNewsSvg(model, geometry), geometry));
+    for (const spec of specs) {
+      pngs.push(await rasterizeCardNewsSvg(buildCardNewsSvgFromSpec(spec, geometry), geometry));
     }
   }
 
@@ -368,8 +399,8 @@ export async function renderCardNewsPackage(
     },
   ];
 
-  const cardMetas: CardNewsRenderCardMeta[] = models.map((model, offset) => {
-    const relativePath = cardRelativePath(model.index, geometry);
+  const cardMetas: CardNewsRenderCardMeta[] = specs.map((spec, offset) => {
+    const relativePath = cardRelativePath(spec.index, geometry);
     const content = pngs[offset] ?? Buffer.alloc(0);
     if (!input.dryRun) {
       planned.push({
@@ -381,9 +412,9 @@ export async function renderCardNewsPackage(
       });
     }
     return {
-      cardIndex: model.index,
-      cardRole: model.role,
-      sourceBriefCardId: model.cardId,
+      cardIndex: spec.index,
+      cardRole: spec.role,
+      sourceBriefCardId: spec.cardId,
       relativePath,
       width: geometry.width,
       height: geometry.height,
@@ -392,8 +423,9 @@ export async function renderCardNewsPackage(
       byteSize: pngs[offset]?.byteLength ?? 0,
       visualAssetId: visualIds[offset],
       fontFamily: CARDNEWS_FONT_FAMILY,
-      headlineFontSize: model.headline.fontSize,
-      bodyFontSize: model.body.fontSize,
+      headlineFontSize: spec.headline.fontSize,
+      bodyFontSize: spec.body.fontSize,
+      presentationTemplate: spec.layout.template,
     };
   });
 
@@ -409,6 +441,7 @@ export async function renderCardNewsPackage(
     wordmark: wordmarkDataUri ? "thealltour_logo_trp.png" : "text:thealltour",
     graphicOnly,
     cards: cardMetas,
+    presentationPlanFingerprint: buildCardPresentationContentFingerprint(presentationPlan),
   };
   assertClean(render);
 
@@ -447,9 +480,6 @@ export async function renderCardNewsPackage(
   }
 
   const existingManifest = readExistingManifest(packageRoot);
-  for (const item of planned) {
-    assertPackageArtifactWritable({ packageRoot, planned: item });
-  }
   ensurePackageLayout(packageRoot);
 
   const written: MarketingAssetArtifact[] = [];
@@ -457,6 +487,17 @@ export async function renderCardNewsPackage(
     const createdAt =
       existingManifest?.artifacts.find((artifact) => artifact.relativePath === item.relativePath)?.createdAt ??
       timestamp;
+    const isRegenerableCardnews =
+      item.kind === "cardnews" ||
+      item.relativePath.endsWith("/render.json") ||
+      item.relativePath === "cardnews/render.json" ||
+      item.relativePath.startsWith("cardnews/");
+    if (isRegenerableCardnews && item.relativePath !== "context/media-brief.json") {
+      // Cardnews PNGs + render.json are derived; presentation redesign must re-render in place.
+      written.push(overwritePackageArtifact({ packageRoot, planned: item, createdAt }).artifact);
+      continue;
+    }
+    assertPackageArtifactWritable({ packageRoot, planned: item });
     written.push(writePackageArtifact({ packageRoot, planned: item, createdAt }).artifact);
   }
 

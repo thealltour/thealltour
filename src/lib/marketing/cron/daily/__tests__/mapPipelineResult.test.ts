@@ -22,8 +22,10 @@ function pipeline(
 
 function gov(decision: "ALLOW" | "REVIEW" | "BLOCK"): StructuredGovernanceDecision {
   return {
+    contract: "governance-decision-v1",
     decision,
     reviewId: "gov_test",
+    assignmentId: null,
     riskScore: 0,
     reasons: [],
     factualRisks: [],
@@ -31,11 +33,18 @@ function gov(decision: "ALLOW" | "REVIEW" | "BLOCK"): StructuredGovernanceDecisi
     commercialRisks: [],
     unsupportedClaims: [],
     evidenceGaps: [],
+    requiredRevisions: [],
     revisionHints: [],
     verifiedEvidenceRefs: [],
     decidedAt: new Date().toISOString(),
     malformed: false,
-  } as StructuredGovernanceDecision;
+    humanApprovalRequired: decision !== "ALLOW",
+    semanticAvailable: true,
+    claimCount: 0,
+    unsupportedClaimCount: 0,
+    evidenceGapCount: 0,
+    revisionNumber: 0,
+  };
 }
 
 describe("mapPipelineToCandidateStatus", () => {

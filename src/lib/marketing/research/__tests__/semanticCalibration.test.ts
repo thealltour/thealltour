@@ -154,7 +154,7 @@ describe("semantic calibration hard cases", () => {
         id: "33333333-3333-4333-8333-333333333333",
         primarySignalId: primary.id,
         signalIds: [primary.id, secondary.id],
-        clusterType: "event",
+        clusterType: "semantic_event",
         createdAt: "2026-09-02T00:00:00.000Z",
         updatedAt: "2026-09-02T00:00:00.000Z",
       },

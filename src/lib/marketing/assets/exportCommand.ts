@@ -15,6 +15,8 @@ export type ExportMarketingCandidateAssetsCliOptions = {
   candidateId: string;
   root?: string;
   dryRun: boolean;
+  /** When true, overwrite sha-mismatched context/copy artifacts (admin re-export). */
+  overwriteArtifacts?: boolean;
 };
 
 export function parseExportMarketingCandidateAssetsArgs(
@@ -81,5 +83,6 @@ export async function runExportMarketingCandidateAssetsCommand(input: {
     assetRoot: input.options.root,
     env,
     dryRun: input.options.dryRun,
+    overwriteArtifacts: Boolean(input.options.overwriteArtifacts),
   });
 }

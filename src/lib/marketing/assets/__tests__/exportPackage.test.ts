@@ -13,7 +13,13 @@ import {
   sha256Buffer,
 } from "@/lib/marketing/assets";
 import { MarketingAssetConflictError } from "@/lib/marketing/assets/errors";
-import { buildDraft, buildTestCandidate, CANDIDATE_ID, NOW } from "@/lib/marketing/assets/__tests__/fixtures";
+import {
+  buildDraft,
+  buildTestCandidate,
+  buildTestLlmPublishableBundle,
+  CANDIDATE_ID,
+  NOW,
+} from "@/lib/marketing/assets/__tests__/fixtures";
 
 const tempDirs: string[] = [];
 
@@ -30,10 +36,35 @@ afterEach(() => {
   }
 });
 
+
+const publishableBundleByCandidateId = new Map<
+  string,
+  ReturnType<typeof buildTestLlmPublishableBundle>
+>();
+
+function exportWithPublishable(
+  args: Omit<Parameters<typeof exportMarketingCandidatePackage>[0], "publishableBundle"> & {
+    publishableBundle?: Parameters<typeof exportMarketingCandidatePackage>[0]["publishableBundle"];
+  },
+) {
+  const candidate = args.candidate;
+  let publishableBundle = args.publishableBundle;
+  if (!publishableBundle) {
+    const cached = publishableBundleByCandidateId.get(candidate.candidateId);
+    if (cached) {
+      publishableBundle = cached;
+    } else {
+      publishableBundle = buildTestLlmPublishableBundle(candidate, args.now ?? NOW);
+      publishableBundleByCandidateId.set(candidate.candidateId, publishableBundle);
+    }
+  }
+  return exportMarketingCandidatePackage({ ...args, publishableBundle });
+}
+
 describe("candidate package export", () => {
   it("22-24. writes post.txt, media brief, and a coherent manifest last", () => {
     const root = tempRoot();
-    const result = exportMarketingCandidatePackage({
+    const result = exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -64,7 +95,7 @@ describe("candidate package export", () => {
 
   it("25. dry-run performs zero filesystem writes", () => {
     const root = join(tempRoot(), "does-not-exist-yet");
-    const result = exportMarketingCandidatePackage({
+    const result = exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       dryRun: true,
@@ -106,7 +137,7 @@ describe("candidate package export", () => {
 
   it("27. does not expose secret-like fields", () => {
     const root = tempRoot();
-    const result = exportMarketingCandidatePackage({
+    const result = exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -125,8 +156,8 @@ describe("candidate package export", () => {
   it("28. repeated candidate export creates no duplicate package", () => {
     const root = tempRoot();
     const candidate = buildTestCandidate();
-    const first = exportMarketingCandidatePackage({ candidate, assetRoot: root, now: NOW });
-    const second = exportMarketingCandidatePackage({ candidate, assetRoot: root, now: NOW });
+    const first = exportWithPublishable({ candidate, assetRoot: root, now: NOW });
+    const second = exportWithPublishable({ candidate, assetRoot: root, now: NOW });
     expect(second.packageRoot).toBe(first.packageRoot);
     expect(second.reused).toBe(true);
     expect(second.wrote).toBe(false);
@@ -137,14 +168,43 @@ describe("candidate package export", () => {
   it("rejects conflicting generated content instead of overwriting", () => {
     const root = tempRoot();
     const candidate = buildTestCandidate();
-    const first = exportMarketingCandidatePackage({ candidate, assetRoot: root, now: NOW });
+    const first = exportWithPublishable({ candidate, assetRoot: root, now: NOW });
     writeFileSync(join(first.packageRoot, "copy/post.txt"), "tampered human-looking overwrite\n");
-    expect(() => exportMarketingCandidatePackage({ candidate, assetRoot: root, now: NOW })).toThrow(
+    expect(() => exportWithPublishable({ candidate, assetRoot: root, now: NOW })).toThrow(
       MarketingAssetConflictError,
     );
     expect(readFileSync(join(first.packageRoot, "copy/post.txt"), "utf8")).toBe(
       "tampered human-looking overwrite\n",
     );
+  });
+
+  it("overwriteArtifacts refreshes context/copy and preserves shared visuals", () => {
+    const root = tempRoot();
+    const candidate = buildTestCandidate();
+    const first = exportWithPublishable({ candidate, assetRoot: root, now: NOW });
+    const sharedDir = join(first.packageRoot, "media/shared-visuals");
+    mkdirSync(sharedDir, { recursive: true });
+    writeFileSync(join(sharedDir, "social_visual_01.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    writeFileSync(
+      join(first.packageRoot, "context/shared-visual-assets.json"),
+      JSON.stringify({ keep: true }),
+    );
+    writeFileSync(join(first.packageRoot, "copy/post.txt"), "tampered human-looking overwrite\n");
+
+    const second = exportWithPublishable({
+      candidate,
+      assetRoot: root,
+      now: NOW,
+      overwriteArtifacts: true,
+    });
+    expect(second.wrote || second.reused).toBe(true);
+    expect(readFileSync(join(first.packageRoot, "copy/post.txt"), "utf8")).not.toBe(
+      "tampered human-looking overwrite\n",
+    );
+    expect(existsSync(join(sharedDir, "social_visual_01.png"))).toBe(true);
+    expect(JSON.parse(readFileSync(join(first.packageRoot, "context/shared-visual-assets.json"), "utf8"))).toEqual({
+      keep: true,
+    });
   });
 
   it("parses CLI args including dry-run and explicit root", () => {
@@ -170,14 +230,14 @@ describe("candidate package export", () => {
 
   it("keeps human-edited files untouched during generated reuse", () => {
     const root = tempRoot();
-    const first = exportMarketingCandidatePackage({
+    const first = exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
     });
     mkdirSync(join(first.packageRoot, "human-edited"), { recursive: true });
     writeFileSync(join(first.packageRoot, "human-edited", "caption.txt"), "editor note");
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -187,7 +247,7 @@ describe("candidate package export", () => {
 
   it("writes publishable Threads copy even when strategist draft body is blank", () => {
     const root = tempRoot();
-    const result = exportMarketingCandidatePackage({
+    const result = exportWithPublishable({
       candidate: buildTestCandidate({
         draft: buildDraft({ title: null, body: "   " }),
       }),

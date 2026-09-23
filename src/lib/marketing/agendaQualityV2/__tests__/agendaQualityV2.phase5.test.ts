@@ -421,6 +421,9 @@ describe("AGENDA_QUALITY_V2 Phase5 validation", () => {
       env: { AGENDA_QUALITY_V2_SHADOW_ENABLED: "true" },
     });
     expect(created.status).toBe("created");
+    if (created.status !== "created") {
+      throw new Error(`expected created manifest, got ${created.status}`);
+    }
     expect(created.manifest.validationId).toBe(AGENDA_QUALITY_V2_VALIDATION_ID);
     expect([...created.manifest.formalDates]).toEqual([...AGENDA_QUALITY_V2_VALIDATION_DATES]);
     expect(created.manifest.config.promptVersion).toBe(AGENDA_QUALITY_V2_PROMPT_VERSION);

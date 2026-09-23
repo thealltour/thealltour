@@ -4,11 +4,29 @@ import { enrichAiItineraryWithBlocks } from "@/lib/admin/externalImport/enrichIt
 import type { ItineraryBlock } from "@/lib/admin/externalImport/itineraryBlockTypes";
 
 describe("enrichAiItineraryWithBlocks day guard", () => {
+  function aiDay(
+    day: number,
+    events: Array<{ heading: string; description: string }>,
+  ) {
+    return {
+      day,
+      dateText: null,
+      title: null,
+      coverImageUrl: null,
+      events: events.map((e) => ({
+        ...e,
+        timeOfDay: null,
+        timeText: null,
+        imageUrls: [] as string[],
+      })),
+    };
+  }
+
   it("does not attach day=2 block to day=1 when explicit day blocks exist", () => {
     const ai = {
       days: [
-        { day: 1, events: [{ heading: "양강", description: "day1 short" }] },
-        { day: 2, events: [{ heading: "양강", description: "day2 short" }] },
+        aiDay(1, [{ heading: "양강", description: "day1 short" }]),
+        aiDay(2, [{ heading: "양강", description: "day2 short" }]),
       ],
     };
     const blocks: ItineraryBlock[] = [
@@ -29,7 +47,7 @@ describe("enrichAiItineraryWithBlocks day guard", () => {
 
   it("ignores day-agnostic blocks when explicit day blocks exist", () => {
     const ai = {
-      days: [{ day: 1, events: [{ heading: "관광", description: "a" }] }],
+      days: [aiDay(1, [{ heading: "관광", description: "a" }])],
     };
     const blocks: ItineraryBlock[] = [
       {

@@ -28,25 +28,43 @@ describe("detectExternalProvider", () => {
 });
 
 function minimalMeta(overrides: Partial<ExternalParsedMeta> = {}): ExternalParsedMeta {
-  return {
+  const base: ExternalParsedMeta = {
     title: "동남아 5일",
     description: "패키지 여행",
     price: 1290000,
     duration: "3박5일",
     theme: "동남아",
+    departure_region: null,
     included_items: "항공+숙박",
     excluded_items: "개인경비",
+    optional_expenses: null,
     booking_notes: null,
     status: "AVAILABLE",
+    airline_name: null,
     departure_flight_number: "OZ701",
     departure_from_airport: "인천",
     departure_to_airport: "방콕",
+    departure_from_date: null,
+    departure_from_time: null,
+    departure_to_date: null,
+    departure_to_time: null,
+    departure_duration: null,
+    arrival_flight_number: null,
+    arrival_from_airport: null,
+    arrival_to_airport: null,
+    arrival_from_date: null,
+    arrival_from_time: null,
+    arrival_to_date: null,
+    arrival_to_time: null,
+    arrival_duration: null,
     departure_time: "09:00",
     arrival_time: "13:30",
+    seo_hashtags: null,
     one_liner: null,
     meta_description: null,
-    ...overrides,
+    selling_points_json: null,
   };
+  return { ...base, ...overrides };
 }
 
 const RICH_BLOCKS: ItineraryBlock[] = [

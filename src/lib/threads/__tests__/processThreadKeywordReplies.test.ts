@@ -80,7 +80,9 @@ describe("getRandomReplyMessage", () => {
 
 describe("processThreadKeywordReplies", () => {
   it("replies to new keyword comments and skips duplicates and own account", async () => {
-    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    const postReply = vi.fn<ProcessThreadKeywordRepliesDeps["postReply"]>(async () => ({
+      id: "reply-1",
+    }));
     const insertReply = vi.fn(async () => undefined);
 
     const result = await processThreadKeywordReplies(
@@ -102,9 +104,11 @@ describe("processThreadKeywordReplies", () => {
 
     expect(result).toEqual({ posts: 1, matched: 3, replied: 1, skipped: 2, failed: 0 });
     expect(postReply).toHaveBeenCalledTimes(1);
-    expect(postReply.mock.calls[0][0]).toBe("hit-1");
-    expect(String(postReply.mock.calls[0][1])).toContain("@user_a");
-    expect(String(postReply.mock.calls[0][1])).toContain("utm_medium=auto_reply");
+    const call = postReply.mock.calls[0];
+    expect(call).toBeDefined();
+    expect(call![0]).toBe("hit-1");
+    expect(call![1]).toContain("@user_a");
+    expect(call![1]).toContain("utm_medium=auto_reply");
     expect(insertReply).toHaveBeenCalledWith({
       postId: "media-1",
       commentId: "hit-1",
@@ -128,7 +132,9 @@ describe("processThreadKeywordReplies", () => {
   });
 
   it("replies only once when the same user posts the keyword multiple times", async () => {
-    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    const postReply = vi.fn<ProcessThreadKeywordRepliesDeps["postReply"]>(async () => ({
+      id: "reply-1",
+    }));
     const result = await processThreadKeywordReplies(
       makeDeps({
         listRepliedOnPost: async () => ({
@@ -146,11 +152,15 @@ describe("processThreadKeywordReplies", () => {
     expect(result.replied).toBe(1);
     expect(result.skipped).toBe(2);
     expect(postReply).toHaveBeenCalledTimes(1);
-    expect(postReply.mock.calls[0][0]).toBe("c-ok");
+    const call = postReply.mock.calls[0];
+    expect(call).toBeDefined();
+    expect(call![0]).toBe("c-ok");
   });
 
   it("skips extra keyword comments from the same user in one run", async () => {
-    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    const postReply = vi.fn<ProcessThreadKeywordRepliesDeps["postReply"]>(async () => ({
+      id: "reply-1",
+    }));
     const result = await processThreadKeywordReplies(
       makeDeps({
         getReplies: async () => [
@@ -163,7 +173,9 @@ describe("processThreadKeywordReplies", () => {
     expect(result.replied).toBe(1);
     expect(result.skipped).toBe(1);
     expect(postReply).toHaveBeenCalledTimes(1);
-    expect(postReply.mock.calls[0][0]).toBe("first");
+    const call = postReply.mock.calls[0];
+    expect(call).toBeDefined();
+    expect(call![0]).toBe("first");
   });
 
   it("continues when a post's reply fetch fails", async () => {
@@ -185,7 +197,9 @@ describe("processThreadKeywordReplies", () => {
     const comments = Array.from({ length: MAX_THREAD_REPLIES_PER_RUN + 5 }, (_, i) =>
       comment({ id: `c-${i}`, text: "하이난골프", username: `u${i}` }),
     );
-    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    const postReply = vi.fn<ProcessThreadKeywordRepliesDeps["postReply"]>(async () => ({
+      id: "reply-1",
+    }));
     const result = await processThreadKeywordReplies(
       makeDeps({
         getReplies: async () => comments,
@@ -197,7 +211,9 @@ describe("processThreadKeywordReplies", () => {
   });
 
   it("prefers reply_destination_url over product_id", async () => {
-    const postReply = vi.fn(async () => ({ id: "reply-1" }));
+    const postReply = vi.fn<ProcessThreadKeywordRepliesDeps["postReply"]>(async () => ({
+      id: "reply-1",
+    }));
     await processThreadKeywordReplies(
       makeDeps({
         listActivePostsSince: async () => [
@@ -213,8 +229,9 @@ describe("processThreadKeywordReplies", () => {
       }),
     );
     expect(postReply).toHaveBeenCalledTimes(1);
-    const replyText = String((postReply.mock.calls as unknown as Array<[string, string]>)[0]?.[1] ?? "");
-    expect(replyText).toContain("https://thealltour.com/blog?");
-    expect(replyText).not.toContain("/products/");
+    const call = postReply.mock.calls[0];
+    expect(call).toBeDefined();
+    expect(call![1]).toContain("https://thealltour.com/blog?");
+    expect(call![1]).not.toContain("/products/");
   });
 });

@@ -8,6 +8,7 @@ import {
   buildContentPlan,
   buildDraft,
   buildTestCandidate,
+  buildTestLlmPublishableBundle,
   NOW,
 } from "@/lib/marketing/assets/__tests__/fixtures";
 import { createInMemoryMarketingMediaSourceCatalogRepository } from "@/lib/marketing/assets/sourceCatalog/inMemorySourceCatalogRepository";
@@ -51,6 +52,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const a = await maybeGenerateShortformBriefAndResolve({
       candidate: first,
+      publishableBundle: buildTestLlmPublishableBundle(first),
       assetRoot,
       catalog,
       env,
@@ -71,6 +73,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const b = await maybeGenerateShortformBriefAndResolve({
       candidate: second,
+      publishableBundle: buildTestLlmPublishableBundle(second),
       assetRoot,
       catalog,
       env,
@@ -89,6 +92,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const first = await maybeGenerateShortformBriefAndResolve({
       candidate,
+      publishableBundle: buildTestLlmPublishableBundle(candidate),
       assetRoot,
       catalog,
       env,
@@ -103,6 +107,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const second = await maybeGenerateShortformBriefAndResolve({
       candidate,
+      publishableBundle: buildTestLlmPublishableBundle(candidate),
       assetRoot,
       catalog,
       env,
@@ -135,6 +140,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const result = await maybeGenerateShortformBriefAndResolve({
       candidate,
+      publishableBundle: buildTestLlmPublishableBundle(candidate),
       assetRoot,
       catalog,
       env,
@@ -157,6 +163,7 @@ describe("CG-2 daily shortform bridge", () => {
 
     const result = await maybeGenerateShortformBriefAndResolve({
       candidate,
+      publishableBundle: buildTestLlmPublishableBundle(candidate),
       assetRoot,
       catalog,
       env: { ...env, PEXELS_API_KEY: "", PIXABAY_API_KEY: "" },

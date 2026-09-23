@@ -18,6 +18,7 @@ import { orchestrateDepartmentTask } from "@/lib/marketing/bot/organization/orch
 import { routeDepartmentRequest } from "@/lib/marketing/bot/organization/routing";
 import { PUBLICATION_FLOW_INACTIVE } from "@/lib/marketing/social/publication/governanceBoundary";
 import type { DailyPerformanceBriefArtifact } from "@/lib/marketing/cron/performanceBriefArtifact";
+import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
 import type { HermesAgentRuntimeResult } from "@/lib/marketing/bot/organization/hermesRuntime";
 import { MARKETING_BOT_TOOL_NAMES } from "@/lib/marketing/bot/types";
 
@@ -44,23 +45,24 @@ function sampleBrief(overrides: Partial<DailyPerformanceBriefArtifact> = {}): Da
   };
 }
 
-function okInvoke(profile: HermesAgentRuntimeResult["profile"], stdout: string): HermesAgentRuntimeResult {
+function okInvoke(profile: string, stdout: string): HermesAgentRuntimeResult {
+  const profileId = profile as HermesMarketingProfileId;
   return {
-    executionId: `exec-${profile}`,
-    profile,
+    executionId: `exec-${profileId}`,
+    profile: profileId,
     actuallyInvoked: true,
     exitCode: 0,
     timedOut: false,
     stdout,
     stderr: "",
     promptSha256: "abc",
-    argv: ["hermes", "-p", profile, "--yolo", "--ignore-rules", "-z"],
+    argv: ["hermes", "-p", profileId, "--yolo", "--ignore-rules", "-z"],
     startedAt: "2026-08-26T00:00:00.000Z",
     endedAt: "2026-08-26T00:00:01.000Z",
   };
 }
 
-function failInvoke(profile: HermesAgentRuntimeResult["profile"]): HermesAgentRuntimeResult {
+function failInvoke(profile: string): HermesAgentRuntimeResult {
   return {
     ...okInvoke(profile, ""),
     actuallyInvoked: false,

@@ -251,7 +251,7 @@ export default function GlobalSiteFooter() {
             더올투어 유한회사는 모든 거래에 대한 책임과 배송, 교환, 환불, 민원등의 처리는
             더올투어 유한회사에서 진행합니다.
             <br />
-            자세한 문의는 담당자 Email:{" "}
+            자세한 문의는 담당자 유성호 Email:{" "}
             <a
               href={`mailto:${mainEmail}`}
               className="underline-offset-2 hover:underline"

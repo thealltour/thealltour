@@ -13,6 +13,11 @@ import {
   COMPLETED_MARKETING_CANDIDATE_CONTRACT,
   type CompletedMarketingCandidate,
 } from "@/lib/marketing/cron/daily/types";
+import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
+import type {
+  PublishableChannelContent,
+  PublishableContentBundle,
+} from "@/lib/marketing/publishable/contracts";
 
 export const NOW = new Date("2026-09-03T00:00:00.000Z");
 export const BUSINESS_DATE = "2026-09-03";
@@ -221,3 +226,40 @@ export function buildTestCandidate(
     ...overrides,
   };
 }
+
+/** Promote deterministic sync output to LLM-success shape for package/shortform bridge tests. */
+export function buildTestLlmPublishableBundle(
+  candidate: CompletedMarketingCandidate,
+  now: Date = NOW,
+): PublishableContentBundle {
+  const base = ensurePublishableContentSync({
+    candidate,
+    forceRegenerate: true,
+    allowDeterministicGeneration: true,
+    now,
+  });
+  const promote = (content: PublishableChannelContent): PublishableChannelContent => ({
+    ...content,
+    status: "generated",
+    provenance: {
+      ...content.provenance,
+      composer: "llm",
+      generationMode: "llm",
+      failureCategory: null,
+      failureMessage: null,
+    },
+    validation: { ok: true, issues: [] },
+    publishableSuccess: true,
+    needsRegeneration: false,
+  });
+  return {
+    ...base,
+    threads: promote(base.threads),
+    shortform: promote(base.shortform),
+    ...(base.naver_blog ? { naver_blog: promote(base.naver_blog) } : {}),
+    ...(base.naver_band ? { naver_band: promote(base.naver_band) } : {}),
+    ...(base.kakao_channel ? { kakao_channel: promote(base.kakao_channel) } : {}),
+    ...(base.instagram ? { instagram: promote(base.instagram) } : {}),
+  };
+}
+

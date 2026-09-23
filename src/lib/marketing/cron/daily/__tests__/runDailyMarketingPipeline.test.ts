@@ -215,6 +215,8 @@ describe("runDailyMarketingPipeline", () => {
         now: NOW,
         getResearchContext: async () => buildResearchContext({ status: "empty", agendaCandidates: [], briefs: [] }),
         invokeManagerProfile: async () => managerSelectJson(),
+        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestGovernance: async () => allow(),
       },
     );
     expect(result.candidate).toBeNull();
@@ -242,6 +244,8 @@ describe("runDailyMarketingPipeline", () => {
         repo: createInMemoryDailyMarketingRunRepository(),
         now: NOW,
         getResearchContext: async () => buildResearchContext({ status: "unavailable" }),
+        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestGovernance: async () => allow(),
       },
     );
     expect(result.run.failureReason).toBe("RESEARCH_UNAVAILABLE");
@@ -258,6 +262,8 @@ describe("runDailyMarketingPipeline", () => {
         getResearchContext: async () => buildResearchContext(),
         invokeManagerProfile: async () =>
           JSON.stringify({ decision: "defer", deferReason: "evidence too weak" }),
+        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestGovernance: async () => allow(),
       },
     );
     expect(result.run.failureReason).toBe("MANAGER_DEFERRED");
@@ -273,6 +279,8 @@ describe("runDailyMarketingPipeline", () => {
         now: NOW,
         getResearchContext: async () => buildResearchContext(),
         invokeManagerProfile: async () => "not json",
+        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestGovernance: async () => allow(),
       },
     );
     expect(result.run.failureReason).toBe("MANAGER_INVALID_OUTPUT");
@@ -380,6 +388,8 @@ describe("runDailyMarketingPipeline", () => {
         invokeManagerProfile: async () => {
           throw new Error("provider down");
         },
+        requestDraft: async () => ({ ...draft, assignmentId: null }),
+        requestGovernance: async () => allow(),
       },
     );
     expect(result.run.failureReason).toBe("RUNTIME_PROVIDER_FAILED");

@@ -32,6 +32,7 @@ import type { ContentProposition } from "@/lib/marketing/content/proposition/con
 import {
   EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
   STORY_CONTENT_POINT_CONTRACT,
+  STORY_RESEARCH_CONTRACT_VERSION,
   type EvidenceBackedStoryBrief,
   type StoryContentPoint,
 } from "@/lib/marketing/storyPoint/contracts";
@@ -70,23 +71,50 @@ function evidence(verdict: EvidenceBackedStoryBrief["storySupportVerdict"], boun
   const hash = createStoryPointHash(BANGKOK);
   return {
     contract: EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
+    researchContractVersion: STORY_RESEARCH_CONTRACT_VERSION,
     storyPointId: BANGKOK.pointId,
     storyPointHash: hash,
+    agendaLogicalIdentity: "logical_bangkok_pipeline",
+    researchExecutionStatus: verdict === "SUPPORTED" ? "complete" : "partial",
     storySupportVerdict: verdict,
     supportedClaimBoundary: boundary,
     researchQuestionFindings: [
       {
         question: "방콕 주요 숙박지역별 BTS 접근성 차이가 큰가?",
-        status: "supported",
+        status: "answered",
         finding: "수쿰빗·실롬 등 지역별 BTS 접근성 차이가 후기와 안내에서 반복 관측된다",
         evidenceRefs: ["ev1"],
+        sourceClasses: ["community"],
+        confidence: 0.7,
+        limitations: [],
+      },
+    ],
+    evidenceAssessment: [
+      {
+        evidenceId: "ev1",
+        relationship: "supports",
+        relevanceToStoryPoint: 0.8,
+        epistemicType: "observed_signal",
+        sourceClass: "community",
+        note: "test",
       },
     ],
     contradictedClaims: ["방콕 전 지역 호텔은 이동이 동일하다"],
     unresolvedQuestions: ["특정 호텔의 확정 조식 가격은?"],
+    usableFactIds: ["ev1"],
+    refutationNotes: null,
     researchSupportedFraming: ["위치/접근성을 등급과 함께 비교할 근거가 있다"],
     limitations: ["개별 호텔 가격·운항 빈도는 확인하지 않음"],
-    adjudicationNotes: "test",
+    alternateFallbackUsed: false,
+    observability: {
+      plannedQuestionCount: 1,
+      answeredQuestionCount: 1,
+      unresolvedQuestionCount: 1,
+      contradictingEvidenceCount: 0,
+      externalQueriesAttempted: 1,
+      externalQueriesSuccessful: 1,
+      sourceClasses: ["community"],
+    },
   };
 }
 
@@ -109,7 +137,10 @@ function proposition(boundary: string | null = null): ContentProposition {
     commercialIntent: "informational",
     propositionStrength: "usable",
     limitations: ["개별 요금은 단정하지 않음"],
-    storyPointId: BANGKOK.pointId,
+    storyPointRef: {
+      storyPointId: BANGKOK.pointId,
+      storyPointHash: createStoryPointHash(BANGKOK),
+    },
     storyPointHash: createStoryPointHash(BANGKOK),
     storySupportVerdict: boundary ? "PARTIALLY_SUPPORTED" : "SUPPORTED",
     supportedClaimBoundaryUsed: boundary,

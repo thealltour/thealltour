@@ -15,6 +15,11 @@ describe("hydrateProductsWithCampaignCardMeta with ProductListItem", () => {
         badge_visible: true,
         badge_tone: "primary",
         slug: "recommend",
+        is_active: true,
+        sort_order: 1,
+        created_at: null,
+        is_hub_visible: false,
+        is_landing_enabled: false,
       },
     ];
     const item = mapProductRowToListItem({

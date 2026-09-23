@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 
+import type { EnvBag } from "@/lib/envBag";
 import {
   assertHermesSpawnSyncSuccess,
   type HermesSpawnSyncResultLike,
@@ -15,7 +16,7 @@ export function invokeHermesProfileAsync(
   profile: string,
   prompt: string,
   timeoutMs: number,
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvBag = process.env,
 ): Promise<string> {
   const hermesBin = resolveHermesExecutable(env);
   return new Promise<string>((resolve, reject) => {
@@ -24,15 +25,17 @@ export function invokeHermesProfileAsync(
     let settled = false;
     let timedOut = false;
 
+    // Merge onto process.env so spawn's ProcessEnv (NODE_ENV required) stays satisfied
+    // when callers pass partial EnvBag overrides in tests.
+    const spawnEnv: NodeJS.ProcessEnv = Object.assign({}, process.env, env, {
+      HERMES_HOME: env.HERMES_HOME ?? "/home/ysh/.hermes",
+    });
     const child = spawn(
       hermesBin,
       ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
       {
         shell: false,
-        env: {
-          ...env,
-          HERMES_HOME: env.HERMES_HOME ?? "/home/ysh/.hermes",
-        },
+        env: spawnEnv,
       },
     );
 

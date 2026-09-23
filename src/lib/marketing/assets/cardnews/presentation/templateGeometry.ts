@@ -1,0 +1,499 @@
+/**
+ * Deterministic template geometry for 1080×1350 (4:5) primary.
+ * LLM never emits free coordinates — only template + bounded ratios/enums.
+ */
+
+import {
+  CARDNEWS_BRAND,
+  CARDNEWS_SAFE,
+  type CardNewsGeometry,
+} from "@/lib/marketing/assets/cardnews/brand";
+import type {
+  CardCropMode,
+  CardFocalAlignment,
+  CardOverlayMode,
+  CardPresentation,
+  CardPresentationTemplate,
+  CardTextDensity,
+  CardTextPlacement,
+} from "@/lib/marketing/assets/cardnews/presentation/contracts";
+
+export type ImageBandGeometry = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rx: number;
+};
+
+export type TextBandGeometry = {
+  x: number;
+  y: number;
+  width: number;
+  maxHeadlineHeight: number;
+  maxBodyHeight: number;
+  kickerY: number;
+  headlinePreferred: number;
+  bodyPreferred: number;
+  fill: string;
+  headlineFill: string;
+  bodyFill: string;
+  kickerFill: string;
+};
+
+export type BrandPlacement = {
+  wordmark: { x: number; y: number; width: number; height: number; opacity: number };
+  progressY: number;
+  showTopBar: boolean;
+  showBottomAccent: boolean;
+};
+
+export type ResolvedTemplateLayout = {
+  template: CardPresentationTemplate;
+  image: ImageBandGeometry | null;
+  text: TextBandGeometry;
+  overlay: {
+    mode: CardOverlayMode;
+    y: number;
+    height: number;
+  } | null;
+  brand: BrandPlacement;
+  cropMode: CardCropMode;
+  focalAlignment: CardFocalAlignment;
+  preserveAspectRatio: string;
+  textDensity: CardTextDensity;
+  textPlacement: CardTextPlacement;
+};
+
+const H_MARGIN = 80;
+const V_MARGIN = 88;
+
+/** SVG <text y> is baseline — glyph box extends above/below. */
+const ASCENT_RATIO = 0.82;
+const DESCENT_RATIO = 0.22;
+const KICKER_FONT_PX = 20;
+/** Clear air between kicker glyph bottom and headline glyph top (non-cover). */
+export const MIN_KICKER_HEADLINE_CLEAR_PX = 32;
+/**
+ * Image bottom → text-band start (kicker top) for photo_top / evidence.
+ * Previous rhythm was ~36px to kicker baseline (~11px visual to headline) — too tight.
+ */
+export const MIN_IMAGE_TEXT_BAND_GAP_PX = 88;
+
+export function estimateGlyphTop(baselineY: number, fontPx: number): number {
+  return baselineY - Math.round(fontPx * ASCENT_RATIO);
+}
+
+export function estimateGlyphBottom(baselineY: number, fontPx: number): number {
+  return baselineY + Math.round(fontPx * DESCENT_RATIO);
+}
+
+/** Headline baseline so glyph boxes never overlap and clear ≥ MIN_KICKER_HEADLINE_CLEAR_PX. */
+export function headlineBaselineAfterKicker(input: {
+  kickerBaselineY: number;
+  headlineFontPx: number;
+  kickerFontPx?: number;
+  clearPx?: number;
+}): number {
+  const kickerFont = input.kickerFontPx ?? KICKER_FONT_PX;
+  const clear = input.clearPx ?? MIN_KICKER_HEADLINE_CLEAR_PX;
+  const kickerBottom = estimateGlyphBottom(input.kickerBaselineY, kickerFont);
+  const ascent = Math.round(input.headlineFontPx * ASCENT_RATIO);
+  return kickerBottom + clear + ascent;
+}
+
+/** Kicker baseline so its glyph top sits at `bandTopY`. */
+export function kickerBaselineAtBandTop(bandTopY: number, kickerFontPx = KICKER_FONT_PX): number {
+  return bandTopY + Math.round(kickerFontPx * ASCENT_RATIO);
+}
+
+/** Headline baseline so its glyph top sits at `bandTopY` (no kicker). */
+export function headlineBaselineAtBandTop(bandTopY: number, headlineFontPx: number): number {
+  return bandTopY + Math.round(headlineFontPx * ASCENT_RATIO);
+}
+
+/**
+ * Text-band anchors. When there is no explicit editorial kicker, headline
+ * starts at bandTop (no reserved empty kicker slot).
+ */
+export function resolveTextBandAnchors(input: {
+  bandTopY: number;
+  headlineFontPx: number;
+  hasKicker: boolean;
+}): { kickerY: number; headlineY: number } {
+  if (!input.hasKicker) {
+    const headlineY = headlineBaselineAtBandTop(input.bandTopY, input.headlineFontPx);
+    return { kickerY: headlineY, headlineY };
+  }
+  const kickerY = kickerBaselineAtBandTop(input.bandTopY);
+  const headlineY = headlineBaselineAfterKicker({
+    kickerBaselineY: kickerY,
+    headlineFontPx: input.headlineFontPx,
+  });
+  return { kickerY, headlineY };
+}
+
+/** Map focalAlignment → SVG preserveAspectRatio (meet|slice from cropMode). */
+export function focalToPreserveAspectRatio(
+  focal: CardFocalAlignment,
+  cropMode: CardCropMode,
+): string {
+  const fit = cropMode === "contain" ? "meet" : "slice";
+  const map: Record<CardFocalAlignment, string> = {
+    center: `xMidYMid ${fit}`,
+    top: `xMidYMin ${fit}`,
+    bottom: `xMidYMax ${fit}`,
+    left: `xMinYMid ${fit}`,
+    right: `xMaxYMid ${fit}`,
+    "top-left": `xMinYMin ${fit}`,
+    "top-right": `xMaxYMin ${fit}`,
+    "bottom-left": `xMinYMax ${fit}`,
+    "bottom-right": `xMaxYMax ${fit}`,
+  };
+  return map[focal] ?? `xMidYMid ${fit}`;
+}
+
+function clampRatio(value: number | undefined, fallback: number, min: number, max: number): number {
+  const n = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function densityHeadline(density: CardTextDensity, cover: boolean, statement: boolean): number {
+  if (statement) {
+    return density === "minimal" ? 82 : density === "compact" ? 74 : 78;
+  }
+  if (cover) {
+    return density === "minimal" ? 72 : density === "compact" ? 64 : 70;
+  }
+  return density === "minimal" ? 58 : density === "compact" ? 52 : 56;
+}
+
+function densityBody(density: CardTextDensity): number {
+  return density === "minimal" ? 32 : density === "compact" ? 30 : 34;
+}
+
+/**
+ * Resolve presentation → pixel geometry on the target canvas.
+ * Primary DoD is 4:5; other ratios use scaleY for vertical anchors.
+ */
+export function resolveTemplateLayout(input: {
+  presentation: CardPresentation;
+  geometry: CardNewsGeometry;
+  hasVisual: boolean;
+  roleHint?: string;
+  /** When false (default), do not reserve vertical space for a kicker label. */
+  hasKicker?: boolean;
+}): ResolvedTemplateLayout {
+  const geo = input.geometry;
+  const p = input.presentation;
+  const density = p.textDensity;
+  const cropMode = p.cropMode ?? "cover";
+  const focal = p.focalAlignment ?? "center";
+  const preserveAspectRatio = focalToPreserveAspectRatio(focal, cropMode);
+  const overlayMode = p.overlayMode ?? "none";
+  const hasKicker = Boolean(input.hasKicker);
+
+  const textWidth = geo.width - H_MARGIN * 2;
+  const ink = CARDNEWS_BRAND.ink;
+  const muted = CARDNEWS_BRAND.muted;
+  const white = CARDNEWS_BRAND.white;
+
+  const brandSubtle = (opacity: number): BrandPlacement => ({
+    wordmark: {
+      x: H_MARGIN,
+      y: geo.height - geo.scaleY(72),
+      width: 200,
+      height: 36,
+      opacity,
+    },
+    progressY: geo.height - geo.scaleY(96),
+    showTopBar: false,
+    showBottomAccent: false,
+  });
+
+  // No visual → force text/closing family (clarity-first vertical rhythm)
+  if (!input.hasVisual || p.template === "text_statement" || p.template === "closing_insight") {
+    const isClosing = p.template === "closing_insight";
+    const headlinePreferred = densityHeadline(density, false, !isClosing);
+    const bodyPreferred = densityBody(density);
+    const preferredHeadline = isClosing
+      ? Math.max(headlinePreferred, 64)
+      : Math.max(headlinePreferred, 72);
+    // Without kicker, start higher so we do not leave a dead empty slot.
+    const bandTop = geo.scaleY(
+      hasKicker ? (isClosing ? 400 : 340) : isClosing ? 280 : 220,
+    );
+    const { kickerY, headlineY } = resolveTextBandAnchors({
+      bandTopY: bandTop,
+      headlineFontPx: preferredHeadline,
+      hasKicker,
+    });
+    return {
+      template: isClosing ? "closing_insight" : "text_statement",
+      image: null,
+      text: {
+        x: H_MARGIN,
+        y: headlineY,
+        width: textWidth,
+        maxHeadlineHeight: geo.scaleY(isClosing ? 300 : 380),
+        maxBodyHeight: geo.scaleY(isClosing ? 200 : 240),
+        kickerY,
+        headlinePreferred: preferredHeadline,
+        bodyPreferred: Math.max(bodyPreferred, 32),
+        fill: CARDNEWS_BRAND.paper,
+        headlineFill: ink,
+        bodyFill: muted,
+        kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
+      },
+      overlay: null,
+      brand: {
+        ...brandSubtle(isClosing ? 0.9 : 0.4),
+        showTopBar: true,
+        showBottomAccent: isClosing,
+      },
+      cropMode,
+      focalAlignment: focal,
+      preserveAspectRatio,
+      textDensity: density,
+      textPlacement: p.textPlacement,
+    };
+  }
+
+  switch (p.template) {
+    case "cover_full_bleed": {
+      const headlinePreferred = densityHeadline(density, true, false);
+      const bodyPreferred = densityBody(density);
+      const textBlockH = geo.scaleY(hasKicker ? 380 : 340);
+      const bandTop = geo.height - textBlockH + geo.scaleY(hasKicker ? 28 : 40);
+      const { kickerY, headlineY } = resolveTextBandAnchors({
+        bandTopY: bandTop,
+        headlineFontPx: headlinePreferred,
+        hasKicker,
+      });
+      return {
+        template: "cover_full_bleed",
+        image: { x: 0, y: 0, width: geo.width, height: geo.height, rx: 0 },
+        text: {
+          x: H_MARGIN,
+          y: headlineY,
+          width: textWidth,
+          maxHeadlineHeight: geo.scaleY(200),
+          maxBodyHeight: geo.scaleY(110),
+          kickerY,
+          headlinePreferred,
+          bodyPreferred,
+          fill: "transparent",
+          headlineFill: white,
+          bodyFill: "rgba(255,255,255,0.88)",
+          kickerFill: "rgba(255,255,255,0.75)",
+        },
+        overlay: {
+          mode: overlayMode === "none" ? "gradient_dark" : overlayMode,
+          y: geo.height - textBlockH - geo.scaleY(40),
+          height: textBlockH + geo.scaleY(40),
+        },
+        brand: {
+          wordmark: {
+            x: H_MARGIN,
+            y: geo.scaleY(48),
+            width: 160,
+            height: 30,
+            opacity: 0.55,
+          },
+          progressY: geo.height - geo.scaleY(40),
+          showTopBar: false,
+          showBottomAccent: false,
+        },
+        cropMode,
+        focalAlignment: focal,
+        preserveAspectRatio,
+        textDensity: density,
+        textPlacement: "overlay-bottom",
+      };
+    }
+    case "photo_bottom_story": {
+      const ratio = clampRatio(p.imageHeightRatio, 0.52, 0.42, 0.62);
+      const imageH = Math.round(geo.height * ratio);
+      const imageY = geo.height - imageH;
+      const headlinePreferred = densityHeadline(density, false, false);
+      const bandTop = geo.scaleY(hasKicker ? 100 : 88);
+      const { kickerY, headlineY } = resolveTextBandAnchors({
+        bandTopY: bandTop,
+        headlineFontPx: headlinePreferred,
+        hasKicker,
+      });
+      return {
+        template: "photo_bottom_story",
+        image: { x: 0, y: imageY, width: geo.width, height: imageH, rx: 0 },
+        text: {
+          x: H_MARGIN,
+          y: headlineY,
+          width: textWidth,
+          maxHeadlineHeight: geo.scaleY(200),
+          maxBodyHeight: Math.max(80, imageY - headlineY - geo.scaleY(120)),
+          kickerY,
+          headlinePreferred,
+          bodyPreferred: densityBody(density),
+          fill: CARDNEWS_BRAND.paper,
+          headlineFill: ink,
+          bodyFill: muted,
+          kickerFill: CARDNEWS_BRAND.blue,
+        },
+        overlay: null,
+        brand: brandSubtle(0.4),
+        cropMode,
+        focalAlignment: focal,
+        preserveAspectRatio,
+        textDensity: density,
+        textPlacement: "top",
+      };
+    }
+    case "photo_overlay_editorial": {
+      const headlinePreferred = densityHeadline(density, true, false);
+      const textBottom = p.textPlacement === "overlay-top";
+      const bandH = geo.scaleY(hasKicker ? 360 : 320);
+      const bandTop = textBottom
+        ? geo.scaleY(hasKicker ? 100 : 88)
+        : geo.height - bandH + geo.scaleY(hasKicker ? 16 : 28);
+      const { kickerY, headlineY } = resolveTextBandAnchors({
+        bandTopY: bandTop,
+        headlineFontPx: headlinePreferred,
+        hasKicker,
+      });
+      return {
+        template: "photo_overlay_editorial",
+        image: { x: 0, y: 0, width: geo.width, height: geo.height, rx: 0 },
+        text: {
+          x: H_MARGIN,
+          y: headlineY,
+          width: textWidth,
+          maxHeadlineHeight: geo.scaleY(180),
+          maxBodyHeight: geo.scaleY(100),
+          kickerY,
+          headlinePreferred,
+          bodyPreferred: densityBody(density),
+          fill: "transparent",
+          headlineFill: white,
+          bodyFill: "rgba(255,255,255,0.9)",
+          kickerFill: "rgba(255,255,255,0.7)",
+        },
+        overlay: {
+          mode: overlayMode === "none" ? "gradient_dark" : overlayMode,
+          y: textBottom ? 0 : geo.height - bandH - geo.scaleY(60),
+          height: bandH + geo.scaleY(60),
+        },
+        brand: {
+          wordmark: {
+            x: H_MARGIN,
+            y: textBottom ? geo.height - geo.scaleY(72) : geo.scaleY(48),
+            width: 160,
+            height: 30,
+            opacity: 0.5,
+          },
+          progressY: geo.height - geo.scaleY(40),
+          showTopBar: false,
+          showBottomAccent: false,
+        },
+        cropMode,
+        focalAlignment: focal,
+        preserveAspectRatio,
+        textDensity: density,
+        textPlacement: p.textPlacement,
+      };
+    }
+    case "evidence_detail": {
+      const ratio = clampRatio(p.imageHeightRatio, 0.5, 0.44, 0.58);
+      const imageH = Math.round(geo.height * ratio);
+      const inset = 48;
+      const imageTop = geo.scaleY(80);
+      const imageBottom = imageTop + imageH;
+      const headlinePreferred = densityHeadline("compact", false, false);
+      const bandTop = imageBottom + geo.scaleY(MIN_IMAGE_TEXT_BAND_GAP_PX);
+      const { kickerY, headlineY } = resolveTextBandAnchors({
+        bandTopY: bandTop,
+        headlineFontPx: headlinePreferred,
+        hasKicker,
+      });
+      return {
+        template: "evidence_detail",
+        image: {
+          x: inset,
+          y: imageTop,
+          width: geo.width - inset * 2,
+          height: imageH,
+          rx: 12,
+        },
+        text: {
+          x: H_MARGIN,
+          y: headlineY,
+          width: textWidth,
+          maxHeadlineHeight: geo.scaleY(140),
+          maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(180)),
+          kickerY,
+          headlinePreferred,
+          bodyPreferred: densityBody("compact"),
+          fill: CARDNEWS_BRAND.paper,
+          headlineFill: ink,
+          bodyFill: muted,
+          kickerFill: CARDNEWS_BRAND.blue,
+        },
+        overlay: null,
+        brand: brandSubtle(0.35),
+        cropMode,
+        focalAlignment: focal,
+        preserveAspectRatio,
+        textDensity: density,
+        textPlacement: "bottom",
+      };
+    }
+    case "photo_top_story":
+    default: {
+      const ratio = clampRatio(p.imageHeightRatio, 0.48, 0.42, 0.56);
+      const imageH = Math.round(geo.height * ratio);
+      const headlinePreferred = densityHeadline(density, false, false);
+      const bandTop = imageH + geo.scaleY(MIN_IMAGE_TEXT_BAND_GAP_PX);
+      const { kickerY, headlineY } = resolveTextBandAnchors({
+        bandTopY: bandTop,
+        headlineFontPx: headlinePreferred,
+        hasKicker,
+      });
+      return {
+        template: "photo_top_story",
+        image: { x: 0, y: 0, width: geo.width, height: imageH, rx: 0 },
+        text: {
+          x: H_MARGIN,
+          y: headlineY,
+          width: textWidth,
+          maxHeadlineHeight: geo.scaleY(200),
+          maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(200)),
+          kickerY,
+          headlinePreferred,
+          bodyPreferred: densityBody(density),
+          fill: CARDNEWS_BRAND.paper,
+          headlineFill: ink,
+          bodyFill: muted,
+          kickerFill: CARDNEWS_BRAND.blue,
+        },
+        overlay: null,
+        brand: brandSubtle(0.4),
+        cropMode,
+        focalAlignment: focal,
+        preserveAspectRatio,
+        textDensity: density,
+        textPlacement: "bottom",
+      };
+    }
+  }
+}
+
+/** Soft check: image area coverage vs canvas (for regression tests). */
+export function imageCoverageRatio(layout: ResolvedTemplateLayout, geometry: CardNewsGeometry): number {
+  if (!layout.image) return 0;
+  return (layout.image.width * layout.image.height) / (geometry.width * geometry.height);
+}
+
+export const PRESENTATION_SAFE_MARGINS = {
+  horizontal: H_MARGIN,
+  vertical: V_MARGIN,
+  legacyPadX: CARDNEWS_SAFE.padX,
+} as const;

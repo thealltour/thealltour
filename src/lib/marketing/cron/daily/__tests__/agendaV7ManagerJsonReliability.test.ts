@@ -133,9 +133,11 @@ describe("STEP R-6 JSON extraction", () => {
     const result = extractJsonObjectResult(raw);
     expect(result.ok).toBe(false);
     expect(() => extractJsonObject(raw)).toThrow(MarketingBotValidationError);
-    expect(parseManagerAgendaSlateCuration(raw, poolContext(), 6).message).toBe(
-      "manager_slate_json_parse_failed",
-    );
+    expect(parseManagerAgendaSlateCuration(raw, poolContext(), 6).outcome).toBe("invalid");
+    const curation = parseManagerAgendaSlateCuration(raw, poolContext(), 6);
+    expect(curation.outcome).toBe("invalid");
+    if (curation.outcome !== "invalid") throw new Error("expected invalid curation");
+    expect(curation.message).toBe("manager_slate_json_parse_failed");
   });
 
   it("6. truncated JSON fails", () => {

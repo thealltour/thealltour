@@ -222,6 +222,7 @@ describe("SupabaseResearchRepository", () => {
 
     const normalized = normalizeResearchSignal(raw, source, NOW);
     expect(normalized.ok).toBe(true);
+    if (!normalized.ok) throw new Error("expected normalize ok");
     const enriched = enrichResearchSignal(normalized.signal, source, NOW);
     const persisted = await repo.upsertSignal(enriched);
     expect(persisted.evidence[0]?.url).toContain("gov.uk");

@@ -12,7 +12,13 @@ import {
   sha256Buffer,
 } from "@/lib/marketing/assets";
 import { MarketingAssetPathError } from "@/lib/marketing/assets/errors";
-import { buildTestCandidate, BUSINESS_DATE, CANDIDATE_ID, NOW } from "@/lib/marketing/assets/__tests__/fixtures";
+import {
+  buildTestCandidate,
+  buildTestLlmPublishableBundle,
+  BUSINESS_DATE,
+  CANDIDATE_ID,
+  NOW,
+} from "@/lib/marketing/assets/__tests__/fixtures";
 
 const tempDirs: string[] = [];
 
@@ -28,6 +34,30 @@ afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });
   }
 });
+
+
+const publishableBundleByCandidateId = new Map<
+  string,
+  ReturnType<typeof buildTestLlmPublishableBundle>
+>();
+
+function exportWithPublishable(
+  args: Omit<Parameters<typeof exportMarketingCandidatePackage>[0], "publishableBundle"> & {
+    publishableBundle?: Parameters<typeof exportMarketingCandidatePackage>[0]["publishableBundle"];
+  },
+) {
+  let publishableBundle = args.publishableBundle;
+  if (!publishableBundle) {
+    const cached = publishableBundleByCandidateId.get(args.candidate.candidateId);
+    if (cached) {
+      publishableBundle = cached;
+    } else {
+      publishableBundle = buildTestLlmPublishableBundle(args.candidate, args.now ?? NOW);
+      publishableBundleByCandidateId.set(args.candidate.candidateId, publishableBundle);
+    }
+  }
+  return exportMarketingCandidatePackage({ ...args, publishableBundle });
+}
 
 describe("inspectMarketingAssetPackage", () => {
   it("returns missing when asset root is not configured", () => {
@@ -56,7 +86,7 @@ describe("inspectMarketingAssetPackage", () => {
 
   it("returns present after export with artifact metadata", () => {
     const root = tempRoot();
-    const exported = exportMarketingCandidatePackage({
+    const exported = exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -77,7 +107,7 @@ describe("inspectMarketingAssetPackage", () => {
 describe("readMarketingAssetPackageFile", () => {
   it("reads package files with matching size and sha", () => {
     const root = tempRoot();
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -96,7 +126,7 @@ describe("readMarketingAssetPackageFile", () => {
 
   it("allows reading manifest.json", () => {
     const root = tempRoot();
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -114,7 +144,7 @@ describe("readMarketingAssetPackageFile", () => {
 
   it("rejects path traversal", () => {
     const root = tempRoot();
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -131,7 +161,7 @@ describe("readMarketingAssetPackageFile", () => {
 
   it("throws when artifact is missing", () => {
     const root = tempRoot();
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,
@@ -150,7 +180,7 @@ describe("readMarketingAssetPackageFile", () => {
 describe("buildMarketingAssetPackageZip", () => {
   it("zips package artifacts including manifest.json", async () => {
     const root = tempRoot();
-    exportMarketingCandidatePackage({
+    exportWithPublishable({
       candidate: buildTestCandidate(),
       assetRoot: root,
       now: NOW,

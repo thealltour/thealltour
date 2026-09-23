@@ -25,6 +25,7 @@ import type { ContentProposition } from "@/lib/marketing/content/proposition/con
 import {
   EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
   STORY_CONTENT_POINT_CONTRACT,
+  STORY_RESEARCH_CONTRACT_VERSION,
   type EvidenceBackedStoryBrief,
   type StoryContentPoint,
 } from "@/lib/marketing/storyPoint/contracts";
@@ -65,23 +66,50 @@ function evidence(): EvidenceBackedStoryBrief {
   const point = story({ editorialArchetype: "discovery" });
   return {
     contract: EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
+    researchContractVersion: STORY_RESEARCH_CONTRACT_VERSION,
     storyPointId: point.pointId,
     storyPointHash: createStoryPointHash(point),
+    agendaLogicalIdentity: "logical_langson_phase5",
+    researchExecutionStatus: "partial",
     storySupportVerdict: "PARTIALLY_SUPPORTED",
     supportedClaimBoundary: "공식·보도에서 흙담 마을이 시각적 특징으로 언급되는 범위",
     researchQuestionFindings: [
       {
         question: "랑선 흙담 마을이 공식 안내·보도에 반복 등장하는가?",
-        status: "partial",
+        status: "partially_answered",
         finding: "일부 관광·지방 안내에서 흙담 건축이 소개된다",
         evidenceRefs: ["ev_ls1"],
+        sourceClasses: ["tourism_board"],
+        confidence: 0.55,
+        limitations: ["현장 체감 미확인"],
+      },
+    ],
+    evidenceAssessment: [
+      {
+        evidenceId: "ev_ls1",
+        relationship: "partially_supports",
+        relevanceToStoryPoint: 0.6,
+        epistemicType: "observed_signal",
+        sourceClass: "tourism_board",
+        note: "phase5-test",
       },
     ],
     contradictedClaims: [],
     unresolvedQuestions: ["현지인 일상 체험 강도는 미확인"],
+    usableFactIds: ["ev_ls1"],
+    refutationNotes: null,
     researchSupportedFraming: ["흙담·골목 시각 차이를 탐색 포인트로 볼 단서가 있다"],
     limitations: ["실제 방문 체감은 추가 확인 필요"],
-    adjudicationNotes: "phase5-test",
+    alternateFallbackUsed: false,
+    observability: {
+      plannedQuestionCount: 1,
+      answeredQuestionCount: 0,
+      unresolvedQuestionCount: 1,
+      contradictingEvidenceCount: 0,
+      externalQueriesAttempted: 1,
+      externalQueriesSuccessful: 1,
+      sourceClasses: ["tourism_board"],
+    },
   };
 }
 
@@ -105,7 +133,10 @@ function proposition(): ContentProposition {
     commercialIntent: "informational",
     propositionStrength: "usable",
     limitations: ["일상 체험 강도는 단정하지 않음"],
-    storyPointId: point.pointId,
+    storyPointRef: {
+      storyPointId: point.pointId,
+      storyPointHash: createStoryPointHash(point),
+    },
     storyPointHash: createStoryPointHash(point),
     storySupportVerdict: "PARTIALLY_SUPPORTED",
     supportedClaimBoundaryUsed: "공식·보도에서 흙담 마을이 시각적 특징으로 언급되는 범위",

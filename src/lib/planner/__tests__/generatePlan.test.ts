@@ -7,8 +7,12 @@ import type { PlannerPlan } from "@/lib/planner/planSchemas";
 
 const generateObject = vi.hoisted(() => vi.fn());
 const withGoogleModelFallback = vi.hoisted(() =>
-  vi.fn(async (_label: string, run: (model: { modelId: string }) => Promise<unknown>) =>
-    run({ modelId: "gemini-test-primary" }),
+  vi.fn(
+    async (
+      _label: string,
+      run: (model: { modelId: string }) => Promise<unknown>,
+      _options?: { primaryModelId?: string | null },
+    ) => run({ modelId: "gemini-test-primary" }),
   ),
 );
 const resolveImportAiProvider = vi.hoisted(() => vi.fn(() => "google"));
@@ -199,7 +203,9 @@ describe("generatePlannerPlan semantic retry", () => {
     expect(result.meta.modelId).toBe(DEFAULT_PLANNER_PRIMARY_MODEL);
     expect(generateObject).toHaveBeenCalledTimes(1);
     expect(generateObject.mock.calls[0]![0].maxRetries).toBe(0);
-    expect(withGoogleModelFallback.mock.calls[0]![2]).toEqual({
+    const fallbackCall0 = withGoogleModelFallback.mock.calls[0];
+    expect(fallbackCall0).toBeDefined();
+    expect(fallbackCall0![2]).toEqual({
       primaryModelId: DEFAULT_PLANNER_PRIMARY_MODEL,
     });
   });

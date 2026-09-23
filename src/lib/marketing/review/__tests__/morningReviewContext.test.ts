@@ -9,6 +9,7 @@ import { buildLogicalDailyRunKey, formatKstBusinessDate } from "@/lib/marketing/
 import { prepareManagerToContentHandoff } from "@/lib/marketing/content/prepareManagerToContentHandoff";
 import { runDepartmentPipeline } from "@/lib/marketing/bot/organization/pipeline";
 import type { ContentStrategistOutput, GovernanceReviewResult } from "@/lib/marketing/bot/organization/handoffs";
+import type { StructuredGovernanceDecision } from "@/lib/marketing/content/governance/types";
 import {
   createInMemoryHumanMarketingReviewRepository,
   resetDefaultHumanMarketingReviewRepository,
@@ -46,6 +47,36 @@ function allow(overrides: Partial<GovernanceReviewResult> = {}): GovernanceRevie
     revisionHints: [],
     humanApprovalRequired: false,
     semanticAvailable: true,
+    ...overrides,
+  };
+}
+
+function structuredAllow(
+  overrides: Partial<StructuredGovernanceDecision> = {},
+): StructuredGovernanceDecision {
+  return {
+    contract: "governance-decision-v1",
+    reviewId: "gr_morning_test",
+    assignmentId: null,
+    decidedAt: NOW.toISOString(),
+    decision: "ALLOW",
+    reasons: ["NO_RISK_SIGNAL"],
+    unsupportedClaims: [],
+    factualRisks: [],
+    evidenceGaps: [],
+    commercialRisks: [],
+    policyRisks: [],
+    requiredRevisions: [],
+    verifiedEvidenceRefs: [],
+    riskScore: 0,
+    humanApprovalRequired: false,
+    semanticAvailable: true,
+    revisionHints: [],
+    claimCount: 0,
+    unsupportedClaimCount: 0,
+    evidenceGapCount: 0,
+    revisionNumber: 0,
+    malformed: false,
     ...overrides,
   };
 }
@@ -134,7 +165,7 @@ async function seedReadyCandidate(options: {
     run,
     handoff,
     pipeline: { ...pipeline, status: "publish_ready" },
-    governance: allow(),
+    governance: structuredAllow(),
     now: NOW,
   });
   candidate.status = "ready_for_human_review";
@@ -244,8 +275,23 @@ describe("MorningMarketingReviewContext", () => {
 
   it("9: evidence relationship is not fabricated", () => {
     const claims = buildMorningReviewEvidenceClaims({
-      facts: [{ statement: "Claim A", confidence: "high", evidenceRefs: ["ev-1"] }],
-      evidenceRefs: [{ evidenceId: "ev-2", sourceName: "Other", sourceType: "web", isOfficial: false }],
+      facts: [{ factId: "f_claim_a", statement: "Claim A", confidence: "high", evidenceRefs: ["ev-1"] }],
+      evidenceRefs: [
+        {
+          evidenceId: "ev-2",
+          sourceId: "src-other",
+          sourceName: "Other",
+          sourceType: "web",
+          isOfficial: false,
+          evidenceType: "derived_signal",
+          url: null,
+          reference: null,
+          excerpt: null,
+          publishedAt: null,
+          observedAt: NOW.toISOString(),
+          credibilityHint: null,
+        },
+      ],
       factsToUse: ["Claim A"],
     });
     expect(claims[0].linkage).toBe("unlinked");
@@ -288,17 +334,20 @@ describe("MorningMarketingReviewContext", () => {
     const snapshot: ContentPerformanceSnapshot = {
       contract: "content-performance-snapshot-v1",
       snapshotId: "snap_1",
+      collectionId: "pcol_snap_1",
+      logicalObservationKey: "morning:snap_1",
       candidateId: candidate.candidateId,
-      reviewId: detail!.review!.reviewId,
+      humanReviewId: detail!.review!.reviewId,
       platform: "threads",
+      channel: "threads",
       publishedAt: NOW.toISOString(),
+      publicationSource: "manual",
+      contentOrigin: "ai_unchanged",
       observedAt: NOW.toISOString(),
       collectionStatus: "success",
       dataAvailability: "partial",
       metrics: { impressions: 120 },
-      origin: "ai_unchanged",
-      humanEditedAfterGovernance: false,
-      correlationId: null,
+      productLinked: false,
       createdAt: NOW.toISOString(),
     };
     const context = buildMorningMarketingReviewContext({
@@ -429,7 +478,7 @@ describe("MorningMarketingReviewContext", () => {
   });
 
   it("26: pickFactsToUse prefers contentPlan factsToUse", () => {
-    const facts = [{ statement: "A", confidence: "high" as const, evidenceRefs: [] }];
+    const facts = [{ factId: "f_a", statement: "A", confidence: "high" as const, evidenceRefs: [] }];
     const fromPlan = pickFactsToUse({ factsToUse: ["Planned fact"] } as never, facts);
     expect(fromPlan).toEqual(["Planned fact"]);
   });
@@ -457,17 +506,20 @@ describe("MorningMarketingReviewContext", () => {
     const snapshot: ContentPerformanceSnapshot = {
       contract: "content-performance-snapshot-v1",
       snapshotId: "snap_fail",
+      collectionId: "pcol_snap_fail",
+      logicalObservationKey: "morning:snap_fail",
       candidateId: candidate.candidateId,
-      reviewId: detail!.review!.reviewId,
+      humanReviewId: detail!.review!.reviewId,
       platform: "threads",
+      channel: "threads",
       publishedAt: null,
+      publicationSource: "manual",
+      contentOrigin: "ai_unchanged",
       observedAt: NOW.toISOString(),
       collectionStatus: "unsupported",
       dataAvailability: "unavailable",
       metrics: {},
-      origin: "ai_unchanged",
-      humanEditedAfterGovernance: false,
-      correlationId: null,
+      productLinked: false,
       createdAt: NOW.toISOString(),
     };
     const context = buildMorningMarketingReviewContext({
@@ -507,9 +559,11 @@ describe("MorningMarketingReviewContext", () => {
           ...detail!.candidate,
           status: "blocked",
           governanceDecision: null,
-          governanceReviewId: null,
+          provenance: {
+            ...detail!.candidate.provenance,
+            governanceReviewId: null,
+          },
         },
-        governance: null,
       },
       run: null,
       performanceSnapshots: [],

@@ -195,7 +195,7 @@ describe("OBS-4 AgentPrism viewer adapters", () => {
       stage: "content_strategist",
       status: "error",
       otelStatusCode: "ERROR",
-      error: { class: "invocation_failed", message: "Bearer [redacted] boom" },
+      error: { class: "invocation_failure", message: "Bearer [redacted] boom" },
       attributes: {
         "input.value": "SHOULD_NOT_SURFACE",
         "output.value": "SHOULD_NOT_SURFACE",

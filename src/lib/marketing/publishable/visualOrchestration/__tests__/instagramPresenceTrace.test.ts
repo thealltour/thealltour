@@ -411,7 +411,7 @@ describe("scoped regenerate must not wipe Instagram", () => {
         openingHookKo: "훅",
         bodyKo: "본문 충분히 긴 캐노니컬 원문입니다. 건축과 문화 맥락.",
         keyTakeawaysKo: ["a"],
-        decisionGuidanceKo: null,
+        decisionGuidanceKo: "온천이 아니라 건축·문화로 보면 다르게 읽힌다",
         optionalCtaIntentKo: null,
         evidenceRefs: [],
         supportedClaimBoundaryKo: "범위",

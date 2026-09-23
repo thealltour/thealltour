@@ -49,7 +49,6 @@ function seedSnapshot(
       commercialIntent: "awareness",
       productLinked: false,
       sampleQuality: "single_post_sample",
-      normalizedMetrics: { engagementRate: 0.055, ageHoursAtObservation: 22 },
     },
     metrics: [
       { metricType: "impressions", metricValue: input.metrics?.impressions ?? 800 },
@@ -185,7 +184,7 @@ describe("performance feedback research wiring", () => {
     const result = await runResearchCollectionCycle({
       repo,
       performanceRepo: perfRepo,
-      collectors: [createUkGovTravelAdviceCollector({ fetchImpl: fetchImpl as typeof fetch })],
+      collectors: [createUkGovTravelAdviceCollector({ fetchImpl: fetchImpl as unknown as typeof fetch })],
       now: NOW,
       env: { RESEARCH_COLLECTION_ENABLED: "true" },
       maxItemsPerCollector: 3,

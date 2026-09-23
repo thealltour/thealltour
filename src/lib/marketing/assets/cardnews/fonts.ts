@@ -82,7 +82,10 @@ function woffToSfnt(woff: Buffer): Buffer {
 let cached: CardNewsFontFiles | null = null;
 
 function pretendardWoff(fileName: string): string {
-  return require.resolve(`pretendard/dist/web/static/woff/${fileName}`);
+  // Resolve via package.json so Turbopack does not try to bundle .woff as modules
+  // (dynamic require.resolve("…/*.woff") pulls the whole static/woff directory into the graph).
+  const packageRoot = join(require.resolve("pretendard/package.json"), "..");
+  return join(packageRoot, "dist", "web", "static", "woff", fileName);
 }
 
 export function ensureCardNewsFonts(): CardNewsFontFiles {

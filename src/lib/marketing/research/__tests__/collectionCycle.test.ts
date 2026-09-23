@@ -165,6 +165,7 @@ describe("research collection cycle", () => {
 
     const first = normalizeResearchSignal(raw, { ...source, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() }, NOW);
     expect(first.ok).toBe(true);
+    if (!first.ok) throw new Error("expected first normalize ok");
     await repo.upsertSignal(first.signal);
     const countBefore = (await repo.findEligibleSignals()).length;
 
@@ -174,6 +175,7 @@ describe("research collection cycle", () => {
       new Date("2026-09-02T01:00:00.000Z"),
     );
     expect(second.ok).toBe(true);
+    if (!second.ok) throw new Error("expected second normalize ok");
     await repo.upsertSignal(second.signal);
 
     const byFingerprint = await repo.findByFingerprint(first.signal.rawFingerprint);

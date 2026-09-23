@@ -120,8 +120,8 @@ describe("MQ-1 AgendaTopicIdentity", () => {
           {
             factId: "f1",
             statement: "부산 기반 여행사의 나트랑·판랑 추석 가족 패키지 프로모션",
-            evidenceRefIds: [],
-            allowedForDraft: true,
+            evidenceRefs: [],
+            confidence: "medium",
           },
         ],
         evidenceRefs: [
@@ -136,7 +136,7 @@ describe("MQ-1 AgendaTopicIdentity", () => {
             reference: null,
             excerpt: "부산 기반 여행사의 나트랑·판랑 추석 가족 패키지 프로모션",
             publishedAt: null,
-            observedAt: null,
+            observedAt: "2026-09-01T00:00:00.000Z",
             credibilityHint: 0.3,
           },
         ],

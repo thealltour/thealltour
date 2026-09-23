@@ -175,20 +175,20 @@ describe("STEP 2-5.4C2 Runtime tool protocol", () => {
       agentId: "runtime-spike",
       source: "system",
       workload: "manager_decision",
-      priority: "interactive",
+      priority: "high",
       messages: [{ role: "user", content: "hi" }],
     });
     const withTools = createRuntimeRequest({
       agentId: "runtime-spike",
       source: "system",
       workload: "manager_decision",
-      priority: "interactive",
+      priority: "high",
       messages: [{ role: "user", content: "hi" }],
       tools: [echoTool],
     });
     const baseEst = estimator.estimate(base);
     const toolEst = estimator.estimate(withTools);
-    expect(toolEst.rawEstimatedInputTokens).toBeGreaterThan(baseEst.rawEstimatedInputTokens);
+    expect(toolEst.rawEstimatedInputTokens ?? 0).toBeGreaterThan(baseEst.rawEstimatedInputTokens ?? 0);
   });
 
   it("gateway response includes tool_calls for Hermes", () => {

@@ -109,7 +109,7 @@ describe("plannerDraftInputSchema", () => {
 
   it("rejects negative budget", () => {
     const draft = validDraft();
-    draft.budget = { style: null, amount: -1, scope: "total", currency: "KRW" };
+    draft.budget = { style: null, amount: -1, scope: "per_person", currency: "KRW" };
     expect(plannerDraftInputSchema.safeParse(draft).success).toBe(false);
   });
 

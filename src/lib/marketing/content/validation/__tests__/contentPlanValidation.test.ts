@@ -166,10 +166,23 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
         requestDraft: async () =>
           baseDraft({
             contentPlan: {
+              contract: "content-plan-v1",
               assignmentId: mm.contentAssignment.assignmentId,
+              recommendedFormats: [],
+              primaryAngle: "angle",
+              keyMessage: "message",
+              targetAudience: "audience",
+              hook: "hook",
+              outline: [],
               factsToUse: ["Unsupported factual claim without evidence."],
+              factsToAvoid: [],
+              ctaStrategy: "info",
+              productLinkageStrategy: "none",
               evidenceRefs: [],
-            } as ContentStrategistOutput["contentPlan"],
+              requiredAssets: [],
+              riskNotes: [],
+              draftInstructions: [],
+            },
           }),
         requestGovernance: async () => {
           governanceCalls += 1;
@@ -209,6 +222,7 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
       channel: "threads",
       agenda: "Japan autumn",
       assignmentId: "ca_test",
+      sourceReferences: [],
     };
     const scaffoldPlan = {
       contract: CONTENT_PLAN_CONTRACT,
@@ -271,13 +285,30 @@ describe("STEP 3-12 ContentPlan contract — provenance semantics", () => {
         channel: "threads",
         goal: "test",
         selectedAgenda: {
+          contract: "selected-agenda-v1",
           id: "sa_test",
+          decidedAt: NOW.toISOString(),
           title: "Japan",
           summary: "s",
+          rationale: [],
+          destinations: [],
+          topics: [],
+          entities: [],
           contentObjective: "inform",
+          audienceHint: null,
           commercialIntent: "informational",
           matchedProductIds: [],
+          evidenceRefs: [],
+          constraints: [],
+          urgency: "normal",
           timelinessNote: null,
+          provenance: {
+            decidedBy: "marketing-manager",
+            managerDecisionSource: "explicit",
+            researchScoreAtSelection: null,
+            agendaCandidateId: null,
+            researchBriefId: null,
+          },
         },
         contentAssignment: {
           assignmentId: "ca_test",

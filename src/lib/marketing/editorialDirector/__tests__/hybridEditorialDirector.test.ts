@@ -222,7 +222,7 @@ describe("HYBRID editorial director — import/parse", () => {
 
     const badChannel = validExternalPayload(agendaId);
     (badChannel.storyCandidates[0] as { recommendedChannels: string[] }).recommendedChannels = [
-      "instagram",
+      "not_a_real_channel",
     ];
     expect(parseExternalEditorialDirectorPayload(JSON.stringify(badChannel)).ok).toBe(false);
   });

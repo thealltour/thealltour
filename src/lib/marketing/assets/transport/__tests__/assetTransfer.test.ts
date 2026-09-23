@@ -320,17 +320,18 @@ describe("SV-8B2 final write", () => {
       "content-type": "video/mp4",
       "content-length": String(MARKETING_ASSET_TRANSFER_LIMITS.finalUploadMaxBytes + 1),
     };
+    const fakeResHeaders: Record<string, string> = {};
     const fakeRes = {
       statusCode: 0,
-      headers: {} as Record<string, string>,
+      headers: fakeResHeaders,
       setHeader(k: string, v: string | number) {
-        this.headers[k.toLowerCase()] = String(v);
+        fakeResHeaders[k.toLowerCase()] = String(v);
       },
       end(payload?: string | Buffer) {
         if (payload) chunks.push(Buffer.isBuffer(payload) ? payload : Buffer.from(payload));
       },
-    } as unknown as ServerResponse;
-    await handleMarketingAssetTransferRequest(fakeReq, fakeRes, { catalog, env });
+    };
+    await handleMarketingAssetTransferRequest(fakeReq, fakeRes as unknown as ServerResponse, { catalog, env });
     expect(fakeRes.statusCode).toBe(413);
     expect(Buffer.concat(chunks).toString("utf8")).toContain("FINAL_TOO_LARGE");
   });

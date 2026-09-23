@@ -20,20 +20,32 @@ export type MarketingAssetPackageZipBuild = {
   byteSize: number;
 };
 
-function safeZipFileName(candidateId: string, relativePackagePath: string | null): string {
+function safeZipFileName(
+  candidateId: string,
+  relativePackagePath: string | null,
+  suffix?: string | null,
+): string {
   const fromPath = relativePackagePath?.split("/").filter(Boolean).pop() ?? null;
   const base = (fromPath || candidateId).replace(/[^\w.\-]+/g, "_").slice(0, 120);
-  return `${base || "marketing-package"}.zip`;
+  const stem = base || "marketing-package";
+  const tag = suffix?.replace(/[^\w.\-]+/g, "_").slice(0, 40);
+  return tag ? `${stem}-${tag}.zip` : `${stem}.zip`;
 }
 
 /**
- * Build a ZIP of all package artifacts (+ manifest.json) for admin download.
+ * Build a ZIP of package artifacts for admin download.
  * Path-safe: reuses inspect + readMarketingAssetPackageFile guards.
+ *
+ * When `relativePathPrefix` is set (e.g. `"cardnews/"`), only matching
+ * artifacts are included and `manifest.json` is omitted.
  */
 export async function buildMarketingAssetPackageZip(input: {
   candidateId: string;
   businessDateKst: string;
   env?: MarketingAssetEnv;
+  /** Include only paths under this prefix (posix, trailing slash optional). */
+  relativePathPrefix?: string | null;
+  zipFileNameSuffix?: string | null;
 }): Promise<MarketingAssetPackageZipBuild> {
   const inspection = inspectMarketingAssetPackage({
     candidateId: input.candidateId,
@@ -48,10 +60,18 @@ export async function buildMarketingAssetPackageZip(input: {
     throw new MarketingAssetPathError(`package not found for candidate ${input.candidateId}`);
   }
 
-  const relativePaths = [
-    ...inspection.artifacts.map((item) => item.relativePath),
-    "manifest.json",
-  ];
+  const prefixRaw = input.relativePathPrefix?.trim() ?? "";
+  const prefix = prefixRaw
+    ? prefixRaw.endsWith("/")
+      ? prefixRaw
+      : `${prefixRaw}/`
+    : null;
+
+  const relativePaths = prefix
+    ? inspection.artifacts
+        .map((item) => item.relativePath)
+        .filter((path) => path === prefix.slice(0, -1) || path.startsWith(prefix))
+    : [...inspection.artifacts.map((item) => item.relativePath), "manifest.json"];
   const uniquePaths = [...new Set(relativePaths)];
 
   const zip = new JSZip();
@@ -77,7 +97,11 @@ export async function buildMarketingAssetPackageZip(input: {
   }
 
   if (entryCount === 0) {
-    throw new MarketingAssetPathError(`no readable artifacts for candidate ${input.candidateId}`);
+    throw new MarketingAssetPathError(
+      prefix
+        ? `no readable artifacts under ${prefix} for candidate ${input.candidateId}`
+        : `no readable artifacts for candidate ${input.candidateId}`,
+    );
   }
 
   const bytes = Buffer.from(
@@ -93,7 +117,11 @@ export async function buildMarketingAssetPackageZip(input: {
     businessDateKst: inspection.businessDateKst,
     packageId: inspection.packageId,
     relativePackagePath: inspection.relativePackagePath,
-    zipFileName: safeZipFileName(inspection.candidateId, inspection.relativePackagePath),
+    zipFileName: safeZipFileName(
+      inspection.candidateId,
+      inspection.relativePackagePath,
+      input.zipFileNameSuffix,
+    ),
     bytes,
     entryCount,
     byteSize: bytes.byteLength,

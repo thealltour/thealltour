@@ -121,7 +121,7 @@ describe("MarketingReviewShortformSourcesPanel", () => {
     expect(screen.getByRole("button", { name: "이 장면에 사용" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /다른 후보 1개 보기/ }));
-    expect(screen.getByText("사진 모션 사용 가능")).toBeTruthy();
+    expect(screen.getByTitle("사진 모션")).toBeTruthy();
 
     // Resolve must not auto-pick
     expect(fetchMock.mock.calls.every((c) => !String(c[0]).includes("/pick"))).toBe(true);

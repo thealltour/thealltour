@@ -21,27 +21,39 @@ const HOME_GOLF_TOUR_SOURCE = readFileSync(
   "utf8",
 );
 
-const CAMPAIGN_TAX: ProductTaxonomy[] = [
-  {
-    id: "camp-1",
+function campaignTaxonomy(
+  partial: Pick<ProductTaxonomy, "id" | "name" | "slug" | "display_label" | "badge_priority" | "badge_tone"> &
+    Partial<ProductTaxonomy>,
+): ProductTaxonomy {
+  return {
     taxonomy_type: "campaign",
+    is_active: true,
+    sort_order: partial.badge_priority ?? 0,
+    created_at: null,
+    is_hub_visible: false,
+    is_landing_enabled: false,
+    badge_visible: true,
+    ...partial,
+  };
+}
+
+const CAMPAIGN_TAX: ProductTaxonomy[] = [
+  campaignTaxonomy({
+    id: "camp-1",
     name: "추천",
     display_label: "추천 여행",
     badge_priority: 1,
-    badge_visible: true,
     badge_tone: "primary",
     slug: "recommend",
-  },
-  {
+  }),
+  campaignTaxonomy({
     id: "camp-2",
-    taxonomy_type: "campaign",
     name: "제철",
     display_label: "제철 특가",
     badge_priority: 2,
-    badge_visible: true,
     badge_tone: "promotion",
     slug: "seasonal",
-  },
+  }),
 ];
 
 const FULL_DB_ROW: Record<string, unknown> = {
@@ -179,7 +191,7 @@ describe("home curated vs golf rail card parity", () => {
     const legacyProps = cardPropsForHome(legacy);
     const slimProps = cardPropsForHome(slim);
 
-    expect(slimProps.id).toBe(legacyProps.id);
+    expect(slimProps.productId).toBe(legacyProps.productId);
     expect(slimProps.title).toBe(legacyProps.title);
     expect(slimProps.price).toBe(legacyProps.price);
     expect(slimProps.priceMeta).toBe(legacyProps.priceMeta);

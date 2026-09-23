@@ -170,7 +170,7 @@ describe("agenda slate retry + terminal selection reconcile", () => {
   it("sets recoveryMode on requeued production execution input", () => {
     const input = buildProductionExecutionInput(
       {
-        contract: "marketing-production-request-v1",
+        contract: "daily-marketing-production-request-v1",
         requestId: "mpr_test",
         logicalRunKey: `daily-marketing-production:${DAY}:abc`,
         slateId: "slate_test",

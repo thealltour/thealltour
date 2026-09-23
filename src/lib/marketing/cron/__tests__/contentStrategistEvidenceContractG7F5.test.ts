@@ -204,7 +204,7 @@ describe("G7-F5 Content Strategist evidence-contract reliability", () => {
     fabricated.contentPlan.evidenceRefs = [
       {
         ...taiwanEvidenceRefs()[0],
-        evidenceId: "fabricated-evidence-id-00000000",
+        evidenceId: "fabricated-evidence-id-00000000" as (typeof EVIDENCE_IDS)[number],
       },
     ];
     const invoke = vi
@@ -297,6 +297,7 @@ describe("G7-F5 Content Strategist evidence-contract reliability", () => {
     expect(detailed.ok).toBe(false);
     if (!detailed.ok) {
       expect(detailed.kind).toBe("runtime");
+      if (detailed.kind !== "runtime") throw new Error("expected runtime failure");
       expect(detailed.failureClass).toBe("gateway_misconfigured");
     }
   });

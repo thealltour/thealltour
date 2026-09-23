@@ -237,6 +237,7 @@ describe("Research Intelligence domain validation", () => {
     const raw = buildSyntheticResearchSignals().find((s) => s.signalType === "content_performance")!;
     const result = normalizeResearchSignal(raw, PERFORMANCE_SOURCE, NOW);
     expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected performance normalize ok");
     const enriched = enrichResearchSignal(result.signal, PERFORMANCE_SOURCE, NOW);
     expect(enriched.signalType).toBe("content_performance");
     expect(enriched.evidence[0]!.evidenceType).toBe("internal_record");
@@ -248,6 +249,7 @@ describe("Research Intelligence domain validation", () => {
     const source = RESEARCH_TEST_SOURCES.find((s) => s.id === raw.sourceId)!;
     const result = normalizeResearchSignal(raw, source, NOW);
     expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected internal product normalize ok");
     const enriched = enrichResearchSignal(result.signal, source, NOW);
     expect(enriched.commercialRelevance?.matchedProductIds.length).toBeGreaterThan(0);
   });
@@ -255,6 +257,7 @@ describe("Research Intelligence domain validation", () => {
   it("rejects malformed or insufficient provenance safely", () => {
     const result = normalizeResearchSignal(signalWithoutProvenance(), OFFICIAL_JNTO_SOURCE, NOW);
     expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected normalize failure");
     expect(result.reason).toBe("insufficient_provenance");
   });
 

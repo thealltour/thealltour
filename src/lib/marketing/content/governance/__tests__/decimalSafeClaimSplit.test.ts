@@ -83,7 +83,7 @@ function productionAssignment(): ContentAssignment {
     destinations: [],
     commercialIntent: "informational",
     matchedProductIds: [],
-    requiredOutputs: ["threads_draft"],
+    requiredOutputs: ["text_draft"],
     formatHints: [],
     facts: [
       {
@@ -105,10 +105,11 @@ function productionAssignment(): ContentAssignment {
     riskNotes: [],
     deadline: null,
     provenance: {
-      researchBriefId: "1fc721b4-6c58-4a6c-925e-edb1d05fb7b0",
-      agendaCandidateId: "19d13b67-874e-43d1-81c8-24d9605f0976",
+      selectedAgendaId: "sa_fixture",
+      createdBy: "marketing-manager-handoff",
+      idempotencyKey: "ca_fixture",
     },
-  } as ContentAssignment;
+  };
 }
 
 function productionPlan(): ContentPlan {
@@ -119,7 +120,7 @@ function productionPlan(): ContentPlan {
     keyMessage: "ai 추천 따라 움직이는 외국인…관광지·맛집 45.4% 실제 방문",
     hook: "ai 추천 따라 움직이는 외국인…관광지·맛집 45.4% 실제 방문",
     outline: [],
-    recommendedFormats: ["threads"],
+    recommendedFormats: [],
     targetAudience: "Korean travelers considering overseas travel",
     ctaStrategy: "Informational CTA only — no hard sell.",
     productLinkageStrategy: "Informational content is valid without product linkage.",
@@ -129,7 +130,7 @@ function productionPlan(): ContentPlan {
     requiredAssets: [],
     riskNotes: [],
     draftInstructions: [],
-  } as ContentPlan;
+  };
 }
 
 describe("splitClaimSentences (decimal-safe)", () => {
@@ -297,19 +298,49 @@ describe("decimal fix does not weaken governance floor", () => {
   function baseRequest(
     preflight: StructuredGovernanceReviewRequest["preflightSignals"],
   ): StructuredGovernanceReviewRequest {
+    const d = draft("unsupported exact price is 999000원 today.");
     return {
       contract: "governance-review-request-v1",
       reviewId: "gr_fixture",
       assignmentId: "ca_fixture",
       selectedAgendaId: "sa_fixture",
+      createdAt: NOW.toISOString(),
+      topic: "ai tourism",
+      objective: "inform_travelers",
+      format: null,
       channel: "threads",
-      productId: null,
-      draft: draft("unsupported exact price is 999000원 today."),
+      title: d.title ?? null,
+      body: d.body,
+      draft: {
+        title: d.title ?? null,
+        body: d.body,
+        channel: d.channel,
+        agenda: d.agenda,
+        assignmentId: d.assignmentId ?? null,
+        sourceReferences: d.sourceReferences,
+      },
+      contentPlan: null,
       claims: [],
       evidenceRefs: [],
+      commercialIntent: "informational",
+      matchedProductIds: [],
+      cta: null,
+      constraints: [],
       priorRevision: 0,
-      maxAutoRevisionRounds: 1,
+      productId: null,
+      campaignId: null,
+      agendaId: null,
+      agendaKey: null,
       preflightSignals: preflight,
+      observability: {
+        reviewId: "gr_fixture",
+        assignmentId: "ca_fixture",
+        claimCount: 0,
+        unsupportedClaimCount: 0,
+        evidenceGapCount: 0,
+        revisionNumber: 0,
+        requestedAt: NOW.toISOString(),
+      },
     };
   }
 

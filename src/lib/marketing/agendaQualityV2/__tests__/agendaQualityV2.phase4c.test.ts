@@ -220,7 +220,7 @@ describe("AGENDA_QUALITY_V2 Phase4C evidence guard", () => {
     });
     if (enforced.ok) {
       expect(enforced.reframed).toBe(true);
-      expect(enforced.llm.limitations.some((l) => l.includes("sensitive_claim_reframed"))).toBe(
+      expect((enforced.llm.limitations ?? []).some((l) => l.includes("sensitive_claim_reframed"))).toBe(
         true,
       );
     } else {

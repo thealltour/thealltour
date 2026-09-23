@@ -13,8 +13,6 @@ describe("adminChat keys", () => {
         isBootstrapAdmin: true,
         username: "admin",
         adminUserId: undefined,
-        role: "admin",
-        permissions: ["*"],
       }),
     ).toBe("bootstrap:admin");
   });
@@ -25,8 +23,6 @@ describe("adminChat keys", () => {
         isBootstrapAdmin: false,
         adminUserId: "abc-123",
         username: "manager1",
-        role: "manager",
-        permissions: [],
       }),
     ).toBe("user:abc-123");
   });

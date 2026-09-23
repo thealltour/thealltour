@@ -373,6 +373,9 @@ describe("AGENDA_QUALITY_V2 Phase4D manifest + fingerprint + drift", () => {
       env: { AGENDA_QUALITY_V2_SHADOW_ENABLED: "on" },
     });
     expect(first.status).toBe("created");
+    if (first.status !== "created") {
+      throw new Error(`expected created manifest, got ${first.status}`);
+    }
     expect(first.manifest.validationId).toBe(AGENDA_QUALITY_V2_VALIDATION_ID);
     expect(first.manifest.formalStartDate).toBe(AGENDA_QUALITY_V2_VALIDATION_START);
     expect(first.manifest.formalEndDate).toBe(AGENDA_QUALITY_V2_VALIDATION_END);

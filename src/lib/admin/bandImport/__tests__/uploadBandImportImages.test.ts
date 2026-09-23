@@ -12,7 +12,11 @@ import { uploadBandImportImages } from "@/lib/admin/bandImport/uploadBandImportI
 import type { IStorageProvider } from "@/lib/storage";
 
 function mockProvider() {
-  const uploadPublicImage = vi.fn(async (params: { path: string; contentType: string }) => ({
+  const uploadPublicImage = vi.fn(async (params: {
+    path: string;
+    contentType: string;
+    file: Buffer | Blob | File;
+  }) => ({
     url: `https://cdn.example/${params.path}`,
     path: params.path,
   }));

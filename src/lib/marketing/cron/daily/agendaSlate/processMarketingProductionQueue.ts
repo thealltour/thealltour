@@ -130,7 +130,9 @@ async function releaseSlateSelectionAfterTerminal(input: {
   }
 }
 
-export function defaultProductionWorkerId(env: NodeJS.ProcessEnv = process.env): string {
+export function defaultProductionWorkerId(
+  env: import("@/lib/envBag").EnvBag = process.env,
+): string {
   const configured = env.MARKETING_PRODUCTION_WORKER_ID?.trim();
   if (configured) return configured.slice(0, 80);
   return `pi:${hostname()}`.slice(0, 80);

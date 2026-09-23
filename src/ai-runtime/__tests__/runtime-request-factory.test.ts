@@ -100,6 +100,7 @@ describe("RuntimeRequestFactory", () => {
     const request = createHandoffRuntimeRequest(
       {
         agentId: "content-strategist",
+        source: "agent-handoff",
         workload: "content_draft",
         priority: "normal",
         messages: [{ role: "user", content: "Draft from handoff." }],
@@ -117,6 +118,7 @@ describe("RuntimeRequestFactory", () => {
     const request = createDepartmentRuntimeRequest(
       {
         agentId: "performance-analyst",
+        source: "department-orchestrator",
         workload: "analysis",
         priority: "normal",
         messages: [{ role: "user", content: "Analyze metrics." }],

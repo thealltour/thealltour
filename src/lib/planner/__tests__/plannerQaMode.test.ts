@@ -3,7 +3,7 @@ import { isPlannerQaModeEnabled } from "@/lib/planner/qaMode";
 
 describe("isPlannerQaModeEnabled", () => {
   it("returns false when undefined", () => {
-    expect(isPlannerQaModeEnabled({} as NodeJS.ProcessEnv)).toBe(false);
+    expect(isPlannerQaModeEnabled({})).toBe(false);
   });
 
   it("returns false when PLANNER_QA_MODE is false", () => {

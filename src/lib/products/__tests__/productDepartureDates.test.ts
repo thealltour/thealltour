@@ -24,8 +24,9 @@ describe("normalizeProductDepartureDateToYmd", () => {
   });
 
   it("parses month/day-only dates with defaultYear", () => {
-    expect(normalizeProductDepartureDateToYmd("7/23(수)", { defaultYear: 2026 })).toBe("2026-07-23");
-    expect(normalizeProductDepartureDateToYmd("07.23", { defaultYear: 2026 })).toBe("2026-07-23");
+    // Use late-year dates so bumpYearIfStaleDepartureYmd does not roll past KST "today".
+    expect(normalizeProductDepartureDateToYmd("11/23(월)", { defaultYear: 2026 })).toBe("2026-11-23");
+    expect(normalizeProductDepartureDateToYmd("11.23", { defaultYear: 2026 })).toBe("2026-11-23");
   });
 
   it("parses chip labels that append price (without mistaking price digits for year)", () => {
@@ -43,21 +44,21 @@ describe("normalizeProductDepartureDateToYmd", () => {
   it("parses Korean YYYY년 M월 D일 and M월 D일 formats", () => {
     expect(normalizeProductDepartureDateToYmd("2026년 7월 23일")).toBe("2026-07-23");
     expect(normalizeProductDepartureDateToYmd("2026년 07월 23일(금)")).toBe("2026-07-23");
-    expect(normalizeProductDepartureDateToYmd("7월 23일", { defaultYear: 2026 })).toBe("2026-07-23");
-    expect(normalizeProductDepartureDateToYmd("07월 23일(목)", { defaultYear: 2026 })).toBe(
-      "2026-07-23",
+    expect(normalizeProductDepartureDateToYmd("11월 23일", { defaultYear: 2026 })).toBe("2026-11-23");
+    expect(normalizeProductDepartureDateToYmd("11월 23일(월)", { defaultYear: 2026 })).toBe(
+      "2026-11-23",
     );
   });
 
   it("forces default year over AI-hallucinated ISO dates", () => {
-    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023-07-23", 2026)).toBe(
-      "2026-07-23",
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023-11-23", 2026)).toBe(
+      "2026-11-23",
     );
-    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023.07.23(수)", 2026)).toBe(
-      "2026-07-23",
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("2023.11.23(목)", 2026)).toBe(
+      "2026-11-23",
     );
-    expect(normalizeProductDepartureDateToYmdWithForcedYear("7/23(수)", 2026)).toBe("2026-07-23");
-    expect(normalizeProductDepartureDateToYmdWithForcedYear("7월 23일", 2026)).toBe("2026-07-23");
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("11/23(월)", 2026)).toBe("2026-11-23");
+    expect(normalizeProductDepartureDateToYmdWithForcedYear("11월 23일", 2026)).toBe("2026-11-23");
   });
 
   it("returns null for empty or unparseable input", () => {

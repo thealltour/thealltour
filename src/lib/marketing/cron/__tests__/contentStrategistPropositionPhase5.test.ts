@@ -13,6 +13,7 @@ import type { ContentDraftRequest } from "@/lib/marketing/bot/organization/hando
 import {
   EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
   STORY_CONTENT_POINT_CONTRACT,
+  STORY_RESEARCH_CONTRACT_VERSION,
   type EvidenceBackedStoryBrief,
   type StoryContentPoint,
 } from "@/lib/marketing/storyPoint/contracts";
@@ -72,8 +73,11 @@ function briefFor(story: StoryContentPoint): AudienceContentResearchBrief {
   const hash = createStoryPointHash(story);
   const evidence: EvidenceBackedStoryBrief = {
     contract: EVIDENCE_BACKED_STORY_BRIEF_CONTRACT,
+    researchContractVersion: STORY_RESEARCH_CONTRACT_VERSION,
     storyPointId: story.pointId,
     storyPointHash: hash,
+    agendaLogicalIdentity: "logical_phase5_cs",
+    researchExecutionStatus: "partial",
     storySupportVerdict: "PARTIALLY_SUPPORTED",
     supportedClaimBoundary: story.storyClaim
       ? `${story.storyClaim} — 증거 범위 안에서만 말함`
@@ -81,17 +85,40 @@ function briefFor(story: StoryContentPoint): AudienceContentResearchBrief {
     researchQuestionFindings: [
       {
         question: story.researchQuestions[0] ?? "q",
-        status: "partial",
+        status: "partially_answered",
         finding: "공식·보도에서 관련 디테일이 부분적으로 관측된다",
         evidenceRefs: ["ev1"],
+        sourceClasses: ["tourism_board"],
+        confidence: 0.5,
+        limitations: ["현장 체감 미확인"],
+      },
+    ],
+    evidenceAssessment: [
+      {
+        evidenceId: "ev1",
+        relationship: "partially_supports",
+        relevanceToStoryPoint: 0.55,
+        epistemicType: "observed_signal",
+        sourceClass: "tourism_board",
+        note: "phase5-cs",
       },
     ],
     contradictedClaims: [],
     unresolvedQuestions: ["현장 체감 강도는 미확인"],
+    usableFactIds: ["ev1"],
+    refutationNotes: null,
     researchSupportedFraming: ["Story 디테일을 탐색 포인트로 볼 단서가 있다"],
     limitations: ["실제 방문 경험은 추가 확인 필요"],
-    adjudicationNotes: "phase5-cs",
-    usableFactIds: ["ev1"],
+    alternateFallbackUsed: false,
+    observability: {
+      plannedQuestionCount: 1,
+      answeredQuestionCount: 0,
+      unresolvedQuestionCount: 1,
+      contradictingEvidenceCount: 0,
+      externalQueriesAttempted: 1,
+      externalQueriesSuccessful: 1,
+      sourceClasses: ["tourism_board"],
+    },
   };
   return {
     contract: AUDIENCE_CONTENT_RESEARCH_BRIEF_CONTRACT,
@@ -103,42 +130,114 @@ function briefFor(story: StoryContentPoint): AudienceContentResearchBrief {
     assignmentId: "asg_phase5",
     researchStatus: "complete",
     sourceCoverage: {
-      internalMemory: false,
-      productFacts: false,
+      assignmentEvidence: false,
+      metaEditorial: false,
+      internalResearchSignals: false,
+      semanticRetrieval: false,
+      historicalContent: false,
       externalWebSearch: true,
       notes: [],
     },
     audience: {
-      primary: [{ text: "베트남 재방문 관심 한국 여행자", confidence: "medium" }],
-      motivations: [{ text: "익숙한 휴양 외 새로운 장면", confidence: "medium" }],
-      anxieties: [{ text: "일정이 막연할까", confidence: "low" }],
+      primary: [
+        {
+          text: "베트남 재방문 관심 한국 여행자",
+          type: "observed_signal",
+          confidence: 0.6,
+          evidenceRefs: [],
+        },
+      ],
+      secondary: [],
+      motivations: [
+        {
+          text: "익숙한 휴양 외 새로운 장면",
+          type: "observed_signal",
+          confidence: 0.6,
+          evidenceRefs: [],
+        },
+      ],
+      anxieties: [
+        {
+          text: "일정이 막연할까",
+          type: "observed_signal",
+          confidence: 0.4,
+          evidenceRefs: [],
+        },
+      ],
       objections: [],
-      decisionTriggers: [{ text: "다음 일정에 어디를 넣을지", confidence: "low" }],
+      decisionTriggers: [
+        {
+          text: "다음 일정에 어디를 넣을지",
+          type: "observed_signal",
+          confidence: 0.4,
+          evidenceRefs: [],
+        },
+      ],
     },
     searchIntent: {
-      primaryIntent: "explore",
-      questions: [{ text: story.storyQuestion ?? "q", confidence: "medium" }],
+      primaryIntent: "informational",
+      secondaryIntents: [],
+      queries: [],
+      questions: [
+        {
+          text: story.storyQuestion ?? "q",
+          type: "observed_signal",
+          confidence: 0.6,
+          evidenceRefs: [],
+        },
+      ],
     },
     marketSignals: {
-      contentGaps: [{ text: "해변 프레임 밖 북부 디테일 부족", confidence: "medium" }],
+      observedPatterns: [],
+      competitorHooks: [],
       saturatedAngles: [],
+      contentGaps: [
+        {
+          text: "해변 프레임 밖 북부 디테일 부족",
+          type: "observed_signal",
+          confidence: 0.6,
+          evidenceRefs: [],
+        },
+      ],
     },
     researchFindings: [],
     contentAngles: [
       {
         angleId: "ang1",
         angle: story.storyClaim ?? "angle",
+        hook: story.curiosityGap ?? "hook",
         audienceTension: story.audienceTension,
-        evidenceStrength: "medium",
-        channelFit: { threads: "high", shortform: "high", naver_blog: "medium" },
+        interestScore: 0.7,
+        noveltyScore: 0.7,
+        evidenceStrength: 0.6,
+        channelFit: {
+          threads: 0.8,
+          shortform: 0.8,
+          naver_blog: 0.5,
+          naver_band: 0.4,
+          kakao_channel: 0.4,
+          cardnews: 0.5,
+        },
+        rationale: "story lock",
+        supportingFindingRefs: [],
+        limitations: [],
       },
     ],
     recommendedAngleId: "ang1",
     recommendedAngleReason: "story lock",
-    researchVerdict: "usable",
+    researchVerdict: "PROCEED_WITH_CAUTION",
     verdictReasons: [],
     limitations: evidence.limitations,
-    provenance: { agendaCandidateId: "ag_phase5", sources: [] },
+    provenance: {
+      preselectionResearchBriefId: null,
+      agendaCandidateId: "ag_phase5",
+      evidenceFingerprint: "fp_phase5",
+      synthesisMode: "deterministic_fallback",
+      documentCount: 0,
+      queryCount: 0,
+      semanticUsed: false,
+      historicalMatchCount: 0,
+    },
     topicIdentity: null,
     identityDiagnostics: [],
     storyPointRef: {
@@ -153,7 +252,7 @@ function briefFor(story: StoryContentPoint): AudienceContentResearchBrief {
     contradictedClaims: [],
     unresolvedQuestions: evidence.unresolvedQuestions,
     evidenceBackedStoryBrief: evidence,
-  } as AudienceContentResearchBrief;
+  };
 }
 
 function draftPayload(story: StoryContentPoint): ContentDraftRequest {

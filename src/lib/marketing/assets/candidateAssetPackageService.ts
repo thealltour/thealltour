@@ -56,6 +56,11 @@ export async function inspectCandidateAssetPackage(input: {
 export async function exportCandidateAssetPackage(input: {
   candidateId: string;
   dryRun?: boolean;
+  /**
+   * Admin "HDD 다시 보내기" defaults to true: refresh context/copy when candidate
+   * content changed. Does not touch media/shared-visuals or plan/handoff JSON.
+   */
+  overwriteArtifacts?: boolean;
   repository?: DailyMarketingRunRepository;
 }): Promise<
   | { ok: true; result: ExportMarketingCandidatePackageResult }
@@ -72,6 +77,7 @@ export async function exportCandidateAssetPackage(input: {
       options: {
         candidateId: candidate.candidateId,
         dryRun: Boolean(input.dryRun),
+        overwriteArtifacts: input.overwriteArtifacts !== false,
       },
       repository: input.repository ?? (await resolveCandidateRepo()),
     });

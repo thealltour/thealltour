@@ -29,6 +29,6 @@ describe("ProductDepartureSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: /7\/23\(수\) · 890,000원/ }));
     fireEvent.click(screen.getByRole("button", { name: "예약 문의" }));
 
-    expect(onInquiryClick).toHaveBeenCalledWith("7/23(수) (890,000원)", 890000);
+    expect(onInquiryClick).toHaveBeenCalledWith("2025-07-23 (890,000원)", 890000);
   });
 });

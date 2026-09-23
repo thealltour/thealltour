@@ -44,7 +44,7 @@ function samplePlan(overrides?: Partial<PlannerPlan>): PlannerPlan {
             area: "주오구",
             description: "성",
             estimatedDurationMinutes: 90,
-            travelToNext: { mode: "walk", estimatedMinutes: 20, note: null },
+            travelToNext: { mode: "walk", estimatedMinutes: 20 },
             bookingRecommended: false,
           },
           {
@@ -55,7 +55,7 @@ function samplePlan(overrides?: Partial<PlannerPlan>): PlannerPlan {
             area: "난바",
             description: "시장",
             estimatedDurationMinutes: 60,
-            travelToNext: { mode: "public_transit", estimatedMinutes: 15, note: null },
+            travelToNext: { mode: "public_transit", estimatedMinutes: 15 },
             bookingRecommended: false,
           },
           {
@@ -66,7 +66,7 @@ function samplePlan(overrides?: Partial<PlannerPlan>): PlannerPlan {
             area: "난바",
             description: "거리",
             estimatedDurationMinutes: 90,
-            travelToNext: { mode: "taxi", estimatedMinutes: 10, note: null },
+            travelToNext: { mode: "taxi", estimatedMinutes: 10 },
             bookingRecommended: false,
           },
           {
@@ -191,7 +191,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "a",
               estimatedDurationMinutes: 30,
-              travelToNext: { mode: "walk", estimatedMinutes: 10, note: null },
+              travelToNext: { mode: "walk", estimatedMinutes: 10 },
               bookingRecommended: false,
             },
             {
@@ -202,7 +202,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "b",
               estimatedDurationMinutes: 30,
-              travelToNext: { mode: "public_transit", estimatedMinutes: 20, note: null },
+              travelToNext: { mode: "public_transit", estimatedMinutes: 20 },
               bookingRecommended: false,
             },
             {
@@ -213,7 +213,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "c",
               estimatedDurationMinutes: 30,
-              travelToNext: { mode: "car", estimatedMinutes: 15, note: null },
+              travelToNext: { mode: "car", estimatedMinutes: 15 },
               bookingRecommended: false,
             },
             {
@@ -265,7 +265,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "a",
               estimatedDurationMinutes: 10,
-              travelToNext: { mode: "walk", estimatedMinutes: 5, note: null },
+              travelToNext: { mode: "walk", estimatedMinutes: 5 },
               bookingRecommended: false,
             },
             {
@@ -276,7 +276,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "b",
               estimatedDurationMinutes: 10,
-              travelToNext: { mode: "walk", estimatedMinutes: 5, note: null },
+              travelToNext: { mode: "walk", estimatedMinutes: 5 },
               bookingRecommended: false,
             },
           ],
@@ -296,7 +296,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "a",
               estimatedDurationMinutes: 10,
-              travelToNext: { mode: "walk", estimatedMinutes: 5, note: null },
+              travelToNext: { mode: "walk", estimatedMinutes: 5 },
               bookingRecommended: false,
             },
             {
@@ -307,7 +307,7 @@ describe("PR-7B map + routes reality layer", () => {
               area: null,
               description: "b",
               estimatedDurationMinutes: 10,
-              travelToNext: { mode: "walk", estimatedMinutes: 5, note: null },
+              travelToNext: { mode: "walk", estimatedMinutes: 5 },
               bookingRecommended: false,
             },
             {
@@ -388,7 +388,7 @@ describe("PR-7B map + routes reality layer", () => {
       }).ok,
     ).toBe(false);
 
-    const member = baseSession({ anonymousKey: null, memberId: "member-1" });
+    const member = baseSession({ anonymousKey: "", memberId: "member-1" });
     expect(
       assertPlannerSessionOwnership({
         session: member,

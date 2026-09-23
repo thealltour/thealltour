@@ -87,7 +87,7 @@ function fullBrief(): ResearchBrief {
     destinations: ["부산"],
     entities: [],
     freshness: { publishedAt: null, observedAt: "2026-09-09T15:10:00.000Z", freshnessScore: 0.7 },
-    credibility: { score: 0.35, reasons: ["social"] },
+    credibility: { score: 0.35, level: "low", reasons: ["social"] },
     travelRelevance: { score: 0.8, reasons: [] },
     publicInterest: 0.6,
     risks: [],

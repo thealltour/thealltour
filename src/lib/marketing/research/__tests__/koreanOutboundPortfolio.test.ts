@@ -29,7 +29,7 @@ function brief(partial: Partial<ResearchBrief> & Pick<ResearchBrief, "title" | "
     evidence: partial.evidence ?? [
       {
         id: "33333333-3333-4333-8333-333333333301",
-        sourceId: partial.evidence?.[0]?.sourceId ?? UK_GOV_TRAVEL_SOURCE_ID,
+        sourceId: UK_GOV_TRAVEL_SOURCE_ID,
         evidenceType: "official_statement",
         observedAt: NOW.toISOString(),
         excerpt: partial.summary,

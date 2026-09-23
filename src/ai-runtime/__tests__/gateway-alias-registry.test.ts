@@ -5,6 +5,7 @@ import {
   HERMES_INFERENCE_ALIAS_AUTO,
   HERMES_INFERENCE_ALIAS_AUTO_FALLBACK_SPIKE,
 } from "@/ai-runtime/integration/constants";
+import type { RuntimeExecutor } from "@/ai-runtime/integration/types";
 import {
   HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST,
   HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR,
@@ -103,9 +104,9 @@ describe("STEP 2-5.4C6 production gateway alias registry", () => {
   });
 
   it("J: observability uses production agentId without prompt/secret fields", async () => {
-    const executeAndWait = vi.fn(async () => ({
+    const executeAndWait = vi.fn<RuntimeExecutor["executeAndWait"]>(async () => ({
       requestId: "req-prod-1",
-      status: "completed" as const,
+      status: "completed",
       response: {
         requestId: "req-prod-1",
         providerId: "gemini-main",
@@ -113,7 +114,7 @@ describe("STEP 2-5.4C6 production gateway alias registry", () => {
         content: "ok",
         usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
         latencyMs: 5,
-        finishReason: "stop" as const,
+        finishReason: "stop",
         routing: { attempts: [], fallbackUsed: false },
       },
     }));
@@ -132,7 +133,9 @@ describe("STEP 2-5.4C6 production gateway alias registry", () => {
     expect(result.routing.workload).toBe("analysis");
     expect(result.routing.alias).toBe(HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST);
     expect(JSON.stringify(result)).not.toMatch(/sk-|GEMINI_API_KEY|Bearer /i);
-    const submitted = executeAndWait.mock.calls[0]?.[0];
+    const call = executeAndWait.mock.calls[0];
+    expect(call).toBeDefined();
+    const submitted = call![0];
     expect(submitted.agentId).toBe("performance-analyst");
     expect(submitted.metadata?.correlationId).toContain("performance-analyst");
     expect(submitted.metadata?.correlationId).not.toContain("runtime-spike");

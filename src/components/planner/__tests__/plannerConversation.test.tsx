@@ -19,7 +19,7 @@ import { createFutureFixedDateRange } from "@/lib/planner/qaPresets";
 import type { PlannerDraftInput } from "@/types/planner";
 
 const searchParams = vi.hoisted(() => ({
-  get: vi.fn(() => null as string | null),
+  get: vi.fn<(key: string) => string | null>(() => null),
 }));
 const push = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -592,6 +592,9 @@ describe("PlannerWizard conversation UX", () => {
     });
     expect(screen.getByText(PLANNER_ASSISTANT_DESCRIPTIONS[4]!)).toBeInTheDocument();
 
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "자연" })).toBeEnabled();
+    });
     const nature = screen.getByRole("button", { name: "자연" });
     expect(nature.querySelector("svg")).toBeTruthy();
     expect(nature.querySelector("span.inline-flex.h-6")?.className).toMatch(/bg-emerald-50/);
@@ -630,12 +633,17 @@ describe("PlannerWizard conversation UX", () => {
     });
     expect(screen.getByText(PLANNER_BUDGET_QUESTION)).toBeInTheDocument();
 
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /알차게/ })).toBeEnabled();
+    });
     const pace = screen.getByRole("radio", { name: /알차게/ });
     expect(pace).toBeInTheDocument();
     expect(pace).toHaveTextContent("하루 시간을 적극 활용해 더 많은 경험");
     expect(pace.querySelector("span.inline-flex.h-8")?.className).toMatch(/bg-violet-50/);
     fireEvent.click(pace);
-    expect(pace).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /알차게/ })).toHaveAttribute("aria-checked", "true");
+    });
     expect(pace.querySelector("span.inline-flex.h-8")?.className).toMatch(
       /bg-\[var\(--primary-soft\)\]/,
     );
@@ -648,7 +656,9 @@ describe("PlannerWizard conversation UX", () => {
     expect(budget).toBeInTheDocument();
     expect(budget).toHaveTextContent("숙소·식사·이동에서 합리적인 선택 위주");
     fireEvent.click(budget);
-    expect(budget).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /가성비 있게/ })).toHaveAttribute("aria-checked", "true");
+    });
 
     fireEvent.click(screen.getByRole("radio", { name: /금액을 정했어요/ }));
     expect(screen.getByLabelText("예산 (원)")).toBeInTheDocument();

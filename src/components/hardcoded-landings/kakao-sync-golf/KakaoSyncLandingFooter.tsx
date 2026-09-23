@@ -51,7 +51,7 @@ export function KakaoSyncLandingFooter({ settings }: { settings: KakaoSyncLandin
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-[var(--footer-text-muted)] [word-break:keep-all]">
               더올투어 유한회사는 모든 거래에 대한 책임과 배송, 교환, 환불, 민원등의 처리는
-              더올투어 유한회사에서 진행합니다. 자세한 문의는 담당자 Email:
+              더올투어 유한회사에서 진행합니다. 자세한 문의는 담당자 유성호 Email:
               thealltour@gmail.com, 유선: 010-2534-7454 으로 가능합니다.
             </p>
           </div>

@@ -50,6 +50,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
   const [assets, setAssets] = useState<AssetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [renderBusy, setRenderBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -93,6 +94,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
       );
       const data = (await res.json()) as {
         message?: string;
+        note?: string;
         wrote?: boolean;
         reused?: boolean;
         relativePackagePath?: string;
@@ -101,18 +103,49 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         setMessage(data.message ?? "HDD보내기에 실패했습니다.");
         return;
       }
-      setMessage(
-        data.reused
-          ? "이미 동일한 패키지가 HDD에 있어 재사용했습니다."
-          : data.wrote
-            ? `HDD 패키지를 저장했습니다${data.relativePackagePath ? ` (${data.relativePackagePath})` : ""}.`
-            : "HDD보내기를 완료했습니다.",
-      );
+      const base = data.reused
+        ? "이미 동일한 패키지가 HDD에 있어 재사용했습니다."
+        : data.wrote
+          ? `HDD 패키지를 저장했습니다${data.relativePackagePath ? ` (${data.relativePackagePath})` : ""}.`
+          : "HDD보내기를 완료했습니다.";
+      setMessage(data.note ? `${base} ${data.note}` : base);
       await load();
     } catch {
       setMessage("HDD보내기에 실패했습니다.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function startCardnewsRender() {
+    setRenderBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/cardnews/render`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      const data = (await res.json()) as {
+        message?: string;
+        note?: string;
+        status?: string;
+      };
+      if (!res.ok) {
+        setMessage(data.message ?? "카드뉴스 렌더를 시작하지 못했습니다.");
+        return;
+      }
+      setMessage(
+        data.note ?? (data.status === "skipped" ? "렌더를 건너뛰었습니다." : "렌더를 완료했습니다."),
+      );
+      await load();
+    } catch {
+      setMessage("카드뉴스 렌더를 시작하지 못했습니다.");
+    } finally {
+      setRenderBusy(false);
     }
   }
 
@@ -125,6 +158,12 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         item.relativePath.endsWith(".mp4") ||
         item.relativePath === "reel/final/shortform.mp4",
     ) ?? [];
+  const hasCardnewsPng =
+    assets?.artifacts.some(
+      (item) =>
+        item.relativePath.startsWith("cardnews/") &&
+        (item.mediaType.startsWith("image/") || item.relativePath.endsWith(".png")),
+    ) ?? false;
 
   return (
     <AdminCard className="space-y-3 p-4">
@@ -138,16 +177,44 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {assets?.status === "present" ? (
-            <a
-              href={`/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/download-zip`}
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
-            >
-              일괄 다운로드
-            </a>
+            <>
+              <a
+                href={`/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/download-zip`}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+              >
+                일괄 다운로드
+              </a>
+              <a
+                href={`/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/download-cardnews-zip`}
+                className={`rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)] ${
+                  hasCardnewsPng ? "" : "pointer-events-none opacity-40"
+                }`}
+                aria-disabled={!hasCardnewsPng}
+                title={
+                  hasCardnewsPng
+                    ? "cardnews/ PNG만 ZIP으로 받습니다"
+                    : "렌더된 카드뉴스 PNG가 아직 없습니다"
+                }
+                onClick={(event) => {
+                  if (!hasCardnewsPng) event.preventDefault();
+                }}
+              >
+                카드뉴스만 다운로드
+              </a>
+              <button
+                type="button"
+                disabled={busy || renderBusy || loading}
+                onClick={() => void startCardnewsRender()}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                title="HDD 패키지의 media-brief 기준으로 Instagram 카드뉴스 PNG를 렌더합니다"
+              >
+                {renderBusy ? "카드뉴스 렌더 중…" : "카드뉴스 렌더링 시작"}
+              </button>
+            </>
           ) : null}
           <button
             type="button"
-            disabled={busy || loading}
+            disabled={busy || renderBusy || loading}
             onClick={() => void exportToHdd()}
             className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
@@ -180,7 +247,9 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
             </div>
             <div>
               artifact {assets.artifacts.length}개
-              {assets.updatedAt ? ` · 갱신 ${new Date(assets.updatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : ""}
+              {assets.updatedAt
+                ? ` · 갱신 ${new Date(assets.updatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+                : ""}
             </div>
           </div>
 

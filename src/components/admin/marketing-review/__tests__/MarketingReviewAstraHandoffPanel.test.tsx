@@ -134,11 +134,45 @@ describe("MarketingReviewAstraHandoffPanel", () => {
     expect(screen.getByText("미업로드")).toBeTruthy();
     expect(screen.getByRole("button", { name: "교체" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "이미지 업로드" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "HDD 다시 보내기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "카드뉴스 렌더링 시작" })).toBeTruthy();
     expect(screen.getByAltText("social_visual_01")).toBeTruthy();
     expect(
       screen.getByText((_, el) => el?.tagName === "PRE" && el.textContent === COPY_TEXT),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: /Astra 요청문 복사/ })).toBeTruthy();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("HDD 다시 보내기 posts assets/export and shows note", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/assets/export") && init?.method === "POST") {
+        return {
+          ok: true,
+          json: async () => ({
+            wrote: true,
+            reused: false,
+            relativePackagePath: "2026/09/18/cmc_astra",
+            note: "context/copy를 최신 후보 상태로 덮어썼습니다. 공유 비주얼(media/shared-visuals)은 유지됩니다.",
+          }),
+        };
+      }
+      if (url.includes("/astra-handoff") && !url.includes("upload") && !url.includes("generate")) {
+        return { ok: true, json: async () => readyView() };
+      }
+      return { ok: false, json: async () => ({ message: "unexpected" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<MarketingReviewAstraHandoffPanel candidateId="cmc_astra" />);
+    await waitFor(() => screen.getByRole("button", { name: "HDD 다시 보내기" }));
+    fireEvent.click(screen.getByRole("button", { name: "HDD 다시 보내기" }));
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("/assets/export"))).toBe(true);
+      expect(screen.getByText(/공유 비주얼\(media\/shared-visuals\)은 유지/)).toBeTruthy();
+    });
 
     vi.unstubAllGlobals();
   });

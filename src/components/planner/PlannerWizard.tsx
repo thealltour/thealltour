@@ -619,6 +619,8 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
 
   const isFinalizeStep = step === 7 && !editingFromSummary;
   const showActions = step > 1 || Boolean(sessionId) || editingFromSummary;
+  /** QA jumps use qaBusy (not useTransition isPending) so chips stay clickable after step lands. */
+  const conversationDisabled = showQaPanel ? qaBusy : isPending;
   /** Landing SEO/FAQ — only before conversation/session starts (avoids fixed-footer overlap). */
   const showLandingInfo =
     phase === "wizard" && step === 1 && !sessionId && !editingFromSummary;
@@ -627,7 +629,7 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
     step === 1 ? (
       <PlannerConversationStep1
         draft={draft}
-        disabled={isPending}
+        disabled={conversationDisabled}
         patchDraft={patchDraft}
         onClearError={() => {
           if (error) setError(null);
@@ -638,7 +640,7 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
     ) : step === 2 ? (
       <PlannerConversationStep2
         draft={draft}
-        disabled={isPending}
+        disabled={conversationDisabled}
         patchDraft={patchDraft}
         todayYmd={todayYmd}
         customDurationOpen={customDurationOpen}
@@ -646,13 +648,13 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
         durationCustomId={durationCustomId}
       />
     ) : step === 3 ? (
-      <PlannerConversationStep3 draft={draft} disabled={isPending} patchDraft={patchDraft} />
+      <PlannerConversationStep3 draft={draft} disabled={conversationDisabled} patchDraft={patchDraft} />
     ) : step === 4 ? (
-      <PlannerConversationStep4 draft={draft} disabled={isPending} patchDraft={patchDraft} />
+      <PlannerConversationStep4 draft={draft} disabled={conversationDisabled} patchDraft={patchDraft} />
     ) : step === 5 ? (
       <PlannerConversationStep5
         draft={draft}
-        disabled={isPending}
+        disabled={conversationDisabled}
         patchDraft={patchDraft}
         budgetUiMode={budgetUiMode}
         setBudgetUiMode={setBudgetUiMode}
@@ -662,14 +664,14 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
     ) : step === 6 ? (
       <PlannerConversationStep6
         draft={draft}
-        disabled={isPending}
+        disabled={conversationDisabled}
         patchDraft={patchDraft}
         requestId={requestId}
       />
     ) : (
       <PlannerConversationSummary
         draft={draft}
-        disabled={isPending}
+        disabled={conversationDisabled}
         onEditSection={openSummaryEdit}
       />
     );
@@ -699,7 +701,7 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
           size="lg"
           className="min-w-0 flex-1"
           loading={isPending}
-          disabled={isPending}
+          disabled={conversationDisabled}
           aria-label={isFinalizeStep ? "이 조건으로 여행 만들기" : undefined}
           onClick={() => {
             if (step < 7 || editingFromSummary) {

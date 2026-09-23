@@ -135,7 +135,7 @@ async function seedCandidate(status: "ready_for_human_review" | "needs_human_rev
     handoff,
     pipeline: {
       ...pipeline,
-      status: status === "blocked" ? "revision_required" : status === "failed" ? "safe_stop" : "publish_ready",
+      status: status === "blocked" ? "revision_required" : status === "failed" ? "handoff_failed" : "publish_ready",
       failure: status === "failed" ? { code: "governance_unavailable", message: "failed" } : undefined,
       draft: pipeline.draft ?? draft,
     },

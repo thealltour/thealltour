@@ -37,6 +37,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!scripts/verify-local.env.example
+!scripts/env.build-test.example
+!scripts/verify-on-wsl.env.example
+scripts/verify-on-wsl.env
 
 # vercel
 .vercel

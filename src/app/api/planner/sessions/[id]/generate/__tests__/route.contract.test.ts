@@ -3,7 +3,7 @@ import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import { assertPlannerSessionOwnership } from "@/lib/planner/ownership";
 import { plannerDraftInputSchema, plannerAnonymousKeySchema } from "@/lib/planner/schemas";
 import { z } from "zod";
-import type { PlannerSession } from "@/types/planner";
+import type { PlannerInterest, PlannerSession } from "@/types/planner";
 
 const generateBodySchema = z
   .object({
@@ -22,7 +22,7 @@ function validDraft() {
     },
     travelers: { adults: 2, children: 0 },
     companionType: "couple" as const,
-    interests: ["food"] as const,
+    interests: ["food"] as PlannerInterest[],
     pace: "balanced" as const,
     budget: {
       style: null,

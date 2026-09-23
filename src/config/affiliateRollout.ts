@@ -1,3 +1,4 @@
+import type { EnvBag } from "@/lib/envBag";
 import { createHash } from "node:crypto";
 import {
   ENABLE_PLANNER_AFFILIATE_ROUTER,
@@ -12,7 +13,7 @@ import {
 
 /** MASTER kill switch. Env overrides committed constant for server canary/smoke. */
 export function isPlannerAffiliateMasterEnabled(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvBag = process.env,
 ): boolean {
   const raw = env.ENABLE_PLANNER_AFFILIATE_ROUTER;
   if (raw === "true" || raw === "1") return true;
@@ -24,7 +25,7 @@ export function isPlannerAffiliateMasterEnabled(
  * Integer percent 0–100. Missing/blank/invalid/out-of-range → 0 (never 100).
  */
 export function getPlannerAffiliateRolloutPercent(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvBag = process.env,
 ): number {
   const raw = env.PLANNER_AFFILIATE_ROLLOUT_PERCENT;
   if (raw === undefined || raw === "") {
@@ -53,7 +54,7 @@ export function getAffiliateRolloutBucket(key: string): number {
 export function isPlannerAffiliateEnabledForKey(
   key: string,
   options?: {
-    env?: NodeJS.ProcessEnv;
+    env?: EnvBag;
     percent?: number;
     masterEnabled?: boolean;
   },

@@ -11,6 +11,7 @@ import { MARKETING_SKILL_MATRIX } from "@/lib/marketing/bot/organization/skillMa
 import { PUBLICATION_FLOW_INACTIVE } from "@/lib/marketing/social/publication/governanceBoundary";
 import { MEMORY_RETRIEVAL_FAILED_ITEM } from "@/lib/marketing/cron/performanceBriefArtifact";
 import type { DailyPerformanceBriefArtifact } from "@/lib/marketing/cron/performanceBriefArtifact";
+import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
 import type { HermesAgentRuntimeResult } from "@/lib/marketing/bot/organization/hermesRuntime";
 import { jsonContainsForbiddenBotLeak } from "@/lib/marketing/bot/sanitize";
 
@@ -45,17 +46,18 @@ function sampleBrief(overrides: Partial<DailyPerformanceBriefArtifact> = {}): Da
   };
 }
 
-function okInvoke(profile: HermesAgentRuntimeResult["profile"], stdout: string): HermesAgentRuntimeResult {
+function okInvoke(profile: string, stdout: string): HermesAgentRuntimeResult {
+  const profileId = profile as HermesMarketingProfileId;
   return {
-    executionId: `exec-${profile}`,
-    profile,
+    executionId: `exec-${profileId}`,
+    profile: profileId,
     actuallyInvoked: true,
     exitCode: 0,
     timedOut: false,
     stdout,
     stderr: "",
     promptSha256: "abc",
-    argv: ["hermes", "-p", profile, "--yolo", "--ignore-rules", "-z"],
+    argv: ["hermes", "-p", profileId, "--yolo", "--ignore-rules", "-z"],
     startedAt: "2026-08-26T00:00:00.000Z",
     endedAt: "2026-08-26T00:00:01.000Z",
   };

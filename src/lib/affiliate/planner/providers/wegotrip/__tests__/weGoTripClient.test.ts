@@ -58,7 +58,7 @@ describe("weGoTripClient", () => {
       query: "Paris",
       deps: {
         timeoutMs: 20,
-        fetchImpl: ((_, init?: RequestInit) =>
+        fetchImpl: ((_url: string | URL | Request, init?: RequestInit) =>
           new Promise((_resolve, reject) => {
             const signal = init?.signal;
             if (!signal) return;

@@ -163,11 +163,14 @@ export function buildSyntheticResearchSignals(): RawResearchSignalInput[] {
       summary: "Internal catalog shows new April departures for package SKU.",
       destinations: ["spain", "portugal"],
       topics: ["product", "europe"],
-      commercialRelevance: {
-        level: "high",
-        matchedProductIds: ["98a889e9-fbc4-41e3-8302-0d2b042fbe0a"],
-        confidence: 0.9,
-      },
+      // Carrier for normalizer spread — not on RawResearchSignalInput contract.
+      ...({
+        commercialRelevance: {
+          level: "high",
+          matchedProductIds: ["98a889e9-fbc4-41e3-8302-0d2b042fbe0a"],
+          confidence: 0.9,
+        },
+      } as object),
     }),
     baseSignal({
       sourceId: INTERNAL_PRODUCT_SOURCE.id,
@@ -177,10 +180,12 @@ export function buildSyntheticResearchSignals(): RawResearchSignalInput[] {
       summary: "New golf resort opening signal without mapped product yet.",
       destinations: ["jeju"],
       topics: ["golf"],
-      commercialRelevance: {
-        level: "none",
-        matchedProductIds: [],
-      },
+      ...({
+        commercialRelevance: {
+          level: "none",
+          matchedProductIds: [],
+        },
+      } as object),
     }),
     baseSignal({
       sourceId: PERFORMANCE_SOURCE.id,

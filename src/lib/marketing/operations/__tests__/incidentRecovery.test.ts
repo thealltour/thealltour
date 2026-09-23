@@ -28,6 +28,7 @@ import { getDailyMarketingOperationsStatus, sanitizeOperationsDtoForResponse } f
 import { createInMemoryHumanMarketingReviewRepository } from "@/lib/marketing/review/repository/createHumanMarketingReviewRepository";
 import { createInMemoryContentPerformanceRepository } from "@/lib/marketing/performance/repository/inMemoryContentPerformanceRepository";
 import { createInMemoryResearchRepository } from "@/lib/marketing/research/repository/inMemoryResearchRepository";
+import type { GovernanceReviewResult } from "@/lib/marketing/bot/organization/handoffs";
 import {
   PUBLICATION_FLOW_INACTIVE,
   OPERATIONS_EXTERNAL_SIDE_EFFECTS_STEP_3_10,
@@ -40,7 +41,7 @@ const LOGICAL_KEY = buildLogicalDailyRunKey({
 });
 
 function pipelineDeps(overrides: {
-  governance?: () => Promise<never>;
+  governance?: () => Promise<GovernanceReviewResult>;
 } = {}) {
   const repo = createInMemoryDailyMarketingRunRepository();
   const reviewRepo = createInMemoryHumanMarketingReviewRepository();
@@ -63,7 +64,7 @@ function pipelineDeps(overrides: {
         sourceReferences: ["evidence:ev-official"],
         assignmentId: null,
       }),
-      requestGovernance: async () => {
+      requestGovernance: async (): Promise<GovernanceReviewResult> => {
         if (overrides.governance) return overrides.governance();
         return {
           decision: "ALLOW" as const,

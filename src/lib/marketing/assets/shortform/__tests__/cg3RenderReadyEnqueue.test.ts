@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   buildDraft,
   buildTestCandidate,
+  buildTestLlmPublishableBundle,
   NOW,
 } from "@/lib/marketing/assets/__tests__/fixtures";
 import { maybeGenerateShortformBriefAndResolve } from "@/lib/marketing/assets/shortform/dailyShortformBridge";
@@ -55,6 +56,7 @@ async function prepareShortformPackage(input?: {
 
   const bridge = await maybeGenerateShortformBriefAndResolve({
     candidate,
+    publishableBundle: buildTestLlmPublishableBundle(candidate),
     assetRoot,
     catalog,
     env: {
@@ -422,11 +424,13 @@ describe("CG-3 reconciliation", () => {
     const assetRoot = tempRoot();
     const catalog = createInMemoryMarketingMediaSourceCatalogRepository();
     const candidate = buildTestCandidate({ candidateId: "cmc_cg3_reconcile" });
+    const publishableBundle = buildTestLlmPublishableBundle(candidate);
     const first = await reconcileDailyShortformBridgeForCandidate({
       candidate,
       assetRoot,
       env: { MARKETING_ASSET_ROOT: assetRoot, PEXELS_API_KEY: "", PIXABAY_API_KEY: "" },
       now: NOW,
+      publishableBundle,
     });
     expect(first.shortformIntended).toBe(true);
     expect(first.shortVideoBriefPersisted).toBe(true);
@@ -436,6 +440,7 @@ describe("CG-3 reconciliation", () => {
       assetRoot,
       env: { MARKETING_ASSET_ROOT: assetRoot, PEXELS_API_KEY: "", PIXABAY_API_KEY: "" },
       now: NOW,
+      publishableBundle,
     });
     expect(second.shortformIntended).toBe(true);
     expect(["committed", "reused", "skipped"].includes(second.outcome)).toBe(true);

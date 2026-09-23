@@ -44,6 +44,15 @@ WantedBy=multi-user.target
 
 Node 경로는 Hermes에 묶여 있다 (`/home/ysh/.hermes/node/bin/node`, v22). systemd는 shell profile을 읽지 않으므로 절대 경로를 쓴다.
 
+## WSL build/test verification (not deploy)
+
+Cursor로 Pi working tree를 수정한 뒤, 느린 on-Pi `npm run build` 대신 Windows WSL2에서 typecheck/tests/build만 검증하려면:
+
+→ [docs/WSL_BUILD_VERIFICATION.md](../../WSL_BUILD_VERIFICATION.md) · `scripts/verify-from-pi.sh`  
+→ Pi에서 WSL 호출: [docs/WSL_REMOTE_VERIFICATION.md](../../WSL_REMOTE_VERIFICATION.md) · `scripts/verify-on-wsl.sh`
+
+이 흐름은 `.next`/`node_modules`를 Pi로 배포하지 않으며 systemd를 바꾸지 않는다.
+
 ## 운영 명령
 
 status:

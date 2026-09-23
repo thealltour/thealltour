@@ -245,7 +245,7 @@ describe("CardNews renderer", () => {
     );
   }, 30_000);
 
-  it("20. changed content at the same artifact path conflicts", async () => {
+  it("20. regenerable cardnews overwrites tampered PNG on re-render", async () => {
     const root = tempRoot();
     const first = await renderCardNewsPackage({
       mediaBrief: createCardNewsVerificationBrief(),
@@ -254,14 +254,17 @@ describe("CardNews renderer", () => {
       now: new Date("2026-09-03T00:00:00.000Z"),
     });
     writeFileSync(join(first.packageRoot, "cardnews/card-01.png"), "tampered");
-    await expect(
-      renderCardNewsPackage({
-        mediaBrief: createCardNewsVerificationBrief(),
-        assetRoot: root,
-        graphicOnly: true,
-        now: new Date("2026-09-03T00:00:00.000Z"),
-      }),
-    ).rejects.toThrow(MarketingAssetConflictError);
+    const second = await renderCardNewsPackage({
+      mediaBrief: createCardNewsVerificationBrief(),
+      assetRoot: root,
+      graphicOnly: true,
+      now: new Date("2026-09-03T00:00:00.000Z"),
+    });
+    expect(second.status).toBe("rendered");
+    expect(second.render!.cards[0]!.sha256).toBe(first.render!.cards[0]!.sha256);
+    expect(createHash("sha256").update(readFileSync(join(first.packageRoot, "cardnews/card-01.png"))).digest("hex")).toBe(
+      first.render!.cards[0]!.sha256,
+    );
   }, 30_000);
 
   it("25. dry-run writes zero files", async () => {

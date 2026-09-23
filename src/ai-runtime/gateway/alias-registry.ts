@@ -1,3 +1,4 @@
+import type { EnvBag } from "@/lib/envBag";
 import type { AgentId } from "@/ai-runtime/domain/agent";
 import type { RuntimePriority } from "@/ai-runtime/domain/priority";
 import type { WorkloadClass } from "@/ai-runtime/domain/workload";
@@ -131,7 +132,7 @@ export function isSpikeGatewayAlias(raw: string | undefined): boolean {
  */
 export function shouldSpikeForceFallback(
   alias: string,
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvBag = process.env,
 ): boolean {
   const entry = lookupGatewayAlias(alias);
   if (!entry?.allowsSpikeForceFallback) {

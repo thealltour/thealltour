@@ -25,12 +25,8 @@ const KR_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === TRAVELTIMES_SOURCE_I
 const VN_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === VIETNAM_TRAVEL_SOURCE_ID)!;
 const FCDO = MVP_RESEARCH_SOURCES.find((s) => s.id === UK_GOV_TRAVEL_SOURCE_ID)!;
 
-function role(source: ResearchSource) {
-  return resolveSourceRoleWeights({
-    ...source,
-    createdAt: NOW.toISOString(),
-    updatedAt: NOW.toISOString(),
-  });
+function role(source: Omit<ResearchSource, "createdAt" | "updatedAt"> | ResearchSource) {
+  return resolveSourceRoleWeights(source);
 }
 
 function cand(

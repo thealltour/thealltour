@@ -9,6 +9,8 @@ import { buildCompletedCandidate } from "@/lib/marketing/cron/daily/mapPipelineR
 import { prepareManagerToContentHandoff } from "@/lib/marketing/content/prepareManagerToContentHandoff";
 import { runDepartmentPipeline } from "@/lib/marketing/bot/organization/pipeline";
 import type { ContentStrategistOutput, GovernanceReviewResult } from "@/lib/marketing/bot/organization/handoffs";
+import type { StructuredGovernanceDecision } from "@/lib/marketing/content/governance/types";
+import type { DailyMarketingRun } from "@/lib/marketing/cron/daily/types";
 import { NOW, PRODUCT } from "@/lib/marketing/cron/daily/__tests__/fixtures";
 import {
   PUBLICATION_FLOW_INACTIVE,
@@ -55,6 +57,33 @@ function allow(): GovernanceReviewResult {
   };
 }
 
+function structuredAllow(): StructuredGovernanceDecision {
+  return {
+    contract: "governance-decision-v1",
+    reviewId: "gr_perf_test",
+    assignmentId: null,
+    decidedAt: NOW.toISOString(),
+    decision: "ALLOW",
+    reasons: ["NO_RISK_SIGNAL"],
+    unsupportedClaims: [],
+    factualRisks: [],
+    evidenceGaps: [],
+    commercialRisks: [],
+    policyRisks: [],
+    requiredRevisions: [],
+    verifiedEvidenceRefs: [],
+    riskScore: 0,
+    humanApprovalRequired: false,
+    semanticAvailable: true,
+    revisionHints: [],
+    claimCount: 0,
+    unsupportedClaimCount: 0,
+    evidenceGapCount: 0,
+    revisionNumber: 0,
+    malformed: false,
+  };
+}
+
 async function seedReviewWithManualPublication(options: {
   externalPostId?: string;
   externalUrl?: string;
@@ -88,26 +117,56 @@ async function seedReviewWithManualPublication(options: {
     },
   );
 
-  const run = {
-    contract: "daily-marketing-run-v1" as const,
+  const logicalRunKey = `perf-test-${Date.now()}`;
+  const run: DailyMarketingRun = {
+    contract: "daily-marketing-run-v1",
     runId: "run_perf_test",
-    logicalRunKey: `perf-test-${Date.now()}`,
+    logicalRunKey,
     routineId: "daily-marketing-plan",
     businessDateKst: "2026-09-02",
-    status: "completed" as const,
+    correlationId: "corr_perf_test",
+    executionAttempt: 1,
+    status: "completed",
     startedAt: NOW.toISOString(),
     completedAt: NOW.toISOString(),
-    candidateCount: 1,
-    metadata: null,
+    researchStatus: "ok",
+    selectedAgendaId: handoff.selectedAgenda.id,
+    assignmentId: handoff.contentAssignment.assignmentId,
+    governanceReviewId: null,
+    completedCandidateId: null,
+    failureReason: null,
+    degraded: false,
+    observability: {
+      runId: "run_perf_test",
+      logicalRunKey,
+      businessDateKst: "2026-09-02",
+      correlationId: "corr_perf_test",
+      researchStatus: "ok",
+      candidateCount: 1,
+      selectedAgendaId: handoff.selectedAgenda.id,
+      assignmentId: handoff.contentAssignment.assignmentId,
+      governanceReviewId: null,
+      revisionCount: pipeline.revisionRounds,
+      governanceDecision: pipeline.governance?.decision ?? null,
+      finalCandidateId: null,
+      finalStatus: "ready_for_human_review",
+      startedAt: NOW.toISOString(),
+      completedAt: NOW.toISOString(),
+      failureReason: null,
+    },
+    metadata: {},
   };
   await candidateRepo.saveRun(run);
   const candidate = buildCompletedCandidate({
     run,
     pipeline,
     handoff,
-    status: "ready_for_human_review",
+    governance: structuredAllow(),
     now: NOW,
   });
+  // Pipeline completeness may leave status short of publish_ready; force the
+  // human-review-eligible pairing that this suite seeds against (ALLOW + ready).
+  candidate.status = "ready_for_human_review";
   await candidateRepo.saveCandidate(candidate);
 
   const service = new HumanMarketingReviewService({ candidateRepo, reviewRepo, now: () => NOW });

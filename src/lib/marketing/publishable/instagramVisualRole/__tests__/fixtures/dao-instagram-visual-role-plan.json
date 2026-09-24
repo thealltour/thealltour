@@ -1,0 +1,70 @@
+{
+  "rhythmSummary": "hero cover → bridge statement → cultural context → architecture detail → closing mood (Dao acceptance example; not production hardcode)",
+  "cards": [
+    {
+      "cardId": "card-01",
+      "visualRole": "hero_cover",
+      "visualPurpose": "익숙한 해변 프레임을 깨는 북부 산악 establishing",
+      "visualPriority": "hero",
+      "visualDensity": "dominant",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "required",
+      "presentationPreference": "full_bleed",
+      "reusePreference": "exclusive_preferred",
+      "concreteVisualIntent": "북부 산악 국경 지대 establishing 풍경 — 해변 리조트와 대비되는 산악 실루엣",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-02",
+      "visualRole": "bridge_statement",
+      "visualPurpose": "풍경 전환 선언을 image-backed 문구로",
+      "visualPriority": "strong",
+      "visualDensity": "subtle",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "preferred",
+      "presentationPreference": "image_backed_statement",
+      "reusePreference": "derivative_ok",
+      "concreteVisualIntent": "산악으로 이어지는 능선 분위기 배경 — 텍스트가 주인공인 bridge statement",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-03",
+      "visualRole": "cultural_context",
+      "visualPurpose": "랑선 Dao족 마을 맥락",
+      "visualPriority": "useful",
+      "visualDensity": "strong",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "preferred",
+      "presentationPreference": "photo_top",
+      "reusePreference": "reusable",
+      "concreteVisualIntent": "북부 국경 산악 마을 생활 공간 맥락 — 특정 간판·인물 식별 금지",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-04",
+      "visualRole": "architecture_detail",
+      "visualPurpose": "nhà trình tường 흙다짐 디테일",
+      "visualPriority": "strong",
+      "visualDensity": "strong",
+      "visualModePreference": "object_or_detail",
+      "generationPreference": "preferred",
+      "presentationPreference": "detail_focus",
+      "reusePreference": "reusable",
+      "concreteVisualIntent": "판축(rammed-earth) 벽면·구조 디테일 close-up — nhà trình tường",
+      "evidenceRefs": ["ev_dao_house"]
+    },
+    {
+      "cardId": "card-05",
+      "visualRole": "closing_mood",
+      "visualPurpose": "프레임 전환 mood closure",
+      "visualPriority": "optional",
+      "visualDensity": "balanced",
+      "visualModePreference": "atmosphere",
+      "generationPreference": "optional",
+      "presentationPreference": "background_mood",
+      "reusePreference": "derivative_ok",
+      "concreteVisualIntent": "산악 지대 고요한 마감 분위기 — 휴양 프레임 밖 payoff mood",
+      "evidenceRefs": []
+    }
+  ]
+}

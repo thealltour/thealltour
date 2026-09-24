@@ -32,6 +32,12 @@ import {
   resolveSharedVisualPlanLifecycle,
   type VisualArtifactLifecycleStatus,
 } from "@/lib/marketing/publishable/visualOrchestration/lifecycle";
+import { CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
+import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
+import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfileAsync";
+import { buildInstagramVisualRoleContentFingerprint } from "@/lib/marketing/publishable/instagramVisualRole/fingerprint";
+import { ensureInstagramVisualRoleArchitectHermesReady } from "@/lib/marketing/publishable/instagramVisualRole/hermesIdentity";
+import { readInstagramVisualRolePlanFromPackage } from "@/lib/marketing/publishable/instagramVisualRole/persist";
 import { generateSharedVisualPlanWithLlm } from "@/lib/marketing/publishable/visualOrchestration/generateSharedVisualPlan";
 import { generateManualAstraHandoffWithLlm } from "@/lib/marketing/publishable/visualOrchestration/generateManualAstraHandoff";
 import type { AstraHandoffOperatorSlot, AstraHandoffOperatorView } from "@/lib/marketing/publishable/sharedVisualAssets/operatorService";
@@ -41,6 +47,11 @@ import {
 } from "@/lib/marketing/publishable/sharedVisualAssets/operatorService";
 
 export { AstraHandoffOperatorError, astraHandoffOperatorErrorResponse };
+
+function currentVraFingerprint(packageRoot: string): string | null {
+  const plan = readInstagramVisualRolePlanFromPackage(packageRoot);
+  return plan ? buildInstagramVisualRoleContentFingerprint(plan) : null;
+}
 
 function readPublishableBundle(packageRoot: string): PublishableContentBundle | null {
   const path = join(packageRoot, PUBLISHABLE_CONTENT_RELATIVE_PATH);
@@ -139,7 +150,11 @@ export async function getVisualOrchestrationOperatorView(
 
   const bundle = readPublishableBundle(resolved.packageRoot);
   const plan = readSharedVisualPlan(resolved.packageRoot);
-  const planLifecycle = resolveSharedVisualPlanLifecycle({ plan, bundle });
+  const planLifecycle = resolveSharedVisualPlanLifecycle({
+    plan,
+    bundle,
+    currentInstagramVisualRoleFingerprint: currentVraFingerprint(resolved.packageRoot),
+  });
   const handoffRaw = readManualAstraHandoff(resolved.packageRoot);
   const handoffLifecycle = resolveManualAstraHandoffLifecycle({
     handoff: handoffRaw,
@@ -298,6 +313,14 @@ export async function generateSharedVisualPlanForCandidate(input: {
     bundle,
     approvedCanonicalAsset: asset,
     invoke: input.invoke,
+    invokeVisualRoleArchitect: async (prompt) => {
+      ensureInstagramVisualRoleArchitectHermesReady();
+      const timeoutMs = resolveMarketingCronHermesTimeoutMs(
+        process.env,
+        CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT,
+      );
+      return invokeHermesProfileAsync(prompt.hermesProfile, prompt.text, timeoutMs);
+    },
   });
 
   if (!result.ok) {
@@ -306,6 +329,7 @@ export async function generateSharedVisualPlanForCandidate(input: {
       planStatus: resolveSharedVisualPlanLifecycle({
         plan: result.previousPlan,
         bundle,
+        currentInstagramVisualRoleFingerprint: currentVraFingerprint(resolved.packageRoot),
       }),
       visualCount: result.previousPlan?.visuals.length ?? 0,
       error: result.error,

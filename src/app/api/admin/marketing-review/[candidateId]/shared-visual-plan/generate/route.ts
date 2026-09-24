@@ -12,6 +12,7 @@ import {
   ensureSharedVisualPlannerHermesReady,
   SHARED_VISUAL_PLANNER_HERMES_PROFILE,
 } from "@/lib/marketing/publishable/visualOrchestration/hermesIdentity";
+import { ensureInstagramVisualRoleArchitectHermesReady } from "@/lib/marketing/publishable/instagramVisualRole/hermesIdentity";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ type RouteContext = { params: Promise<{ candidateId: string }> };
 
 /**
  * Explicit Shared Visual Plan generation (LLM Shared Visual Planner).
+ * Ensures Visual Role Architect when editorial carousel+copy exist (fail-closed).
  * Does not run on channel generate/regenerate.
  */
 export async function POST(_request: Request, context: RouteContext) {
@@ -27,6 +29,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const { candidateId } = await context.params;
   try {
+    ensureInstagramVisualRoleArchitectHermesReady();
     ensureSharedVisualPlannerHermesReady();
     const timeoutMs = resolveMarketingCronHermesTimeoutMs(
       process.env,

@@ -1,7 +1,9 @@
 /**
- * Conservative cross-channel visual dedupe for deterministic fallback only.
+ * Conservative cross-channel visual dedupe for **deterministic fallback / tests only**.
+ * NOT the production Shared Visual Planner decision engine (LLM path owns grouping).
  * reusableOn* Worker flags are NOT merge gates (advisory).
- * False merge < false split. Same-channel requests never merge.
+ * False merge < false split. Same-channel requests never merge here
+ * (LLM production path MAY assign multiple Instagram cards to one master).
  */
 
 import type { SocialVisualRequest } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";

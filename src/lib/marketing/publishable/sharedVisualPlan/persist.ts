@@ -16,6 +16,7 @@ import {
   type SharedVisualUsage,
 } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 import { SHARED_VISUAL_MODES } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
+import { parseSharedVisualDecisionTrace } from "@/lib/marketing/publishable/sharedVisualPlan/decisionTrace";
 import {
   SHARED_VISUAL_PLAN_MEDIA_TYPE,
   SHARED_VISUAL_PLAN_RELATIVE_PATH,
@@ -97,14 +98,25 @@ export function parseSharedVisualPlan(raw: unknown): SharedVisualPlan | null {
       : row.strategySummary === null
         ? null
         : undefined;
+  const decisionTrace = parseSharedVisualDecisionTrace(row.decisionTrace);
   return {
     contract: SHARED_VISUAL_PLAN_CONTRACT,
     sourceAssetId,
     sourceAssetVersion,
     generatedAt: asString(row.generatedAt) || new Date(0).toISOString(),
     sourceVisualPlanFingerprint: asString(row.sourceVisualPlanFingerprint),
+    ...(typeof row.sourceInstagramVisualRoleFingerprint === "string" ||
+    row.sourceInstagramVisualRoleFingerprint === null
+      ? {
+          sourceInstagramVisualRoleFingerprint:
+            typeof row.sourceInstagramVisualRoleFingerprint === "string"
+              ? row.sourceInstagramVisualRoleFingerprint.trim() || null
+              : null,
+        }
+      : {}),
     ...(sourceChannelSnapshot ? { sourceChannelSnapshot } : {}),
     ...(strategySummary !== undefined ? { strategySummary } : {}),
+    ...(decisionTrace ? { decisionTrace } : {}),
     ...(planningMode ? { planningMode } : {}),
     visuals,
   };

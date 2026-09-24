@@ -177,8 +177,8 @@ describe("planner authority — Worker metadata advisory", () => {
     expect(threads.content).toBeTruthy();
     expect(threads.visualHints.imageCount).toBe(1);
     expect((input.channels.threads as { mediaPlan?: unknown }).mediaPlan).toBeUndefined();
-    expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/sole final editorial authority/i);
-    expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/ADVISORY ONLY/i);
+    expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/sole final authority for \*\*master visual asset orchestration\*\*|master visual asset orchestration/i);
+    expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/ADVISORY ONLY|advisory compatibility/i);
   });
 
   it("A. Threads imageCount=1 but Planner master count=2 → PASS", () => {

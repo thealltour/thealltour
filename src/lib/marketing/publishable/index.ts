@@ -120,6 +120,15 @@ export {
   type VisualArtifactLifecycleStatus,
 } from "@/lib/marketing/publishable/visualOrchestration";
 export {
+  INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT,
+  INSTAGRAM_VISUAL_ROLE_ARCHITECT_HERMES_PROFILE,
+  ensureInstagramVisualRolePlan,
+  ensureInstagramVisualRoleArchitectHermesReady,
+  readInstagramVisualRolePlanFromPackage,
+  resolveInstagramVisualRolePlanLifecycle,
+  type InstagramVisualRolePlan,
+} from "@/lib/marketing/publishable/instagramVisualRole";
+export {
   buildSourceChannelSnapshot,
   computePlanSourceFingerprintFromBundle,
 } from "@/lib/marketing/publishable/sharedVisualPlan";

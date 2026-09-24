@@ -18,9 +18,21 @@ export type VisualArtifactLifecycleStatus = "not_generated" | "fresh" | "stale";
 export function resolveSharedVisualPlanLifecycle(input: {
   plan: SharedVisualPlan | null | undefined;
   bundle: PublishableContentBundle | null | undefined;
+  /**
+   * Current Instagram Visual Role Plan content fingerprint (when artifact exists).
+   * When the plan recorded sourceInstagramVisualRoleFingerprint and it differs → stale.
+   */
+  currentInstagramVisualRoleFingerprint?: string | null;
 }): VisualArtifactLifecycleStatus {
   if (!input.plan) return "not_generated";
   if (!input.bundle) return "stale";
+
+  const recordedVra = input.plan.sourceInstagramVisualRoleFingerprint;
+  if (recordedVra) {
+    const current = input.currentInstagramVisualRoleFingerprint ?? null;
+    if (!current || current !== recordedVra) return "stale";
+  }
+
   if (input.plan.sourceChannelSnapshot) {
     const current = buildSourceChannelSnapshot(input.bundle);
     return sourceChannelSnapshotsEqual(input.plan.sourceChannelSnapshot, current)

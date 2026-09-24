@@ -1,11 +1,14 @@
 /**
  * Build Shared Visual Planner LLM input from Canonical + present channel outputs.
  * Channel Worker visual metadata is nested under visualHints (advisory only).
+ * Instagram Visual Role Plan (when present) is stronger Instagram semantic authority
+ * than legacy visualHints — SVP still owns final master orchestration.
  * Presence = channel content exists (body or cardPlan) — not Worker visual hints.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import type { InstagramVisualRolePlan } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
 import {
   buildSourceChannelSnapshot,
   isChannelPresentForVisualPlanning,
@@ -22,20 +25,30 @@ const VISUAL_HINTS_AUTHORITY_NOTE =
   "You may ignore, merge, split, override, or replace them when designing the " +
   "cross-channel master visual strategy. Channel content (title/body/cards) is primary input.";
 
+const VISUAL_ROLE_PLAN_AUTHORITY_NOTE =
+  "instagramVisualRolePlan (when present) is the Instagram per-card visual semantics authority " +
+  "(role/density/generationPreference/concreteVisualIntent). It outranks legacy visualHints. " +
+  "You still own final master count, grouping, usages, generatedVisualNeeded, visualMode, " +
+  "and master visualIntent. Prefer explaining overrides in strategySummary.";
+
 export function buildSharedVisualPlannerInput(input: {
   approvedAsset: CanonicalMarketingAsset;
   bundle: PublishableContentBundle;
+  /** Prefer Visual Role Plan over legacy publishable visual.* hints for Instagram. */
+  instagramVisualRolePlan?: InstagramVisualRolePlan | null;
 }): {
   task: "shared_visual_plan";
   authority: Record<string, string>;
   canonical: Record<string, unknown>;
   channels: Record<string, unknown>;
+  instagramVisualRolePlan: Record<string, unknown> | null;
   sourceChannelSnapshot: ReturnType<typeof buildSourceChannelSnapshot>;
   outputSchema: Record<string, unknown>;
 } {
   const asset = input.approvedAsset;
   const bundle = input.bundle;
   const channels: Record<string, unknown> = {};
+  const visualRolePlan = input.instagramVisualRolePlan ?? null;
 
   if (isChannelPresentForVisualPlanning(bundle.threads)) {
     const mediaPlan = bundle.threads.mediaPlan ?? null;
@@ -88,7 +101,9 @@ export function buildSharedVisualPlannerInput(input: {
           reusableOnThreads: c.visual?.reusableOnThreads ?? null,
           visualIntent: c.visual?.visualIntent ?? c.visualIntent ?? null,
         })),
-        note: "generatedVisualNeeded/visualMode/reusableOn*/sourceVisualId are advisory only — card content alone is enough for planning",
+        note: visualRolePlan
+          ? "legacy advisory only — prefer instagramVisualRolePlan for Instagram semantics"
+          : "generatedVisualNeeded/visualMode/reusableOn*/sourceVisualId are advisory only — card content alone is enough for planning",
       },
     };
   }
@@ -146,13 +161,38 @@ export function buildSharedVisualPlannerInput(input: {
     };
   }
 
+  const instagramVisualRolePlanPayload = visualRolePlan
+    ? {
+        contract: visualRolePlan.contract,
+        rhythmSummary: visualRolePlan.rhythmSummary,
+        cards: visualRolePlan.cards.map((c) => ({
+          cardId: c.cardId,
+          visualRole: c.visualRole,
+          visualPurpose: c.visualPurpose,
+          visualPriority: c.visualPriority,
+          visualDensity: c.visualDensity,
+          generationPreference: c.generationPreference,
+          visualModePreference: c.visualModePreference,
+          reusePreference: c.reusePreference,
+          presentationPreference: c.presentationPreference,
+          concreteVisualIntent: clip(c.concreteVisualIntent, 400),
+          evidenceRefs: c.evidenceRefs,
+        })),
+        note: VISUAL_ROLE_PLAN_AUTHORITY_NOTE,
+      }
+    : null;
+
   return {
     task: "shared_visual_plan",
     authority: {
       finalVisualAuthority: "shared_visual_planner",
+      instagramVisualSemantics: visualRolePlan
+        ? "instagram_visual_role_plan"
+        : "legacy_visual_hints_or_content",
       channelVisualMetadata: "advisory_hint_only",
       evidenceAuthority: "approved_canonical",
       visualHintsNote: VISUAL_HINTS_AUTHORITY_NOTE,
+      visualRolePlanNote: VISUAL_ROLE_PLAN_AUTHORITY_NOTE,
     },
     canonical: {
       titleKo: asset.titleKo ?? null,
@@ -167,20 +207,33 @@ export function buildSharedVisualPlannerInput(input: {
       supportVerdict: asset.storySupportVerdict ?? null,
     },
     channels,
+    instagramVisualRolePlan: instagramVisualRolePlanPayload,
     sourceChannelSnapshot: buildSourceChannelSnapshot(bundle),
     outputSchema: {
-      strategySummary: "string — why this smallest sufficient set",
+      strategySummary:
+        "string — why this master set; shared/split cards; Threads reuse; note overrides",
+      decisionTrace: {
+        overrides: [
+          {
+            cardId: "card_2",
+            field: "generationPreference | visualModePreference | reusePreference | grouping | other",
+            requested: "VRA preference value",
+            final: "SVP decision value",
+            reason: "why override — required for material VRA divergences",
+          },
+        ],
+      },
       visuals: [
         {
           role: "string e.g. context_cover | subject_detail | architecture_detail",
           visualMode:
             "editorial_photo | object_or_detail | icon_infographic | contrast_diagram | map_context | fact_card | evidence_boundary | minimal_closing",
-          generatedVisualNeeded: "boolean — YOUR decision, not Worker hint",
+          generatedVisualNeeded: "boolean — YOUR decision (may override VRA generationPreference with trace)",
           visualIntent:
-            "concrete editorial brief: subject + context + purpose + composition + evidence limits",
+            "concrete master brief: subject + context + purpose + composition + evidence limits",
           usages: [
             { channel: "threads", slotIndex: 0 },
-            { channel: "instagram", cardId: "card-01" },
+            { channel: "instagram", cardId: "card_1" },
           ],
         },
       ],
@@ -191,24 +244,36 @@ export function buildSharedVisualPlannerInput(input: {
 export function formatSharedVisualPlannerPrompt(
   plannerInput: ReturnType<typeof buildSharedVisualPlannerInput>,
 ): string {
+  const hasVra = Boolean(plannerInput.instagramVisualRolePlan);
   return [
-    "TASK: Design the smallest sufficient Shared Visual Plan for the channel outputs below.",
+    "TASK: Orchestrate the smallest *sufficient* Shared Visual Plan (SVP v2).",
+    "You own master count, grouping/reuse, final generatedVisualNeeded, visualMode, usages.",
+    "You do NOT redesign Instagram visual meanings — that is Visual Role Architect.",
     "",
     "AUTHORITY:",
-    "- You are the sole final editorial authority for the cross-channel visual plan.",
-    "- Channel visualHints are ADVISORY ONLY — not hard constraints.",
-    "- You MAY ignore, merge, split, override, or replace visualHints.",
-    "- You MAY choose a different master count than Threads imageCount.",
-    "- You MAY override generatedVisualNeeded / visualMode / reusable flags.",
-    "- You MAY add a justified master visual based on actual channel content even if Worker omitted a hint.",
-    "- You MUST NOT invent nonexistent channel slots/cardIds.",
-    "- You MUST NOT invent factual claims beyond Canonical evidence boundaries.",
-    "- Do NOT treat Worker sourceVisualId as master identity (IDs are assigned downstream).",
+    "- Instagram semantics precedence: instagramVisualRolePlan > content > legacy visualHints.",
+    "- When VRA is present, cover EVERY VRA cardId with exactly one Instagram usage.",
+    "- Multiple Instagram cards MAY share one master when subjects/roles align.",
+    "- Threads slot 0 ↔ Instagram hero_cover is a reuse candidate — not automatic.",
+    "- generationPreference required → true unless decisionTrace override.",
+    "- exclusive_preferred merge → decisionTrace override required.",
+    "- Material visualModePreference change → decisionTrace override required.",
+    "- generatedVisualNeeded=false does NOT mean no visual treatment.",
+    "- all-card visual treatment ≠ all-card independent generation.",
+    "- Do NOT minimize master count at the expense of meaning fidelity / rhythm.",
+    "- Channel visualHints are ADVISORY ONLY.",
+    "- You MUST NOT invent nonexistent channel slots/cardIds or Blog/Band/Kakao/Shortform usages.",
+    "- Do NOT treat Worker sourceVisualId as master identity.",
+    "- Prefer explaining decisions in strategySummary; put material overrides in decisionTrace.",
     "",
-    "Return ONLY JSON: { strategySummary: string, visuals: [...] }",
-    "Supported usages ONLY: threads.slotIndex (0-based; currently slot 0 when Threads content exists) or instagram.cardId that exists in content.cards.",
-    "Do not invent Blog/Band/Kakao/Shortform usages.",
-    "visualIntent must be concrete — reject vague intents.",
+    "Return ONLY JSON:",
+    "{ strategySummary, decisionTrace?: { overrides: [{ cardId?, field, requested, final, reason }] }, visuals: [...] }",
+    "field enum: generationPreference | visualModePreference | reusePreference | grouping | other",
+    "Supported usages ONLY: threads.slotIndex (0 when Threads exists) or instagram.cardId from content/VRA.",
+    "visualIntent must be concrete master-level brief — reject vague intents.",
+    hasVra
+      ? "VRA PRESENT: full card coverage + structured overrides for material divergences are mandatory."
+      : "VRA ABSENT: legacy visualHints path — still prefer smallest sufficient shared set.",
     "",
     "INPUT_JSON:",
     JSON.stringify(plannerInput, null, 2),

@@ -1,11 +1,15 @@
 export {
   SHARED_VISUAL_PLAN_CONTRACT,
   SHARED_VISUAL_MODES,
+  SHARED_VISUAL_OVERRIDE_FIELDS,
   type SharedVisualMode,
   type SharedVisualUsage,
   type SharedVisual,
   type SharedVisualPlan,
   type SharedVisualPlanningMode,
+  type SharedVisualDecisionTrace,
+  type SharedVisualDecisionOverride,
+  type SharedVisualOverrideField,
   type SocialVisualRequest,
 } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 export {

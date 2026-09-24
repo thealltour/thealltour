@@ -1,6 +1,9 @@
 /**
  * Shared Visual Plan v1 — cross-channel normalized visual planning.
  * Planning only: no image generation, Astra, upload, or renderer wiring.
+ *
+ * SVP v2 (VRA-aware): same contract id; optional decisionTrace for override audit.
+ * Visual meaning remains Visual Role Architect; SVP owns master orchestration only.
  */
 
 import { SOCIAL_VISUAL_ASSET_FAMILY } from "@/lib/marketing/publishable/socialVisualPlan";
@@ -27,6 +30,33 @@ export type SharedVisualUsage =
 
 export type SharedVisualPlanningMode = "llm" | "deterministic_fallback";
 
+export const SHARED_VISUAL_OVERRIDE_FIELDS = [
+  "generationPreference",
+  "visualModePreference",
+  "reusePreference",
+  "grouping",
+  "other",
+] as const;
+
+export type SharedVisualOverrideField = (typeof SHARED_VISUAL_OVERRIDE_FIELDS)[number];
+
+/** Structured override audit — required for material VRA divergences when VRA present. */
+export type SharedVisualDecisionOverride = {
+  /** Instagram card when the override is card-scoped. */
+  cardId?: string;
+  field: SharedVisualOverrideField;
+  /** VRA-requested or prior value (stringified). */
+  requested: string;
+  /** Final SVP decision (stringified). */
+  final: string;
+  /** Human-readable why (non-empty). */
+  reason: string;
+};
+
+export type SharedVisualDecisionTrace = {
+  overrides: SharedVisualDecisionOverride[];
+};
+
 export type SharedVisual = {
   visualId: string;
   assetFamily: typeof SOCIAL_VISUAL_ASSET_FAMILY;
@@ -48,10 +78,20 @@ export type SharedVisualPlan = {
    * Legacy plans may still carry visual-only hashes.
    */
   sourceVisualPlanFingerprint: string;
+  /**
+   * When plan was built with Instagram Visual Role Plan present —
+   * content fingerprint of that VRA artifact. Absence = legacy path.
+   */
+  sourceInstagramVisualRoleFingerprint?: string | null;
   /** Which channel outputs this plan was built against. */
   sourceChannelSnapshot?: SourceChannelSnapshot;
   /** LLM strategy summary when planningMode=llm. */
   strategySummary?: string | null;
+  /**
+   * Optional structured override / decision audit (SVP v2).
+   * Required entries when VRA present and material preferences are overridden.
+   */
+  decisionTrace?: SharedVisualDecisionTrace | null;
   planningMode?: SharedVisualPlanningMode;
   visuals: SharedVisual[];
 };

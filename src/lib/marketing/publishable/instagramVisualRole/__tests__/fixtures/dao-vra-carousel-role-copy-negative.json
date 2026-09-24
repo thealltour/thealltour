@@ -1,0 +1,70 @@
+{
+  "rhythmSummary": "NEGATIVE FIXTURE — carousel editorial roles copied into visualRole (must fail materialize)",
+  "cards": [
+    {
+      "cardId": "card-01",
+      "visualRole": "hero_cover",
+      "visualPurpose": "cover",
+      "visualPriority": "hero",
+      "visualDensity": "dominant",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "required",
+      "presentationPreference": "full_bleed",
+      "reusePreference": "exclusive_preferred",
+      "concreteVisualIntent": "북부 산악 establishing landscape for cover card",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-02",
+      "visualRole": "reframe",
+      "visualPurpose": "copied carousel role — invalid",
+      "visualPriority": "strong",
+      "visualDensity": "strong",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "preferred",
+      "presentationPreference": "photo_top",
+      "reusePreference": "reusable",
+      "concreteVisualIntent": "산악 전환 풍경 — intentional invalid visualRole",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-03",
+      "visualRole": "context",
+      "visualPurpose": "copied carousel role — invalid",
+      "visualPriority": "useful",
+      "visualDensity": "balanced",
+      "visualModePreference": "editorial_photo",
+      "generationPreference": "preferred",
+      "presentationPreference": "photo_top",
+      "reusePreference": "reusable",
+      "concreteVisualIntent": "마을 맥락 풍경 — intentional invalid visualRole",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-04",
+      "visualRole": "evidence_detail",
+      "visualPurpose": "overlap token — valid as visualRole",
+      "visualPriority": "strong",
+      "visualDensity": "strong",
+      "visualModePreference": "object_or_detail",
+      "generationPreference": "preferred",
+      "presentationPreference": "detail_focus",
+      "reusePreference": "reusable",
+      "concreteVisualIntent": "nhà trình tường wall detail close-up subject",
+      "evidenceRefs": []
+    },
+    {
+      "cardId": "card-05",
+      "visualRole": "closing",
+      "visualPurpose": "copied carousel role — invalid",
+      "visualPriority": "optional",
+      "visualDensity": "balanced",
+      "visualModePreference": "atmosphere",
+      "generationPreference": "optional",
+      "presentationPreference": "background_mood",
+      "reusePreference": "derivative_ok",
+      "concreteVisualIntent": "마감 mood 풍경 — intentional invalid visualRole",
+      "evidenceRefs": []
+    }
+  ]
+}

@@ -99,7 +99,9 @@ function materializeGroup(members: SocialVisualRequest[], index1Based: number): 
 
 /**
  * Deterministic Shared Visual Plan builder.
- * Kept as labeled fallback / validator helper — not the primary operator path.
+ * Labeled fallback / validator helper ONLY — not the production operator path.
+ * Production authority is LLM Shared Visual Planner (SVP v2) via generateSharedVisualPlanWithLlm.
+ * Same-channel merge is intentionally unavailable here; do not treat this as SVP semantics.
  */
 export function buildSharedVisualPlan(input: {
   bundle: PublishableContentBundle;

@@ -6,7 +6,6 @@
  *   npx tsx scripts/ra1c4-live-acceptance.ts
  */
 import { hostname } from "node:os";
-import { spawnSync } from "node:child_process";
 import { loadLocalEnv } from "./loadLocalEnv";
 
 loadLocalEnv();
@@ -54,11 +53,11 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS,
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
-  const { resolveMarketingCronHermesTimeoutMs, assertHermesSpawnSyncSuccess } = await import(
+  const { resolveMarketingCronHermesTimeoutMs } = await import(
     "../src/lib/marketing/cron/hermesSpawnFailure"
   );
-  const { resolveHermesExecutable } = await import(
-    "../src/lib/marketing/cron/resolveHermesExecutable"
+  const { invokeMarketingHermesAgentSync } = await import(
+    "../src/lib/marketing/hermesRuntime/syncLauncher"
   );
 
   const key = resolveOpenRouterApiKey(process.env);
@@ -202,13 +201,7 @@ async function main() {
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const hermesBin = resolveHermesExecutable(process.env);
-    const result = spawnSync(hermesBin, ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      encoding: "utf8",
-      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-      timeout: timeoutMs,
-    });
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+    return invokeMarketingHermesAgentSync({ profileId: profile, prompt, timeoutMs });
   }
   let invoke = createAudienceResearchInvoke({
     useRuntime,

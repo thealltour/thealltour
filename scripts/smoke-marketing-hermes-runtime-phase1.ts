@@ -114,6 +114,48 @@ async function main(): Promise<void> {
     if (authFail) process.exit(2);
   }
 
+  // Acceptance/e2e migrated path: sync launcher with process TOKEN cleared
+  try {
+    const { invokeMarketingHermesAgentSync } = await import(
+      "@/lib/marketing/hermesRuntime/syncLauncher"
+    );
+    const syncOut = invokeMarketingHermesAgentSync({
+      profileId: "threads-copy-writer",
+      prompt: "Reply with exactly: SYNC_OK",
+      timeoutMs: 120_000,
+      env: {},
+    });
+    const syncAuthFail = /401|unauthorized|TOKEN is not configured/i.test(syncOut);
+    console.log(
+      JSON.stringify(
+        {
+          syncOneshotOk: syncOut.trim().length > 0 && !syncAuthFail,
+          syncStdoutChars: syncOut.length,
+          syncLooksLikeAuthFail: syncAuthFail,
+          syncPreview: syncOut.trim().slice(0, 80),
+        },
+        null,
+        2,
+      ),
+    );
+    if (syncAuthFail) process.exit(2);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const authFail = /401|unauthorized|TOKEN is not configured/i.test(message);
+    console.log(
+      JSON.stringify(
+        {
+          syncOneshotThrew: true,
+          looksLikeAuthFail: authFail,
+          messagePreview: message.slice(0, 240),
+        },
+        null,
+        2,
+      ),
+    );
+    if (authFail) process.exit(2);
+  }
+
   if (saved === undefined) delete process.env[T];
   else process.env[T] = saved;
 

@@ -11,15 +11,16 @@ import { fileURLToPath } from "node:url";
 import { lookupGatewayAlias } from "@/ai-runtime/gateway/alias-registry";
 import type { MarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/contract";
 import {
+  EXCLUDED_HERMES_PROFILE_IDS,
+  isExcludedHermesProfile,
+} from "@/lib/marketing/hermesRuntime/excludedInventory";
+import {
   listMarketingHermesRuntimeContracts,
   listRegisteredMarketingHermesProfileIds,
 } from "@/lib/marketing/hermesRuntime/registry";
 
-/** Non-marketing Hermes profiles that intentionally stay out of the registry. */
-export const NON_MARKETING_HERMES_PROFILE_IDS = new Set([
-  "runtime-spike",
-  "test1",
-]);
+/** @deprecated Prefer EXCLUDED_HERMES_PROFILE_IDS / isExcludedHermesProfile */
+export const NON_MARKETING_HERMES_PROFILE_IDS = EXCLUDED_HERMES_PROFILE_IDS;
 
 export type HermesProfileModelConfig = {
   modelDefault: string;
@@ -79,9 +80,7 @@ export function listHermesProfileIdsOnDisk(profilesRoot: string): string[] {
 }
 
 export function listMarketingHermesProfileIdsOnDisk(profilesRoot: string): string[] {
-  return listHermesProfileIdsOnDisk(profilesRoot).filter(
-    (id) => !NON_MARKETING_HERMES_PROFILE_IDS.has(id),
-  );
+  return listHermesProfileIdsOnDisk(profilesRoot).filter((id) => !isExcludedHermesProfile(id));
 }
 
 export type RegistryDriftIssue = {

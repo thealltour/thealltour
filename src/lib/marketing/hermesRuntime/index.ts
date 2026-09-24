@@ -30,8 +30,25 @@ export {
 } from "@/lib/marketing/hermesRuntime/launcher";
 
 export {
+  invokeMarketingHermesAgentSync,
+  type InvokeMarketingHermesAgentSyncInput,
+} from "@/lib/marketing/hermesRuntime/syncLauncher";
+
+export {
+  EXCLUDED_HERMES_PROFILE_IDS,
+  EXCLUDED_HERMES_PROFILE_INVENTORY,
+  isExcludedHermesProfile,
+  type ExcludedHermesProfileEntry,
+  type ExcludedHermesProfileKind,
+} from "@/lib/marketing/hermesRuntime/excludedInventory";
+
+export {
+  MARKETING_HERMES_DEBT_INVENTORY,
+  MARKETING_HERMES_DIRECT_SPAWN_ALLOWLIST,
   MARKETING_HERMES_DIRECT_SPAWN_DEBT,
   type DirectHermesSpawnDebtEntry,
+  type MarketingHermesDebtCategory,
+  type MarketingHermesDebtEntry,
 } from "@/lib/marketing/hermesRuntime/directSpawnDebt";
 
 export {
@@ -45,3 +62,25 @@ export {
   resolveHermesProfilesRoot,
   resolveMarketingHermesProfileFixturesRoot,
 } from "@/lib/marketing/hermesRuntime/preflight";
+
+export {
+  assertMarketingHermesRuntimeEnforcement,
+  collectAllMarketingHermesEnforcementIssues,
+  collectMarketingHermesCompletenessIssues,
+  collectMarketingHermesRegistryStructuralIssues,
+  collectMarketingHermesSpecialistPolicyIssues,
+  type MarketingHermesEnforcementIssue,
+} from "@/lib/marketing/hermesRuntime/enforcement";
+
+export {
+  assertNoUnregisteredDirectHermesSpawns,
+  findDirectHermesSpawnViolations,
+  type DirectHermesSpawnViolation,
+} from "@/lib/marketing/hermesRuntime/directSpawnGuard";
+
+export {
+  assertNoSpecialistGatewayTokenDuplication,
+  findSpecialistCredentialDuplicationViolations,
+  listProfileLocalCredentialAllowlist,
+  type CredentialDuplicationViolation,
+} from "@/lib/marketing/hermesRuntime/credentialDuplicationGuard";

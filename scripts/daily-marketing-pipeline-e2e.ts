@@ -8,7 +8,6 @@
  *   npx tsx scripts/daily-marketing-pipeline-e2e.ts --backend supabase
  */
 import { createRequire } from "node:module";
-import { spawnSync } from "node:child_process";
 
 import { loadLocalEnv } from "./loadLocalEnv";
 
@@ -43,10 +42,8 @@ import {
   MARKETING_CRON_HERMES_TIMEOUT_MS,
   MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
 } from "../src/lib/marketing/cron/marketingPlanSpecialists";
-import {
-  assertHermesSpawnSyncSuccess,
-  resolveMarketingCronHermesTimeoutMs,
-} from "../src/lib/marketing/cron/hermesSpawnFailure";
+import { resolveMarketingCronHermesTimeoutMs } from "../src/lib/marketing/cron/hermesSpawnFailure";
+import { invokeMarketingHermesAgentSync } from "../src/lib/marketing/hermesRuntime/syncLauncher";
 import { PUBLICATION_FLOW_INACTIVE, SNS_SIDE_EFFECTS_STEP_3_7 } from "../src/lib/marketing/social/publication/governanceBoundary";
 import {
   createRuntimeExecutorStack,
@@ -66,12 +63,7 @@ function invokeHermesProfile(profile: string, prompt: string): string {
     process.env,
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   );
-  const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-    encoding: "utf8",
-    env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: timeoutMs,
-  });
-  return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+  return invokeMarketingHermesAgentSync({ profileId: profile, prompt, timeoutMs });
 }
 
 async function main() {

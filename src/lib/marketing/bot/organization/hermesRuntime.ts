@@ -1,13 +1,21 @@
-import { spawn } from "node:child_process";
+/**
+ * Soft-result bot adapter over the unified Marketing Hermes launcher.
+ * Preserves HermesAgentRuntimeResult semantics (never throws to orchestrate callers).
+ */
+
 import { createHash, randomUUID } from "node:crypto";
 
 import { MarketingBotValidationError } from "@/lib/marketing/bot/errors";
 import type { HermesMarketingProfileId } from "@/lib/marketing/bot/organization/envelope";
-import { buildHermesOneshotArgv } from "@/lib/marketing/bot/organization/hermesHandoff";
 import { assertAllowlistedHermesProfile } from "@/lib/marketing/bot/organization/registry";
 import { stripForbiddenBotData } from "@/lib/marketing/bot/sanitize";
 import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
-import { buildHermesProfileSpawnEnv } from "@/lib/marketing/hermesRuntime/credentials";
+import {
+  buildHermesProfileArgv,
+  invokeMarketingHermesAgent,
+} from "@/lib/marketing/hermesRuntime/launcher";
+import { getMarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/registry";
+import { spawnMarketingHermesProfileOnce } from "@/lib/marketing/hermesRuntime/launcher";
 
 export const DEFAULT_HERMES_INVOKE_TIMEOUT_MS = 90_000;
 export const MAX_SPECIALIST_DISPATCHES_PER_REQUEST = 4;
@@ -64,80 +72,95 @@ export function createFailedInvokeResult(
   };
 }
 
-export function invokeHermesOneshot(input: HermesAgentRuntimeInvokeInput): Promise<HermesAgentRuntimeResult> {
+function classifyLauncherFailure(message: string): {
+  timedOut: boolean;
+  exitCode: number | null;
+  error: string;
+} {
+  if (/timed out after \d+ms/i.test(message)) {
+    return { timedOut: true, exitCode: null, error: "timeout" };
+  }
+  const exitMatch = /exited (\d+)/i.exec(message);
+  if (exitMatch) {
+    return { timedOut: false, exitCode: Number(exitMatch[1]), error: `exit_${exitMatch[1]}` };
+  }
+  if (/spawn failed/i.test(message)) {
+    return { timedOut: false, exitCode: null, error: "spawn_failed" };
+  }
+  return { timedOut: false, exitCode: null, error: message.slice(0, 200) || "invoke_failed" };
+}
+
+/**
+ * Soft-result oneshot: registry profiles use unified launcher; unregistered
+ * allowlisted profiles fall back to token-aware oneshot spawn.
+ *
+ * Allowlist failures throw synchronously (orchestration contract).
+ * Hermes transport/model failures become soft Result fields (never throw).
+ */
+export function invokeHermesOneshot(
+  input: HermesAgentRuntimeInvokeInput,
+): Promise<HermesAgentRuntimeResult> {
   const profile = assertAllowlistedHermesProfile(input.profile);
   const timeoutMs = input.timeoutMs ?? DEFAULT_HERMES_INVOKE_TIMEOUT_MS;
-  const argv = buildHermesOneshotArgv(profile, input.prompt);
+  return invokeHermesOneshotSoft(profile, input.prompt, timeoutMs);
+}
+
+async function invokeHermesOneshotSoft(
+  profile: HermesMarketingProfileId,
+  prompt: string,
+  timeoutMs: number,
+): Promise<HermesAgentRuntimeResult> {
   const command = resolveHermesExecutable(process.env);
-  const args = argv.slice(1);
+  const argvDisplay = [command, ...buildHermesProfileArgv(profile, prompt).slice(0, 4)];
   const startedAt = new Date().toISOString();
   const executionId = randomUUID();
 
-  return new Promise((resolve) => {
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    // Soft-result bot path — Phase 1 only shares credential inject (not full launcher).
-    // Named `hermes -p` does not inherit parent ~/.hermes/.env.
-    const child = spawn(command, args, {
-      shell: false,
-      env: buildHermesProfileSpawnEnv(process.env),
+  try {
+    const stdout = getMarketingHermesRuntimeContract(profile)
+      ? await invokeMarketingHermesAgent({
+          profileId: profile,
+          prompt,
+          timeoutMs,
+          withTransportRetry: false,
+        })
+      : await spawnMarketingHermesProfileOnce({
+          hermesBin: command,
+          profileId: profile,
+          prompt,
+          timeoutMs,
+        });
+
+    return stripForbiddenBotData({
+      executionId,
+      profile,
+      actuallyInvoked: true,
+      exitCode: 0,
+      timedOut: false,
+      stdout: stdout.slice(0, 8000),
+      stderr: "",
+      promptSha256: promptSha(prompt),
+      argv: argvDisplay,
+      startedAt,
+      endedAt: new Date().toISOString(),
     });
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-    }, timeoutMs);
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const classified = classifyLauncherFailure(message);
+    return stripForbiddenBotData({
+      executionId,
+      profile,
+      actuallyInvoked: true,
+      exitCode: classified.exitCode,
+      timedOut: classified.timedOut,
+      stdout: "",
+      stderr: message.slice(0, 2000),
+      promptSha256: promptSha(prompt),
+      argv: argvDisplay,
+      startedAt,
+      endedAt: new Date().toISOString(),
+      error: classified.error,
     });
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      resolve(
-        stripForbiddenBotData({
-          executionId,
-          profile,
-          actuallyInvoked: false,
-          exitCode: null,
-          timedOut,
-          stdout: "",
-          stderr: "",
-          promptSha256: promptSha(input.prompt),
-          argv: [command, "-p", profile, "--yolo", "--ignore-rules", "-z"],
-          startedAt,
-          endedAt: new Date().toISOString(),
-          error: error instanceof Error ? error.message : "spawn_failed",
-        }),
-      );
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      const exitCode = code ?? null;
-      resolve(
-        stripForbiddenBotData({
-          executionId,
-          profile,
-          actuallyInvoked: true,
-          exitCode,
-          timedOut,
-          stdout: stdout.slice(0, 8000),
-          stderr: stderr.slice(0, 2000),
-          promptSha256: promptSha(input.prompt),
-          argv: [command, "-p", profile, "--yolo", "--ignore-rules", "-z"],
-          startedAt,
-          endedAt: new Date().toISOString(),
-          error:
-            timedOut || exitCode !== 0
-              ? timedOut
-                ? "timeout"
-                : `exit_${exitCode}`
-              : undefined,
-        }),
-      );
-    });
-  });
+  }
 }
 
 export const defaultHermesAgentRuntime: HermesAgentRuntime = {

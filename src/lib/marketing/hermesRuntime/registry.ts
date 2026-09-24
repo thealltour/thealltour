@@ -1,14 +1,14 @@
 import type { MarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/contract";
 
 /**
- * Marketing Hermes runtime registry (Phase 1).
+ * Marketing Hermes runtime registry (Phase 1+2).
  *
  * Values mirror live `~/.hermes/profiles/<id>/config.yaml` (alias/provider).
  * Do not invent profiles. Do not rename `theallcloud/auto` or mint new
- * `thealltour/*` aliases in this phase.
+ * `thealltour/*` aliases in Phase 2.
  *
- * Defaults mirror cron constants (300s timeout, 3 transport attempts) without
- * importing cron modules — keeps the registry free of circular deps.
+ * Phase 2: completeness / specialist policy / alias / spawn / credential
+ * enforcement live in `enforcement.ts` + CI tests — fail-fast on drift.
  */
 
 const SPIKE_ALIAS = "theallcloud/auto" as const;
@@ -88,7 +88,7 @@ export const MARKETING_HERMES_RUNTIME_REGISTRY: readonly MarketingHermesRuntimeC
     ...specialist("card-layout-director"),
     docs: {
       productionNote:
-        "Profile exists for SOUL/config seed; production Layout render is deterministic (no LLM wiring in Phase 1).",
+        "Profile exists for SOUL/config seed; production Layout render is deterministic (no LLM wiring). Phase 2: docs only — launcher ignores this field.",
     },
   },
   specialist("astra-handoff-writer"),

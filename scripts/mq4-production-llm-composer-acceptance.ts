@@ -7,7 +7,6 @@
 import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
 import { loadLocalEnv } from "./loadLocalEnv";
 
 loadLocalEnv();
@@ -43,11 +42,11 @@ async function main() {
   const { MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT } = await import(
     "../src/lib/marketing/cron/marketingPlanSpecialists"
   );
-  const { resolveHermesExecutable } = await import(
-    "../src/lib/marketing/cron/resolveHermesExecutable"
-  );
-  const { resolveMarketingCronHermesTimeoutMs, assertHermesSpawnSyncSuccess } = await import(
+  const { resolveMarketingCronHermesTimeoutMs } = await import(
     "../src/lib/marketing/cron/hermesSpawnFailure"
+  );
+  const { invokeMarketingHermesAgentSync } = await import(
+    "../src/lib/marketing/hermesRuntime/syncLauncher"
   );
   const { createRuntimeExecutorStack } = await import("../src/ai-runtime/integration/runtime-stack");
   const { ensureSharedObservabilityRecorder } = await import(
@@ -182,17 +181,15 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   );
   function invokeHermesProfile(profile: string, prompt: string): string {
-    const hermesBin = resolveHermesExecutable(process.env);
-    const result = spawnSync(
-      hermesBin,
-      ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt],
-      {
-        encoding: "utf8",
-        env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-        timeout: timeoutMs,
-      },
+    const hermesTimeout = resolveMarketingCronHermesTimeoutMs(
+      process.env,
+      MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+    return invokeMarketingHermesAgentSync({
+      profileId: profile,
+      prompt,
+      timeoutMs: hermesTimeout,
+    });
   }
 
   let invoke = createPublishableComposerInvoke({

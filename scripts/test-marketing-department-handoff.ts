@@ -1,30 +1,26 @@
 /**
  * Marketing department live handoff (Hermes v0.20.4).
  *
- * Application-level orchestration: this process calls each named profile with
- * `hermes -p <id> --yolo --ignore-rules -z`. There is no native profile RPC.
+ * Application-level orchestration: this process calls each named profile via the
+ * unified Marketing Hermes sync launcher. There is no native profile RPC.
  *
  * DB write 없음. publish 없음. Cron 없음.
  *
  *   npx tsx scripts/test-marketing-department-handoff.ts
  */
-import { spawnSync } from "node:child_process";
 import { extractJsonObject } from "../src/lib/marketing/bot/organization/envelope";
 import { runDepartmentPipeline } from "../src/lib/marketing/bot/organization/pipeline";
 import type { ContentStrategistOutput, GovernanceReviewResult, PerformanceBrief, PerformanceUnavailable } from "../src/lib/marketing/bot/organization/handoffs";
+import { invokeMarketingHermesAgentSync } from "../src/lib/marketing/hermesRuntime/syncLauncher";
 
 const PRODUCT = "98a889e9-fbc4-41e3-8302-0d2b042fbe0a";
 
 function invokeProfile(profile: string, prompt: string): string {
-  const result = spawnSync("hermes", ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-    encoding: "utf8",
-    env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-    timeout: 180_000,
+  return invokeMarketingHermesAgentSync({
+    profileId: profile,
+    prompt,
+    timeoutMs: 180_000,
   });
-  if (result.status !== 0) {
-    throw new Error(`${profile} exited ${result.status}: ${(result.stderr || result.stdout || "").slice(0, 400)}`);
-  }
-  return result.stdout ?? "";
 }
 
 function asDraft(raw: string): ContentStrategistOutput {

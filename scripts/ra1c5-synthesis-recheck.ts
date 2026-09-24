@@ -39,9 +39,6 @@ async function main() {
   const { MARKETING_CRON_HERMES_TIMEOUT_MS } = await import(
     "../src/lib/marketing/cron/marketingPlanSpecialists"
   );
-  const { resolveHermesExecutable } = await import(
-    "../src/lib/marketing/cron/resolveHermesExecutable"
-  );
   const { isSeedWrapperAngle } = await import(
     "../src/lib/marketing/audienceResearch/angleQuality"
   );
@@ -222,13 +219,14 @@ async function main() {
   };
 
   const useRuntime = isAiRuntimeMarketingCronEnabled();
-  const { spawnSync } = await import("node:child_process");
-  const {
-    resolveMarketingCronHermesTimeoutMs,
-    assertHermesSpawnSyncSuccess,
-  } = await import("../src/lib/marketing/cron/hermesSpawnFailure");
+  const { resolveMarketingCronHermesTimeoutMs } = await import(
+    "../src/lib/marketing/cron/hermesSpawnFailure"
+  );
   const { MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT } = await import(
     "../src/lib/marketing/cron/marketingPlanSpecialists"
+  );
+  const { invokeMarketingHermesAgentSync } = await import(
+    "../src/lib/marketing/hermesRuntime/syncLauncher"
   );
 
   function invokeHermesProfile(profile: string, prompt: string): string {
@@ -236,13 +234,7 @@ async function main() {
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    const hermesBin = resolveHermesExecutable(process.env);
-    const result = spawnSync(hermesBin, ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      encoding: "utf8",
-      env: { ...process.env, HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes" },
-      timeout: timeoutMs,
-    });
-    return assertHermesSpawnSyncSuccess(profile, result, timeoutMs);
+    return invokeMarketingHermesAgentSync({ profileId: profile, prompt, timeoutMs });
   }
 
   let invoke = createAudienceResearchInvoke({

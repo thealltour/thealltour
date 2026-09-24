@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:canonical-paths": "npx tsx scripts/check-canonical-paths.ts",
+    "check:marketing-hermes-runtime": "npx tsx scripts/check-marketing-hermes-runtime.ts",
     "marketing:shortform-worker": "npx tsx scripts/process-shortform-video-render-queue.ts",
     "marketing:shortform-worker:health": "npx tsx scripts/process-shortform-video-render-queue.ts --health",
     "marketing:asset-transfer": "npx tsx scripts/serve-marketing-asset-transfer.ts",

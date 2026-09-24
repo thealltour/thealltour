@@ -35,6 +35,16 @@ export const PHASE_3C_WIRED_ARTIFACT_IDS = [
 
 export type Phase3cWiredArtifactId = (typeof PHASE_3C_WIRED_ARTIFACT_IDS)[number];
 
+/** Artifacts with Phase 3D channel specialist lifecycle wiring. */
+export const PHASE_3D_WIRED_ARTIFACT_IDS = [
+  "threads-copy-v1",
+  "naver-blog-structure-plan-v1",
+  "naver-blog-copy-v1",
+  "naver-band-copy-v1",
+] as const;
+
+export type Phase3dWiredArtifactId = (typeof PHASE_3D_WIRED_ARTIFACT_IDS)[number];
+
 export function getArtifactLifecycleContract(
   artifactId: string,
 ): MarketingArtifactContract["lifecycle"] {
@@ -127,12 +137,16 @@ export function isPhase3cWiredArtifact(artifactId: string): boolean {
   return (PHASE_3C_WIRED_ARTIFACT_IDS as readonly string[]).includes(artifactId);
 }
 
+export function isPhase3dWiredArtifact(artifactId: string): boolean {
+  return (PHASE_3D_WIRED_ARTIFACT_IDS as readonly string[]).includes(artifactId);
+}
+
 export function lookupWiredArtifactContract(
-  artifactId: Phase3bWiredArtifactId | Phase3cWiredArtifactId,
+  artifactId: Phase3bWiredArtifactId | Phase3cWiredArtifactId | Phase3dWiredArtifactId,
 ): MarketingArtifactContract {
   const entry = getMarketingArtifactContract(artifactId);
   if (!entry) {
-    throw new Error(`Unknown Phase 3B/3C wired artifact: ${artifactId}`);
+    throw new Error(`Unknown Phase 3B/3C/3D wired artifact: ${artifactId}`);
   }
   return entry;
 }

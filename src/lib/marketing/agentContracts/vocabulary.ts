@@ -22,6 +22,7 @@ export const MARKETING_AGENT_VOCABULARY_KEYS = [
   "threads.copy",
   "naverBlog.structure",
   "naverBlog.copy",
+  "naverBand.copy",
   "legacy.visualHints",
 ] as const;
 

@@ -29,5 +29,7 @@ export {
 export { assemblePublishableNaverBandFromCopy } from "@/lib/marketing/publishable/naverBandCopy/assemblePublishable";
 export {
   runNaverBandCopySpecialist,
+  assertNaverBandCopyArtifactContractParity,
+  resolveNaverBandCopyRepairAttemptBudget,
   type RunNaverBandCopySpecialistResult,
 } from "@/lib/marketing/publishable/naverBandCopy/pipeline";

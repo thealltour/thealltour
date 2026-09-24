@@ -21,6 +21,7 @@ import {
   NAVER_BLOG_COPY_CONTRACT,
   NAVER_BLOG_STRUCTURE_PLAN_CONTRACT,
 } from "@/lib/marketing/publishable/naverBlogEditorial/contracts";
+import { NAVER_BAND_COPY_CONTRACT } from "@/lib/marketing/publishable/naverBandCopy/contracts";
 
 export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticContract[] = [
   {
@@ -273,7 +274,31 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       optional: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
     },
     output: { artifactId: NAVER_BLOG_COPY_CONTRACT },
-    docs: { notes: ["Phase 3A metadata only."] },
+    docs: { notes: ["Phase 3D: lifecycle wired; Structure order authority preserved."] },
+  },
+  {
+    profileId: "naver-band-copy-writer",
+    authority: {
+      owns: ["naverBand.copy"],
+      reads: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
+      advisory: [],
+      mustNotOwn: [
+        "instagram.carouselStructure",
+        "instagram.visualSemantics",
+        "sharedVisual.masterOrchestration",
+        "naverBlog.structure",
+      ],
+    },
+    inputs: {
+      required: ["editorialNarrative.storySequence"],
+      optional: ["canonical.factualBoundary"],
+    },
+    output: { artifactId: NAVER_BAND_COPY_CONTRACT },
+    docs: {
+      notes: [
+        "Phase 3D: lifecycle wired. OWNS channel-native wording; MUST NOT alter Canonical facts/Narrative meaning; no forced CTA.",
+      ],
+    },
   },
 ];
 

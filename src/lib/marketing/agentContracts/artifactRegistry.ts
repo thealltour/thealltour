@@ -41,6 +41,8 @@ import {
   NAVER_BLOG_COPY_RELATIVE_PATH,
   NAVER_BLOG_STRUCTURE_PLAN_RELATIVE_PATH,
 } from "@/lib/marketing/publishable/naverBlogEditorial/paths";
+import { NAVER_BAND_COPY_CONTRACT } from "@/lib/marketing/publishable/naverBandCopy/contracts";
+import { NAVER_BAND_COPY_RELATIVE_PATH } from "@/lib/marketing/publishable/naverBandCopy/paths";
 
 export const MARKETING_ARTIFACT_REGISTRY: readonly MarketingArtifactContract[] = [
   // Upstream roots (not Phase 3A agent migration, but required for DAG)
@@ -234,7 +236,7 @@ export const MARKETING_ARTIFACT_REGISTRY: readonly MarketingArtifactContract[] =
     },
   },
 
-  // Channel copy metadata (Phase 3A register only)
+  // Channel specialists (Phase 3A metadata; Phase 3D lifecycle wiring)
   {
     artifactId: THREADS_COPY_CONTRACT,
     contractVersion: THREADS_COPY_CONTRACT,
@@ -279,6 +281,23 @@ export const MARKETING_ARTIFACT_REGISTRY: readonly MarketingArtifactContract[] =
       fingerprintSources: ["sourceStructureFingerprint"],
       reuseWhen: "structure fingerprint matches Blog Structure plan",
       staleWhen: "Blog Structure fingerprint changes",
+    },
+    failurePolicy: {
+      onGenerateFail: "fail_closed",
+      repairAttempts: 2,
+      materializeInRepairLoop: false,
+    },
+  },
+  {
+    artifactId: NAVER_BAND_COPY_CONTRACT,
+    contractVersion: NAVER_BAND_COPY_CONTRACT,
+    relativePath: NAVER_BAND_COPY_RELATIVE_PATH,
+    producedBy: "naver-band-copy-writer",
+    dependsOn: [EDITORIAL_NARRATIVE_PLAN_CONTRACT],
+    lifecycle: {
+      fingerprintSources: ["sourceNarrativeFingerprint"],
+      reuseWhen: "sourceNarrativeFingerprint matches Narrative",
+      staleWhen: "Narrative content fingerprint changes",
     },
     failurePolicy: {
       onGenerateFail: "fail_closed",

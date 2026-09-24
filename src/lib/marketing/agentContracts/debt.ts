@@ -20,7 +20,8 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     id: "legacy-channel-editors",
     kind: "legacy_channel_editor",
     profileOrPath: "channel-editor-*",
-    reason: "Legacy channel composers excluded from Phase 3A semantic registry migration.",
+    reason:
+      "Legacy channel composers excluded from semantic registry migration; production specialists must not silent-fallback to them. Lifecycle wiring deferred.",
     phaseTarget: "phase-5",
     allowed: true,
   },
@@ -28,16 +29,8 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     id: "department-bots",
     kind: "department_unmigrated",
     profileOrPath: "content-strategist|marketing-manager|governance-auditor|performance-analyst",
-    reason: "Department Hermes bots not in Phase 3A semantic migration set.",
+    reason: "Department Hermes bots not in semantic migration set.",
     phaseTarget: "phase-4",
-    allowed: true,
-  },
-  {
-    id: "naver-band-copy",
-    kind: "specialist_unmigrated",
-    profileOrPath: "naver-band-copy-writer",
-    reason: "Band specialist deferred past Phase 3A optional channel-copy set.",
-    phaseTarget: "phase-3b",
     allowed: true,
   },
   {
@@ -53,7 +46,24 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     kind: "advisory_path",
     profileOrPath: "failurePolicy.materializeInRepairLoop",
     reason:
-      "VRA materializeInRepairLoop=true; Narrative/Carousel/CardCopy/Caption/Presentation remain false (current behavior). Do not unify in Phase 3C.",
+      "VRA materializeInRepairLoop=true; Narrative/Carousel/Copy/Caption/Presentation/Threads/Blog/Band remain false (current behavior). Do not unify.",
+    phaseTarget: "phase-4",
+    allowed: true,
+  },
+  {
+    id: "layout-hermes-production-ambiguity",
+    kind: "advisory_path",
+    profileOrPath: "card-layout-director / deterministic:card-layout-director",
+    reason:
+      "Production presentation path is deterministic_fallback; Hermes Layout profile exists but is not production-wired.",
+    phaseTarget: "phase-4",
+    allowed: true,
+  },
+  {
+    id: "spike-alias-usage",
+    kind: "advisory_path",
+    profileOrPath: "theallcloud/auto (gateway alias)",
+    reason: "Spike/compat gateway alias still in use; alias cutover to thealltour/* is a separate PR.",
     phaseTarget: "phase-4",
     allowed: true,
   },

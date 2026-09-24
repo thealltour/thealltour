@@ -17,7 +17,9 @@ import type { PublishableComposerInput } from "@/lib/marketing/publishable/input
 import { buildEditorialNarrativeContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import { assemblePublishableNaverBlogFromEditorial } from "@/lib/marketing/publishable/naverBlogEditorial/assemblePublishable";
 import {
+  NAVER_BLOG_COPY_CONTRACT,
   NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
+  NAVER_BLOG_STRUCTURE_PLAN_CONTRACT,
   NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
   type NaverBlogCopy,
   type NaverBlogStructurePlan,
@@ -39,6 +41,14 @@ import {
 } from "@/lib/marketing/publishable/naverBlogEditorial/persist";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import { validatePublishableText } from "@/lib/marketing/publishable/validate";
+import {
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
+import { EDITORIAL_NARRATIVE_PLAN_CONTRACT } from "@/lib/marketing/publishable/editorialNarrative/contracts";
 
 function clip(text: string | null | undefined, max: number): string | null {
   const t = (text ?? "").trim();
@@ -82,11 +92,12 @@ async function invokeJson(input: {
   invoke: PublishableLlmInvoke;
   profile: string;
   payload: Record<string, unknown>;
+  maxAttempts: number;
 }): Promise<{ llm: unknown; attemptCount: number }> {
   let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
     const repair =
-      attempt === 2 && lastError
+      attempt > 1 && lastError
         ? {
             REPAIR: `Previous output failed: ${lastError.message}. Return valid JSON only.`,
           }
@@ -104,6 +115,23 @@ async function invokeJson(input: {
     }
   }
   throw lastError ?? new Error("naver_blog_editorial_invoke_failed");
+}
+
+/**
+ * Phase 3D: Blog Structure + Blog Copy artifact contract parity.
+ */
+export function assertNaverBlogEditorialArtifactContractParity(): void {
+  assertArtifactDependsOn(NAVER_BLOG_STRUCTURE_PLAN_CONTRACT, EDITORIAL_NARRATIVE_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(NAVER_BLOG_STRUCTURE_PLAN_CONTRACT, [
+    "sourceNarrativeFingerprint",
+  ]);
+  requireOnGenerateFail(NAVER_BLOG_STRUCTURE_PLAN_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(NAVER_BLOG_STRUCTURE_PLAN_CONTRACT, false);
+
+  assertArtifactDependsOn(NAVER_BLOG_COPY_CONTRACT, NAVER_BLOG_STRUCTURE_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(NAVER_BLOG_COPY_CONTRACT, ["sourceStructureFingerprint"]);
+  requireOnGenerateFail(NAVER_BLOG_COPY_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(NAVER_BLOG_COPY_CONTRACT, false);
 }
 
 function failedContent(input: {
@@ -176,6 +204,11 @@ export async function runNaverBlogEditorialPipeline(input: {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   let attemptCount = 0;
+
+  // Phase 3D: contract-driven lifecycle/failure metadata (behavior preserved).
+  assertNaverBlogEditorialArtifactContractParity();
+  const structureAttempts = getArtifactRepairAttemptBudget(NAVER_BLOG_STRUCTURE_PLAN_CONTRACT);
+  const copyAttempts = getArtifactRepairAttemptBudget(NAVER_BLOG_COPY_CONTRACT);
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     return {
@@ -256,6 +289,7 @@ export async function runNaverBlogEditorialPipeline(input: {
       const inv = await invokeJson({
         invoke: input.invoke,
         profile: NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
+        maxAttempts: structureAttempts,
         payload: {
           task: "naver_blog_structure_plan",
           editorialAuthority: {
@@ -295,6 +329,7 @@ export async function runNaverBlogEditorialPipeline(input: {
         },
       });
       attemptCount += inv.attemptCount;
+      // materializeInRepairLoop=false: materialize after JSON repair loop.
       structure = materializeNaverBlogStructurePlan({
         assetId: asset.assetId,
         assetVersion: asset.version,
@@ -363,6 +398,7 @@ export async function runNaverBlogEditorialPipeline(input: {
     const inv = await invokeJson({
       invoke: input.invoke,
       profile: NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
+      maxAttempts: copyAttempts,
       payload: {
         task: "naver_blog_copy",
         editorialAuthority: {
@@ -390,6 +426,7 @@ export async function runNaverBlogEditorialPipeline(input: {
       },
     });
     attemptCount += inv.attemptCount;
+    // materializeInRepairLoop=false: materialize after JSON repair loop.
     const copy = materializeNaverBlogCopy({
       assetId: asset.assetId,
       assetVersion: asset.version,

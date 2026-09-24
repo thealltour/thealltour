@@ -20,6 +20,7 @@ import {
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import { assemblePublishableThreadsFromCopy } from "@/lib/marketing/publishable/threadsCopy/assemblePublishable";
 import {
+  THREADS_COPY_CONTRACT,
   THREADS_COPY_WRITER_HERMES_PROFILE,
   type ThreadsCopyArtifact,
 } from "@/lib/marketing/publishable/threadsCopy/contracts";
@@ -38,6 +39,14 @@ import {
   THREADS_BODY_MAX_CHARS,
   validatePublishableText,
 } from "@/lib/marketing/publishable/validate";
+import {
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
+import { EDITORIAL_NARRATIVE_PLAN_CONTRACT } from "@/lib/marketing/publishable/editorialNarrative/contracts";
 
 function clip(text: string | null | undefined, max: number): string | null {
   const t = (text ?? "").trim();
@@ -77,11 +86,12 @@ function promptParts(userPayload: Record<string, unknown>): ChannelComposerPromp
 async function invokeThreadsCopyJson(input: {
   invoke: PublishableLlmInvoke;
   payload: Record<string, unknown>;
+  maxAttempts: number;
 }): Promise<{ llm: unknown; attemptCount: number }> {
   let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
     const repair =
-      attempt === 2 && lastError
+      attempt > 1 && lastError
         ? {
             REPAIR: `Previous output failed: ${lastError.message}. Return valid JSON only. body <= ${THREADS_BODY_MAX_CHARS} chars. No forced CTA.`,
           }
@@ -97,6 +107,20 @@ async function invokeThreadsCopyJson(input: {
     }
   }
   throw lastError ?? new Error("threads_copy_invoke_failed");
+}
+
+/**
+ * Phase 3D: Threads artifact contract parity (behavior preserved).
+ */
+export function assertThreadsCopyArtifactContractParity(): void {
+  assertArtifactDependsOn(THREADS_COPY_CONTRACT, EDITORIAL_NARRATIVE_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(THREADS_COPY_CONTRACT, ["sourceNarrativeFingerprint"]);
+  requireOnGenerateFail(THREADS_COPY_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(THREADS_COPY_CONTRACT, false);
+}
+
+export function resolveThreadsCopyRepairAttemptBudget(): number {
+  return getArtifactRepairAttemptBudget(THREADS_COPY_CONTRACT);
 }
 
 function failedContent(input: {
@@ -169,6 +193,10 @@ export async function runThreadsCopySpecialist(input: {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   let attemptCount = 0;
+
+  // Phase 3D: contract-driven lifecycle/failure metadata (behavior preserved).
+  assertThreadsCopyArtifactContractParity();
+  const maxAttempts = resolveThreadsCopyRepairAttemptBudget();
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     return {
@@ -249,6 +277,7 @@ export async function runThreadsCopySpecialist(input: {
     ensureThreadsCopyWriterHermesReady(input.hermesHome);
     const inv = await invokeThreadsCopyJson({
       invoke: input.invoke,
+      maxAttempts,
       payload: {
         task: "threads_copy",
         editorialAuthority: {
@@ -300,6 +329,7 @@ export async function runThreadsCopySpecialist(input: {
     });
     attemptCount = inv.attemptCount;
 
+    // materializeInRepairLoop=false: materialize after JSON repair loop.
     const copy = materializeThreadsCopy({
       assetId: asset.assetId,
       assetVersion: asset.version,

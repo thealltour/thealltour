@@ -17,6 +17,7 @@ import type { PublishableComposerInput } from "@/lib/marketing/publishable/input
 import { buildEditorialNarrativeContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import { assemblePublishableNaverBandFromCopy } from "@/lib/marketing/publishable/naverBandCopy/assemblePublishable";
 import {
+  NAVER_BAND_COPY_CONTRACT,
   NAVER_BAND_COPY_PREFERRED_MAX_CHARS,
   NAVER_BAND_COPY_PREFERRED_MIN_CHARS,
   NAVER_BAND_COPY_SPECIALIST_MAX_CHARS,
@@ -34,6 +35,14 @@ import {
 } from "@/lib/marketing/publishable/naverBandCopy/persist";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import { validatePublishableText } from "@/lib/marketing/publishable/validate";
+import {
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
+import { EDITORIAL_NARRATIVE_PLAN_CONTRACT } from "@/lib/marketing/publishable/editorialNarrative/contracts";
 
 function clip(text: string | null | undefined, max: number): string | null {
   const t = (text ?? "").trim();
@@ -73,11 +82,12 @@ function promptParts(userPayload: Record<string, unknown>): ChannelComposerPromp
 async function invokeBandCopyJson(input: {
   invoke: PublishableLlmInvoke;
   payload: Record<string, unknown>;
+  maxAttempts: number;
 }): Promise<{ llm: unknown; attemptCount: number }> {
   let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
     const repair =
-      attempt === 2 && lastError
+      attempt > 1 && lastError
         ? {
             REPAIR: `Previous output failed: ${lastError.message}. Return valid JSON only. Prefer ${NAVER_BAND_COPY_PREFERRED_MIN_CHARS}–${NAVER_BAND_COPY_PREFERRED_MAX_CHARS} chars; max ${NAVER_BAND_COPY_SPECIALIST_MAX_CHARS}. No forced comment/save CTA. Do not reprint Canonical.`,
           }
@@ -93,6 +103,20 @@ async function invokeBandCopyJson(input: {
     }
   }
   throw lastError ?? new Error("naver_band_copy_invoke_failed");
+}
+
+/**
+ * Phase 3D: Band artifact contract parity (behavior preserved; no forced CTA).
+ */
+export function assertNaverBandCopyArtifactContractParity(): void {
+  assertArtifactDependsOn(NAVER_BAND_COPY_CONTRACT, EDITORIAL_NARRATIVE_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(NAVER_BAND_COPY_CONTRACT, ["sourceNarrativeFingerprint"]);
+  requireOnGenerateFail(NAVER_BAND_COPY_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(NAVER_BAND_COPY_CONTRACT, false);
+}
+
+export function resolveNaverBandCopyRepairAttemptBudget(): number {
+  return getArtifactRepairAttemptBudget(NAVER_BAND_COPY_CONTRACT);
 }
 
 function failedContent(input: {
@@ -164,6 +188,10 @@ export async function runNaverBandCopySpecialist(input: {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   let attemptCount = 0;
+
+  // Phase 3D: contract-driven lifecycle/failure metadata (behavior preserved).
+  assertNaverBandCopyArtifactContractParity();
+  const maxAttempts = resolveNaverBandCopyRepairAttemptBudget();
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     return {
@@ -244,6 +272,7 @@ export async function runNaverBandCopySpecialist(input: {
     ensureNaverBandCopyWriterHermesReady(input.hermesHome);
     const inv = await invokeBandCopyJson({
       invoke: input.invoke,
+      maxAttempts,
       payload: {
         task: "naver_band_copy",
         editorialAuthority: {
@@ -295,6 +324,7 @@ export async function runNaverBandCopySpecialist(input: {
     });
     attemptCount = inv.attemptCount;
 
+    // materializeInRepairLoop=false: materialize after JSON repair loop.
     const copy = materializeNaverBandCopy({
       assetId: asset.assetId,
       assetVersion: asset.version,

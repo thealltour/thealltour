@@ -36,5 +36,6 @@ export {
 export { assemblePublishableNaverBlogFromEditorial } from "@/lib/marketing/publishable/naverBlogEditorial/assemblePublishable";
 export {
   runNaverBlogEditorialPipeline,
+  assertNaverBlogEditorialArtifactContractParity,
   type RunNaverBlogEditorialResult,
 } from "@/lib/marketing/publishable/naverBlogEditorial/pipeline";

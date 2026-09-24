@@ -25,5 +25,7 @@ export {
 export { assemblePublishableThreadsFromCopy } from "@/lib/marketing/publishable/threadsCopy/assemblePublishable";
 export {
   runThreadsCopySpecialist,
+  assertThreadsCopyArtifactContractParity,
+  resolveThreadsCopyRepairAttemptBudget,
   type RunThreadsCopySpecialistResult,
 } from "@/lib/marketing/publishable/threadsCopy/pipeline";

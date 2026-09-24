@@ -34,6 +34,7 @@ export {
 export {
   PHASE_3B_WIRED_ARTIFACT_IDS,
   PHASE_3C_WIRED_ARTIFACT_IDS,
+  PHASE_3D_WIRED_ARTIFACT_IDS,
   assertArtifactDependsOn,
   assertFingerprintSourcesInclude,
   getArtifactDependencies,
@@ -42,12 +43,14 @@ export {
   getArtifactRepairAttemptBudget,
   isPhase3bWiredArtifact,
   isPhase3cWiredArtifact,
+  isPhase3dWiredArtifact,
   lookupWiredArtifactContract,
   requireMaterializeInRepairLoop,
   requireOnGenerateFail,
   type ArtifactFailurePolicy,
   type Phase3bWiredArtifactId,
   type Phase3cWiredArtifactId,
+  type Phase3dWiredArtifactId,
 } from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export {

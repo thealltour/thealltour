@@ -14,9 +14,11 @@ export {
 export {
   MARKETING_AGENT_SEMANTIC_REGISTRY,
   PHASE_3A_SEMANTIC_MIGRATED_PROFILE_IDS,
+  PHASE_3E_DEPARTMENT_PROFILE_IDS,
   getMarketingAgentSemanticContract,
   listMarketingAgentSemanticContracts,
   requireMarketingAgentSemanticContract,
+  type Phase3eDepartmentProfileId,
 } from "@/lib/marketing/agentContracts/semanticRegistry";
 
 export {
@@ -63,3 +65,11 @@ export {
   collectSemanticRuntimeLinkageIssues,
   type MarketingAgentContractIssue,
 } from "@/lib/marketing/agentContracts/enforcement";
+
+export {
+  assertSemanticCompletenessHealthy,
+  buildSemanticCompletenessReport,
+  type SemanticCompletenessClass,
+  type SemanticCompletenessEntry,
+  type SemanticCompletenessReport,
+} from "@/lib/marketing/agentContracts/semanticCompleteness";

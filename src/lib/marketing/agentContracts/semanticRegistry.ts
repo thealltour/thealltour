@@ -300,6 +300,184 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
   },
+
+  // Department agents (Phase 3E — semantic registration only; no runtime/lifecycle change)
+  {
+    profileId: "content-strategist",
+    authority: {
+      owns: [
+        "contentStrategy.proposition",
+        "contentStrategy.contentPlan",
+        "contentStrategy.draftScaffold",
+      ],
+      reads: [
+        "content.assignment",
+        "content.evidencePack",
+        "content.selectedAgenda",
+        "research.audienceContentBrief",
+        "canonical.factualBoundary",
+      ],
+      advisory: ["governance.assessment", "performance.recommendation"],
+      mustNotOwn: [
+        "marketingManagement.agendaSelection",
+        "instagram.cardCopy",
+        "instagram.caption",
+        "instagram.carouselStructure",
+        "instagram.visualSemantics",
+        "sharedVisual.masterOrchestration",
+        "presentation.template",
+        "astra.generationBrief",
+        "threads.copy",
+        "naverBlog.copy",
+        "naverBand.copy",
+        "governance.verdict",
+        "publishable.bundle",
+      ],
+    },
+    inputs: {
+      required: ["content.assignment", "research.audienceContentBrief"],
+      optional: ["content.evidencePack", "governance.assessment"],
+    },
+    docs: {
+      notes: [
+        "Durable domain outputs: content-plan-v1 + content-proposition-v1 (nested). Not in MarketingArtifactContract registry — docs-only mapping.",
+        "Schema title/body draft is strategy scaffold only — Channel Composers own final publishable wording.",
+        "Runtime validation authority: marketingPlanSpecialists.ts (not SOUL).",
+      ],
+    },
+  },
+  {
+    profileId: "marketing-manager",
+    authority: {
+      owns: [
+        "marketingManagement.orchestration",
+        "marketingManagement.agendaSelection",
+        "marketingManagement.assignmentHandoff",
+      ],
+      reads: [
+        "contentStrategy.contentPlan",
+        "contentStrategy.proposition",
+        "governance.verdict",
+        "governance.assessment",
+        "performance.analysis",
+        "performance.recommendation",
+        "content.evidencePack",
+        "research.audienceContentBrief",
+      ],
+      advisory: ["performance.recommendation"],
+      mustNotOwn: [
+        "contentStrategy.proposition",
+        "canonical.factualBoundary",
+        "instagram.cardCopy",
+        "instagram.caption",
+        "instagram.carouselStructure",
+        "instagram.visualSemantics",
+        "sharedVisual.masterOrchestration",
+        "presentation.template",
+        "astra.generationBrief",
+        "threads.copy",
+        "naverBlog.structure",
+        "naverBlog.copy",
+        "naverBand.copy",
+        "governance.verdict",
+      ],
+    },
+    inputs: {
+      required: [],
+      optional: [
+        "contentStrategy.contentPlan",
+        "governance.verdict",
+        "performance.analysis",
+        "research.audienceContentBrief",
+      ],
+    },
+    docs: {
+      notes: [
+        "Orchestrator: run_department_orchestration is mandatory for department/performance/content+governance intents.",
+        "Durable domain outputs (docs-only): selected-agenda-v1, content-assignment-v1 handoff. No MarketingArtifactContract entries.",
+        "MUST NOT override governance verdict or publish. ALLOW → publish_ready stop only.",
+      ],
+    },
+  },
+  {
+    profileId: "governance-auditor",
+    authority: {
+      owns: ["governance.assessment", "governance.verdict"],
+      reads: [
+        "contentStrategy.contentPlan",
+        "contentStrategy.draftScaffold",
+        "contentStrategy.proposition",
+        "content.assignment",
+        "content.evidencePack",
+        "canonical.factualBoundary",
+      ],
+      advisory: [],
+      mustNotOwn: [
+        "contentStrategy.proposition",
+        "contentStrategy.contentPlan",
+        "contentStrategy.draftScaffold",
+        "instagram.cardCopy",
+        "instagram.caption",
+        "instagram.carouselStructure",
+        "instagram.visualSemantics",
+        "sharedVisual.masterOrchestration",
+        "presentation.template",
+        "threads.copy",
+        "naverBlog.copy",
+        "naverBand.copy",
+        "marketingManagement.agendaSelection",
+        "performance.analysis",
+      ],
+    },
+    inputs: {
+      required: ["contentStrategy.draftScaffold", "content.evidencePack"],
+      optional: ["contentStrategy.contentPlan", "content.assignment"],
+    },
+    docs: {
+      notes: [
+        "Owns ALLOW/REVIEW/BLOCK verdict (blocking decision). Does not rewrite content.",
+        "Durable domain output (docs-only): governance-decision-v1 / GovernanceWorkflowResult. Not in MarketingArtifactContract registry.",
+        "Structural completeness is Completeness Validator — not Governance.",
+      ],
+    },
+  },
+  {
+    profileId: "performance-analyst",
+    authority: {
+      owns: ["performance.analysis", "performance.recommendation"],
+      reads: ["content.selectedAgenda", "contentStrategy.contentPlan"],
+      advisory: [],
+      mustNotOwn: [
+        "contentStrategy.proposition",
+        "contentStrategy.contentPlan",
+        "contentStrategy.draftScaffold",
+        "marketingManagement.agendaSelection",
+        "marketingManagement.orchestration",
+        "governance.verdict",
+        "governance.assessment",
+        "instagram.cardCopy",
+        "instagram.visualSemantics",
+        "sharedVisual.masterOrchestration",
+        "presentation.template",
+        "threads.copy",
+        "naverBlog.copy",
+        "naverBand.copy",
+        "publishable.bundle",
+        "canonical.factualBoundary",
+      ],
+    },
+    inputs: {
+      required: [],
+      optional: ["content.selectedAgenda", "contentStrategy.contentPlan"],
+    },
+    docs: {
+      notes: [
+        "Owns performance evidence summary + recommendations only. No production artifact mutation.",
+        "Recommendations are advisory inputs to Marketing Manager (orchestration).",
+        "Durable output (docs-only): { period, metrics, observations, confidence, recommendations, dataAvailability } — not MarketingArtifactContract.",
+      ],
+    },
+  },
 ];
 
 const BY_PROFILE = new Map(
@@ -328,7 +506,17 @@ export function requireMarketingAgentSemanticContract(
   return entry;
 }
 
-/** Profile ids migrated into the semantic registry in Phase 3A. */
+/** All profile ids present in the semantic registry (Phase 3A specialists + later phases). */
 export const PHASE_3A_SEMANTIC_MIGRATED_PROFILE_IDS = MARKETING_AGENT_SEMANTIC_REGISTRY.map(
   (e) => e.profileId,
 );
+
+/** Department profiles registered in Phase 3E. */
+export const PHASE_3E_DEPARTMENT_PROFILE_IDS = [
+  "content-strategist",
+  "marketing-manager",
+  "governance-auditor",
+  "performance-analyst",
+] as const;
+
+export type Phase3eDepartmentProfileId = (typeof PHASE_3E_DEPARTMENT_PROFILE_IDS)[number];

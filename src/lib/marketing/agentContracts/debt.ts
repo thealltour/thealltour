@@ -1,5 +1,5 @@
 /**
- * Explicit Phase 3A debt / exclusions for semantic+artifact migration.
+ * Explicit contract debt / exclusions after Phase 3E.
  */
 
 export type MarketingAgentContractDebtEntry = {
@@ -26,10 +26,21 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     allowed: true,
   },
   {
-    id: "department-bots",
-    kind: "department_unmigrated",
+    id: "department-profile-env-legacy",
+    kind: "advisory_path",
     profileOrPath: "content-strategist|marketing-manager|governance-auditor|performance-analyst",
-    reason: "Department Hermes bots not in semantic migration set.",
+    reason:
+      "Department runtime credentials remain profile_env_legacy (profile-local gateway token duplication). Cleanup deferred; aliases unchanged.",
+    phaseTarget: "phase-4",
+    allowed: true,
+  },
+  {
+    id: "department-durable-outputs-unregistered",
+    kind: "advisory_path",
+    profileOrPath:
+      "content-plan-v1|content-proposition-v1|selected-agenda-v1|content-assignment-v1|governance-decision-v1|performance-evidence",
+    reason:
+      "Department durable domain contracts exist in TypeScript but are not MarketingArtifactContract registry entries. Phase 3E maps them docs-only (no new persistence).",
     phaseTarget: "phase-4",
     allowed: true,
   },
@@ -63,7 +74,8 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     id: "spike-alias-usage",
     kind: "advisory_path",
     profileOrPath: "theallcloud/auto (gateway alias)",
-    reason: "Spike/compat gateway alias still in use; alias cutover to thealltour/* is a separate PR.",
+    reason:
+      "Spike/compat gateway alias still routes specialists; department aliases already use thealltour/*. Alias cutover for specialists is a separate PR.",
     phaseTarget: "phase-4",
     allowed: true,
   },

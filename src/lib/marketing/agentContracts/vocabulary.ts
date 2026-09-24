@@ -24,6 +24,21 @@ export const MARKETING_AGENT_VOCABULARY_KEYS = [
   "naverBlog.copy",
   "naverBand.copy",
   "legacy.visualHints",
+  // Department domain keys (Phase 3E) — do not reuse specialist keys
+  "contentStrategy.proposition",
+  "contentStrategy.contentPlan",
+  "contentStrategy.draftScaffold",
+  "marketingManagement.orchestration",
+  "marketingManagement.agendaSelection",
+  "marketingManagement.assignmentHandoff",
+  "governance.assessment",
+  "governance.verdict",
+  "performance.analysis",
+  "performance.recommendation",
+  "research.audienceContentBrief",
+  "content.assignment",
+  "content.evidencePack",
+  "content.selectedAgenda",
 ] as const;
 
 export type MarketingAgentVocabularyKey = (typeof MARKETING_AGENT_VOCABULARY_KEYS)[number];

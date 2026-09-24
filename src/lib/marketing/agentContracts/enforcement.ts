@@ -13,6 +13,7 @@ import {
 } from "@/lib/marketing/agentContracts/semanticRegistry";
 import { MARKETING_AGENT_VOCABULARY_SET } from "@/lib/marketing/agentContracts/vocabulary";
 import { getMarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/registry";
+import { assertSemanticCompletenessHealthy } from "@/lib/marketing/agentContracts/semanticCompleteness";
 
 export type MarketingAgentContractIssue = {
   code:
@@ -233,10 +234,13 @@ export function collectAllMarketingAgentContractIssues(): MarketingAgentContract
 
 export function assertMarketingAgentContractsHealthy(): void {
   const issues = collectAllMarketingAgentContractIssues();
-  if (issues.length === 0) return;
-  throw new Error(
-    `Marketing agent contracts failed:\n${issues
-      .map((i) => `- [${i.code}] ${i.subject}: ${i.detail}`)
-      .join("\n")}`,
-  );
+  if (issues.length > 0) {
+    throw new Error(
+      `Marketing agent contracts failed:\n${issues
+        .map((i) => `- [${i.code}] ${i.subject}: ${i.detail}`)
+        .join("\n")}`,
+    );
+  }
+  // Phase 3E: every runtime profile must be registered or explicitly excluded.
+  assertSemanticCompletenessHealthy();
 }

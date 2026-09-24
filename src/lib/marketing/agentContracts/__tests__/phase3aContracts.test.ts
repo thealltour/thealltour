@@ -40,6 +40,10 @@ describe("Phase 3A Marketing Agent Contracts", () => {
       "naver-blog-structure-planner",
       "naver-blog-copy-writer",
       "naver-band-copy-writer",
+      "content-strategist",
+      "marketing-manager",
+      "governance-auditor",
+      "performance-analyst",
     ];
     expect(PHASE_3A_SEMANTIC_MIGRATED_PROFILE_IDS.sort()).toEqual([...expected].sort());
   });

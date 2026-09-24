@@ -16,6 +16,7 @@ export {
 
 export {
   buildDeterministicCardPresentationPlan,
+  assertCardPresentationArtifactContractParity,
   legacyRoleToPresentationHint,
 } from "@/lib/marketing/assets/cardnews/presentation/deterministic";
 

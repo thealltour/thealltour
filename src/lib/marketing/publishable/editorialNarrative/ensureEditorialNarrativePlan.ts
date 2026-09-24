@@ -5,8 +5,17 @@
 
 import { createHash } from "node:crypto";
 
+import {
+  assertFingerprintSourcesInclude,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 import type { EditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/contracts";
-import { EDITORIAL_NARRATIVE_PLANNER_HERMES_PROFILE } from "@/lib/marketing/publishable/editorialNarrative/contracts";
+import {
+  EDITORIAL_NARRATIVE_PLAN_CONTRACT,
+  EDITORIAL_NARRATIVE_PLANNER_HERMES_PROFILE,
+} from "@/lib/marketing/publishable/editorialNarrative/contracts";
 import { buildCanonicalFingerprintForNarrative } from "@/lib/marketing/publishable/editorialNarrative/canonicalFingerprint";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/channelEditorIdentity";
@@ -74,11 +83,12 @@ function promptParts(profile: string, userPayload: Record<string, unknown>): Cha
 async function invokeNarrativeJson(input: {
   invoke: PublishableLlmInvoke;
   payload: Record<string, unknown>;
+  maxAttempts: number;
 }): Promise<unknown> {
   let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
     const repair =
-      attempt === 2 && lastError
+      attempt > 1 && lastError
         ? {
             REPAIR: `Previous output failed: ${lastError.message}. Return valid JSON only.`,
           }
@@ -96,6 +106,23 @@ async function invokeNarrativeJson(input: {
     }
   }
   throw lastError ?? new Error("editorial_narrative_invoke_failed");
+}
+
+/** Contract-driven repair budget for Narrative (Phase 3C). */
+export function resolveNarrativeRepairAttemptBudget(): number {
+  return getArtifactRepairAttemptBudget(EDITORIAL_NARRATIVE_PLAN_CONTRACT);
+}
+
+/**
+ * Assert Narrative artifact contract parity (fingerprint / failure / materialize placement).
+ * Does not change generation behavior.
+ */
+export function assertEditorialNarrativeArtifactContractParity(): void {
+  assertFingerprintSourcesInclude(EDITORIAL_NARRATIVE_PLAN_CONTRACT, [
+    "sourceCanonicalFingerprint",
+  ]);
+  requireOnGenerateFail(EDITORIAL_NARRATIVE_PLAN_CONTRACT, "preserve_previous");
+  requireMaterializeInRepairLoop(EDITORIAL_NARRATIVE_PLAN_CONTRACT, false);
 }
 
 export function expectedEditorialNarrativeSourceFingerprint(
@@ -155,12 +182,17 @@ export async function ensureEditorialNarrativePlan(input: {
     return { plan: null, status: "stale_unavailable" };
   }
 
+  // Phase 3C: artifact contract drives repair budget + asserts failure/materialize parity.
+  assertEditorialNarrativeArtifactContractParity();
+  const maxAttempts = resolveNarrativeRepairAttemptBudget();
+
   const nowIso = (input.now ?? new Date()).toISOString();
 
   try {
     ensureEditorialNarrativePlannerHermesReady(input.hermesHome);
     const llm = await invokeNarrativeJson({
       invoke: input.invoke,
+      maxAttempts,
       payload: {
         task: "editorial_narrative_plan",
         canonicalAsset: {
@@ -187,6 +219,7 @@ export async function ensureEditorialNarrativePlan(input: {
       },
     });
 
+    // materializeInRepairLoop=false: materialize runs once after invoke/JSON repair loop.
     const plan = materializeEditorialNarrativePlan({
       assetId: asset.assetId,
       assetVersion: asset.version,
@@ -208,6 +241,7 @@ export async function ensureEditorialNarrativePlan(input: {
 
     return { plan, status: "generated" };
   } catch {
+    // preserve_previous: keep disk plan when generation fails.
     return { plan: existing ?? null, status: "failed" };
   }
 }

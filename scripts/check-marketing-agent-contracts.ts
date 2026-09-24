@@ -1,21 +1,31 @@
 #!/usr/bin/env node
 /**
- * Fail-fast Marketing Agent Semantic + Artifact contracts (Phase 3A/3B).
+ * Fail-fast Marketing Agent Semantic + Artifact contracts (Phase 3A/3B/3C).
  *
  *   npm run check:marketing-agent-contracts
  */
 import { assertMarketingAgentContractsHealthy } from "../src/lib/marketing/agentContracts/enforcement";
 import {
   PHASE_3B_WIRED_ARTIFACT_IDS,
+  PHASE_3C_WIRED_ARTIFACT_IDS,
   assertArtifactDependsOn,
   assertFingerprintSourcesInclude,
+  getArtifactDependencies,
   getArtifactFailurePolicy,
   getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
   requireOnGenerateFail,
 } from "../src/lib/marketing/agentContracts/lifecycleHelpers";
 import { SHARED_VISUAL_PLAN_CONTRACT } from "../src/lib/marketing/publishable/sharedVisualPlan/contracts";
 import { MANUAL_ASTRA_HANDOFF_CONTRACT } from "../src/lib/marketing/publishable/manualAstraHandoff/contracts";
 import { INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT } from "../src/lib/marketing/publishable/instagramVisualRole/contracts";
+import { EDITORIAL_NARRATIVE_PLAN_CONTRACT } from "../src/lib/marketing/publishable/editorialNarrative/contracts";
+import {
+  INSTAGRAM_CAPTION_CONTRACT,
+  INSTAGRAM_CARD_COPY_CONTRACT,
+  INSTAGRAM_CAROUSEL_PLAN_CONTRACT,
+} from "../src/lib/marketing/publishable/instagramEditorial/contracts";
+import { CARD_PRESENTATION_PLAN_CONTRACT } from "../src/lib/marketing/assets/cardnews/presentation/contracts";
 
 function assertPhase3bWiringParity(): void {
   for (const id of PHASE_3B_WIRED_ARTIFACT_IDS) {
@@ -47,9 +57,74 @@ function assertPhase3bWiringParity(): void {
   ]);
 }
 
+function assertPhase3cWiringParity(): void {
+  for (const id of PHASE_3C_WIRED_ARTIFACT_IDS) {
+    getArtifactFailurePolicy(id);
+  }
+
+  // Narrative: preserve_previous + materialize outside repair loop
+  requireOnGenerateFail(EDITORIAL_NARRATIVE_PLAN_CONTRACT, "preserve_previous");
+  requireMaterializeInRepairLoop(EDITORIAL_NARRATIVE_PLAN_CONTRACT, false);
+  if (getArtifactRepairAttemptBudget(EDITORIAL_NARRATIVE_PLAN_CONTRACT) !== 2) {
+    throw new Error("Narrative repairAttempts must be 2");
+  }
+  assertFingerprintSourcesInclude(EDITORIAL_NARRATIVE_PLAN_CONTRACT, [
+    "sourceCanonicalFingerprint",
+  ]);
+
+  // Carousel / Card Copy / Caption: fail_closed + materialize outside loop
+  for (const id of [
+    INSTAGRAM_CAROUSEL_PLAN_CONTRACT,
+    INSTAGRAM_CARD_COPY_CONTRACT,
+    INSTAGRAM_CAPTION_CONTRACT,
+  ] as const) {
+    requireOnGenerateFail(id, "fail_closed");
+    requireMaterializeInRepairLoop(id, false);
+    if (getArtifactRepairAttemptBudget(id) !== 2) {
+      throw new Error(`${id} repairAttempts must be 2`);
+    }
+  }
+  assertArtifactDependsOn(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, EDITORIAL_NARRATIVE_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, [
+    "sourceNarrativeFingerprint",
+  ]);
+  assertArtifactDependsOn(INSTAGRAM_CARD_COPY_CONTRACT, INSTAGRAM_CAROUSEL_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(INSTAGRAM_CARD_COPY_CONTRACT, [
+    "sourceCarouselFingerprint",
+  ]);
+  assertArtifactDependsOn(INSTAGRAM_CAPTION_CONTRACT, INSTAGRAM_CARD_COPY_CONTRACT);
+  assertFingerprintSourcesInclude(INSTAGRAM_CAPTION_CONTRACT, [
+    "sourceCardCopyFingerprint",
+  ]);
+  const captionDeps = getArtifactDependencies(INSTAGRAM_CAPTION_CONTRACT);
+  if (
+    captionDeps.includes(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT) ||
+    captionDeps.includes(SHARED_VISUAL_PLAN_CONTRACT)
+  ) {
+    throw new Error("Caption must not depend on VRA/SVP");
+  }
+
+  // Presentation: deterministic_fallback (Layout Hermes not production-wired)
+  requireOnGenerateFail(CARD_PRESENTATION_PLAN_CONTRACT, "deterministic_fallback");
+  requireMaterializeInRepairLoop(CARD_PRESENTATION_PLAN_CONTRACT, false);
+  assertFingerprintSourcesInclude(CARD_PRESENTATION_PLAN_CONTRACT, [
+    "provenance.sourceInstagramFingerprint",
+    "provenance.sourceVisualPlanFingerprint",
+  ]);
+
+  // Preserve VRA vs editorial materialize placement divergence
+  if (getArtifactFailurePolicy(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT).materializeInRepairLoop !== true) {
+    throw new Error("Phase 3C regression: VRA materializeInRepairLoop must remain true");
+  }
+  if (getArtifactFailurePolicy(INSTAGRAM_CAROUSEL_PLAN_CONTRACT).materializeInRepairLoop !== false) {
+    throw new Error("Phase 3C: Carousel materializeInRepairLoop must remain false");
+  }
+}
+
 function main(): void {
   assertMarketingAgentContractsHealthy();
   assertPhase3bWiringParity();
+  assertPhase3cWiringParity();
   console.log("check:marketing-agent-contracts PASS");
 }
 

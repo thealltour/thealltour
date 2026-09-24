@@ -27,6 +27,8 @@ export {
 export {
   ensureEditorialNarrativePlan,
   expectedEditorialNarrativeSourceFingerprint,
+  resolveNarrativeRepairAttemptBudget,
+  assertEditorialNarrativeArtifactContractParity,
   type EnsureEditorialNarrativePlanResult,
   type EnsureEditorialNarrativePlanStatus,
 } from "@/lib/marketing/publishable/editorialNarrative/ensureEditorialNarrativePlan";

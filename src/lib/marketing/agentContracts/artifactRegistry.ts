@@ -94,7 +94,8 @@ export const MARKETING_ARTIFACT_REGISTRY: readonly MarketingArtifactContract[] =
       staleWhen: "Canonical changes (sourceCanonicalFingerprint mismatch)",
     },
     failurePolicy: {
-      onGenerateFail: "fail_closed",
+      // ensureEditorialNarrativePlan catch returns existing ?? null (preserve_previous).
+      onGenerateFail: "preserve_previous",
       repairAttempts: 2,
       materializeInRepairLoop: false,
     },

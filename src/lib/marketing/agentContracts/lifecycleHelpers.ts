@@ -24,6 +24,17 @@ export const PHASE_3B_WIRED_ARTIFACT_IDS = [
 
 export type Phase3bWiredArtifactId = (typeof PHASE_3B_WIRED_ARTIFACT_IDS)[number];
 
+/** Artifacts with Phase 3C editorial/presentation lifecycle wiring. */
+export const PHASE_3C_WIRED_ARTIFACT_IDS = [
+  "editorial-narrative-plan-v1",
+  "instagram-carousel-plan-v1",
+  "instagram-card-copy-v1",
+  "instagram-caption-v1",
+  "card-presentation-plan-v1",
+] as const;
+
+export type Phase3cWiredArtifactId = (typeof PHASE_3C_WIRED_ARTIFACT_IDS)[number];
+
 export function getArtifactLifecycleContract(
   artifactId: string,
 ): MarketingArtifactContract["lifecycle"] {
@@ -92,16 +103,36 @@ export function requireOnGenerateFail(
   }
 }
 
+/**
+ * Assert materializeInRepairLoop matches current pipeline placement.
+ * Does not move materialize — parity/assertion only.
+ */
+export function requireMaterializeInRepairLoop(
+  artifactId: string,
+  expected: boolean,
+): void {
+  const actual = getArtifactFailurePolicy(artifactId).materializeInRepairLoop;
+  if (actual !== expected) {
+    throw new Error(
+      `Artifact contract drift: ${artifactId} materializeInRepairLoop=${String(actual)}, expected ${String(expected)}`,
+    );
+  }
+}
+
 export function isPhase3bWiredArtifact(artifactId: string): boolean {
   return (PHASE_3B_WIRED_ARTIFACT_IDS as readonly string[]).includes(artifactId);
 }
 
+export function isPhase3cWiredArtifact(artifactId: string): boolean {
+  return (PHASE_3C_WIRED_ARTIFACT_IDS as readonly string[]).includes(artifactId);
+}
+
 export function lookupWiredArtifactContract(
-  artifactId: Phase3bWiredArtifactId,
+  artifactId: Phase3bWiredArtifactId | Phase3cWiredArtifactId,
 ): MarketingArtifactContract {
   const entry = getMarketingArtifactContract(artifactId);
   if (!entry) {
-    throw new Error(`Unknown Phase 3B wired artifact: ${artifactId}`);
+    throw new Error(`Unknown Phase 3B/3C wired artifact: ${artifactId}`);
   }
   return entry;
 }

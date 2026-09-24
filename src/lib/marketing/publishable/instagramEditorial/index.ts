@@ -51,6 +51,7 @@ export {
 
 export {
   runInstagramEditorialPipeline,
+  assertInstagramEditorialArtifactContractParity,
 } from "@/lib/marketing/publishable/instagramEditorial/pipeline";
 
 export { buildCanonicalFingerprintForNarrative } from "@/lib/marketing/publishable/editorialNarrative/canonicalFingerprint";

@@ -17,8 +17,11 @@ import {
   type InstagramChannelConstraints,
 } from "@/lib/marketing/publishable/instagramEditorial/channelConstraints";
 import {
+  INSTAGRAM_CAPTION_CONTRACT,
   INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
+  INSTAGRAM_CARD_COPY_CONTRACT,
   INSTAGRAM_CARD_COPY_WRITER_HERMES_PROFILE,
+  INSTAGRAM_CAROUSEL_PLAN_CONTRACT,
   INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
   type InstagramCaption,
   type InstagramCardCopy,
@@ -47,6 +50,14 @@ import {
 } from "@/lib/marketing/publishable/composerRuntime";
 import { PUBLISHABLE_CHANNEL_CONTENT_CONTRACT } from "@/lib/marketing/publishable/contracts";
 import { validatePublishableText } from "@/lib/marketing/publishable/validate";
+import {
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactDependencies,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export type InstagramEditorialPipelineResult = {
   content: PublishableChannelContent;
@@ -97,11 +108,12 @@ async function invokeJson(input: {
   invoke: PublishableLlmInvoke;
   profile: string;
   payload: Record<string, unknown>;
+  maxAttempts: number;
 }): Promise<{ llm: unknown; attemptCount: number }> {
   let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
     const repair =
-      attempt === 2 && lastError
+      attempt > 1 && lastError
         ? {
             REPAIR: `Previous output failed: ${lastError.message}. Return valid JSON only.`,
           }
@@ -116,6 +128,41 @@ async function invokeJson(input: {
     }
   }
   throw lastError ?? new Error("instagram_editorial_invoke_failed");
+}
+
+/**
+ * Phase 3C: assert Carousel / Card Copy / Caption artifact contract parity.
+ * Caption must stay independent of the VRA/SVP visual chain.
+ */
+export function assertInstagramEditorialArtifactContractParity(): void {
+  assertArtifactDependsOn(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, "editorial-narrative-plan-v1");
+  assertFingerprintSourcesInclude(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, [
+    "sourceNarrativeFingerprint",
+  ]);
+  requireOnGenerateFail(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(INSTAGRAM_CAROUSEL_PLAN_CONTRACT, false);
+
+  assertArtifactDependsOn(INSTAGRAM_CARD_COPY_CONTRACT, INSTAGRAM_CAROUSEL_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(INSTAGRAM_CARD_COPY_CONTRACT, [
+    "sourceCarouselFingerprint",
+  ]);
+  requireOnGenerateFail(INSTAGRAM_CARD_COPY_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(INSTAGRAM_CARD_COPY_CONTRACT, false);
+
+  assertArtifactDependsOn(INSTAGRAM_CAPTION_CONTRACT, INSTAGRAM_CARD_COPY_CONTRACT);
+  assertFingerprintSourcesInclude(INSTAGRAM_CAPTION_CONTRACT, [
+    "sourceCardCopyFingerprint",
+  ]);
+  requireOnGenerateFail(INSTAGRAM_CAPTION_CONTRACT, "fail_closed");
+  requireMaterializeInRepairLoop(INSTAGRAM_CAPTION_CONTRACT, false);
+
+  // Caption stays off the visual chain (no VRA/SVP dependency).
+  const deps = getArtifactDependencies(INSTAGRAM_CAPTION_CONTRACT);
+  if (deps.includes("instagram-visual-role-plan-v1") || deps.includes("shared-visual-plan-v1")) {
+    throw new Error(
+      "Artifact contract drift: instagram-caption-v1 must not depend on VRA/SVP",
+    );
+  }
 }
 
 function failedContent(input: {
@@ -191,6 +238,11 @@ export async function runInstagramEditorialPipeline(input: {
   let attemptCount = 0;
 
   ensureInstagramEditorialHermesProfilesReady(input.hermesHome);
+  // Phase 3C: contract-driven lifecycle/failure metadata (behavior preserved).
+  assertInstagramEditorialArtifactContractParity();
+  const carouselAttempts = getArtifactRepairAttemptBudget(INSTAGRAM_CAROUSEL_PLAN_CONTRACT);
+  const cardCopyAttempts = getArtifactRepairAttemptBudget(INSTAGRAM_CARD_COPY_CONTRACT);
+  const captionAttempts = getArtifactRepairAttemptBudget(INSTAGRAM_CAPTION_CONTRACT);
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     return {
@@ -267,6 +319,7 @@ export async function runInstagramEditorialPipeline(input: {
     const carouselInv = await invokeJson({
       invoke: input.invoke,
       profile: INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
+      maxAttempts: carouselAttempts,
       payload: {
         task: "instagram_carousel_plan",
         editorialNarrativePlan: narrative,
@@ -280,6 +333,7 @@ export async function runInstagramEditorialPipeline(input: {
       },
     });
     attemptCount += carouselInv.attemptCount;
+    // materializeInRepairLoop=false: materialize after JSON repair loop (do not move inside).
     const carousel = materializeInstagramCarouselPlan({
       assetId: asset.assetId,
       assetVersion: asset.version,
@@ -296,6 +350,7 @@ export async function runInstagramEditorialPipeline(input: {
     const copyInv = await invokeJson({
       invoke: input.invoke,
       profile: INSTAGRAM_CARD_COPY_WRITER_HERMES_PROFILE,
+      maxAttempts: cardCopyAttempts,
       payload: {
         task: "instagram_card_copy",
         editorialNarrativePlan: narrative,
@@ -325,6 +380,7 @@ export async function runInstagramEditorialPipeline(input: {
     const captionInv = await invokeJson({
       invoke: input.invoke,
       profile: INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
+      maxAttempts: captionAttempts,
       payload: {
         task: "instagram_caption",
         editorialNarrativePlan: {

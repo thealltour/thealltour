@@ -3,6 +3,11 @@
  * Chooses layout only; never rewrites copy.
  */
 
+import {
+  assertFingerprintSourcesInclude,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 import type { CardNewsRole } from "@/lib/marketing/assets/contracts";
 import {
   CARD_PRESENTATION_PLAN_CONTRACT,
@@ -182,6 +187,8 @@ export function buildDeterministicCardPresentationPlan(input: {
   cards: PresentationCardInput[];
   generatedAt?: string;
 }): CardPresentationPlan {
+  // Phase 3C: contract says deterministic_fallback; this function IS that path.
+  assertCardPresentationArtifactContractParity();
   return {
     contract: CARD_PRESENTATION_PLAN_CONTRACT,
     assetId: input.assetId,
@@ -196,6 +203,18 @@ export function buildDeterministicCardPresentationPlan(input: {
       generatedAt: input.generatedAt ?? new Date().toISOString(),
     },
   };
+}
+
+/**
+ * Phase 3C: Presentation production path = deterministic_fallback (Layout Hermes not wired).
+ */
+export function assertCardPresentationArtifactContractParity(): void {
+  assertFingerprintSourcesInclude(CARD_PRESENTATION_PLAN_CONTRACT, [
+    "provenance.sourceInstagramFingerprint",
+    "provenance.sourceVisualPlanFingerprint",
+  ]);
+  requireOnGenerateFail(CARD_PRESENTATION_PLAN_CONTRACT, "deterministic_fallback");
+  requireMaterializeInRepairLoop(CARD_PRESENTATION_PLAN_CONTRACT, false);
 }
 
 /** Map legacy CardNewsRole to presentation role hint. */

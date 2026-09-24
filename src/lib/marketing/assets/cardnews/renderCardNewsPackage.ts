@@ -22,6 +22,7 @@ import {
   type CardCitation,
 } from "@/lib/marketing/assets/cardnews/svg";
 import {
+  assertCardPresentationArtifactContractParity,
   buildDeterministicCardPresentationPlan,
   legacyRoleToPresentationHint,
 } from "@/lib/marketing/assets/cardnews/presentation/deterministic";
@@ -187,6 +188,9 @@ function resolvePresentationPlanForRender(input: {
   graphicOnly: boolean;
   presentationPlan?: CardPresentationPlan | null;
 }): CardPresentationPlan {
+  // Phase 3C: assert policy even on reuse; missing/mismatched plan → deterministic_fallback.
+  assertCardPresentationArtifactContractParity();
+
   if (input.presentationPlan?.cards?.length === input.cards.length) {
     const ids = new Set(input.presentationPlan.cards.map((c) => c.cardId));
     if (input.cards.every((c) => ids.has(c.cardId))) {
@@ -205,6 +209,7 @@ function resolvePresentationPlanForRender(input: {
     visualIds,
   });
 
+  // deterministic_fallback: LLM/optional planner unavailable or not wired → deterministic plan.
   return buildDeterministicCardPresentationPlan({
     assetId: input.brief.candidateId,
     assetVersion: 1,

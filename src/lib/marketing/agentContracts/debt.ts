@@ -48,4 +48,13 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     phaseTarget: "phase-5",
     allowed: true,
   },
+  {
+    id: "materialize-in-repair-loop-divergence",
+    kind: "advisory_path",
+    profileOrPath: "failurePolicy.materializeInRepairLoop",
+    reason:
+      "VRA materializeInRepairLoop=true; Narrative/Carousel/CardCopy/Caption/Presentation remain false (current behavior). Do not unify in Phase 3C.",
+    phaseTarget: "phase-4",
+    allowed: true,
+  },
 ];

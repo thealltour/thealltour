@@ -3,7 +3,10 @@
  * Plan decides visuals/usages/ids; writer only enriches briefs.
  */
 
-import type { SharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
+import {
+  SHARED_VISUAL_PLAN_CONTRACT,
+  type SharedVisualPlan,
+} from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 import {
   MANUAL_ASTRA_HANDOFF_CONTRACT,
   type ManualAstraApprovedAssetContext,
@@ -27,6 +30,11 @@ import {
   readManualAstraHandoff,
 } from "@/lib/marketing/publishable/manualAstraHandoff/persist";
 import { extractJsonObject } from "@/lib/marketing/publishable/visualOrchestration/extractJson";
+import {
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactFailurePolicy,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export type AstraHandoffWriterInvoke = (prompt: string) => Promise<string> | string;
 
@@ -282,17 +290,23 @@ export async function generateManualAstraHandoffWithLlm(input: {
   invoke: AstraHandoffWriterInvoke;
   now?: Date;
 }): Promise<GenerateManualAstraHandoffResult> {
+  // Phase 3B: dependsOn + fingerprint + failure policy from artifact contract.
+  assertArtifactDependsOn(MANUAL_ASTRA_HANDOFF_CONTRACT, SHARED_VISUAL_PLAN_CONTRACT);
+  assertFingerprintSourcesInclude(MANUAL_ASTRA_HANDOFF_CONTRACT, [
+    "sourceSharedVisualPlanFingerprint",
+  ]);
+  const astraFailurePolicy = getArtifactFailurePolicy(MANUAL_ASTRA_HANDOFF_CONTRACT);
+
   const previousHandoff = readManualAstraHandoff(input.packageRoot);
   if (!input.planFresh) {
-    return {
-      ok: false,
+    return applyAstraGenerateFailPolicy({
+      policy: astraFailurePolicy,
+      previousHandoff,
       error: {
         code: "shared_visual_plan_stale",
         message: "Shared Visual Plan이 stale입니다. Plan을 먼저 재생성하세요.",
       },
-      previousHandoff,
-      previousHandoffPreserved: true,
-    };
+    });
   }
   try {
     const writerInput = buildAstraHandoffWriterInput({
@@ -327,11 +341,41 @@ export async function generateManualAstraHandoffWithLlm(input: {
       code,
       message,
     });
-    return {
-      ok: false,
-      error: { code, message },
+    return applyAstraGenerateFailPolicy({
+      policy: astraFailurePolicy,
       previousHandoff,
-      previousHandoffPreserved: true,
-    };
+      error: { code, message },
+    });
+  }
+}
+
+function applyAstraGenerateFailPolicy(input: {
+  policy: ReturnType<typeof getArtifactFailurePolicy>;
+  previousHandoff: ManualAstraHandoff | null;
+  error: { code: string; message: string };
+}): GenerateManualAstraHandoffResult {
+  switch (input.policy.onGenerateFail) {
+    case "preserve_previous":
+      return {
+        ok: false,
+        error: input.error,
+        previousHandoff: input.previousHandoff,
+        previousHandoffPreserved: true,
+      };
+    case "fail_closed":
+      return {
+        ok: false,
+        error: input.error,
+        previousHandoff: null,
+        previousHandoffPreserved: true,
+      };
+    case "deterministic_fallback":
+      throw new Error(
+        `Artifact contract drift: manual-astra-handoff-v1 onGenerateFail=deterministic_fallback is not supported`,
+      );
+    default: {
+      const _exhaustive: never = input.policy.onGenerateFail;
+      throw new Error(`Unsupported Astra onGenerateFail: ${String(_exhaustive)}`);
+    }
   }
 }

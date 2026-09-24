@@ -19,6 +19,7 @@ import {
 import {
   INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
   INSTAGRAM_VISUAL_ROLE_ARCHITECT_HERMES_PROFILE,
+  INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT,
   INSTAGRAM_VISUAL_ROLES,
   type InstagramVisualRolePlan,
 } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
@@ -31,6 +32,12 @@ import {
   persistInstagramVisualRolePlan,
   readInstagramVisualRolePlanFromPackage,
 } from "@/lib/marketing/publishable/instagramVisualRole/persist";
+import {
+  assertFingerprintSourcesInclude,
+  getArtifactFailurePolicy,
+  getArtifactRepairAttemptBudget,
+  requireOnGenerateFail,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export type VisualRoleArchitectInvoke = (prompt: {
   hermesProfile: string;
@@ -38,7 +45,10 @@ export type VisualRoleArchitectInvoke = (prompt: {
   channel: "instagram";
 }) => Promise<string> | string;
 
-const VRA_MAX_ATTEMPTS = 2;
+/** @deprecated Prefer getArtifactRepairAttemptBudget(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT) */
+export function resolveVraRepairAttemptBudget(): number {
+  return getArtifactRepairAttemptBudget(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT);
+}
 
 function clip(text: string | null | undefined, max: number): string | null {
   const t = (text ?? "").trim();
@@ -190,6 +200,20 @@ export async function ensureInstagramVisualRolePlan(input: {
 
   const carouselFp = buildInstagramCarouselContentFingerprint(carousel);
   const cardCopyFp = buildInstagramCardCopyContentFingerprint(cardCopy);
+  // Contract-driven fingerprint + failure policy (Phase 3B) — behavior unchanged.
+  assertFingerprintSourcesInclude(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT, [
+    "sourceCarouselFingerprint",
+    "sourceCardCopyFingerprint",
+  ]);
+  requireOnGenerateFail(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT, "fail_closed");
+  const vraFailurePolicy = getArtifactFailurePolicy(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT);
+  if (vraFailurePolicy.materializeInRepairLoop !== true) {
+    throw new Error(
+      "Artifact contract drift: instagram-visual-role-plan-v1 requires materializeInRepairLoop=true",
+    );
+  }
+  const maxAttempts = getArtifactRepairAttemptBudget(INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT);
+
   const existing =
     !input.forceRegenerate ? readInstagramVisualRolePlanFromPackage(input.packageRoot) : null;
 
@@ -208,7 +232,7 @@ export async function ensureInstagramVisualRolePlan(input: {
     ensureInstagramVisualRoleArchitectHermesReady(input.hermesHome);
     let lastError: Error | null = null;
     let plan: InstagramVisualRolePlan | null = null;
-    for (let attempt = 1; attempt <= VRA_MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const raw = await input.invoke({
           hermesProfile: INSTAGRAM_VISUAL_ROLE_ARCHITECT_HERMES_PROFILE,
@@ -218,10 +242,12 @@ export async function ensureInstagramVisualRolePlan(input: {
             narrative: input.editorialNarrativePlan ?? null,
             carousel,
             cardCopy,
-            repair: attempt === 2 && lastError ? formatVisualRoleRepairHint(lastError) : null,
+            repair:
+              attempt > 1 && lastError ? formatVisualRoleRepairHint(lastError) : null,
           }),
         });
         const llm = extractJsonObject(typeof raw === "string" ? raw : String(raw));
+        // materializeInRepairLoop=true — validate inside the retry loop
         plan = materializeInstagramVisualRolePlan({
           assetId: input.approvedCanonicalAsset.assetId,
           assetVersion: input.approvedCanonicalAsset.version,
@@ -250,6 +276,7 @@ export async function ensureInstagramVisualRolePlan(input: {
     });
     return { ok: true, plan, status: "generated" };
   } catch (error) {
+    // fail_closed — do not preserve a half-written / invalid plan
     const message = error instanceof Error ? error.message : String(error);
     const code =
       error instanceof InstagramVisualRoleMaterializeError

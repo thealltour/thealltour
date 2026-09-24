@@ -27,6 +27,11 @@ import {
   materializeSharedVisualPlanFromLlm,
   SharedVisualPlannerValidationError,
 } from "@/lib/marketing/publishable/visualOrchestration/materializePlannerOutput";
+import { SHARED_VISUAL_PLAN_CONTRACT } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
+import {
+  assertFingerprintSourcesInclude,
+  getArtifactFailurePolicy,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export type SharedVisualPlannerInvoke = (prompt: string) => Promise<string> | string;
 
@@ -57,6 +62,13 @@ export async function generateSharedVisualPlanWithLlm(input: {
   skipVisualRoleArchitect?: boolean;
   hermesHome?: string;
 }): Promise<GenerateSharedVisualPlanResult> {
+  // Phase 3B: failure policy + fingerprint sources from artifact contract (parity preserved).
+  assertFingerprintSourcesInclude(SHARED_VISUAL_PLAN_CONTRACT, [
+    "sourceVisualPlanFingerprint",
+    "sourceInstagramVisualRoleFingerprint",
+  ]);
+  const svpFailurePolicy = getArtifactFailurePolicy(SHARED_VISUAL_PLAN_CONTRACT);
+
   const previousPlan = readSharedVisualPlan(input.packageRoot);
 
   let visualRolePlanStatus: "generated" | "reused" | "skipped_legacy" = "skipped_legacy";
@@ -81,15 +93,14 @@ export async function generateSharedVisualPlanWithLlm(input: {
     });
 
     if (!vra.ok && !vra.skippedLegacy) {
-      return {
-        ok: false,
+      return applySharedVisualGenerateFailPolicy({
+        policy: svpFailurePolicy,
+        previousPlan,
         error: {
           code: vra.error.code,
           message: `Visual Role Architect failed (fail-closed before SVP): ${vra.error.message}`,
         },
-        previousPlan,
-        previousPlanPreserved: true,
-      };
+      });
     }
 
     if (vra.ok) {
@@ -145,11 +156,42 @@ export async function generateSharedVisualPlanWithLlm(input: {
       code,
       message,
     });
-    return {
-      ok: false,
-      error: { code, message },
+    return applySharedVisualGenerateFailPolicy({
+      policy: svpFailurePolicy,
       previousPlan,
-      previousPlanPreserved: true,
-    };
+      error: { code, message },
+    });
+  }
+}
+
+function applySharedVisualGenerateFailPolicy(input: {
+  policy: ReturnType<typeof getArtifactFailurePolicy>;
+  previousPlan: SharedVisualPlan | null;
+  error: { code: string; message: string };
+}): GenerateSharedVisualPlanResult {
+  switch (input.policy.onGenerateFail) {
+    case "preserve_previous":
+      return {
+        ok: false,
+        error: input.error,
+        previousPlan: input.previousPlan,
+        previousPlanPreserved: true,
+      };
+    case "fail_closed":
+      return {
+        ok: false,
+        error: input.error,
+        previousPlan: null,
+        previousPlanPreserved: true,
+      };
+    case "deterministic_fallback":
+      // SVP must not silently fall back — contract drift if this branch is hit.
+      throw new Error(
+        `Artifact contract drift: shared-visual-plan-v1 onGenerateFail=deterministic_fallback is not supported`,
+      );
+    default: {
+      const _exhaustive: never = input.policy.onGenerateFail;
+      throw new Error(`Unsupported SVP onGenerateFail: ${String(_exhaustive)}`);
+    }
   }
 }

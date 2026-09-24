@@ -32,6 +32,21 @@ export {
 } from "@/lib/marketing/agentContracts/debt";
 
 export {
+  PHASE_3B_WIRED_ARTIFACT_IDS,
+  assertArtifactDependsOn,
+  assertFingerprintSourcesInclude,
+  getArtifactDependencies,
+  getArtifactFailurePolicy,
+  getArtifactLifecycleContract,
+  getArtifactRepairAttemptBudget,
+  isPhase3bWiredArtifact,
+  lookupWiredArtifactContract,
+  requireOnGenerateFail,
+  type ArtifactFailurePolicy,
+  type Phase3bWiredArtifactId,
+} from "@/lib/marketing/agentContracts/lifecycleHelpers";
+
+export {
   assertMarketingAgentContractsHealthy,
   collectAllMarketingAgentContractIssues,
   collectArtifactDependencyIssues,

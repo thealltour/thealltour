@@ -80,11 +80,11 @@ async function main() {
     MARKETING_CRON_HERMES_TIMEOUT_MS,
     MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
   } = await import("../src/lib/marketing/cron/marketingPlanSpecialists");
-  const { invokeHermesProfileWithRetry, resolveMarketingCronHermesTimeoutMs } = await import(
+  const { resolveMarketingCronHermesTimeoutMs } = await import(
     "../src/lib/marketing/cron/hermesSpawnFailure"
   );
-  const { resolveHermesExecutable } = await import(
-    "../src/lib/marketing/cron/resolveHermesExecutable"
+  const { invokeMarketingHermesAgent } = await import(
+    "../src/lib/marketing/hermesRuntime/launcher"
   );
   const { formatMarketingCronEnvironmentLines, inspectMarketingCronEnvironment } = await import(
     "../src/lib/marketing/cron/marketingCronEnvironment"
@@ -102,12 +102,13 @@ async function main() {
       process.env,
       MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT,
     );
-    return invokeHermesProfileWithRetry({
-      hermesBin: resolveHermesExecutable(process.env),
-      profile,
+    // Single transport-retry owner: unified launcher (contract.transportRetries).
+    return invokeMarketingHermesAgent({
+      profileId: profile,
       prompt,
       timeoutMs,
-      onRetry: (attempt) => {
+      withTransportRetry: true,
+      onTransportRetry: (attempt) => {
         console.error(
           `[hermes-retry] ${attempt.profile} attempt ${attempt.attempt}/${attempt.maxAttempts} failed (${attempt.message}); retrying in ${attempt.delayMs}ms`,
         );

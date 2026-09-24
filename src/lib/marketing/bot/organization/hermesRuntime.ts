@@ -7,6 +7,7 @@ import { buildHermesOneshotArgv } from "@/lib/marketing/bot/organization/hermesH
 import { assertAllowlistedHermesProfile } from "@/lib/marketing/bot/organization/registry";
 import { stripForbiddenBotData } from "@/lib/marketing/bot/sanitize";
 import { resolveHermesExecutable } from "@/lib/marketing/cron/resolveHermesExecutable";
+import { buildHermesProfileSpawnEnv } from "@/lib/marketing/hermesRuntime/credentials";
 
 export const DEFAULT_HERMES_INVOKE_TIMEOUT_MS = 90_000;
 export const MAX_SPECIALIST_DISPATCHES_PER_REQUEST = 4;
@@ -76,12 +77,11 @@ export function invokeHermesOneshot(input: HermesAgentRuntimeInvokeInput): Promi
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    // Soft-result bot path — Phase 1 only shares credential inject (not full launcher).
+    // Named `hermes -p` does not inherit parent ~/.hermes/.env.
     const child = spawn(command, args, {
       shell: false,
-      env: {
-        ...process.env,
-        HERMES_HOME: process.env.HERMES_HOME ?? "/home/ysh/.hermes",
-      },
+      env: buildHermesProfileSpawnEnv(process.env),
     });
     const timer = setTimeout(() => {
       timedOut = true;

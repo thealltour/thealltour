@@ -1,0 +1,3 @@
+model:
+  provider: custom:thealltour-runtime
+  default: thealltour/performance-analyst

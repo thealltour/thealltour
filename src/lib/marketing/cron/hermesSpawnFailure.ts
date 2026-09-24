@@ -5,6 +5,8 @@
 
 import { spawn } from "node:child_process";
 
+import { buildHermesProfileSpawnEnv } from "@/lib/marketing/hermesRuntime/credentials";
+
 export type HermesSpawnSyncResultLike = {
   status: number | null;
   signal: NodeJS.Signals | string | null;
@@ -109,11 +111,12 @@ export function spawnHermesProfileAsync(input: {
   env?: NodeJS.ProcessEnv;
 }): Promise<string> {
   const { hermesBin, profile, prompt, timeoutMs } = input;
-  const env = input.env ?? process.env;
+  // Token inject: named `hermes -p` does not inherit parent ~/.hermes/.env.
+  const env = buildHermesProfileSpawnEnv(input.env ?? process.env);
 
   return new Promise((resolve, reject) => {
     const child = spawn(hermesBin, ["-p", profile, "--yolo", "--ignore-rules", "-z", prompt], {
-      env: { ...env, HERMES_HOME: env.HERMES_HOME ?? "/home/ysh/.hermes" },
+      env,
     });
 
     let stdout = "";

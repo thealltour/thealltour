@@ -1,0 +1,3 @@
+model:
+  provider: custom:theallcloud-runtime
+  default: theallcloud/auto

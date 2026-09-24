@@ -57,8 +57,8 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     kind: "advisory_path",
     profileOrPath: "failurePolicy.materializeInRepairLoop",
     reason:
-      "VRA materializeInRepairLoop=true; Narrative/Carousel/Copy/Caption/Presentation/Threads/Blog/Band remain false (current behavior). Do not unify.",
-    phaseTarget: "phase-4",
+      "VRA + SVP materializeInRepairLoop=true (SVP: decision-trace contract repair only). Narrative/Carousel/Copy/Caption/Presentation/Threads/Blog/Band remain false. Do not unify all agents.",
+    phaseTarget: "phase-5",
     allowed: true,
   },
   {

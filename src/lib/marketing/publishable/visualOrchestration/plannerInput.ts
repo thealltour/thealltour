@@ -243,9 +243,10 @@ export function buildSharedVisualPlannerInput(input: {
 
 export function formatSharedVisualPlannerPrompt(
   plannerInput: ReturnType<typeof buildSharedVisualPlannerInput>,
+  options?: { repair?: string | null },
 ): string {
   const hasVra = Boolean(plannerInput.instagramVisualRolePlan);
-  return [
+  const lines = [
     "TASK: Orchestrate the smallest *sufficient* Shared Visual Plan (SVP v2).",
     "You own master count, grouping/reuse, final generatedVisualNeeded, visualMode, usages.",
     "You do NOT redesign Instagram visual meanings — that is Visual Role Architect.",
@@ -258,6 +259,7 @@ export function formatSharedVisualPlannerPrompt(
     "- generationPreference required → true unless decisionTrace override.",
     "- exclusive_preferred merge → decisionTrace override required.",
     "- Material visualModePreference change → decisionTrace override required.",
+    "- Example (allowed only WITH trace — not a directive to change mode): VRA architecture_detail + visualModePreference=editorial_photo may become SVP visualMode=object_or_detail only when decisionTrace.overrides includes { field: visualModePreference, cardId, requested: editorial_photo, final: object_or_detail, reason }.",
     "- generatedVisualNeeded=false does NOT mean no visual treatment.",
     "- all-card visual treatment ≠ all-card independent generation.",
     "- Do NOT minimize master count at the expense of meaning fidelity / rhythm.",
@@ -277,5 +279,10 @@ export function formatSharedVisualPlannerPrompt(
     "",
     "INPUT_JSON:",
     JSON.stringify(plannerInput, null, 2),
-  ].join("\n");
+  ];
+  const repair = options?.repair?.trim();
+  if (repair) {
+    lines.push("", "## CONTRACT REPAIR", repair);
+  }
+  return lines.join("\n");
 }

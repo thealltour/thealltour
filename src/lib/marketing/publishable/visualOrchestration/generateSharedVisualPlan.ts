@@ -2,6 +2,9 @@
  * Explicit Shared Visual Plan generation (LLM-primary).
  * Ensures Instagram Visual Role Plan when editorial carousel+copy exist (fail-closed).
  * Does NOT overwrite last good plan on LLM failure.
+ *
+ * Decision-trace contract failures (visual_mode_override_missing, etc.) get
+ * exactly one materialize-in-loop repair attempt — validation is not relaxed.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
@@ -24,13 +27,18 @@ import {
   formatSharedVisualPlannerPrompt,
 } from "@/lib/marketing/publishable/visualOrchestration/plannerInput";
 import {
+  isSvpDecisionTraceRepairableError,
   materializeSharedVisualPlanFromLlm,
   SharedVisualPlannerValidationError,
+  type SharedVisualPlannerValidationDetails,
 } from "@/lib/marketing/publishable/visualOrchestration/materializePlannerOutput";
 import { SHARED_VISUAL_PLAN_CONTRACT } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 import {
   assertFingerprintSourcesInclude,
   getArtifactFailurePolicy,
+  getArtifactRepairAttemptBudget,
+  requireMaterializeInRepairLoop,
+  requireOnGenerateFail,
 } from "@/lib/marketing/agentContracts/lifecycleHelpers";
 
 export type SharedVisualPlannerInvoke = (prompt: string) => Promise<string> | string;
@@ -42,13 +50,45 @@ export type GenerateSharedVisualPlanResult =
       warnings: string[];
       previousPlanPreserved: false;
       visualRolePlanStatus?: "generated" | "reused" | "skipped_legacy";
+      /** Hermes invoke count (1 = first-pass success; 2 = repaired). */
+      invokeCount?: number;
     }
   | {
       ok: false;
       error: { code: string; message: string };
       previousPlan: SharedVisualPlan | null;
       previousPlanPreserved: true;
+      invokeCount?: number;
     };
+
+/** Repair hint for decision-trace omissions — bounded diagnostics only. */
+export function formatSharedVisualDecisionTraceRepairHint(error: Error): string {
+  const code =
+    error instanceof SharedVisualPlannerValidationError
+      ? error.code
+      : "shared_visual_planner_failed";
+  const details: SharedVisualPlannerValidationDetails =
+    error instanceof SharedVisualPlannerValidationError ? (error.details ?? {}) : {};
+  const cardId = details.cardId ?? "(unknown)";
+  const field = details.field ?? "visualModePreference";
+  const requested = details.requested ?? "(unknown)";
+  const final = details.final ?? "(unknown)";
+
+  return [
+    "Previous output violated the VRA-aware orchestration contract.",
+    `errorCode: ${code}`,
+    `cardId: ${cardId}`,
+    `field: ${field}`,
+    `requested: ${requested}`,
+    `final: ${final}`,
+    `You may keep final=${final} if that remains your orchestration decision,`,
+    "but you MUST include a decisionTrace.overrides entry explaining why.",
+    "Required override shape:",
+    `{"cardId":"${cardId}","field":"${field}","requested":"${requested}","final":"${final}","reason":"at least 8 chars explaining the override"}`,
+    "Do not change unrelated master grouping/usages unless necessary.",
+    "Return the full valid SVP JSON only.",
+  ].join("\n");
+}
 
 export async function generateSharedVisualPlanWithLlm(input: {
   packageRoot: string;
@@ -67,7 +107,10 @@ export async function generateSharedVisualPlanWithLlm(input: {
     "sourceVisualPlanFingerprint",
     "sourceInstagramVisualRoleFingerprint",
   ]);
+  requireOnGenerateFail(SHARED_VISUAL_PLAN_CONTRACT, "preserve_previous");
+  requireMaterializeInRepairLoop(SHARED_VISUAL_PLAN_CONTRACT, true);
   const svpFailurePolicy = getArtifactFailurePolicy(SHARED_VISUAL_PLAN_CONTRACT);
+  const maxAttempts = getArtifactRepairAttemptBudget(SHARED_VISUAL_PLAN_CONTRACT);
 
   const previousPlan = readSharedVisualPlan(input.packageRoot);
 
@@ -112,56 +155,98 @@ export async function generateSharedVisualPlanWithLlm(input: {
     }
   }
 
-  try {
-    const plannerInput = buildSharedVisualPlannerInput({
-      approvedAsset: input.approvedCanonicalAsset,
-      bundle: input.bundle,
-      instagramVisualRolePlan: visualRolePlan,
-    });
-    const prompt = formatSharedVisualPlannerPrompt(plannerInput);
-    const rawText = await input.invoke(prompt);
-    const llmRaw = extractJsonObject(rawText);
-    const vraFp = visualRolePlan
-      ? buildInstagramVisualRoleContentFingerprint(visualRolePlan)
-      : null;
-    const { plan, warnings } = materializeSharedVisualPlanFromLlm({
-      bundle: input.bundle,
-      llmRaw,
-      now: input.now,
-      forbiddenClaimsKo: input.approvedCanonicalAsset.forbiddenClaimsKo ?? null,
-      sourceInstagramVisualRoleFingerprint: vraFp,
-      instagramVisualRolePlan: visualRolePlan,
-    });
-    persistSharedVisualPlan({
-      packageRoot: input.packageRoot,
-      plan,
-      createdAt: plan.generatedAt,
-    });
-    return {
-      ok: true,
-      plan,
-      warnings,
-      previousPlanPreserved: false,
-      visualRolePlanStatus,
-    };
-  } catch (error) {
-    const code =
-      error instanceof SharedVisualPlannerValidationError
-        ? error.code
-        : error instanceof Error && error.message
-          ? error.message.split(":")[0] || "shared_visual_planner_failed"
-          : "shared_visual_planner_failed";
-    const message = error instanceof Error ? error.message : "shared_visual_planner_failed";
-    console.error("[shared-visual-plan] generate failed; previous plan preserved", {
-      code,
-      message,
-    });
-    return applySharedVisualGenerateFailPolicy({
+  const plannerInput = buildSharedVisualPlannerInput({
+    approvedAsset: input.approvedCanonicalAsset,
+    bundle: input.bundle,
+    instagramVisualRolePlan: visualRolePlan,
+  });
+  const vraFp = visualRolePlan
+    ? buildInstagramVisualRoleContentFingerprint(visualRolePlan)
+    : null;
+
+  let lastError: Error | null = null;
+  let invokeCount = 0;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const basePrompt = formatSharedVisualPlannerPrompt(plannerInput, {
+        repair:
+          attempt > 1 && lastError
+            ? formatSharedVisualDecisionTraceRepairHint(lastError)
+            : null,
+      });
+      const rawText = await input.invoke(basePrompt);
+      invokeCount += 1;
+      const llmRaw = extractJsonObject(rawText);
+      // materializeInRepairLoop=true — validate inside the attempt loop
+      const { plan, warnings } = materializeSharedVisualPlanFromLlm({
+        bundle: input.bundle,
+        llmRaw,
+        now: input.now,
+        forbiddenClaimsKo: input.approvedCanonicalAsset.forbiddenClaimsKo ?? null,
+        sourceInstagramVisualRoleFingerprint: vraFp,
+        instagramVisualRolePlan: visualRolePlan,
+      });
+      persistSharedVisualPlan({
+        packageRoot: input.packageRoot,
+        plan,
+        createdAt: plan.generatedAt,
+      });
+      return {
+        ok: true,
+        plan,
+        warnings,
+        previousPlanPreserved: false,
+        visualRolePlanStatus,
+        invokeCount,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const repairable = isSvpDecisionTraceRepairableError(lastError);
+      const details =
+        lastError instanceof SharedVisualPlannerValidationError
+          ? lastError.details
+          : undefined;
+      console.error("[shared-visual-plan] attempt failed", {
+        attempt,
+        maxAttempts,
+        code:
+          lastError instanceof SharedVisualPlannerValidationError
+            ? lastError.code
+            : "shared_visual_planner_failed",
+        cardId: details?.cardId,
+        field: details?.field,
+        requested: details?.requested,
+        final: details?.final,
+        repairable,
+      });
+      if (!repairable || attempt >= maxAttempts) {
+        break;
+      }
+      // Decision-trace omission → one repair attempt; do not broaden to other errors.
+    }
+  }
+
+  const code =
+    lastError instanceof SharedVisualPlannerValidationError
+      ? lastError.code
+      : lastError instanceof Error && lastError.message
+        ? lastError.message.split(":")[0] || "shared_visual_planner_failed"
+        : "shared_visual_planner_failed";
+  const message = lastError instanceof Error ? lastError.message : "shared_visual_planner_failed";
+  console.error("[shared-visual-plan] generate failed; previous plan preserved", {
+    code,
+    message,
+    invokeCount,
+  });
+  return {
+    ...applySharedVisualGenerateFailPolicy({
       policy: svpFailurePolicy,
       previousPlan,
       error: { code, message },
-    });
-  }
+    }),
+    invokeCount,
+  };
 }
 
 function applySharedVisualGenerateFailPolicy(input: {

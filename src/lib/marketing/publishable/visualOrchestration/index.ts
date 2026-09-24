@@ -20,10 +20,17 @@ export {
   materializeSharedVisualPlanFromLlm,
   parseLlmPlannerVisuals,
   isGenericVisualIntent,
+  isSvpDecisionTraceRepairableError,
   SharedVisualPlannerValidationError,
+  SVP_DECISION_TRACE_REPAIRABLE_CODES,
+} from "@/lib/marketing/publishable/visualOrchestration/materializePlannerOutput";
+export type {
+  SharedVisualPlannerValidationDetails,
+  SvpDecisionTraceRepairableCode,
 } from "@/lib/marketing/publishable/visualOrchestration/materializePlannerOutput";
 export {
   generateSharedVisualPlanWithLlm,
+  formatSharedVisualDecisionTraceRepairHint,
   type GenerateSharedVisualPlanResult,
   type SharedVisualPlannerInvoke,
 } from "@/lib/marketing/publishable/visualOrchestration/generateSharedVisualPlan";

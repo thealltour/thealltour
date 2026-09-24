@@ -187,8 +187,10 @@ export const MARKETING_ARTIFACT_REGISTRY: readonly MarketingArtifactContract[] =
     },
     failurePolicy: {
       onGenerateFail: "preserve_previous",
-      repairAttempts: 1,
-      materializeInRepairLoop: false,
+      /** Total Hermes attempts including first (1 initial + 1 decision-trace repair). */
+      repairAttempts: 2,
+      /** Materialize/contract validation runs inside the attempt loop (decision-trace repair). */
+      materializeInRepairLoop: true,
     },
     legacy: {
       fallbackAllowed: true,

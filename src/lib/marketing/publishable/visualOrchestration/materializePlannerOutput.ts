@@ -28,13 +28,40 @@ import {
   computeSourceChannelSnapshotFingerprint,
 } from "@/lib/marketing/publishable/sharedVisualPlan/sourceChannelSnapshot";
 
+/** Bounded diagnostics for decision-trace repair prompts (no secrets / no raw LLM). */
+export type SharedVisualPlannerValidationDetails = {
+  cardId?: string;
+  field?: "visualModePreference" | "generationPreference" | "reusePreference";
+  requested?: string;
+  final?: string;
+};
+
 export class SharedVisualPlannerValidationError extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  readonly details: SharedVisualPlannerValidationDetails | undefined;
+  constructor(code: string, message: string, details?: SharedVisualPlannerValidationDetails) {
     super(message);
     this.name = "SharedVisualPlannerValidationError";
     this.code = code;
+    this.details = details;
   }
+}
+
+/** VRA-aware decision-trace omission codes eligible for one contract repair. */
+export const SVP_DECISION_TRACE_REPAIRABLE_CODES = [
+  "visual_mode_override_missing",
+  "required_generation_override_missing",
+  "exclusive_merge_override_missing",
+] as const;
+
+export type SvpDecisionTraceRepairableCode =
+  (typeof SVP_DECISION_TRACE_REPAIRABLE_CODES)[number];
+
+export function isSvpDecisionTraceRepairableError(error: unknown): boolean {
+  return (
+    error instanceof SharedVisualPlannerValidationError &&
+    (SVP_DECISION_TRACE_REPAIRABLE_CODES as readonly string[]).includes(error.code)
+  );
 }
 
 const GENERIC_INTENT_RE =
@@ -365,6 +392,12 @@ export function assertVraAwarePlannerInvariants(input: {
         throw new SharedVisualPlannerValidationError(
           "required_generation_override_missing",
           `card ${card.cardId}: generationPreference=required but generatedVisualNeeded=false without decisionTrace override`,
+          {
+            cardId: card.cardId,
+            field: "generationPreference",
+            requested: card.generationPreference,
+            final: "generatedVisualNeeded=false",
+          },
         );
       }
     }
@@ -380,6 +413,12 @@ export function assertVraAwarePlannerInvariants(input: {
         throw new SharedVisualPlannerValidationError(
           "visual_mode_override_missing",
           `card ${card.cardId}: visualModePreference=${card.visualModePreference} diverges from final ${cov.mode ?? "(omit)"} without decisionTrace override`,
+          {
+            cardId: card.cardId,
+            field: "visualModePreference",
+            requested: card.visualModePreference,
+            final: cov.mode ?? "(omit)",
+          },
         );
       }
     }
@@ -395,6 +434,12 @@ export function assertVraAwarePlannerInvariants(input: {
         throw new SharedVisualPlannerValidationError(
           "exclusive_merge_override_missing",
           `card ${card.cardId}: exclusive_preferred but merged with ${cov.igPeers.join(",")} without decisionTrace override`,
+          {
+            cardId: card.cardId,
+            field: "reusePreference",
+            requested: card.reusePreference,
+            final: `merged_with=${cov.igPeers.join(",")}`,
+          },
         );
       }
     }

@@ -9,6 +9,7 @@ import {
   getArtifactFailurePolicy,
   getArtifactRepairAttemptBudget,
   requireMarketingArtifactContract,
+  requireMaterializeInRepairLoop,
   requireOnGenerateFail,
 } from "@/lib/marketing/agentContracts";
 import { INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
@@ -49,9 +50,15 @@ describe("Phase 3B contract-driven lifecycle wiring", () => {
     expect(loopCatch).toBeGreaterThan(materializeAt);
   });
 
-  it("C: SVP preserve_previous metadata + no deterministic fallback in wiring", () => {
+  it("C: SVP preserve_previous + materializeInRepairLoop decision-trace repair", () => {
     const policy = getArtifactFailurePolicy(SHARED_VISUAL_PLAN_CONTRACT);
     expect(policy.onGenerateFail).toBe("preserve_previous");
+    expect(policy.materializeInRepairLoop).toBe(true);
+    expect(policy.repairAttempts).toBe(2);
+    expect(getArtifactRepairAttemptBudget(SHARED_VISUAL_PLAN_CONTRACT)).toBe(2);
+    requireOnGenerateFail(SHARED_VISUAL_PLAN_CONTRACT, "preserve_previous");
+    requireMaterializeInRepairLoop(SHARED_VISUAL_PLAN_CONTRACT, true);
+
     const src = readFileSync(
       join(process.cwd(), "src/lib/marketing/publishable/visualOrchestration/generateSharedVisualPlan.ts"),
       "utf8",
@@ -59,6 +66,14 @@ describe("Phase 3B contract-driven lifecycle wiring", () => {
     expect(src).toMatch(/case "preserve_previous"/);
     expect(src).toMatch(/getArtifactFailurePolicy\(SHARED_VISUAL_PLAN_CONTRACT\)/);
     expect(src).toMatch(/deterministic_fallback is not supported/);
+    expect(src).toMatch(/for \(let attempt = 1; attempt <= maxAttempts/);
+    expect(src).toMatch(/materializeSharedVisualPlanFromLlm\(/);
+    expect(src).toMatch(/isSvpDecisionTraceRepairableError/);
+    const loopStart = src.indexOf("for (let attempt = 1; attempt <= maxAttempts");
+    const materializeAt = src.indexOf("materializeSharedVisualPlanFromLlm(", loopStart);
+    const loopCatch = src.indexOf("} catch (error) {", materializeAt);
+    expect(materializeAt).toBeGreaterThan(loopStart);
+    expect(loopCatch).toBeGreaterThan(materializeAt);
   });
 
   it("D: Astra dependsOn SVP + preserve_previous + stale refuse wiring", () => {

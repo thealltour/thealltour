@@ -98,6 +98,12 @@ Strong preference. Changing to a materially different SharedVisualMode requires
 Enum alias / normalization differences are not overrides.
 \`typography\` / \`atmosphere\` preferences are compatible with local/minimal modes.
 
+Example (trace requirement only — not a directive to change mode):
+VRA may say \`architecture_detail\` + \`visualModePreference=editorial_photo\`.
+SVP may still choose \`visualMode=object_or_detail\` **only if** \`decisionTrace.overrides\` includes:
+\`{ "cardId": "card-04", "field": "visualModePreference", "requested": "editorial_photo", "final": "object_or_detail", "reason": "…" }\`.
+Without that override, the plan is rejected.
+
 ## reusePreference
 
 - **exclusive_preferred** → prefer a dedicated master; merging with other IG cards requires override (\`field: reusePreference\`). Not an absolute prohibition.

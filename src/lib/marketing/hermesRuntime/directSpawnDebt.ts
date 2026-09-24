@@ -115,13 +115,24 @@ export const MARKETING_HERMES_DEBT_INVENTORY: readonly MarketingHermesDebtEntry[
     legacy: true,
   },
   {
-    id: "spike-alias-specialists",
+    id: "spike-alias-legacy-channel-editors",
     category: "spike_alias",
-    pathOrProfile: "theallcloud/auto",
-    reason: "All specialists + legacy channel editors still use spike alias until Phase 3+ cutover.",
-    phaseTarget: "phase-3",
+    pathOrProfile: "channel-editor-* / theallcloud/auto",
+    reason:
+      "Legacy channel-editor profiles + runtime-spike/e2e still use spike alias theallcloud/auto. Active 12 specialists cut over in Phase 4.",
+    phaseTarget: "phase-5",
     allowed: true,
     legacy: true,
+  },
+  {
+    id: "specialist-role-routing-not-yet-tuned",
+    category: "spike_alias",
+    pathOrProfile: "thealltour/<specialist> roleKey",
+    reason:
+      "Phase 4 maps specialists to content_draft only; channel_editor / asset_source_writer roleKey overrides deferred to Phase 4B after live routing observation.",
+    phaseTarget: "phase-5",
+    allowed: true,
+    legacy: false,
   },
   {
     id: "legacy-channel-editor-instagram",

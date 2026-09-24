@@ -6,6 +6,7 @@ import {
   MARKETING_HERMES_DIRECT_SPAWN_DEBT,
   collectMarketingHermesAliasPreflightIssues,
   collectMarketingHermesRegistryDrift,
+  collectPhase4SpecialistCutoverIssues,
   getMarketingHermesRuntimeContract,
   listMarketingHermesRuntimeContracts,
   listRegisteredMarketingHermesProfileIds,
@@ -64,12 +65,27 @@ describe("Marketing Hermes runtime registry", () => {
     expect(layout?.docs?.productionNote).toMatch(/deterministic/i);
   });
 
-  it("specialists keep spike alias theallcloud/auto (no Phase-1 rename)", () => {
+  it("specialists use production alias thealltour/<profileId> (Phase 4)", () => {
     const specialists = listMarketingHermesRuntimeContracts().filter((c) => c.kind === "specialist");
-    expect(specialists.length).toBeGreaterThan(0);
+    expect(specialists.length).toBe(12);
     for (const c of specialists) {
-      expect(c.runtime.modelAlias).toBe(HERMES_INFERENCE_ALIAS_AUTO);
+      expect(c.runtime.modelAlias).toBe(`thealltour/${c.profileId}`);
       expect(c.credentials.inferenceGateway).toBe("launcher_inject");
+      const entry = lookupGatewayAlias(c.runtime.modelAlias);
+      expect(entry?.kind).toBe("production");
+      expect(entry?.agentId).toBe(c.profileId);
+      expect(entry?.workload).toBe("content_draft");
+      expect(entry?.priority).toBe("normal");
+    }
+  });
+
+  it("legacy channel-editors keep spike alias theallcloud/auto", () => {
+    const legacy = listMarketingHermesRuntimeContracts().filter(
+      (c) => c.kind === "legacy_channel_editor",
+    );
+    expect(legacy.length).toBe(6);
+    for (const c of legacy) {
+      expect(c.runtime.modelAlias).toBe(HERMES_INFERENCE_ALIAS_AUTO);
     }
   });
 
@@ -91,6 +107,10 @@ describe("Marketing Hermes runtime registry", () => {
     for (const c of listMarketingHermesRuntimeContracts()) {
       expect(lookupGatewayAlias(c.runtime.modelAlias)).toBeTruthy();
     }
+  });
+
+  it("Phase 4: specialist cutover 4-layer preflight PASS", () => {
+    expect(collectPhase4SpecialistCutoverIssues()).toEqual([]);
   });
 
   it("F: unregistered alias fails lookup (thealltour/auto is not registered)", () => {

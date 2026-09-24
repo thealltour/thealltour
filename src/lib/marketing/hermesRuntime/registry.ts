@@ -1,34 +1,27 @@
 import type { MarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/contract";
+import {
+  expectedProductionAliasForProfile,
+  PHASE4_SPECIALIST_PROFILE_IDS,
+} from "@/ai-runtime/gateway/alias-registry";
 
 /**
- * Marketing Hermes runtime registry (Phase 1+2).
+ * Marketing Hermes runtime registry (Phase 1–4).
  *
  * Values mirror live `~/.hermes/profiles/<id>/config.yaml` (alias/provider).
- * Do not invent profiles. Do not rename `theallcloud/auto` or mint new
- * `thealltour/*` aliases in Phase 2.
- *
- * Phase 2: completeness / specialist policy / alias / spawn / credential
- * enforcement live in `enforcement.ts` + CI tests — fail-fast on drift.
+ * Phase 4: specialists use `thealltour/<profileId>` production aliases
+ * (`content_draft` / normal). Legacy channel-editors remain on spike
+ * `theallcloud/auto`. Do not delete spike aliases from the gateway registry.
  */
 
 const SPIKE_ALIAS = "theallcloud/auto" as const;
+/** Legacy Hermes custom provider id (specialists + channel-editors). */
 const SPIKE_PROVIDER = "custom:theallcloud-runtime" as const;
+/** Department bots use the renamed custom provider id. */
 const DEPT_PROVIDER = "custom:thealltour-runtime" as const;
 /** Same as MARKETING_CRON_HERMES_TIMEOUT_MS_DEFAULT */
 const DEFAULT_TIMEOUT_MS = 300_000;
 /** Same as HERMES_INVOKE_MAX_ATTEMPTS_DEFAULT */
 const DEFAULT_TRANSPORT_RETRIES = 3;
-
-const SPECIALIST_BASE = {
-  kind: "specialist" as const,
-  runtime: {
-    modelAlias: SPIKE_ALIAS,
-    provider: SPIKE_PROVIDER,
-    timeoutMs: DEFAULT_TIMEOUT_MS,
-  },
-  credentials: { inferenceGateway: "launcher_inject" as const },
-  failurePolicy: { transportRetries: DEFAULT_TRANSPORT_RETRIES },
-};
 
 const LEGACY_BASE = {
   kind: "legacy_channel_editor" as const,
@@ -59,7 +52,17 @@ function department(
 }
 
 function specialist(profileId: string): MarketingHermesRuntimeContract {
-  return { profileId, ...SPECIALIST_BASE };
+  return {
+    profileId,
+    kind: "specialist",
+    runtime: {
+      modelAlias: expectedProductionAliasForProfile(profileId),
+      provider: SPIKE_PROVIDER,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    },
+    credentials: { inferenceGateway: "launcher_inject" },
+    failurePolicy: { transportRetries: DEFAULT_TRANSPORT_RETRIES },
+  };
 }
 
 function legacyChannelEditor(profileId: string): MarketingHermesRuntimeContract {
@@ -77,27 +80,20 @@ export const MARKETING_HERMES_RUNTIME_REGISTRY: readonly MarketingHermesRuntimeC
   department("governance-auditor", "thealltour/governance-auditor"),
   department("performance-analyst", "thealltour/performance-analyst"),
 
-  // specialist
-  specialist("editorial-narrative-planner"),
-  specialist("instagram-carousel-planner"),
-  specialist("instagram-card-copy-writer"),
-  specialist("instagram-caption-writer"),
-  specialist("instagram-visual-role-architect"),
-  specialist("shared-visual-planner"),
-  {
-    ...specialist("card-layout-director"),
-    docs: {
-      productionNote:
-        "Profile exists for SOUL/config seed; production Layout render is deterministic (no LLM wiring). Phase 2: docs only — launcher ignores this field.",
-    },
-  },
-  specialist("astra-handoff-writer"),
-  specialist("threads-copy-writer"),
-  specialist("naver-blog-structure-planner"),
-  specialist("naver-blog-copy-writer"),
-  specialist("naver-band-copy-writer"),
+  // specialist (Phase 4 production aliases)
+  ...PHASE4_SPECIALIST_PROFILE_IDS.map((profileId) =>
+    profileId === "card-layout-director"
+      ? {
+          ...specialist(profileId),
+          docs: {
+            productionNote:
+              "Profile exists for SOUL/config seed; production Layout render is deterministic (no LLM wiring). Phase 2: docs only — launcher ignores this field.",
+          },
+        }
+      : specialist(profileId),
+  ),
 
-  // legacy channel editors (still on disk)
+  // legacy channel editors (still on disk — spike alias retained)
   legacyChannelEditor("channel-editor-instagram"),
   legacyChannelEditor("channel-editor-threads"),
   legacyChannelEditor("channel-editor-naver-blog"),

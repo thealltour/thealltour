@@ -3,7 +3,10 @@
  * Fail-fast collectors — not used on the hot invoke path.
  */
 
-import { lookupGatewayAlias } from "@/ai-runtime/gateway/alias-registry";
+import {
+  expectedProductionAliasForProfile,
+  lookupGatewayAlias,
+} from "@/ai-runtime/gateway/alias-registry";
 import type { MarketingHermesRuntimeContract } from "@/lib/marketing/hermesRuntime/contract";
 import {
   EXCLUDED_HERMES_PROFILE_IDS,
@@ -32,6 +35,10 @@ export type MarketingHermesEnforcementIssue = {
     | "specialist_missing_alias"
     | "specialist_missing_provider"
     | "specialist_missing_transport_retries"
+    | "specialist_alias_not_production"
+    | "specialist_alias_profile_mismatch"
+    | "specialist_workload_not_content_draft"
+    | "specialist_priority_not_normal"
     | "alias_unregistered"
     | "config_drift";
   profileId: string;
@@ -122,12 +129,53 @@ export function collectMarketingHermesSpecialistPolicyIssues(
         detail: "specialist requires failurePolicy.transportRetries >= 1",
       });
     }
-    if (contract.runtime?.modelAlias && !lookupGatewayAlias(contract.runtime.modelAlias)) {
+    const alias = contract.runtime?.modelAlias?.trim() ?? "";
+    const expectedAlias = expectedProductionAliasForProfile(contract.profileId);
+    if (alias && alias !== expectedAlias) {
       issues.push({
-        code: "alias_unregistered",
+        code: "specialist_alias_profile_mismatch",
         profileId: contract.profileId,
-        detail: `gateway alias registry missing ${contract.runtime.modelAlias}`,
+        detail: `specialist modelAlias ${alias} must be ${expectedAlias}`,
       });
+    }
+    if (alias) {
+      const entry = lookupGatewayAlias(alias);
+      if (!entry) {
+        issues.push({
+          code: "alias_unregistered",
+          profileId: contract.profileId,
+          detail: `gateway alias registry missing ${alias}`,
+        });
+      } else {
+        if (entry.kind !== "production") {
+          issues.push({
+            code: "specialist_alias_not_production",
+            profileId: contract.profileId,
+            detail: `specialist alias ${alias} must be kind=production (got ${entry.kind})`,
+          });
+        }
+        if (entry.agentId !== contract.profileId) {
+          issues.push({
+            code: "specialist_alias_profile_mismatch",
+            profileId: contract.profileId,
+            detail: `alias agentId ${entry.agentId} must equal profileId ${contract.profileId}`,
+          });
+        }
+        if (entry.workload !== "content_draft") {
+          issues.push({
+            code: "specialist_workload_not_content_draft",
+            profileId: contract.profileId,
+            detail: `specialist workload must be content_draft (got ${entry.workload})`,
+          });
+        }
+        if (entry.priority !== "normal") {
+          issues.push({
+            code: "specialist_priority_not_normal",
+            profileId: contract.profileId,
+            detail: `specialist priority must be normal (got ${entry.priority})`,
+          });
+        }
+      }
     }
   }
 

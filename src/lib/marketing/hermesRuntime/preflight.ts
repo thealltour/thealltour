@@ -178,6 +178,74 @@ export function collectMarketingHermesAliasPreflightIssues(
   return issues;
 }
 
+export type Phase4SpecialistCutoverIssue = {
+  profileId: string;
+  layer: "runtime_registry" | "profile_config" | "gateway_registry";
+  detail: string;
+};
+
+/**
+ * Phase 4 four-layer check for specialist production aliases:
+ * profileId → expected alias → runtime registry → profile config → gateway registry.
+ */
+export function collectPhase4SpecialistCutoverIssues(
+  contracts: readonly MarketingHermesRuntimeContract[] = listMarketingHermesRuntimeContracts(),
+  profilesRoot: string = resolveMarketingHermesProfileFixturesRoot(),
+): Phase4SpecialistCutoverIssue[] {
+  const issues: Phase4SpecialistCutoverIssue[] = [];
+  for (const contract of contracts) {
+    if (contract.kind !== "specialist") continue;
+    const expected = `thealltour/${contract.profileId}`;
+
+    if (contract.runtime.modelAlias !== expected) {
+      issues.push({
+        profileId: contract.profileId,
+        layer: "runtime_registry",
+        detail: `modelAlias ${contract.runtime.modelAlias} !== ${expected}`,
+      });
+    }
+
+    try {
+      const live = readHermesProfileModelConfig(contract.profileId, profilesRoot);
+      if (live.modelDefault !== expected) {
+        issues.push({
+          profileId: contract.profileId,
+          layer: "profile_config",
+          detail: `config.yaml default ${live.modelDefault} !== ${expected}`,
+        });
+      }
+    } catch (error) {
+      issues.push({
+        profileId: contract.profileId,
+        layer: "profile_config",
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const entry = lookupGatewayAlias(expected);
+    if (!entry) {
+      issues.push({
+        profileId: contract.profileId,
+        layer: "gateway_registry",
+        detail: `missing gateway alias ${expected}`,
+      });
+    } else if (
+      entry.kind !== "production" ||
+      entry.agentId !== contract.profileId ||
+      entry.workload !== "content_draft" ||
+      entry.priority !== "normal" ||
+      entry.allowsSpikeForceFallback
+    ) {
+      issues.push({
+        profileId: contract.profileId,
+        layer: "gateway_registry",
+        detail: `alias entry mismatch kind=${entry.kind} agentId=${entry.agentId} workload=${entry.workload} priority=${entry.priority} forceFallback=${entry.allowsSpikeForceFallback}`,
+      });
+    }
+  }
+  return issues;
+}
+
 export function assertMarketingHermesRegistryHealthy(): void {
   const drift = collectMarketingHermesRegistryDrift();
   if (drift.length > 0) {
@@ -192,6 +260,14 @@ export function assertMarketingHermesRegistryHealthy(): void {
     throw new Error(
       `Marketing Hermes alias preflight failed:\n${aliasIssues
         .map((i) => `- ${i.profileId}: ${i.modelAlias} — ${i.detail}`)
+        .join("\n")}`,
+    );
+  }
+  const phase4 = collectPhase4SpecialistCutoverIssues();
+  if (phase4.length > 0) {
+    throw new Error(
+      `Phase 4 specialist cutover preflight failed:\n${phase4
+        .map((i) => `- ${i.profileId} [${i.layer}]: ${i.detail}`)
         .join("\n")}`,
     );
   }

@@ -73,10 +73,19 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
   {
     id: "spike-alias-usage",
     kind: "advisory_path",
-    profileOrPath: "theallcloud/auto (gateway alias)",
+    profileOrPath: "theallcloud/auto (legacy channel-editor + runtime-spike)",
     reason:
-      "Spike/compat gateway alias still routes specialists; department aliases already use thealltour/*. Alias cutover for specialists is a separate PR.",
-    phaseTarget: "phase-4",
+      "Active 12 specialists cut over to thealltour/<profileId> in Phase 4. Spike alias retained for legacy channel-editors, runtime-spike/e2e, and rollback.",
+    phaseTarget: "phase-5",
+    allowed: true,
+  },
+  {
+    id: "specialist-role-routing-not-yet-tuned",
+    kind: "advisory_path",
+    profileOrPath: "specialist agentId → roleKey",
+    reason:
+      "Phase 4 stops at alias→agentId→content_draft→normal. Optional channel_editor role override is Phase 4B after observing content_draft routing.",
+    phaseTarget: "phase-5",
     allowed: true,
   },
 ];

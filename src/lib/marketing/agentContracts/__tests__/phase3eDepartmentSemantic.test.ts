@@ -190,6 +190,9 @@ describe("Phase 3E department semantic contracts", () => {
       MARKETING_AGENT_CONTRACT_DEBT.some((d) => d.id === "department-durable-outputs-unregistered"),
     ).toBe(true);
     expect(MARKETING_AGENT_CONTRACT_DEBT.some((d) => d.id === "spike-alias-usage")).toBe(true);
+    expect(
+      MARKETING_AGENT_CONTRACT_DEBT.some((d) => d.id === "specialist-role-routing-not-yet-tuned"),
+    ).toBe(true);
     expect(MARKETING_AGENT_CONTRACT_DEBT.some((d) => d.id === "layout-hermes-production-ambiguity")).toBe(
       true,
     );

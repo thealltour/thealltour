@@ -56,12 +56,14 @@ export {
   assertMarketingHermesRegistryHealthy,
   collectMarketingHermesAliasPreflightIssues,
   collectMarketingHermesRegistryDrift,
+  collectPhase4SpecialistCutoverIssues,
   listHermesProfileIdsOnDisk,
   listMarketingHermesProfileIdsOnDisk,
   readHermesProfileModelConfig,
   resolveHermesProfilesRoot,
   resolveMarketingHermesProfileFixturesRoot,
 } from "@/lib/marketing/hermesRuntime/preflight";
+export type { Phase4SpecialistCutoverIssue } from "@/lib/marketing/hermesRuntime/preflight";
 
 export {
   assertMarketingHermesRuntimeEnforcement,

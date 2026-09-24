@@ -193,6 +193,12 @@ describe("Phase 2 Marketing Hermes enforcement", () => {
   it("debt inventory is explicit and machine-readable", () => {
     expect(MARKETING_HERMES_DEBT_INVENTORY.every((e) => e.allowed === true)).toBe(true);
     expect(MARKETING_HERMES_DEBT_INVENTORY.some((e) => e.category === "spike_alias")).toBe(true);
+    expect(MARKETING_HERMES_DEBT_INVENTORY.some((e) => e.id === "spike-alias-legacy-channel-editors")).toBe(
+      true,
+    );
+    expect(
+      MARKETING_HERMES_DEBT_INVENTORY.some((e) => e.id === "specialist-role-routing-not-yet-tuned"),
+    ).toBe(true);
     expect(MARKETING_HERMES_DEBT_INVENTORY.some((e) => e.category === "legacy_channel_editor")).toBe(
       true,
     );

@@ -14,6 +14,24 @@ export const HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST = "thealltour/content-str
 export const HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR = "thealltour/governance-auditor";
 export const HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST = "thealltour/performance-analyst";
 
+/** Phase 4 specialist profiles — production alias cutover targets. */
+export const PHASE4_SPECIALIST_PROFILE_IDS = [
+  "editorial-narrative-planner",
+  "instagram-carousel-planner",
+  "instagram-card-copy-writer",
+  "instagram-caption-writer",
+  "instagram-visual-role-architect",
+  "shared-visual-planner",
+  "card-layout-director",
+  "astra-handoff-writer",
+  "threads-copy-writer",
+  "naver-blog-structure-planner",
+  "naver-blog-copy-writer",
+  "naver-band-copy-writer",
+] as const;
+
+export type Phase4SpecialistProfileId = (typeof PHASE4_SPECIALIST_PROFILE_IDS)[number];
+
 export type GatewayAliasKind = "production" | "spike";
 
 export type GatewayAliasEntry = {
@@ -26,6 +44,17 @@ export type GatewayAliasEntry = {
   /** When true, C4.1 controlled first-candidate failure may be enabled for this alias. */
   allowsSpikeForceFallback: boolean;
 };
+
+function specialistProductionAlias(profileId: Phase4SpecialistProfileId): GatewayAliasEntry {
+  return {
+    alias: expectedProductionAliasForProfile(profileId),
+    kind: "production",
+    agentId: profileId,
+    workload: "content_draft",
+    priority: "normal",
+    allowsSpikeForceFallback: false,
+  };
+}
 
 const REGISTRY: GatewayAliasEntry[] = [
   {
@@ -60,6 +89,7 @@ const REGISTRY: GatewayAliasEntry[] = [
     priority: "high",
     allowsSpikeForceFallback: false,
   },
+  ...PHASE4_SPECIALIST_PROFILE_IDS.map(specialistProductionAlias),
   {
     alias: HERMES_INFERENCE_ALIAS_AUTO,
     kind: "spike",
@@ -147,4 +177,8 @@ export function shouldSpikeForceFallback(
 
 export function expectedProductionAliasForProfile(profileId: string): string {
   return `thealltour/${profileId.trim().toLowerCase()}`;
+}
+
+export function isPhase4SpecialistProfileId(profileId: string): profileId is Phase4SpecialistProfileId {
+  return (PHASE4_SPECIALIST_PROFILE_IDS as readonly string[]).includes(profileId);
 }

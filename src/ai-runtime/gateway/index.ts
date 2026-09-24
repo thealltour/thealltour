@@ -19,11 +19,19 @@ export {
   HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST,
   HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR,
   HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
+  PHASE4_SPECIALIST_PROFILE_IDS,
   listGatewayAliasEntries,
   lookupGatewayAlias,
   resolveGatewayAlias,
   isProductionGatewayAlias,
   isSpikeGatewayAlias,
+  expectedProductionAliasForProfile,
+  isPhase4SpecialistProfileId,
+} from "@/ai-runtime/gateway/alias-registry";
+export type {
+  GatewayAliasEntry,
+  GatewayAliasKind,
+  Phase4SpecialistProfileId,
 } from "@/ai-runtime/gateway/alias-registry";
 export { validateHermesRuntimeCutoverConfig, isBareCustomProvider } from "@/ai-runtime/gateway/cutover-preflight";
 export type {

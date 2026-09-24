@@ -11,6 +11,9 @@ import {
   HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR,
   HERMES_INFERENCE_ALIAS_MARKETING_MANAGER,
   HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST,
+  PHASE4_SPECIALIST_PROFILE_IDS,
+  expectedProductionAliasForProfile,
+  listGatewayAliasEntries,
   lookupGatewayAlias,
   resolveGatewayAlias,
   shouldSpikeForceFallback,
@@ -274,5 +277,72 @@ describe("C1 spike alias backward compatibility", () => {
         AI_RUNTIME_SPIKE_FORCE_FALLBACK: "1",
       }),
     ).toBe(false);
+  });
+});
+
+describe("Phase 4 specialist production alias cutover", () => {
+  it("A: 12 specialist production aliases exist with content_draft/normal", () => {
+    expect(PHASE4_SPECIALIST_PROFILE_IDS).toHaveLength(12);
+    const aliases = listGatewayAliasEntries().map((e) => e.alias);
+    expect(new Set(aliases).size).toBe(aliases.length);
+
+    for (const profileId of PHASE4_SPECIALIST_PROFILE_IDS) {
+      const alias = expectedProductionAliasForProfile(profileId);
+      const entry = resolveGatewayAlias(alias);
+      expect(entry.kind).toBe("production");
+      expect(entry.agentId).toBe(profileId);
+      expect(entry.workload).toBe("content_draft");
+      expect(entry.priority).toBe("normal");
+      expect(entry.allowsSpikeForceFallback).toBe(false);
+
+      const { request } = mapOpenAiCompatToRuntimeRequest({
+        model: alias,
+        messages: [{ role: "user", content: "ping" }],
+      });
+      expect(request.agentId).toBe(profileId);
+      expect(request.workload).toBe("content_draft");
+      expect(request.priority).toBe("normal");
+      expect(request.agentId).not.toBe("runtime-spike");
+    }
+  });
+
+  it("D: theallcloud/auto still exists as spike", () => {
+    const spike = resolveGatewayAlias(HERMES_INFERENCE_ALIAS_AUTO);
+    expect(spike.kind).toBe("spike");
+    expect(spike.agentId).toBe("runtime-spike");
+    expect(spike.workload).toBe("manager_decision");
+    expect(spike.priority).toBe("high");
+  });
+
+  it("E: department aliases unchanged", () => {
+    expect(resolveGatewayAlias(HERMES_INFERENCE_ALIAS_MARKETING_MANAGER)).toMatchObject({
+      agentId: "marketing-manager",
+      workload: "manager_decision",
+      priority: "high",
+      kind: "production",
+    });
+    expect(resolveGatewayAlias(HERMES_INFERENCE_ALIAS_CONTENT_STRATEGIST)).toMatchObject({
+      agentId: "content-strategist",
+      workload: "content_draft",
+      priority: "normal",
+    });
+    expect(resolveGatewayAlias(HERMES_INFERENCE_ALIAS_GOVERNANCE_AUDITOR)).toMatchObject({
+      agentId: "governance-auditor",
+      workload: "governance",
+    });
+    expect(resolveGatewayAlias(HERMES_INFERENCE_ALIAS_PERFORMANCE_ANALYST)).toMatchObject({
+      agentId: "performance-analyst",
+      workload: "analysis",
+    });
+  });
+
+  it("F: fake alias → INVALID_REQUEST", () => {
+    expect(() => resolveGatewayAlias("thealltour/not-a-real-specialist")).toThrow(RuntimeError);
+    expect(() =>
+      mapOpenAiCompatToRuntimeRequest({
+        model: "thealltour/not-a-real-specialist",
+        messages: [{ role: "user", content: "x" }],
+      }),
+    ).toThrow(/Unsupported inference gateway model alias/);
   });
 });

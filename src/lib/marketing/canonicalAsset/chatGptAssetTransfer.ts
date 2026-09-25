@@ -12,6 +12,7 @@ import {
   validateCanonicalMarketingAsset,
   type CanonicalAssetValidationIssue,
 } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
+import { CANONICAL_SURFACE_LANGUAGE_NOTES_KO } from "@/lib/marketing/canonicalAsset/surfaceLanguageContract";
 import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
 import type {
   EvidenceBackedStoryBrief,
@@ -99,6 +100,7 @@ const DEFAULT_NOTES_KO = [
   "forbiddenClaimsKo의 내용을 사실처럼 재도입하지 마세요.",
   "limitationsKo를 숨기거나 확정 사실로 바꾸지 마세요.",
   "keyEvidenceKo 안의 검증된 근거를 우선 활용하세요.",
+  ...CANONICAL_SURFACE_LANGUAGE_NOTES_KO,
   "관광청·보도자료 문체보다 사람이 실제로 쓴 자연스러운 한국어 마케팅 원문으로 다듬으세요.",
   "Story의 핵심 질문과 decisionAtStake를 바꾸지 마세요.",
 ];

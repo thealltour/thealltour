@@ -341,6 +341,10 @@ describe("ASW Phase5 — archetype-aware prompt", () => {
     expect(ASSET_SOURCE_WRITER_CONTRACT_PROMPT).toContain(
       "현지인의 삶이 고스란히 담겨 있다",
     );
+    expect(ASSET_SOURCE_WRITER_CONTRACT_PROMPT).toContain("NATURAL KOREAN SURFACE LANGUAGE");
+    expect(ASSET_SOURCE_WRITER_CONTRACT_PROMPT).not.toMatch(
+      /prefer bounded language[\s\S]{0,120}보여주는 단서다/,
+    );
   });
 });
 

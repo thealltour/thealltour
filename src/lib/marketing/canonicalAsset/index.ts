@@ -66,6 +66,14 @@ export {
   isAsWDecisionPracticalArchetype,
 } from "@/lib/marketing/canonicalAsset/prompt";
 export {
+  CANONICAL_NATURAL_KOREAN_SURFACE_CONTRACT_EN,
+  CANONICAL_SURFACE_LANGUAGE_NOTES_KO,
+  CANONICAL_LEGACY_HEDGE_SEED_SHOWING_CLUE,
+  CANONICAL_PREFERRED_PARTIAL_HEDGES,
+  CANONICAL_ABSTRACT_NOUNS_NEED_CONCRETE_TETHER,
+  CANONICAL_PLANNER_SHORTHAND_NOT_SURFACE,
+} from "@/lib/marketing/canonicalAsset/surfaceLanguageContract";
+export {
   CANONICAL_ASSET_CHATGPT_EDIT_CONTRACT,
   STALE_ASSET_MESSAGE_KO,
   buildCanonicalAssetChatGptClipboardText,

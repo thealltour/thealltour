@@ -3,7 +3,8 @@
  * `--theall-brand-blue` / `--theall-brand-orange`. Do not introduce a second palette.
  */
 export const CARDNEWS_RENDER_CONTRACT = "cardnews-render-v1" as const;
-export const CARDNEWS_RENDERER_VERSION = "cardnews-render-v2.5-full-bleed-overlay-story" as const;
+export const CARDNEWS_RENDERER_VERSION =
+  "cardnews-render-v2.6-wide-overlay-brand-closing" as const;
 
 export const CARDNEWS_ASPECT_RATIOS = ["4:5", "1:1", "9:16"] as const;
 export type CardNewsAspectRatio = (typeof CARDNEWS_ASPECT_RATIOS)[number];
@@ -65,8 +66,8 @@ export const CARDNEWS_BRAND = {
 export const CARDNEWS_SAFE = {
   padX: 88,
   padY: 80,
-  minHeadlinePx: 42,
-  minBodyPx: 36,
+  minHeadlinePx: 44,
+  minBodyPx: 38,
   minLabelPx: 20,
   minSourcePx: 22,
 } as const;

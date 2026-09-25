@@ -89,7 +89,8 @@ function presentationForCard(card: PresentationCardInput): CardPresentation {
         focalAlignment: "center",
         textPlacement: "overlay-bottom",
         overlayMode: "gradient_dark",
-        textDensity: "compact",
+        // v2.6: same mobile-readable density family as overlay story cards.
+        textDensity: "standard",
       };
     case "evidence_detail":
       return {
@@ -128,7 +129,7 @@ function presentationForCard(card: PresentationCardInput): CardPresentation {
         focalAlignment: "center",
         textPlacement: "overlay-bottom",
         overlayMode: "gradient_dark",
-        // Story overlay uses standard body scale (mobile-readable); cover stays compact.
+        // Overlay story + cover share the mobile-readable standard density family.
         textDensity: "standard",
       };
     case "closing_insight":

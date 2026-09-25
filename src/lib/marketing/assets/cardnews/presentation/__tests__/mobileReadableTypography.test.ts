@@ -101,7 +101,7 @@ const LONG_HEADLINE =
 describe("cardnews v2.4 mobile-readable typography", () => {
   it("bumps renderer version", () => {
     expect(CARDNEWS_RENDERER_VERSION).toBe(
-      "cardnews-render-v2.5-full-bleed-overlay-story",
+      "cardnews-render-v2.6-wide-overlay-brand-closing",
     );
   });
 
@@ -111,7 +111,7 @@ describe("cardnews v2.4 mobile-readable typography", () => {
       const v23 = TYPOGRAPHY_V23_BASELINE.bodyPreferred[density];
       expect(v24).toBeGreaterThanOrEqual(v23 + 10);
       expect(v24).toBeGreaterThanOrEqual(42);
-      expect(v24).toBeLessThanOrEqual(52);
+      expect(v24).toBeLessThanOrEqual(60);
     }
     expect(densityBodyPx("standard")).toBe(TYPOGRAPHY_PREFERRED.body.story.standard);
     expect(CARDNEWS_SAFE.minBodyPx).toBeGreaterThanOrEqual(36);

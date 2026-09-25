@@ -7,8 +7,16 @@ import { CardNewsRenderOverflowError } from "@/lib/marketing/assets/errors";
 import { TYPOGRAPHY_LINE_HEIGHT } from "@/lib/marketing/assets/cardnews/typographyTokens";
 
 const HANGUL = /[\uAC00-\uD7A3]/u;
-const LATIN_WORD =
-  /[A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+)*/u;
+/**
+ * Latin + Vietnamese letters (incl. horn ư/ơ in Extended-B and precomposed tones).
+ * Combining marks kept so NFD forms stay one token.
+ */
+const LATIN_LETTER_CLASS =
+  "A-Za-zÀ-ÖØ-öø-ÿĀ-ſ\\u0180-\\u024FḀ-ỿ\\u0300-\\u036F";
+const LATIN_WORD = new RegExp(
+  `[${LATIN_LETTER_CLASS}]+(?:['’][${LATIN_LETTER_CLASS}]+)*`,
+  "u",
+);
 const CJK =
   /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7A3\u3000-\u303F\u3040-\u30FF\u3400-\u9FFF\uF900-\uFAFF]/u;
 
@@ -44,8 +52,10 @@ type Token = { text: string; breakable: boolean };
  */
 export function tokenizeForWrap(paragraph: string): Token[] {
   const tokens: Token[] = [];
-  const re =
-    /(\s+)|([A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+)*)|([\uAC00-\uD7A3]+)|([^\sA-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ\uAC00-\uD7A3]+)/gu;
+  const re = new RegExp(
+    `(\\s+)|([${LATIN_LETTER_CLASS}]+(?:['’][${LATIN_LETTER_CLASS}]+)*)|([\\uAC00-\\uD7A3]+)|([^\\s${LATIN_LETTER_CLASS}\\uAC00-\\uD7A3]+)`,
+    "gu",
+  );
   let match: RegExpExecArray | null;
   while ((match = re.exec(paragraph)) !== null) {
     const text = match[0];
@@ -85,7 +95,10 @@ export function splitOverlongToken(
 
   // Script boundary: Latin/Viet then Hangul (e.g. Dao족)
   const scriptSplit = token.match(
-    /^([A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿĀ-ſḀ-ỿ]+)*)([\uAC00-\uD7A3]+.*)$/u,
+    new RegExp(
+      `^([${LATIN_LETTER_CLASS}]+(?:['’][${LATIN_LETTER_CLASS}]+)*)([\\uAC00-\\uD7A3]+.*)$`,
+      "u",
+    ),
   );
   if (scriptSplit) {
     const left = scriptSplit[1]!;
@@ -157,10 +170,47 @@ export function wrapTextDetailed(text: string, fontSize: number, maxWidth: numbe
       currentWidth = 0;
     };
 
+    /**
+     * When a Latin/Viet word won't fit, pull the trailing Latin phrase
+     * (e.g. "nhà trình") onto the next line with it → "nhà trình tường".
+     */
+    const pullTrailingLatinPhrase = (): string => {
+      const re = new RegExp(
+        `^(.*?)(\\s+[${LATIN_LETTER_CLASS}]+(?:\\s+[${LATIN_LETTER_CLASS}]+)*)\\s*$`,
+        "u",
+      );
+      const m = current.match(re);
+      if (!m || !m[1] || !m[1].trim()) return "";
+      const head = m[1]!;
+      const pulled = m[2]!.trimStart();
+      if (!pulled) return "";
+      lines.push(head.replace(/\s+$/u, ""));
+      current = "";
+      currentWidth = 0;
+      return pulled;
+    };
+
     const pushPiece = (piece: string) => {
       const w = measureTextWidth(piece, fontSize);
       if (currentWidth > 0 && currentWidth + w > wrapWidth) {
-        flush();
+        let prefix = "";
+        if (isLatinOrVietToken(piece)) {
+          prefix = pullTrailingLatinPhrase();
+        }
+        if (!prefix) flush();
+        if (prefix) {
+          const combined = `${prefix} ${piece}`;
+          const cw = measureTextWidth(combined, fontSize);
+          if (cw <= wrapWidth) {
+            current = combined;
+            currentWidth = cw;
+            return;
+          }
+          // Prefix alone on its line; piece continues.
+          lines.push(prefix);
+          current = "";
+          currentWidth = 0;
+        }
       }
       if (w > wrapWidth) {
         const split = splitOverlongToken(piece, fontSize, wrapWidth);

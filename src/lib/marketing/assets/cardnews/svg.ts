@@ -62,8 +62,8 @@ function textBlock(input: {
   lineHeight: number;
   weight: 400 | 500 | 700;
   fill: string;
-  /** Subtle dark shadow for overlay readability (no thick stroke). */
-  shadow?: boolean;
+  /** Overlay readability shadow — stronger for headline, softer for body. */
+  shadow?: boolean | "strong" | "soft";
 }): string {
   if (input.lines.length === 0) return "";
   const tspans = input.lines
@@ -72,9 +72,18 @@ function textBlock(input: {
       return `<tspan x="${input.x}" dy="${dy}">${escapeXml(line)}</tspan>`;
     })
     .join("");
-  const shadow = input.shadow
-    ? ` style="filter:drop-shadow(0 2px 6px rgba(8,12,20,0.55))"`
-    : "";
+  const shadowKind =
+    input.shadow === true || input.shadow === "soft"
+      ? "soft"
+      : input.shadow === "strong"
+        ? "strong"
+        : null;
+  const shadow =
+    shadowKind === "strong"
+      ? ` style="filter:drop-shadow(0 3px 10px rgba(8,12,20,0.68))"`
+      : shadowKind === "soft"
+        ? ` style="filter:drop-shadow(0 2px 6px rgba(8,12,20,0.42))"`
+        : "";
   return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}"${shadow}>${tspans}</text>`;
 }
 
@@ -110,7 +119,6 @@ function progress(
   }).join("");
 }
 
-/** Subtle editorial accent for text_statement — bars only, never behind headline. */
 function textStatementAccent(geo: CardNewsGeometry, y: number): string {
   return [
     `<rect x="80" y="${y}" width="56" height="5" fill="${CARDNEWS_BRAND.blue}"/>`,
@@ -159,9 +167,9 @@ function overlayGradient(
   const stops = dark
     ? [
         `<stop offset="0%" stop-color="rgba(8,12,20,0)"/>`,
-        `<stop offset="35%" stop-color="rgba(8,12,20,0.28)"/>`,
-        `<stop offset="70%" stop-color="rgba(8,12,20,0.72)"/>`,
-        `<stop offset="100%" stop-color="rgba(8,12,20,0.88)"/>`,
+        `<stop offset="32%" stop-color="rgba(8,12,20,0.30)"/>`,
+        `<stop offset="68%" stop-color="rgba(8,12,20,0.74)"/>`,
+        `<stop offset="100%" stop-color="rgba(8,12,20,0.90)"/>`,
       ]
     : [
         `<stop offset="0%" stop-color="rgba(255,255,255,0)"/>`,
@@ -210,8 +218,10 @@ export function buildCardNewsSvgFromSpec(
 
   // Accent sits above the headline (and above kicker when present).
   const accentY =
-    layout.template === "text_statement"
-      ? Math.max(
+    layout.template === "text_statement" ||
+    (layout.template === "closing_insight" && layout.brand.showEditorialAccent)
+      ? layout.brand.editorialAccentY ??
+        Math.max(
           28,
           (spec.kicker ? layout.text.kickerY : layout.text.y) -
             Math.round((spec.kicker ? 20 : spec.headline.fontSize) * 0.82) -
@@ -230,6 +240,16 @@ export function buildCardNewsSvgFromSpec(
         ].join("")
       : "";
 
+  const signatureRule = layout.brand.signatureRule
+    ? `<rect x="${layout.brand.signatureRule.x}" y="${layout.brand.signatureRule.y}" width="${layout.brand.signatureRule.width}" height="${layout.brand.signatureRule.height}" fill="${CARDNEWS_BRAND.line}"/>`
+    : "";
+
+  const editorialAccent =
+    layout.template === "text_statement" ||
+    (layout.template === "closing_insight" && layout.brand.showEditorialAccent)
+      ? textStatementAccent(geo, accentY)
+      : "";
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${geo.width}" height="${geo.height}" viewBox="0 0 ${geo.width} ${geo.height}">
   <rect width="${geo.width}" height="${geo.height}" fill="${layout.text.fill === "transparent" ? CARDNEWS_BRAND.navy : CARDNEWS_BRAND.paper}"/>
@@ -238,7 +258,7 @@ export function buildCardNewsSvgFromSpec(
   ${hasVisual && layout.image && spec.visualDataUri ? visualSlot(spec.cardId, spec.visualDataUri, layout.image, layout.preserveAspectRatio) : ""}
   ${textZoneBackdrop(layout, geo)}
   ${layout.overlay ? overlayGradient(spec.cardId, layout.overlay, geo.width) : ""}
-  ${layout.template === "text_statement" ? textStatementAccent(geo, accentY) : ""}
+  ${editorialAccent}
   ${spec.kicker ? `<text x="${layout.text.x}" y="${layout.text.kickerY}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="20" font-weight="700" fill="${layout.text.kickerFill}">${escapeXml(spec.kicker)}</text>` : ""}
   ${textBlock({
     lines: spec.headline.lines,
@@ -248,7 +268,7 @@ export function buildCardNewsSvgFromSpec(
     lineHeight: spec.headline.lineHeight,
     weight: 700,
     fill: layout.text.headlineFill,
-    shadow: overlaySurface,
+    shadow: overlaySurface ? "strong" : undefined,
   })}
   ${textBlock({
     lines: spec.body.lines,
@@ -258,9 +278,10 @@ export function buildCardNewsSvgFromSpec(
     lineHeight: spec.body.lineHeight,
     weight: 500,
     fill: layout.text.bodyFill,
-    shadow: overlaySurface,
+    shadow: overlaySurface ? "soft" : undefined,
   })}
   ${citation}
+  ${signatureRule}
   ${progress(spec.index, spec.total, layout.brand.progressY, layout.text.x, overlaySurface)}
   ${wordmark(spec, layout.brand.wordmark)}
 </svg>

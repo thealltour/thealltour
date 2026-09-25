@@ -5,6 +5,7 @@
  * v2.3: photo_top / evidence use content-aware image-height allocation.
  * v2.5: cover_full_bleed + photo_overlay_editorial share full-bleed overlay family
  * (image never shrinks; text band expands / fonts shrink within lower safe region).
+ * v2.6: wider overlay text column, cover/story body parity, brand-signature closing.
  */
 
 import type { CardNewsCard, CardNewsRole } from "@/lib/marketing/assets/contracts";
@@ -29,11 +30,14 @@ import {
   headlineBodyGapForDensity,
   measureTextBlockHeight,
 } from "@/lib/marketing/assets/cardnews/presentation/contentAwareLayout";
+import { resolvePlatformLayout } from "@/lib/marketing/assets/cardnews/presentation/platformLayout";
 import type { CardCitation } from "@/lib/marketing/assets/cardnews/svg";
 import {
   TYPOGRAPHY_BODY_FILL_PAPER,
   TYPOGRAPHY_LINE_HEIGHT,
+  formatScaleForAspect,
 } from "@/lib/marketing/assets/cardnews/typographyTokens";
+import { paperTextMaxWidth } from "@/lib/marketing/assets/cardnews/overlayTextInsets";
 
 export type ResolvedCardRenderSpec = {
   cardId: string;
@@ -87,8 +91,7 @@ function applyMobileLineHeights(
     template === "cover_full_bleed" || template === "text_statement"
       ? 1.15
       : TYPOGRAPHY_LINE_HEIGHT.headline;
-  const bodyMult =
-    template === "cover_full_bleed" ? TYPOGRAPHY_LINE_HEIGHT.coverBody : TYPOGRAPHY_LINE_HEIGHT.body;
+  const bodyMult = TYPOGRAPHY_LINE_HEIGHT.body;
   headline.lineHeight = Math.round(headline.fontSize * headlineMult);
   headline.height = headline.lines.length * headline.lineHeight;
   body.lineHeight = Math.round(body.fontSize * bodyMult);
@@ -145,6 +148,30 @@ function brandSubtle(geo: CardNewsGeometry, opacity: number) {
   };
 }
 
+/** Brand-signature closing footer — larger wordmark + rule, no CTA copy. */
+function brandSignatureClosing(geo: CardNewsGeometry) {
+  return {
+    wordmark: {
+      x: 80,
+      y: geo.height - geo.scaleY(156),
+      width: 340,
+      height: 58,
+      opacity: 0.95,
+    },
+    progressY: geo.height - geo.scaleY(48),
+    showTopBar: true,
+    showBottomAccent: true,
+    signatureRule: {
+      x: 80,
+      y: geo.height - geo.scaleY(186),
+      width: 112,
+      height: 2,
+    },
+    showEditorialAccent: true,
+    editorialAccentY: geo.scaleY(72),
+  };
+}
+
 function buildContentAwareImageBackedSpec(input: {
   card: CardNewsCard;
   index: number;
@@ -160,7 +187,7 @@ function buildContentAwareImageBackedSpec(input: {
   const geo = input.geometry;
   const p = input.presentation;
   const density = input.template === "evidence_detail" ? "compact" : p.textDensity;
-  const textWidth = geo.width - 80 * 2;
+  const textWidth = paperTextMaxWidth(geo.width);
   const headlinePreferred = densityHeadlinePx(density, false, false);
   const bodyPreferred = densityBodyPx(density, false, false);
   const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
@@ -347,7 +374,7 @@ function buildContentAwareClosingSpec(input: {
   const p = input.presentation;
   const isClosing = p.template === "closing_insight";
   const density = p.textDensity;
-  const textWidth = geo.width - 80 * 2;
+  const textWidth = paperTextMaxWidth(geo.width);
   const headlinePreferred = Math.max(
     densityHeadlinePx(density, false, !isClosing),
     isClosing ? 64 : 72,
@@ -356,6 +383,13 @@ function buildContentAwareClosingSpec(input: {
   const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
   const hasKicker = Boolean(input.explicitKicker);
   const maxLinesBody = isClosing ? 8 : 6;
+  // Brand signature needs footer air; keep text above the lockup.
+  const closingPlatform = isClosing
+    ? {
+        ...resolvePlatformLayout(geo.aspectRatio),
+        footerReservePx: 220,
+      }
+    : undefined;
 
   const probe = fitPair({
     card: input.card,
@@ -383,6 +417,7 @@ function buildContentAwareClosingSpec(input: {
     headlineFontPx: probe.headline.fontSize,
     hasKicker,
     textPlacement: p.textPlacement,
+    platform: closingPlatform,
   });
 
   let headline = probe.headline;
@@ -419,6 +454,7 @@ function buildContentAwareClosingSpec(input: {
       headlineFontPx: headline.fontSize,
       hasKicker,
       textPlacement: p.textPlacement,
+      platform: closingPlatform,
     });
   }
 
@@ -440,11 +476,13 @@ function buildContentAwareClosingSpec(input: {
       kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
     },
     overlay: null,
-    brand: {
-      ...brandSubtle(geo, isClosing ? 0.9 : 0.4),
-      showTopBar: true,
-      showBottomAccent: isClosing,
-    },
+    brand: isClosing
+      ? brandSignatureClosing(geo)
+      : {
+          ...brandSubtle(geo, 0.4),
+          showTopBar: true,
+          showBottomAccent: false,
+        },
     cropMode: p.cropMode ?? "cover",
     focalAlignment: p.focalAlignment ?? "center",
     preserveAspectRatio: "xMidYMid slice",
@@ -507,6 +545,9 @@ function buildFullBleedOverlaySpec(input: {
   const maxLinesBody = isCover ? 5 : 6;
   const bottomPad = geo.scaleY(48);
   const textWidth = base.text.width;
+  const formatScale = formatScaleForAspect(geo.aspectRatio);
+  const headlinePreferred = Math.round(base.text.headlinePreferred * formatScale);
+  const bodyPreferred = Math.round(base.text.bodyPreferred * formatScale);
   const hasKicker = Boolean(input.explicitKicker);
   let gapPx = input.headlineBodyGapPx;
   const gapMin = Math.max(geo.scaleY(14), Math.round(input.headlineBodyGapPx * 0.65));
@@ -514,8 +555,8 @@ function buildFullBleedOverlaySpec(input: {
   let { headline, body } = fitPair({
     card: input.card,
     textWidth,
-    headlinePreferred: base.text.headlinePreferred,
-    bodyPreferred: base.text.bodyPreferred,
+    headlinePreferred,
+    bodyPreferred,
     maxHeadlineHeight: geo.scaleY(260),
     maxBodyHeight: geo.scaleY(320),
     maxLinesHeadline,
@@ -565,8 +606,8 @@ function buildFullBleedOverlaySpec(input: {
     const refit = fitPair({
       card: input.card,
       textWidth,
-      headlinePreferred: base.text.headlinePreferred,
-      bodyPreferred: base.text.bodyPreferred,
+      headlinePreferred,
+      bodyPreferred,
       maxHeadlineHeight: Math.round(budget * 0.42),
       maxBodyHeight: Math.round(budget * 0.58),
       maxLinesHeadline,

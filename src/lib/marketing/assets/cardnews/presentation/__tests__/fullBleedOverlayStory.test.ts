@@ -72,7 +72,7 @@ const VIET = "전통 가옥 ‘nhà trình tường’은 흙을 단단하게 �
 
 describe("cardnews v2.5 full-bleed overlay story", () => {
   it("bumps renderer version", () => {
-    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.5-full-bleed-overlay-story");
+    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.6-wide-overlay-brand-closing");
   });
 
   it("A–C. Dao presentation: cover / overlay×3 / closing", () => {

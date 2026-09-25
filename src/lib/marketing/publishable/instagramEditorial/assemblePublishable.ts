@@ -44,6 +44,7 @@ function mapCarouselRoleToLegacy(
     case "evidence_detail":
       return "evidence";
     case "cta":
+    case "closing":
       return "cta";
     default:
       return "information";

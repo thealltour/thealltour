@@ -101,7 +101,7 @@ const LONG_HEADLINE =
 describe("cardnews v2.4 mobile-readable typography", () => {
   it("bumps renderer version", () => {
     expect(CARDNEWS_RENDERER_VERSION).toBe(
-      "cardnews-render-v2.4-mobile-readable-typography",
+      "cardnews-render-v2.5-full-bleed-overlay-story",
     );
   });
 

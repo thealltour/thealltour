@@ -36,11 +36,16 @@ You receive finalized card copy and visual assignments. You do NOT create copy o
 ## Heuristics
 
 - hook_cover + visual → cover_full_bleed
-- evidence / architecture detail + visual → evidence_detail
-- visual + normal content → photo_top_story (or photo_bottom_story if textSafeArea says keep lower busy)
+- visual + story cards (reframe / context / evidence / evidence_detail) → **photo_overlay_editorial** (full-bleed + lower-third overlay)
+- evidence_detail template: only when textSafeArea explicitly asks for inset / framed detail — do NOT force from role alone
+- photo_top_story / photo_bottom_story: only when textSafeArea clearly needs a solid paper band or upper-busy crop
 - no visual + closing → closing_insight
 - no visual → text_statement
-- Prefer 4:5 visual as primary surface (cover 80–100%, photo/evidence 50–70%)
+- Prefer 4:5 visual as primary surface (overlay family = 100% canvas; split templates 50–70% when used)
+
+## Series rhythm (advisory)
+
+For travel-editorial carousels with shared visuals, prefer a coherent overlay family on cards 1–N-1 and a text-only closing last card — unless textSafeArea/visual constraints require otherwise.
 
 ## textSafeArea
 

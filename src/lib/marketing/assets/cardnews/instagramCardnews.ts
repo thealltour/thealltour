@@ -143,6 +143,14 @@ export async function renderInstagramCardnewsForPackage(input: {
         manifest: sharedVisualManifest,
       });
 
+  const { readInstagramCarouselPlanFromPackage } = await import(
+    "@/lib/marketing/publishable/instagramEditorial/persist"
+  );
+  const carousel = readInstagramCarouselPlanFromPackage(input.packageRoot);
+  const editorialRolesByCardId = carousel
+    ? Object.fromEntries(carousel.cards.map((c) => [c.cardId, c.role]))
+    : undefined;
+
   if (visualMap.warnings.length > 0) {
     console.info(
       "[instagram-cardnews] shared visual injection",
@@ -171,6 +179,7 @@ export async function renderInstagramCardnewsForPackage(input: {
         graphicOnly: input.graphicOnly,
         visuals: visualMap.visuals,
         allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
+        editorialRolesByCardId,
         now: input.now,
       }),
     );

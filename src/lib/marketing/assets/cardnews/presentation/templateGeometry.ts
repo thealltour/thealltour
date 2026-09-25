@@ -378,12 +378,11 @@ export function resolveTemplateLayout(input: {
       };
     }
     case "photo_overlay_editorial": {
-      const headlinePreferred = densityHeadline(density, true, false);
-      const textBottom = p.textPlacement === "overlay-top";
-      const bandH = geo.scaleY(hasKicker ? 360 : 320);
-      const bandTop = textBottom
-        ? geo.scaleY(hasKicker ? 100 : 88)
-        : geo.height - bandH + geo.scaleY(hasKicker ? 16 : 28);
+      // Full-bleed overlay family — same canvas image as cover; story body scale.
+      const headlinePreferred = densityHeadline(density, false, false);
+      const bodyPreferred = densityBody(density, false, false);
+      const bandH = geo.scaleY(hasKicker ? 420 : 380);
+      const bandTop = geo.height - bandH + geo.scaleY(hasKicker ? 16 : 28);
       const { kickerY, headlineY } = resolveTextBandAnchors({
         bandTopY: bandTop,
         headlineFontPx: headlinePreferred,
@@ -396,25 +395,25 @@ export function resolveTemplateLayout(input: {
           x: H_MARGIN,
           y: headlineY,
           width: textWidth,
-          maxHeadlineHeight: geo.scaleY(180),
-          maxBodyHeight: geo.scaleY(100),
+          maxHeadlineHeight: geo.scaleY(220),
+          maxBodyHeight: geo.scaleY(280),
           kickerY,
           headlinePreferred,
-          bodyPreferred: densityBody(density),
+          bodyPreferred,
           fill: "transparent",
           headlineFill: white,
-          bodyFill: "rgba(255,255,255,0.9)",
-          kickerFill: "rgba(255,255,255,0.7)",
+          bodyFill: "rgba(255,255,255,0.92)",
+          kickerFill: "rgba(255,255,255,0.75)",
         },
         overlay: {
           mode: overlayMode === "none" ? "gradient_dark" : overlayMode,
-          y: textBottom ? 0 : geo.height - bandH - geo.scaleY(60),
-          height: bandH + geo.scaleY(60),
+          y: geo.height - bandH - geo.scaleY(80),
+          height: bandH + geo.scaleY(80),
         },
         brand: {
           wordmark: {
             x: H_MARGIN,
-            y: textBottom ? geo.height - geo.scaleY(72) : geo.scaleY(48),
+            y: geo.scaleY(48),
             width: 160,
             height: 30,
             opacity: 0.5,

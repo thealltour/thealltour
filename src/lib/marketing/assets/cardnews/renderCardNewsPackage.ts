@@ -104,6 +104,8 @@ export type RenderCardNewsPackageInput = {
   aspectRatio?: CardNewsAspectRatio | null;
   /** Precomputed presentation plan; if absent, deterministic layout fallback is used. */
   presentationPlan?: CardPresentationPlan | null;
+  /** Editorial carousel roles by cardId — preferred Presentation input when present. */
+  editorialRolesByCardId?: Record<string, string>;
   /** Persist presentation plan to package when rendering (default true when package writable). */
   persistPresentationPlan?: boolean;
   /**
@@ -198,6 +200,8 @@ function resolvePresentationPlanForRender(input: {
   visualIdsByCard: Record<string, string | null>;
   graphicOnly: boolean;
   presentationPlan?: CardPresentationPlan | null;
+  /** Prefer editorial carousel roles when available (Presentation input). */
+  editorialRolesByCardId?: Record<string, string>;
 }): CardPresentationPlan {
   // Phase 3C: assert policy even on reuse; missing/mismatched plan → deterministic_fallback.
   assertCardPresentationArtifactContractParity();
@@ -227,7 +231,9 @@ function resolvePresentationPlanForRender(input: {
     sourceInstagramFingerprint: sourceFp,
     cards: input.cards.map((card, i) => ({
       cardId: card.cardId,
-      role: legacyRoleToPresentationHint(card.role),
+      role:
+        input.editorialRolesByCardId?.[card.cardId] ??
+        legacyRoleToPresentationHint(card.role),
       hasVisual: !input.graphicOnly && Boolean(input.visuals[card.cardId]),
       visualId: visualIds[i],
       headlineHint: card.headline,
@@ -359,6 +365,7 @@ export async function renderCardNewsPackage(
     visualIdsByCard,
     graphicOnly,
     presentationPlan: input.presentationPlan,
+    editorialRolesByCardId: input.editorialRolesByCardId,
   });
   const presentationByCard = new Map(presentationPlan.cards.map((c) => [c.cardId, c]));
 

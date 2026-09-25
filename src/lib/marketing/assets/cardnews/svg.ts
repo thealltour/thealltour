@@ -62,6 +62,8 @@ function textBlock(input: {
   lineHeight: number;
   weight: 400 | 500 | 700;
   fill: string;
+  /** Subtle dark shadow for overlay readability (no thick stroke). */
+  shadow?: boolean;
 }): string {
   if (input.lines.length === 0) return "";
   const tspans = input.lines
@@ -70,7 +72,10 @@ function textBlock(input: {
       return `<tspan x="${input.x}" dy="${dy}">${escapeXml(line)}</tspan>`;
     })
     .join("");
-  return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}">${tspans}</text>`;
+  const shadow = input.shadow
+    ? ` style="filter:drop-shadow(0 2px 6px rgba(8,12,20,0.55))"`
+    : "";
+  return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}"${shadow}>${tspans}</text>`;
 }
 
 function wordmark(
@@ -84,10 +89,23 @@ function wordmark(
   return `<text x="${placement.x}" y="${placement.y + 24}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="${opacity}">${escapeXml(CARDNEWS_WORDMARK_TEXT)}</text>`;
 }
 
-function progress(index: number, total: number, y: number, x: number): string {
+function progress(
+  index: number,
+  total: number,
+  y: number,
+  x: number,
+  overlaySurface: boolean,
+): string {
   return Array.from({ length: total }, (_, offset) => {
     const cx = x + 8 + offset * 18;
-    const fill = offset + 1 === index ? CARDNEWS_BRAND.blue : "rgba(0,0,0,0.12)";
+    const active = offset + 1 === index;
+    const fill = active
+      ? overlaySurface
+        ? "rgba(255,255,255,0.95)"
+        : CARDNEWS_BRAND.blue
+      : overlaySurface
+        ? "rgba(255,255,255,0.35)"
+        : "rgba(0,0,0,0.12)";
     return `<circle cx="${cx}" cy="${y}" r="4" fill="${fill}"/>`;
   }).join("");
 }
@@ -137,13 +155,22 @@ function overlayGradient(
   if (overlay.mode === "none") return "";
   const dark = overlay.mode === "gradient_dark";
   const id = `ov-${escapeXml(cardId)}`;
-  const c0 = dark ? "rgba(10,16,24,0)" : "rgba(255,255,255,0)";
-  const c1 = dark ? "rgba(10,16,24,0.78)" : "rgba(255,255,255,0.82)";
+  // Smooth scrim: transparent → mid → darkest near footer (not a hard black band).
+  const stops = dark
+    ? [
+        `<stop offset="0%" stop-color="rgba(8,12,20,0)"/>`,
+        `<stop offset="35%" stop-color="rgba(8,12,20,0.28)"/>`,
+        `<stop offset="70%" stop-color="rgba(8,12,20,0.72)"/>`,
+        `<stop offset="100%" stop-color="rgba(8,12,20,0.88)"/>`,
+      ]
+    : [
+        `<stop offset="0%" stop-color="rgba(255,255,255,0)"/>`,
+        `<stop offset="55%" stop-color="rgba(255,255,255,0.75)"/>`,
+        `<stop offset="100%" stop-color="rgba(255,255,255,0.9)"/>`,
+      ];
   return [
     `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">`,
-    `<stop offset="0%" stop-color="${c0}"/>`,
-    `<stop offset="55%" stop-color="${c1}"/>`,
-    `<stop offset="100%" stop-color="${c1}"/>`,
+    ...stops,
     `</linearGradient></defs>`,
     `<rect x="0" y="${overlay.y}" width="${width}" height="${overlay.height}" fill="url(#${id})"/>`,
   ].join("");
@@ -192,8 +219,11 @@ export function buildCardNewsSvgFromSpec(
         )
       : 0;
 
+  const overlaySurface =
+    layout.template === "cover_full_bleed" || layout.template === "photo_overlay_editorial";
+
   const citation =
-    spec.citation && layout.template !== "cover_full_bleed"
+    spec.citation && !overlaySurface
       ? [
           `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(140)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(spec.citation.label)}</text>`,
           `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(112)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(spec.citation.detail)}</text>`,
@@ -218,6 +248,7 @@ export function buildCardNewsSvgFromSpec(
     lineHeight: spec.headline.lineHeight,
     weight: 700,
     fill: layout.text.headlineFill,
+    shadow: overlaySurface,
   })}
   ${textBlock({
     lines: spec.body.lines,
@@ -227,9 +258,10 @@ export function buildCardNewsSvgFromSpec(
     lineHeight: spec.body.lineHeight,
     weight: 500,
     fill: layout.text.bodyFill,
+    shadow: overlaySurface,
   })}
   ${citation}
-  ${progress(spec.index, spec.total, layout.brand.progressY, layout.text.x)}
+  ${progress(spec.index, spec.total, layout.brand.progressY, layout.text.x, overlaySurface)}
   ${wordmark(spec, layout.brand.wordmark)}
 </svg>
 `;

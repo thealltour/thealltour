@@ -93,7 +93,7 @@ const LONG_BODY =
 
 describe("cardnews v2.3 content-aware layout", () => {
   it("bumps renderer version", () => {
-    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.4-mobile-readable-typography");
+    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.5-full-bleed-overlay-story");
   });
 
   it("A. cover_full_bleed keeps full-bleed image; short copy keeps golden text band", () => {

@@ -2,9 +2,9 @@
  * Merge editorial card + presentation + visual → ResolvedCardRenderSpec.
  * Renderer executes this spec only — no further editorial decisions.
  *
- * v2.3: image-backed + closing templates use content-aware vertical allocation
- * (measured text first; imageHeightRatio = preferred hint).
- * cover_full_bleed stays on templateGeometry golden path.
+ * v2.3: photo_top / evidence use content-aware image-height allocation.
+ * v2.5: cover_full_bleed + photo_overlay_editorial share full-bleed overlay family
+ * (image never shrinks; text band expands / fonts shrink within lower safe region).
  */
 
 import type { CardNewsCard, CardNewsRole } from "@/lib/marketing/assets/contracts";
@@ -477,6 +477,162 @@ function buildContentAwareClosingSpec(input: {
   };
 }
 
+/**
+ * cover_full_bleed + photo_overlay_editorial: full-bleed image, lower-third text.
+ * Fit order: preferred size → wrap → gap shrink → raise band → bounded font shrink.
+ * Never shrinks image height; never truncates.
+ */
+function buildFullBleedOverlaySpec(input: {
+  card: CardNewsCard;
+  index: number;
+  total: number;
+  presentation: CardPresentation;
+  citation: CardCitation | null;
+  visualDataUri: string | null;
+  wordmarkDataUri: string | null;
+  geometry: CardNewsGeometry;
+  explicitKicker: string;
+  headlineBodyGapPx: number;
+}): ResolvedCardRenderSpec {
+  const base = resolveTemplateLayout({
+    presentation: input.presentation,
+    geometry: input.geometry,
+    hasVisual: true,
+    roleHint: input.card.role,
+    hasKicker: Boolean(input.explicitKicker),
+  });
+  const geo = input.geometry;
+  const isCover = input.presentation.template === "cover_full_bleed";
+  const maxLinesHeadline = isCover ? 3 : 4;
+  const maxLinesBody = isCover ? 5 : 6;
+  const bottomPad = geo.scaleY(48);
+  const textWidth = base.text.width;
+  const hasKicker = Boolean(input.explicitKicker);
+  let gapPx = input.headlineBodyGapPx;
+  const gapMin = Math.max(geo.scaleY(14), Math.round(input.headlineBodyGapPx * 0.65));
+
+  let { headline, body } = fitPair({
+    card: input.card,
+    textWidth,
+    headlinePreferred: base.text.headlinePreferred,
+    bodyPreferred: base.text.bodyPreferred,
+    maxHeadlineHeight: geo.scaleY(260),
+    maxBodyHeight: geo.scaleY(320),
+    maxLinesHeadline,
+    maxLinesBody,
+  });
+  applyMobileLineHeights(base.template, headline, body);
+
+  let textBlockHeight = measureTextBlockHeight({
+    hasKicker,
+    headlineHeight: headline.height,
+    bodyHeight: body.height,
+    headlineBodyGapPx: gapPx,
+    headlineFontPx: headline.fontSize,
+  });
+
+  const footerLimit = geo.height - bottomPad;
+  // Preferred lower band — consistent series geometry; expand upward only when needed.
+  const preferredBandTop =
+    geo.height -
+    geo.scaleY(hasKicker ? (isCover ? 380 : 400) : isCover ? 340 : 360) +
+    geo.scaleY(hasKicker ? 28 : 40);
+  const minBandTop = geo.scaleY(isCover ? 420 : 380);
+  let bandTop = preferredBandTop;
+
+  if (preferredBandTop + textBlockHeight > footerLimit) {
+    // 3) shrink gap first
+    while (gapPx > gapMin && preferredBandTop + textBlockHeight > footerLimit) {
+      gapPx -= 2;
+      textBlockHeight = measureTextBlockHeight({
+        hasKicker,
+        headlineHeight: headline.height,
+        bodyHeight: body.height,
+        headlineBodyGapPx: gapPx,
+        headlineFontPx: headline.fontSize,
+      });
+    }
+  }
+
+  if (preferredBandTop + textBlockHeight > footerLimit) {
+    // 4) expand band upward within allowed range
+    bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
+  }
+
+  if (bandTop + textBlockHeight > footerLimit) {
+    // 5) bounded font shrink into remaining budget
+    const budget = Math.max(64, footerLimit - Math.max(minBandTop, bandTop));
+    const refit = fitPair({
+      card: input.card,
+      textWidth,
+      headlinePreferred: base.text.headlinePreferred,
+      bodyPreferred: base.text.bodyPreferred,
+      maxHeadlineHeight: Math.round(budget * 0.42),
+      maxBodyHeight: Math.round(budget * 0.58),
+      maxLinesHeadline,
+      maxLinesBody,
+    });
+    applyMobileLineHeights(base.template, refit.headline, refit.body);
+    headline = refit.headline;
+    body = refit.body;
+    textBlockHeight = measureTextBlockHeight({
+      hasKicker,
+      headlineHeight: headline.height,
+      bodyHeight: body.height,
+      headlineBodyGapPx: gapPx,
+      headlineFontPx: headline.fontSize,
+    });
+    bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
+  }
+
+  const anchors = resolveTextBandAnchors({
+    bandTopY: bandTop,
+    headlineFontPx: headline.fontSize,
+    hasKicker,
+  });
+  const gradientLead = geo.scaleY(isCover ? 48 : 72);
+  const layout: ResolvedTemplateLayout = {
+    ...base,
+    // Full-bleed invariant
+    image: { x: 0, y: 0, width: geo.width, height: geo.height, rx: 0 },
+    text: {
+      ...base.text,
+      y: anchors.headlineY,
+      kickerY: anchors.kickerY,
+      maxHeadlineHeight: geo.scaleY(200),
+      maxBodyHeight: Math.max(48, footerLimit - anchors.headlineY),
+    },
+    overlay: {
+      mode: base.overlay?.mode ?? "gradient_dark",
+      y: Math.max(0, bandTop - gradientLead),
+      height: geo.height - Math.max(0, bandTop - gradientLead),
+    },
+    contentAware: {
+      textBandTop: bandTop,
+      textBlockHeight,
+      footerSafeY: footerLimit,
+      remainingBelowText: Math.max(0, footerLimit - (bandTop + textBlockHeight)),
+    },
+  };
+
+  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+  return {
+    cardId: input.card.cardId,
+    role: input.card.role,
+    index: input.index,
+    total: input.total,
+    kicker,
+    headline,
+    body,
+    citation: input.citation,
+    visualDataUri: input.visualDataUri,
+    wordmarkDataUri: input.wordmarkDataUri,
+    presentation: input.presentation,
+    layout,
+    headlineBodyGapPx: gapPx,
+  };
+}
+
 export function buildResolvedCardRenderSpec(input: {
   card: CardNewsCard;
   index: number;
@@ -500,116 +656,16 @@ export function buildResolvedCardRenderSpec(input: {
     input.geometry,
   );
 
-  // cover_full_bleed: full-bleed image stays golden; denser copy may raise overlay/text band.
-  if (hasVisual && template === "cover_full_bleed") {
-    const base = resolveTemplateLayout({
-      presentation: input.presentation,
-      geometry: input.geometry,
-      hasVisual,
-      roleHint: input.card.role,
-      hasKicker: Boolean(explicitKicker),
-    });
-    const geo = input.geometry;
-    const maxLinesHeadline = 3;
-    const maxLinesBody = 5;
-    const bottomPad = geo.scaleY(48);
-    const textWidth = base.text.width;
-    const hasKicker = Boolean(explicitKicker);
-
-    let { headline, body } = fitPair({
-      card: input.card,
-      textWidth,
-      headlinePreferred: base.text.headlinePreferred,
-      bodyPreferred: base.text.bodyPreferred,
-      maxHeadlineHeight: geo.scaleY(240),
-      maxBodyHeight: geo.scaleY(280),
-      maxLinesHeadline,
-      maxLinesBody,
-    });
-    applyMobileLineHeights(base.template, headline, body);
-
-    let textBlockHeight = measureTextBlockHeight({
-      hasKicker,
-      headlineHeight: headline.height,
-      bodyHeight: body.height,
+  // Full-bleed overlay family: image fills canvas; copy fits in lower band.
+  if (
+    hasVisual &&
+    (template === "cover_full_bleed" || template === "photo_overlay_editorial")
+  ) {
+    return buildFullBleedOverlaySpec({
+      ...input,
+      explicitKicker,
       headlineBodyGapPx,
-      headlineFontPx: headline.fontSize,
     });
-
-    const footerLimit = geo.height - bottomPad;
-    const goldenBandTop =
-      geo.height - geo.scaleY(hasKicker ? 380 : 340) + geo.scaleY(hasKicker ? 28 : 40);
-    let bandTop = goldenBandTop;
-    if (goldenBandTop + textBlockHeight > footerLimit) {
-      const minBandTop = geo.scaleY(420);
-      bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
-      const budget = Math.max(64, footerLimit - bandTop);
-      const refit = fitPair({
-        card: input.card,
-        textWidth,
-        headlinePreferred: base.text.headlinePreferred,
-        bodyPreferred: base.text.bodyPreferred,
-        maxHeadlineHeight: Math.round(budget * 0.45),
-        maxBodyHeight: Math.round(budget * 0.55),
-        maxLinesHeadline,
-        maxLinesBody,
-      });
-      applyMobileLineHeights(base.template, refit.headline, refit.body);
-      headline = refit.headline;
-      body = refit.body;
-      textBlockHeight = measureTextBlockHeight({
-        hasKicker,
-        headlineHeight: headline.height,
-        bodyHeight: body.height,
-        headlineBodyGapPx,
-        headlineFontPx: headline.fontSize,
-      });
-      bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
-    }
-
-    const anchors = resolveTextBandAnchors({
-      bandTopY: bandTop,
-      headlineFontPx: headline.fontSize,
-      hasKicker,
-    });
-    const layout: ResolvedTemplateLayout = {
-      ...base,
-      text: {
-        ...base.text,
-        y: anchors.headlineY,
-        kickerY: anchors.kickerY,
-        maxHeadlineHeight: geo.scaleY(200),
-        maxBodyHeight: Math.max(48, footerLimit - anchors.headlineY),
-      },
-      overlay: {
-        mode: base.overlay?.mode ?? "gradient_dark",
-        y: Math.max(0, bandTop - geo.scaleY(40)),
-        height: geo.height - Math.max(0, bandTop - geo.scaleY(40)),
-      },
-      contentAware: {
-        textBandTop: bandTop,
-        textBlockHeight,
-        footerSafeY: footerLimit,
-        remainingBelowText: Math.max(0, footerLimit - (bandTop + textBlockHeight)),
-      },
-    };
-
-    const kicker = kickerSafeForHeadline(explicitKicker, layout, headline.fontSize);
-    return {
-      cardId: input.card.cardId,
-      role: input.card.role,
-      index: input.index,
-      total: input.total,
-      kicker,
-      headline,
-      body,
-      citation: input.citation,
-      visualDataUri: input.visualDataUri,
-      wordmarkDataUri: input.wordmarkDataUri,
-      presentation: input.presentation,
-      layout,
-      headlineBodyGapPx,
-    };
   }
 
   if (

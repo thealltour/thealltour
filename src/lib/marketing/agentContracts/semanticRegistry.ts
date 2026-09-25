@@ -109,8 +109,10 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     output: { artifactId: INSTAGRAM_CARD_COPY_CONTRACT },
     docs: {
       notes: [
-        "OWNS headline/body only; MUST NOT redesign cardId/order or visual semantics.",
-        "VOCABULARY BOUNDARY (reader of planner outputs): narrativePromise / beat.message / communicationGoal are semantic instructions — preserve meaning, rewrite into natural consumer Korean; do not treat planner phrasing as lexical copy seed.",
+        "OWNS: headline/body wording; consumer-facing phrasing; local contextual explanation; natural Korean surface realization; card-level lexical de-jargon; card-level progression wording; mobile density compression (context kept, verbal redundancy removed).",
+        "MUST NOT OWN: cardId/order/count, beat reassignment, factual invention, new evidence, visual role/orchestration, CTA strategy, Presentation/Layout, Narrative/Carousel structure.",
+        "READS planner fields (narrativePromise / beat.message / communicationGoal) as semantic intent, not lexical authority — preserve meaning, rewrite into natural consumer Korean.",
+        "Upstream planner wording is semantic instruction, not phrasing to preserve.",
       ],
     },
   },

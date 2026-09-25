@@ -29,6 +29,10 @@ import {
 } from "@/lib/marketing/publishable/instagramEditorial/contracts";
 import { assemblePublishableInstagramFromEditorial } from "@/lib/marketing/publishable/instagramEditorial/assemblePublishable";
 import {
+  buildInstagramCardCopyWriterPayload,
+  buildInstagramCardCopyWriterUserPrompt,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";
+import {
   buildEditorialNarrativeContentFingerprint,
   buildInstagramCardCopyContentFingerprint,
   buildInstagramCarouselContentFingerprint,
@@ -89,12 +93,18 @@ function clip(text: string | null | undefined, max: number): string | null {
 
 export { buildCanonicalFingerprintForNarrative };
 
-function promptParts(profile: string, userPayload: Record<string, unknown>): ChannelComposerPromptParts {
-  const user = [
-    "Return ONLY valid JSON matching the schema described in your SOUL.",
-    "=== INPUT_JSON ===",
-    JSON.stringify(userPayload),
-  ].join("\n");
+function promptParts(
+  profile: string,
+  userPayload: Record<string, unknown>,
+  options?: { structuredUserPrompt?: string },
+): ChannelComposerPromptParts {
+  const user =
+    options?.structuredUserPrompt ??
+    [
+      "Return ONLY valid JSON matching the schema described in your SOUL.",
+      "=== INPUT_JSON ===",
+      JSON.stringify(userPayload),
+    ].join("\n");
   return {
     channel: "instagram",
     system: "",
@@ -109,6 +119,8 @@ async function invokeJson(input: {
   profile: string;
   payload: Record<string, unknown>;
   maxAttempts: number;
+  /** Card Copy: wrap payload with A–D semantic/surface sections. */
+  useCardCopyStructuredPrompt?: boolean;
 }): Promise<{ llm: unknown; attemptCount: number }> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= input.maxAttempts; attempt++) {
@@ -119,8 +131,12 @@ async function invokeJson(input: {
           }
         : {};
     try {
+      const payload = { ...input.payload, ...repair };
+      const structured = input.useCardCopyStructuredPrompt
+        ? buildInstagramCardCopyWriterUserPrompt(payload)
+        : undefined;
       const raw = await input.invoke(
-        promptParts(input.profile, { ...input.payload, ...repair }),
+        promptParts(input.profile, payload, { structuredUserPrompt: structured }),
       );
       return { llm: extractJsonObject(typeof raw === "string" ? raw : String(raw)), attemptCount: attempt };
     } catch (error) {
@@ -351,19 +367,20 @@ export async function runInstagramEditorialPipeline(input: {
       invoke: input.invoke,
       profile: INSTAGRAM_CARD_COPY_WRITER_HERMES_PROFILE,
       maxAttempts: cardCopyAttempts,
-      payload: {
-        task: "instagram_card_copy",
-        editorialNarrativePlan: narrative,
-        instagramCarouselPlan: carousel,
+      useCardCopyStructuredPrompt: true,
+      payload: buildInstagramCardCopyWriterPayload({
+        narrative,
+        carousel,
         canonicalAsset: {
           assetId: asset.assetId,
           titleKo: asset.titleKo,
+          openingHookKo: clip(asset.openingHookKo, 400),
           bodyKo: clip(asset.bodyKo, 2400),
           keyTakeawaysKo: asset.keyTakeawaysKo,
           supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
           forbiddenClaimsKo: asset.forbiddenClaimsKo,
         },
-      },
+      }),
     });
     attemptCount += copyInv.attemptCount;
     const cardCopy = materializeInstagramCardCopy({

@@ -62,9 +62,11 @@ describe("Planner Vocabulary Boundary", () => {
       expect(carousel.docs?.notes).toContain(note);
     }
     expect(carousel.docs?.notes?.some((n) => n.includes("communicationGoal"))).toBe(true);
-    expect(cardCopy.docs?.notes?.some((n) => /lexical copy seed|semantic instructions/i.test(n))).toBe(
-      true,
-    );
+    expect(
+      cardCopy.docs?.notes?.some((n) =>
+        /lexical authority|semantic intent|phrasing to preserve/i.test(n),
+      ),
+    ).toBe(true);
   });
 
   it("E: not a blacklist — frame/rhythm/payoff remain allowed; no banned-word list language", () => {
@@ -79,9 +81,10 @@ describe("Planner Vocabulary Boundary", () => {
     }
   });
 
-  it("F: Card Copy SOUL unchanged by this boundary PR (no SOUL rewrite here)", () => {
-    // Boundary is enforced on planner side + registry note; Card Copy SOUL is out of scope.
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toContain(V.title);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/SNS carousel copy specialist/i);
+  it("F: Card Copy SOUL includes writer-facing upstream vocabulary boundary", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toContain(
+      "Upstream planner wording is semantic instruction, not phrasing to preserve.",
+    );
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/NATURAL KOREAN CONSUMER VOICE/i);
   });
 });

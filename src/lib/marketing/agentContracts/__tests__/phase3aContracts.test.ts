@@ -24,6 +24,11 @@ import { MANUAL_ASTRA_HANDOFF_CONTRACT } from "@/lib/marketing/publishable/manua
 import { CARD_PRESENTATION_PLAN_CONTRACT } from "@/lib/marketing/assets/cardnews/presentation/contracts";
 import { INSTAGRAM_VISUAL_ROLES } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
 import { INSTAGRAM_CAROUSEL_ROLES } from "@/lib/marketing/publishable/instagramEditorial/contracts";
+import {
+  EDITORIAL_NARRATIVE_PLANNER_SOUL,
+  INSTAGRAM_CAROUSEL_PLANNER_SOUL,
+} from "@/lib/marketing/publishable/instagramEditorial/hermesIdentity";
+import { PLANNER_VOCABULARY_BOUNDARY_INVARIANTS } from "@/lib/marketing/agentContracts/plannerVocabularyBoundary";
 
 describe("Phase 3A Marketing Agent Contracts", () => {
   it("A: semantic registry completeness for migrated agents", () => {
@@ -196,6 +201,14 @@ describe("Phase 3A Marketing Agent Contracts", () => {
     );
     expect(carouselSoul).toMatch(/visualRole/i);
     expect(carouselSoul).toMatch(/MUST NOT decide/i);
+    expect(carouselSoul).toMatch(/PLANNER_VOCABULARY_BOUNDARY_INVARIANTS/);
+
+    // Interpolated SOUL constants (source uses ${V.title} — assert runtime text)
+    expect(INSTAGRAM_CAROUSEL_PLANNER_SOUL).toContain(PLANNER_VOCABULARY_BOUNDARY_INVARIANTS.title);
+    expect(INSTAGRAM_CAROUSEL_PLANNER_SOUL).toContain(PLANNER_VOCABULARY_BOUNDARY_INVARIANTS.notSurfaceCopy);
+    expect(EDITORIAL_NARRATIVE_PLANNER_SOUL).toContain(PLANNER_VOCABULARY_BOUNDARY_INVARIANTS.title);
+    expect(EDITORIAL_NARRATIVE_PLANNER_SOUL).toMatch(/narrativePromise/);
+    expect(INSTAGRAM_CAROUSEL_PLANNER_SOUL).toMatch(/communicationGoal/);
   });
 
   it("intended visual DAG edges exist", () => {

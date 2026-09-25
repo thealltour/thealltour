@@ -12,6 +12,11 @@ export {
 } from "@/lib/marketing/agentContracts/vocabulary";
 
 export {
+  PLANNER_VOCABULARY_BOUNDARY_INVARIANTS,
+  PLANNER_VOCABULARY_BOUNDARY_SEMANTIC_NOTES,
+} from "@/lib/marketing/agentContracts/plannerVocabularyBoundary";
+
+export {
   MARKETING_AGENT_SEMANTIC_REGISTRY,
   PHASE_3A_SEMANTIC_MIGRATED_PROFILE_IDS,
   PHASE_3E_DEPARTMENT_PROFILE_IDS,

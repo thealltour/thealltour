@@ -28,3 +28,19 @@ export const PLANNER_VOCABULARY_BOUNDARY_SEMANTIC_NOTES = [
   "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
   "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
 ] as const;
+
+/**
+ * Downstream Card Copy Writer — how to read planner fields.
+ * Reuses the same boundary; phrasing is writer-facing (not planner-facing).
+ */
+export const CARD_COPY_UPSTREAM_VOCABULARY_BOUNDARY = {
+  title: "UPSTREAM PLANNER VOCABULARY BOUNDARY",
+  semanticNotPhrasing:
+    "Upstream planner wording is semantic instruction, not phrasing to preserve.",
+  rewriteMeaning: "Rewrite the meaning into natural consumer-facing Korean.",
+  fieldsNotSeeds:
+    "narrativePromise, beat.message, and communicationGoal are SEMANTIC INTENT ONLY / NOT SURFACE WORDING — not preferred phrasing and not copy seeds.",
+  preserveMeaningNotForm: "Preserve intended meaning, not lexical form.",
+  plannerNotPreferred:
+    "Do not treat planner wording as preferred phrasing. Re-express the job of each card in natural Korean cardnews voice.",
+} as const;

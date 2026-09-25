@@ -2,22 +2,33 @@
  * Merge editorial card + presentation + visual → ResolvedCardRenderSpec.
  * Renderer executes this spec only — no further editorial decisions.
  *
- * `role` / card index are internal presentation metadata — never user-facing copy.
- * `kicker` is optional explicit editorial copy only (no role-derived fallback).
+ * v2.3: image-backed + closing templates use content-aware vertical allocation
+ * (measured text first; imageHeightRatio = preferred hint).
+ * cover_full_bleed stays on templateGeometry golden path.
  */
 
 import type { CardNewsCard, CardNewsRole } from "@/lib/marketing/assets/contracts";
 import type { CardNewsGeometry } from "@/lib/marketing/assets/cardnews/brand";
 import type { FittedText } from "@/lib/marketing/assets/cardnews/textLayout";
 import { fitText } from "@/lib/marketing/assets/cardnews/textLayout";
-import { CARDNEWS_SAFE } from "@/lib/marketing/assets/cardnews/brand";
+import { CARDNEWS_BRAND, CARDNEWS_SAFE } from "@/lib/marketing/assets/cardnews/brand";
 import type { CardPresentation } from "@/lib/marketing/assets/cardnews/presentation/contracts";
 import {
+  densityBodyPx,
+  densityHeadlinePx,
   estimateGlyphBottom,
   estimateGlyphTop,
+  focalToPreserveAspectRatio,
   resolveTemplateLayout,
+  resolveTextBandAnchors,
   type ResolvedTemplateLayout,
 } from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
+import {
+  allocateClosingTextBand,
+  allocateImageBackedBand,
+  headlineBodyGapForDensity,
+  measureTextBlockHeight,
+} from "@/lib/marketing/assets/cardnews/presentation/contentAwareLayout";
 import type { CardCitation } from "@/lib/marketing/assets/cardnews/svg";
 
 export type ResolvedCardRenderSpec = {
@@ -35,6 +46,8 @@ export type ResolvedCardRenderSpec = {
   wordmarkDataUri: string | null;
   presentation: CardPresentation;
   layout: ResolvedTemplateLayout;
+  /** Headline↔body gap used by svg (density-aware). */
+  headlineBodyGapPx: number;
 };
 
 const KICKER_FONT_PX = 20;
@@ -61,6 +74,361 @@ function kickerSafeForHeadline(
   return kicker;
 }
 
+function applyMobileLineHeights(
+  template: ResolvedTemplateLayout["template"],
+  headline: FittedText,
+  body: FittedText,
+): void {
+  if (template === "cover_full_bleed" || template === "text_statement") {
+    headline.lineHeight = Math.round(headline.fontSize * 1.15);
+    headline.height = headline.lines.length * headline.lineHeight;
+  }
+  body.lineHeight = Math.round(body.fontSize * 1.4);
+  body.height = body.lines.length * body.lineHeight;
+}
+
+function fitPair(input: {
+  card: CardNewsCard;
+  textWidth: number;
+  headlinePreferred: number;
+  bodyPreferred: number;
+  maxHeadlineHeight: number;
+  maxBodyHeight: number;
+  maxLinesHeadline: number;
+  maxLinesBody: number;
+}): { headline: FittedText; body: FittedText } {
+  const headline = fitText({
+    text: input.card.headline,
+    preferredFontSize: input.headlinePreferred,
+    minFontSize: CARDNEWS_SAFE.minHeadlinePx,
+    maxWidth: input.textWidth,
+    maxHeight: input.maxHeadlineHeight,
+    maxLines: input.maxLinesHeadline,
+    overflow: "error",
+    cardId: input.card.cardId,
+    field: "headline",
+  });
+  const body = fitText({
+    text: input.card.body,
+    preferredFontSize: input.bodyPreferred,
+    minFontSize: CARDNEWS_SAFE.minBodyPx,
+    maxWidth: input.textWidth,
+    maxHeight: input.maxBodyHeight,
+    maxLines: input.maxLinesBody,
+    overflow: input.card.role === "cta" ? "ellipsis" : "error",
+    cardId: input.card.cardId,
+    field: "body",
+  });
+  return { headline, body };
+}
+
+function brandSubtle(geo: CardNewsGeometry, opacity: number) {
+  return {
+    wordmark: {
+      x: 80,
+      y: geo.height - geo.scaleY(72),
+      width: 200,
+      height: 36,
+      opacity,
+    },
+    progressY: geo.height - geo.scaleY(96),
+    showTopBar: false,
+    showBottomAccent: false,
+  };
+}
+
+function buildContentAwareImageBackedSpec(input: {
+  card: CardNewsCard;
+  index: number;
+  total: number;
+  presentation: CardPresentation;
+  citation: CardCitation | null;
+  visualDataUri: string | null;
+  wordmarkDataUri: string | null;
+  geometry: CardNewsGeometry;
+  explicitKicker: string;
+  template: "photo_top_story" | "evidence_detail";
+}): ResolvedCardRenderSpec {
+  const geo = input.geometry;
+  const p = input.presentation;
+  const density = input.template === "evidence_detail" ? "compact" : p.textDensity;
+  const textWidth = geo.width - 80 * 2;
+  const headlinePreferred = densityHeadlinePx(density, false, false);
+  const bodyPreferred = densityBodyPx(density);
+  const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
+  const hasKicker = Boolean(input.explicitKicker);
+  const maxLinesHeadline = 4;
+  const maxLinesBody = 8;
+
+  // Pass 1: measure at preferred sizes with generous vertical room.
+  const probe = fitPair({
+    card: input.card,
+    textWidth,
+    headlinePreferred,
+    bodyPreferred,
+    maxHeadlineHeight: geo.scaleY(420),
+    maxBodyHeight: geo.scaleY(520),
+    maxLinesHeadline,
+    maxLinesBody,
+  });
+  applyMobileLineHeights(input.template, probe.headline, probe.body);
+
+  let textBlockHeight = measureTextBlockHeight({
+    hasKicker,
+    headlineHeight: probe.headline.height,
+    bodyHeight: probe.body.height,
+    headlineBodyGapPx,
+    headlineFontPx: probe.headline.fontSize,
+  });
+
+  let alloc = allocateImageBackedBand({
+    geometry: geo,
+    template: input.template,
+    preferredImageRatio: p.imageHeightRatio,
+    textBlockHeight,
+    headlineFontPx: probe.headline.fontSize,
+    hasKicker,
+    hasCitation: Boolean(input.citation),
+  });
+
+  // Pass 2: if overflow at min image/gap, refit fonts into remaining text budget.
+  let headline = probe.headline;
+  let body = probe.body;
+  if (alloc.textOverflow) {
+    const bandTop = alloc.image.y + alloc.image.height + alloc.metrics.imageTextGap;
+    const textBudget = Math.max(64, alloc.footerSafeY - bandTop);
+    const fitted = fitPair({
+      card: input.card,
+      textWidth,
+      headlinePreferred,
+      bodyPreferred,
+      maxHeadlineHeight: Math.round(textBudget * 0.45),
+      maxBodyHeight: Math.round(textBudget * 0.55),
+      maxLinesHeadline,
+      maxLinesBody,
+    });
+    applyMobileLineHeights(input.template, fitted.headline, fitted.body);
+    headline = fitted.headline;
+    body = fitted.body;
+    textBlockHeight = measureTextBlockHeight({
+      hasKicker,
+      headlineHeight: headline.height,
+      bodyHeight: body.height,
+      headlineBodyGapPx,
+      headlineFontPx: headline.fontSize,
+    });
+    alloc = allocateImageBackedBand({
+      geometry: geo,
+      template: input.template,
+      preferredImageRatio: p.imageHeightRatio,
+      textBlockHeight,
+      headlineFontPx: headline.fontSize,
+      hasKicker,
+      hasCitation: Boolean(input.citation),
+    });
+  }
+
+  const layout: ResolvedTemplateLayout = {
+    template: input.template,
+    image: alloc.image,
+    text: {
+      x: 80,
+      y: alloc.headlineY,
+      width: textWidth,
+      maxHeadlineHeight: alloc.maxHeadlineHeight,
+      maxBodyHeight: alloc.maxBodyHeight,
+      kickerY: alloc.kickerY,
+      headlinePreferred,
+      bodyPreferred,
+      fill: CARDNEWS_BRAND.paper,
+      headlineFill: CARDNEWS_BRAND.ink,
+      bodyFill: CARDNEWS_BRAND.muted,
+      kickerFill: CARDNEWS_BRAND.blue,
+    },
+    overlay: null,
+    brand: brandSubtle(geo, input.template === "evidence_detail" ? 0.35 : 0.4),
+    cropMode: p.cropMode ?? "cover",
+    focalAlignment: p.focalAlignment ?? "center",
+    preserveAspectRatio: focalToPreserveAspectRatio(
+      p.focalAlignment ?? "center",
+      p.cropMode ?? "cover",
+    ),
+    textDensity: density,
+    textPlacement: p.textPlacement,
+    contentAware: {
+      imageTextGap: alloc.metrics.imageTextGap,
+      textBlockHeight: alloc.metrics.textBlockHeight,
+      footerSafeY: alloc.metrics.footerSafeY,
+      preferredImageRatio: alloc.metrics.preferredImageRatio,
+      actualImageRatio: alloc.metrics.actualImageRatio,
+      remainingBelowText: alloc.metrics.remainingBelowText,
+      internalDeadZone: alloc.metrics.internalDeadZone,
+    },
+  };
+
+  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+
+  return {
+    cardId: input.card.cardId,
+    role: input.card.role,
+    index: input.index,
+    total: input.total,
+    kicker,
+    headline,
+    body,
+    citation: input.citation,
+    visualDataUri: input.visualDataUri,
+    wordmarkDataUri: input.wordmarkDataUri,
+    presentation: input.presentation,
+    layout,
+    headlineBodyGapPx,
+  };
+}
+
+function buildContentAwareClosingSpec(input: {
+  card: CardNewsCard;
+  index: number;
+  total: number;
+  presentation: CardPresentation;
+  citation: CardCitation | null;
+  visualDataUri: string | null;
+  wordmarkDataUri: string | null;
+  geometry: CardNewsGeometry;
+  explicitKicker: string;
+}): ResolvedCardRenderSpec {
+  const geo = input.geometry;
+  const p = input.presentation;
+  const isClosing = p.template === "closing_insight";
+  const density = p.textDensity;
+  const textWidth = geo.width - 80 * 2;
+  const headlinePreferred = Math.max(
+    densityHeadlinePx(density, false, !isClosing),
+    isClosing ? 64 : 72,
+  );
+  const bodyPreferred = Math.max(densityBodyPx(density), 32);
+  const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
+  const hasKicker = Boolean(input.explicitKicker);
+  const maxLinesBody = isClosing ? 8 : 6;
+
+  const probe = fitPair({
+    card: input.card,
+    textWidth,
+    headlinePreferred,
+    bodyPreferred,
+    maxHeadlineHeight: geo.scaleY(420),
+    maxBodyHeight: geo.scaleY(480),
+    maxLinesHeadline: 4,
+    maxLinesBody,
+  });
+  applyMobileLineHeights(isClosing ? "closing_insight" : "text_statement", probe.headline, probe.body);
+
+  let textBlockHeight = measureTextBlockHeight({
+    hasKicker,
+    headlineHeight: probe.headline.height,
+    bodyHeight: probe.body.height,
+    headlineBodyGapPx,
+    headlineFontPx: probe.headline.fontSize,
+  });
+
+  let alloc = allocateClosingTextBand({
+    geometry: geo,
+    textBlockHeight,
+    headlineFontPx: probe.headline.fontSize,
+    hasKicker,
+    textPlacement: p.textPlacement,
+  });
+
+  let headline = probe.headline;
+  let body = probe.body;
+  if (textBlockHeight > alloc.footerSafeY - alloc.textBandTop) {
+    const budget = Math.max(64, alloc.footerSafeY - alloc.textBandTop);
+    const fitted = fitPair({
+      card: input.card,
+      textWidth,
+      headlinePreferred,
+      bodyPreferred,
+      maxHeadlineHeight: Math.round(budget * 0.5),
+      maxBodyHeight: Math.round(budget * 0.5),
+      maxLinesHeadline: 4,
+      maxLinesBody,
+    });
+    applyMobileLineHeights(
+      isClosing ? "closing_insight" : "text_statement",
+      fitted.headline,
+      fitted.body,
+    );
+    headline = fitted.headline;
+    body = fitted.body;
+    textBlockHeight = measureTextBlockHeight({
+      hasKicker,
+      headlineHeight: headline.height,
+      bodyHeight: body.height,
+      headlineBodyGapPx,
+      headlineFontPx: headline.fontSize,
+    });
+    alloc = allocateClosingTextBand({
+      geometry: geo,
+      textBlockHeight,
+      headlineFontPx: headline.fontSize,
+      hasKicker,
+      textPlacement: p.textPlacement,
+    });
+  }
+
+  const layout: ResolvedTemplateLayout = {
+    template: isClosing ? "closing_insight" : "text_statement",
+    image: null,
+    text: {
+      x: 80,
+      y: alloc.headlineY,
+      width: textWidth,
+      maxHeadlineHeight: alloc.maxHeadlineHeight,
+      maxBodyHeight: alloc.maxBodyHeight,
+      kickerY: alloc.kickerY,
+      headlinePreferred,
+      bodyPreferred,
+      fill: CARDNEWS_BRAND.paper,
+      headlineFill: CARDNEWS_BRAND.ink,
+      bodyFill: CARDNEWS_BRAND.muted,
+      kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
+    },
+    overlay: null,
+    brand: {
+      ...brandSubtle(geo, isClosing ? 0.9 : 0.4),
+      showTopBar: true,
+      showBottomAccent: isClosing,
+    },
+    cropMode: p.cropMode ?? "cover",
+    focalAlignment: p.focalAlignment ?? "center",
+    preserveAspectRatio: "xMidYMid slice",
+    textDensity: density,
+    textPlacement: p.textPlacement,
+    contentAware: {
+      textBlockHeight,
+      footerSafeY: alloc.footerSafeY,
+      remainingBelowText: alloc.metrics.remainingBelowText,
+    },
+  };
+
+  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+
+  return {
+    cardId: input.card.cardId,
+    role: input.card.role,
+    index: input.index,
+    total: input.total,
+    kicker,
+    headline,
+    body,
+    citation: input.citation,
+    visualDataUri: input.visualDataUri,
+    wordmarkDataUri: input.wordmarkDataUri,
+    presentation: input.presentation,
+    layout,
+    headlineBodyGapPx,
+  };
+}
+
 export function buildResolvedCardRenderSpec(input: {
   card: CardNewsCard;
   index: number;
@@ -78,6 +446,150 @@ export function buildResolvedCardRenderSpec(input: {
 }): ResolvedCardRenderSpec {
   const hasVisual = Boolean(input.visualDataUri);
   const explicitKicker = normalizeExplicitEditorialKicker(input.editorialKicker);
+  const template = input.presentation.template;
+  const headlineBodyGapPx = headlineBodyGapForDensity(
+    input.presentation.textDensity,
+    input.geometry,
+  );
+
+  // cover_full_bleed: full-bleed image stays golden; denser copy may raise overlay/text band.
+  if (hasVisual && template === "cover_full_bleed") {
+    const base = resolveTemplateLayout({
+      presentation: input.presentation,
+      geometry: input.geometry,
+      hasVisual,
+      roleHint: input.card.role,
+      hasKicker: Boolean(explicitKicker),
+    });
+    const geo = input.geometry;
+    const maxLinesHeadline = 3;
+    const maxLinesBody = 5;
+    const bottomPad = geo.scaleY(48);
+    const textWidth = base.text.width;
+    const hasKicker = Boolean(explicitKicker);
+
+    let { headline, body } = fitPair({
+      card: input.card,
+      textWidth,
+      headlinePreferred: base.text.headlinePreferred,
+      bodyPreferred: base.text.bodyPreferred,
+      maxHeadlineHeight: geo.scaleY(240),
+      maxBodyHeight: geo.scaleY(280),
+      maxLinesHeadline,
+      maxLinesBody,
+    });
+    applyMobileLineHeights(base.template, headline, body);
+    body.lineHeight = Math.round(body.fontSize * 1.28);
+    body.height = body.lines.length * body.lineHeight;
+
+    let textBlockHeight = measureTextBlockHeight({
+      hasKicker,
+      headlineHeight: headline.height,
+      bodyHeight: body.height,
+      headlineBodyGapPx,
+      headlineFontPx: headline.fontSize,
+    });
+
+    const footerLimit = geo.height - bottomPad;
+    const goldenBandTop =
+      geo.height - geo.scaleY(hasKicker ? 380 : 340) + geo.scaleY(hasKicker ? 28 : 40);
+    let bandTop = goldenBandTop;
+    if (goldenBandTop + textBlockHeight > footerLimit) {
+      const minBandTop = geo.scaleY(420);
+      bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
+      const budget = Math.max(64, footerLimit - bandTop);
+      const refit = fitPair({
+        card: input.card,
+        textWidth,
+        headlinePreferred: base.text.headlinePreferred,
+        bodyPreferred: base.text.bodyPreferred,
+        maxHeadlineHeight: Math.round(budget * 0.45),
+        maxBodyHeight: Math.round(budget * 0.55),
+        maxLinesHeadline,
+        maxLinesBody,
+      });
+      applyMobileLineHeights(base.template, refit.headline, refit.body);
+      refit.body.lineHeight = Math.round(refit.body.fontSize * 1.28);
+      refit.body.height = refit.body.lines.length * refit.body.lineHeight;
+      headline = refit.headline;
+      body = refit.body;
+      textBlockHeight = measureTextBlockHeight({
+        hasKicker,
+        headlineHeight: headline.height,
+        bodyHeight: body.height,
+        headlineBodyGapPx,
+        headlineFontPx: headline.fontSize,
+      });
+      bandTop = Math.max(minBandTop, footerLimit - textBlockHeight);
+    }
+
+    const anchors = resolveTextBandAnchors({
+      bandTopY: bandTop,
+      headlineFontPx: headline.fontSize,
+      hasKicker,
+    });
+    const layout: ResolvedTemplateLayout = {
+      ...base,
+      text: {
+        ...base.text,
+        y: anchors.headlineY,
+        kickerY: anchors.kickerY,
+        maxHeadlineHeight: geo.scaleY(200),
+        maxBodyHeight: Math.max(48, footerLimit - anchors.headlineY),
+      },
+      overlay: {
+        mode: base.overlay?.mode ?? "gradient_dark",
+        y: Math.max(0, bandTop - geo.scaleY(40)),
+        height: geo.height - Math.max(0, bandTop - geo.scaleY(40)),
+      },
+      contentAware: {
+        textBlockHeight,
+        footerSafeY: footerLimit,
+        remainingBelowText: Math.max(0, footerLimit - (bandTop + textBlockHeight)),
+      },
+    };
+
+    const kicker = kickerSafeForHeadline(explicitKicker, layout, headline.fontSize);
+    return {
+      cardId: input.card.cardId,
+      role: input.card.role,
+      index: input.index,
+      total: input.total,
+      kicker,
+      headline,
+      body,
+      citation: input.citation,
+      visualDataUri: input.visualDataUri,
+      wordmarkDataUri: input.wordmarkDataUri,
+      presentation: input.presentation,
+      layout,
+      headlineBodyGapPx,
+    };
+  }
+
+  if (
+    hasVisual &&
+    (template === "photo_top_story" || template === "evidence_detail")
+  ) {
+    return buildContentAwareImageBackedSpec({
+      ...input,
+      explicitKicker,
+      template,
+    });
+  }
+
+  if (
+    !hasVisual ||
+    template === "closing_insight" ||
+    template === "text_statement"
+  ) {
+    return buildContentAwareClosingSpec({
+      ...input,
+      explicitKicker,
+    });
+  }
+
+  // Remaining overlay / photo_bottom: keep prior templateGeometry + fit path.
   const layout = resolveTemplateLayout({
     presentation: input.presentation,
     geometry: input.geometry,
@@ -85,45 +597,21 @@ export function buildResolvedCardRenderSpec(input: {
     roleHint: input.card.role,
     hasKicker: Boolean(explicitKicker),
   });
-
   const maxLinesHeadline =
     layout.template === "cover_full_bleed" || layout.template === "text_statement" ? 3 : 4;
   const maxLinesBody = layout.template === "closing_insight" ? 5 : 6;
-
-  const headline = fitText({
-    text: input.card.headline,
-    preferredFontSize: layout.text.headlinePreferred,
-    minFontSize: CARDNEWS_SAFE.minHeadlinePx,
-    maxWidth: layout.text.width,
-    maxHeight: layout.text.maxHeadlineHeight,
-    maxLines: maxLinesHeadline,
-    overflow: "error",
-    cardId: input.card.cardId,
-    field: "headline",
+  const { headline, body } = fitPair({
+    card: input.card,
+    textWidth: layout.text.width,
+    headlinePreferred: layout.text.headlinePreferred,
+    bodyPreferred: layout.text.bodyPreferred,
+    maxHeadlineHeight: layout.text.maxHeadlineHeight,
+    maxBodyHeight: layout.text.maxBodyHeight,
+    maxLinesHeadline,
+    maxLinesBody,
   });
-
-  const body = fitText({
-    text: input.card.body,
-    preferredFontSize: layout.text.bodyPreferred,
-    minFontSize: CARDNEWS_SAFE.minBodyPx,
-    maxWidth: layout.text.width,
-    maxHeight: layout.text.maxBodyHeight,
-    maxLines: maxLinesBody,
-    overflow: input.card.role === "cta" ? "ellipsis" : "error",
-    cardId: input.card.cardId,
-    field: "body",
-  });
-
-  // Adjust line heights for mobile hierarchy
-  if (layout.template === "cover_full_bleed" || layout.template === "text_statement") {
-    headline.lineHeight = Math.round(headline.fontSize * 1.15);
-    headline.height = headline.lines.length * headline.lineHeight;
-  }
-  body.lineHeight = Math.round(body.fontSize * 1.4);
-  body.height = body.lines.length * body.lineHeight;
-
+  applyMobileLineHeights(layout.template, headline, body);
   const kicker = kickerSafeForHeadline(explicitKicker, layout, headline.fontSize);
-
   return {
     cardId: input.card.cardId,
     role: input.card.role,
@@ -137,5 +625,6 @@ export function buildResolvedCardRenderSpec(input: {
     wordmarkDataUri: input.wordmarkDataUri,
     presentation: input.presentation,
     layout,
+    headlineBodyGapPx,
   };
 }

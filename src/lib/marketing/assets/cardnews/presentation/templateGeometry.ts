@@ -63,6 +63,16 @@ export type ResolvedTemplateLayout = {
   preserveAspectRatio: string;
   textDensity: CardTextDensity;
   textPlacement: CardTextPlacement;
+  /** v2.3 content-aware diagnostics (optional). */
+  contentAware?: {
+    imageTextGap?: number;
+    textBlockHeight: number;
+    footerSafeY: number;
+    preferredImageRatio?: number;
+    actualImageRatio?: number;
+    remainingBelowText: number;
+    internalDeadZone?: number;
+  };
 };
 
 const H_MARGIN = 80;
@@ -75,10 +85,22 @@ const KICKER_FONT_PX = 20;
 /** Clear air between kicker glyph bottom and headline glyph top (non-cover). */
 export const MIN_KICKER_HEADLINE_CLEAR_PX = 32;
 /**
- * Image bottom → text-band start (kicker top) for photo_top / evidence.
- * Previous rhythm was ~36px to kicker baseline (~11px visual to headline) — too tight.
+ * Image bottom → text-band start preferred gap (legacy constant).
+ * Prefer {@link IMAGE_TEXT_GAP} from contentAwareLayout for v2.3 allocation.
  */
-export const MIN_IMAGE_TEXT_BAND_GAP_PX = 88;
+export const MIN_IMAGE_TEXT_BAND_GAP_PX = 64;
+
+export function densityHeadlinePx(
+  density: CardTextDensity,
+  cover: boolean,
+  statement: boolean,
+): number {
+  return densityHeadline(density, cover, statement);
+}
+
+export function densityBodyPx(density: CardTextDensity): number {
+  return densityBody(density);
+}
 
 export function estimateGlyphTop(baselineY: number, fontPx: number): number {
   return baselineY - Math.round(fontPx * ASCENT_RATIO);
@@ -278,7 +300,7 @@ export function resolveTemplateLayout(input: {
           y: headlineY,
           width: textWidth,
           maxHeadlineHeight: geo.scaleY(200),
-          maxBodyHeight: geo.scaleY(110),
+          maxBodyHeight: geo.scaleY(200),
           kickerY,
           headlinePreferred,
           bodyPreferred,

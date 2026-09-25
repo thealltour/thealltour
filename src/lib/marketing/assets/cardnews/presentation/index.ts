@@ -35,9 +35,25 @@ export {
   headlineBaselineAtBandTop,
   kickerBaselineAtBandTop,
   resolveTextBandAnchors,
+  densityHeadlinePx,
+  densityBodyPx,
   MIN_KICKER_HEADLINE_CLEAR_PX,
   MIN_IMAGE_TEXT_BAND_GAP_PX,
 } from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
+
+export {
+  allocateImageBackedBand,
+  allocateClosingTextBand,
+  measureTextBlockHeight,
+  imageRatioBoundsForTemplate,
+  IMAGE_TEXT_GAP,
+  HEADLINE_BODY_GAP,
+} from "@/lib/marketing/assets/cardnews/presentation/contentAwareLayout";
+
+export {
+  PLATFORM_LAYOUT,
+  resolvePlatformLayout,
+} from "@/lib/marketing/assets/cardnews/presentation/platformLayout";
 
 export {
   buildResolvedCardRenderSpec,

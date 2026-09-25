@@ -178,7 +178,8 @@ export function buildCardNewsSvgFromSpec(
   const hasVisual = Boolean(spec.visualDataUri) && layout.image != null;
 
   const headlineY = layout.text.y;
-  const bodyY = headlineY + (spec.headline.lines.length ? spec.headline.height + 36 : 0);
+  const headlineBodyGap = spec.headlineBodyGapPx ?? 36;
+  const bodyY = headlineY + (spec.headline.lines.length ? spec.headline.height + headlineBodyGap : 0);
 
   // Accent sits above the headline (and above kicker when present).
   const accentY =
@@ -254,6 +255,7 @@ export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeom
         wordmarkDataUri: model.wordmarkDataUri,
         presentation: model.presentation,
         layout: model.layout,
+        headlineBodyGapPx: 36,
       },
       geometry,
     );
@@ -280,6 +282,7 @@ export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeom
       ...model,
       presentation,
       layout,
+      headlineBodyGapPx: 36,
     },
     geo,
   );

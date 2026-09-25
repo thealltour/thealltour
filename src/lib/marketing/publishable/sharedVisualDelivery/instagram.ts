@@ -4,6 +4,7 @@
 
 import type { SharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 import type { SharedVisualAssetsManifest } from "@/lib/marketing/publishable/sharedVisualAssets/contracts";
+import { instagramCardIdAliases } from "@/lib/marketing/publishable/sharedVisualDelivery/cardIdAliases";
 import { normalizeSharedVisualToPngPath } from "@/lib/marketing/publishable/sharedVisualDelivery/normalizeImageForRenderer";
 import { readSafeSharedVisualBytes } from "@/lib/marketing/publishable/sharedVisualDelivery/pathSafety";
 import { isSharedVisualAssetsManifestStaleVsPlan } from "@/lib/marketing/publishable/sharedVisualDelivery/stale";
@@ -144,7 +145,10 @@ export async function buildInstagramRendererVisualMap(input: {
         sourceBytes: bytes,
         visualId: row.visualId,
       });
-      visuals[row.cardId] = normalized.pngPath;
+      // Emit dash + underscore aliases so media-brief `card_1` matches SVP `card-01`.
+      for (const alias of instagramCardIdAliases(row.cardId)) {
+        visuals[alias] = normalized.pngPath;
+      }
       if (normalized.normalized) {
         warnings.push(
           `normalized_${row.visualId}_from_${normalized.mimeType}_for_${row.cardId}`,

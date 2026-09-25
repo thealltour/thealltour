@@ -33,6 +33,7 @@ import { buildInstagramRendererVisualMapSafe } from "@/lib/marketing/publishable
 import { getSharedVisualRenderCacheDir } from "@/lib/marketing/publishable/sharedVisualDelivery/normalizeImageForRenderer";
 import { readSharedVisualAssetsManifest } from "@/lib/marketing/publishable/sharedVisualAssets";
 import { readSharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan";
+import { readCardPresentationPlanFromPackage } from "@/lib/marketing/assets/cardnews/presentation/persist";
 
 export function readPackagePublishableBundle(
   packageRoot: string,
@@ -151,6 +152,8 @@ export async function renderInstagramCardnewsForPackage(input: {
   }
 
   const renders: RenderCardNewsPackageResult[] = [];
+  // Prefer persisted Layout Director plan — do not silently regenerate over a live plan.
+  const presentationPlan = readCardPresentationPlanFromPackage(input.packageRoot);
   for (const aspectRatio of aspectRatios) {
     renders.push(
       await renderCardNewsPackage({
@@ -161,6 +164,9 @@ export async function renderInstagramCardnewsForPackage(input: {
         graphicOnly: input.graphicOnly,
         visuals: visualMap.visuals,
         allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
+        presentationPlan,
+        // Keep disk plan authoritative when present; avoid overwrite with deterministic fallback.
+        persistPresentationPlan: presentationPlan == null,
         now: input.now,
       }),
     );

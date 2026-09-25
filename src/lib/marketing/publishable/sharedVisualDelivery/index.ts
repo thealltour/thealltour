@@ -5,6 +5,10 @@ export {
   type InstagramRendererVisualMapResult,
 } from "@/lib/marketing/publishable/sharedVisualDelivery/instagram";
 export {
+  instagramCardIdAliases,
+  lookupByInstagramCardIdAlias,
+} from "@/lib/marketing/publishable/sharedVisualDelivery/cardIdAliases";
+export {
   resolveThreadsSharedVisualAssets,
   type ResolvedThreadsSharedVisual,
   type ThreadsSharedVisualResolveResult,

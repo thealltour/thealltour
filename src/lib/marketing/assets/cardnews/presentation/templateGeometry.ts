@@ -172,6 +172,58 @@ function densityBody(density: CardTextDensity): number {
   return density === "minimal" ? 32 : density === "compact" ? 30 : 34;
 }
 
+/** Headline → body gap (baseline to baseline offset uses this after headline block height). */
+export function densityHeadlineBodyGapPx(
+  density: CardTextDensity,
+  geometry: CardNewsGeometry,
+): number {
+  const base = density === "minimal" ? 44 : density === "compact" ? 28 : 36;
+  return geometry.scaleY(base);
+}
+
+/** Progress / footer row Y (shared brand chrome). */
+export function progressYForGeometry(geometry: CardNewsGeometry): number {
+  return geometry.height - geometry.scaleY(96);
+}
+
+/**
+ * Last text glyph bottom must stay at or above this Y.
+ * Clears progress dots with a single shared clearance token.
+ */
+export function footerSafeTextBottom(geometry: CardNewsGeometry): number {
+  return progressYForGeometry(geometry) - geometry.scaleY(28);
+}
+
+/**
+ * Normalize plan textPlacement for non-overlay band layouts.
+ * `center` is not in CARD_TEXT_PLACEMENTS — only top/bottom (+ overlay aliases).
+ */
+export function normalizeBandTextPlacement(
+  placement: CardTextPlacement,
+): "top" | "bottom" {
+  if (placement === "top" || placement === "overlay-top") return "top";
+  return "bottom";
+}
+
+/**
+ * Place a measured text block inside [availableTop, availableBottom] (glyph-box coords).
+ * Returns the Y of the first glyph top after placement (clamped).
+ */
+export function placeMeasuredBlockInBand(input: {
+  availableTop: number;
+  availableBottom: number;
+  blockHeight: number;
+  placement: "top" | "bottom";
+}): number {
+  const span = input.availableBottom - input.availableTop;
+  if (!(span > 0)) return input.availableTop;
+  const used = Math.min(Math.max(input.blockHeight, 0), span);
+  if (input.placement === "bottom") {
+    return input.availableBottom - used;
+  }
+  return input.availableTop;
+}
+
 /**
  * Resolve presentation → pixel geometry on the target canvas.
  * Primary DoD is 4:5; other ratios use scaleY for vertical anchors.
@@ -206,7 +258,7 @@ export function resolveTemplateLayout(input: {
       height: 36,
       opacity,
     },
-    progressY: geo.height - geo.scaleY(96),
+    progressY: progressYForGeometry(geo),
     showTopBar: false,
     showBottomAccent: false,
   });
@@ -220,6 +272,8 @@ export function resolveTemplateLayout(input: {
       ? Math.max(headlinePreferred, 64)
       : Math.max(headlinePreferred, 72);
     // Without kicker, start higher so we do not leave a dead empty slot.
+    // Closing/text_statement: provisional bandTop; measured placement (closing)
+    // may shift within [bandTop, footerSafe] per textPlacement.
     const bandTop = geo.scaleY(
       hasKicker ? (isClosing ? 400 : 340) : isClosing ? 280 : 220,
     );
@@ -228,6 +282,9 @@ export function resolveTemplateLayout(input: {
       headlineFontPx: preferredHeadline,
       hasKicker,
     });
+    const safeBottom = footerSafeTextBottom(geo);
+    const closingHeadMax = Math.min(geo.scaleY(300), Math.max(120, safeBottom - bandTop - geo.scaleY(120)));
+    const closingBodyMax = Math.min(geo.scaleY(200), Math.max(80, safeBottom - bandTop - geo.scaleY(160)));
     return {
       template: isClosing ? "closing_insight" : "text_statement",
       image: null,
@@ -235,8 +292,8 @@ export function resolveTemplateLayout(input: {
         x: H_MARGIN,
         y: headlineY,
         width: textWidth,
-        maxHeadlineHeight: geo.scaleY(isClosing ? 300 : 380),
-        maxBodyHeight: geo.scaleY(isClosing ? 200 : 240),
+        maxHeadlineHeight: isClosing ? closingHeadMax : geo.scaleY(380),
+        maxBodyHeight: isClosing ? closingBodyMax : geo.scaleY(240),
         kickerY,
         headlinePreferred: preferredHeadline,
         bodyPreferred: Math.max(bodyPreferred, 32),
@@ -407,13 +464,14 @@ export function resolveTemplateLayout(input: {
       const inset = 48;
       const imageTop = geo.scaleY(80);
       const imageBottom = imageTop + imageH;
-      const headlinePreferred = densityHeadline("compact", false, false);
+      const headlinePreferred = densityHeadline(density, false, false);
       const bandTop = imageBottom + geo.scaleY(MIN_IMAGE_TEXT_BAND_GAP_PX);
       const { kickerY, headlineY } = resolveTextBandAnchors({
         bandTopY: bandTop,
         headlineFontPx: headlinePreferred,
         hasKicker,
       });
+      const safeBottom = footerSafeTextBottom(geo);
       return {
         template: "evidence_detail",
         image: {
@@ -428,10 +486,10 @@ export function resolveTemplateLayout(input: {
           y: headlineY,
           width: textWidth,
           maxHeadlineHeight: geo.scaleY(140),
-          maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(180)),
+          maxBodyHeight: Math.max(80, safeBottom - headlineY - geo.scaleY(48)),
           kickerY,
           headlinePreferred,
-          bodyPreferred: densityBody("compact"),
+          bodyPreferred: densityBody(density),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
           bodyFill: muted,
@@ -443,7 +501,7 @@ export function resolveTemplateLayout(input: {
         focalAlignment: focal,
         preserveAspectRatio,
         textDensity: density,
-        textPlacement: "bottom",
+        textPlacement: p.textPlacement,
       };
     }
     case "photo_top_story":
@@ -451,12 +509,14 @@ export function resolveTemplateLayout(input: {
       const ratio = clampRatio(p.imageHeightRatio, 0.48, 0.42, 0.56);
       const imageH = Math.round(geo.height * ratio);
       const headlinePreferred = densityHeadline(density, false, false);
+      // Provisional anchors at band top; applyMeasuredTextPlacement shifts by textPlacement.
       const bandTop = imageH + geo.scaleY(MIN_IMAGE_TEXT_BAND_GAP_PX);
       const { kickerY, headlineY } = resolveTextBandAnchors({
         bandTopY: bandTop,
         headlineFontPx: headlinePreferred,
         hasKicker,
       });
+      const safeBottom = footerSafeTextBottom(geo);
       return {
         template: "photo_top_story",
         image: { x: 0, y: 0, width: geo.width, height: imageH, rx: 0 },
@@ -465,7 +525,7 @@ export function resolveTemplateLayout(input: {
           y: headlineY,
           width: textWidth,
           maxHeadlineHeight: geo.scaleY(200),
-          maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(200)),
+          maxBodyHeight: Math.max(80, safeBottom - headlineY - geo.scaleY(48)),
           kickerY,
           headlinePreferred,
           bodyPreferred: densityBody(density),
@@ -480,7 +540,7 @@ export function resolveTemplateLayout(input: {
         focalAlignment: focal,
         preserveAspectRatio,
         textDensity: density,
-        textPlacement: "bottom",
+        textPlacement: p.textPlacement,
       };
     }
   }

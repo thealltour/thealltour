@@ -142,6 +142,7 @@ describe("Shared Visual Delivery Adapters v1", () => {
       });
       expect(result.injected).toBe(true);
       expect(result.visuals["card-01"]).toBe(join(dir, "media/shared-visuals/social_visual_01.png"));
+      expect(result.visuals["card_1"]).toBe(result.visuals["card-01"]);
       expect(result.visuals["card-02"]).toBeUndefined();
       expect(result.visuals["card-03"]).toBeUndefined();
     } finally {
@@ -160,7 +161,8 @@ describe("Shared Visual Delivery Adapters v1", () => {
           { visualId: "social_visual_01", filename: "social_visual_01.png" },
         ]),
       });
-      expect(Object.keys(result.visuals)).toEqual(["card-01"]);
+      expect(Object.keys(result.visuals).sort()).toEqual(["card-01", "card_1"].sort());
+      expect(result.visuals["card_1"]).toBe(result.visuals["card-01"]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -39,6 +39,7 @@ import {
 } from "@/lib/marketing/assets/errors";
 import { sha256Buffer, stableJsonBytes } from "@/lib/marketing/assets/hashing";
 import { parseMarketingAssetManifest, parseMediaBrief } from "@/lib/marketing/assets/parse";
+import { lookupByInstagramCardIdAlias } from "@/lib/marketing/publishable/sharedVisualDelivery/cardIdAliases";
 import {
   MARKETING_ASSET_GENERATED_DIRECTORIES,
   MARKETING_ASSET_HUMAN_EDITED_DIRECTORY,
@@ -191,6 +192,9 @@ function resolvePresentationPlanForRender(input: {
   // Phase 3C: assert policy even on reuse; missing/mismatched plan → deterministic_fallback.
   assertCardPresentationArtifactContractParity();
 
+  const hasVisualFor = (cardId: string): boolean =>
+    !input.graphicOnly && Boolean(lookupByInstagramCardIdAlias(input.visuals, cardId));
+
   if (input.presentationPlan?.cards?.length === input.cards.length) {
     const ids = new Set(input.presentationPlan.cards.map((c) => c.cardId));
     if (input.cards.every((c) => ids.has(c.cardId))) {
@@ -198,9 +202,12 @@ function resolvePresentationPlanForRender(input: {
     }
   }
 
-  const visualIds = input.cards.map((c) =>
-    input.graphicOnly ? null : (input.visualIdsByCard[c.cardId] ?? (input.visuals[c.cardId] ? `local:${c.cardId}` : null)),
-  );
+  const visualIds = input.cards.map((c) => {
+    if (input.graphicOnly) return null;
+    const fromIds = lookupByInstagramCardIdAlias(input.visualIdsByCard, c.cardId);
+    if (fromIds) return fromIds;
+    return lookupByInstagramCardIdAlias(input.visuals, c.cardId) ? `local:${c.cardId}` : null;
+  });
   const sourceFp = buildInstagramPresentationSourceFingerprint({
     cardIds: input.cards.map((c) => c.cardId),
     headlines: input.cards.map((c) => c.headline),
@@ -217,7 +224,7 @@ function resolvePresentationPlanForRender(input: {
     cards: input.cards.map((card, i) => ({
       cardId: card.cardId,
       role: legacyRoleToPresentationHint(card.role),
-      hasVisual: !input.graphicOnly && Boolean(input.visuals[card.cardId]),
+      hasVisual: hasVisualFor(card.cardId),
       visualId: visualIds[i],
       headlineHint: card.headline,
     })),
@@ -231,7 +238,7 @@ async function resolveVisualDataUri(input: {
   allowedVisualRoots: string[];
 }): Promise<{ dataUri: string | null; visualAssetId: string | null }> {
   if (input.graphicOnly) return { dataUri: null, visualAssetId: null };
-  const raw = input.visuals[input.card.cardId];
+  const raw = lookupByInstagramCardIdAlias(input.visuals, input.card.cardId);
   if (!raw) return { dataUri: null, visualAssetId: null };
   const absolute = assertLocalVisualPath({ rawPath: raw, allowedRoots: input.allowedVisualRoots });
   const png = readLocalVisualPng(absolute);

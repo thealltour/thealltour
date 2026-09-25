@@ -57,6 +57,11 @@ export type CardPresentation = {
   cardId: string;
   template: CardPresentationTemplate;
   visualId?: string | null;
+  /**
+   * Declared image band placement (full/top/bottom).
+   * DEBT: cardnews-render-v2.2 does not consume this field — template selection
+   * is the image-placement authority. Kept for plan contract compatibility.
+   */
   imagePlacement?: CardImagePlacement;
   /** 0–1 of canvas height occupied by image band (when not full). */
   imageHeightRatio?: number;

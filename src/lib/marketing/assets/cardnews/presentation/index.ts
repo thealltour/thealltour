@@ -35,12 +35,18 @@ export {
   headlineBaselineAtBandTop,
   kickerBaselineAtBandTop,
   resolveTextBandAnchors,
+  densityHeadlineBodyGapPx,
+  footerSafeTextBottom,
+  progressYForGeometry,
+  normalizeBandTextPlacement,
+  placeMeasuredBlockInBand,
   MIN_KICKER_HEADLINE_CLEAR_PX,
   MIN_IMAGE_TEXT_BAND_GAP_PX,
 } from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
 
 export {
   buildResolvedCardRenderSpec,
+  applyMeasuredTextPlacement,
   normalizeExplicitEditorialKicker,
 } from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";
 export type { ResolvedCardRenderSpec } from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";

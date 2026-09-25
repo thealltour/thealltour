@@ -22,7 +22,11 @@ import {
   legacyRoleToPresentationHint,
 } from "@/lib/marketing/assets/cardnews/presentation/deterministic";
 import type { ResolvedCardRenderSpec } from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";
-import { resolveTemplateLayout, type ResolvedTemplateLayout } from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
+import {
+  densityHeadlineBodyGapPx,
+  resolveTemplateLayout,
+  type ResolvedTemplateLayout,
+} from "@/lib/marketing/assets/cardnews/presentation/templateGeometry";
 
 export type CardCitation = {
   label: string;
@@ -178,7 +182,8 @@ export function buildCardNewsSvgFromSpec(
   const hasVisual = Boolean(spec.visualDataUri) && layout.image != null;
 
   const headlineY = layout.text.y;
-  const bodyY = headlineY + (spec.headline.lines.length ? spec.headline.height + 36 : 0);
+  const bodyY =
+    headlineY + (spec.headline.lines.length ? spec.headline.height + spec.headlineBodyGapPx : 0);
 
   // Accent sits above the headline (and above kicker when present).
   const accentY =
@@ -239,7 +244,11 @@ export function buildCardNewsSvgFromSpec(
  * otherwise callers must migrate to buildCardNewsSvgFromSpec.
  */
 export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeometry): string {
+  const geo = geometry ?? resolveCardNewsGeometry();
   if (model.layout && model.presentation) {
+    const coverLike =
+      model.layout.template === "cover_full_bleed" ||
+      model.layout.template === "photo_overlay_editorial";
     return buildCardNewsSvgFromSpec(
       {
         cardId: model.cardId,
@@ -254,12 +263,14 @@ export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeom
         wordmarkDataUri: model.wordmarkDataUri,
         presentation: model.presentation,
         layout: model.layout,
+        headlineBodyGapPx: coverLike
+          ? geo.scaleY(36)
+          : densityHeadlineBodyGapPx(model.layout.textDensity, geo),
       },
-      geometry,
+      geo,
     );
   }
   // Emergency: build a minimal photo_top / text_statement without presentation plan
-  const geo = geometry ?? resolveCardNewsGeometry();
   const hasVisual = Boolean(model.visualDataUri);
   const plan = buildDeterministicCardPresentationPlan({
     assetId: "legacy",
@@ -275,11 +286,16 @@ export function buildCardNewsSvg(model: CardRenderModel, geometry?: CardNewsGeom
   });
   const presentation = plan.cards[0]!;
   const layout = resolveTemplateLayout({ presentation, geometry: geo, hasVisual });
+  const coverLike =
+    layout.template === "cover_full_bleed" || layout.template === "photo_overlay_editorial";
   return buildCardNewsSvgFromSpec(
     {
       ...model,
       presentation,
       layout,
+      headlineBodyGapPx: coverLike
+        ? geo.scaleY(36)
+        : densityHeadlineBodyGapPx(layout.textDensity, geo),
     },
     geo,
   );

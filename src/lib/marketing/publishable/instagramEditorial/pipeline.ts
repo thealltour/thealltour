@@ -29,6 +29,9 @@ import {
 } from "@/lib/marketing/publishable/instagramEditorial/contracts";
 import { assemblePublishableInstagramFromEditorial } from "@/lib/marketing/publishable/instagramEditorial/assemblePublishable";
 import {
+  buildInstagramCardCopyWriterPayload,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";
+import {
   buildEditorialNarrativeContentFingerprint,
   buildInstagramCardCopyContentFingerprint,
   buildInstagramCarouselContentFingerprint,
@@ -231,6 +234,17 @@ export async function runInstagramEditorialPipeline(input: {
   hermesHome?: string;
   /** Prebuilt Narrative Plan — skips narrative LLM when fingerprint matches. */
   narrativePlan?: EditorialNarrativePlan | null;
+  /**
+   * Prebuilt Carousel Plan — skips carousel LLM when sourceNarrativeFingerprint matches.
+   * Use to regenerate Card Copy while reusing a valid carousel.
+   */
+  carouselPlan?: InstagramCarouselPlan | null;
+  /**
+   * Skip caption LLM. Requires existingCaption (or assemble/persist will omit caption).
+   * Intended for Card-Copy-only refresh with Narrative/Carousel reuse.
+   */
+  skipCaption?: boolean;
+  existingCaption?: InstagramCaption | null;
 }): Promise<InstagramEditorialPipelineResult> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -316,54 +330,63 @@ export async function runInstagramEditorialPipeline(input: {
     }
     const narrativeContentFp = buildEditorialNarrativeContentFingerprint(narrative);
 
-    const carouselInv = await invokeJson({
-      invoke: input.invoke,
-      profile: INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
-      maxAttempts: carouselAttempts,
-      payload: {
-        task: "instagram_carousel_plan",
-        editorialNarrativePlan: narrative,
-        instagramChannelConstraints: constraints,
-        canonicalAsset: {
-          assetId: asset.assetId,
-          titleKo: asset.titleKo,
-          openingHookKo: clip(asset.openingHookKo, 400),
-          keyTakeawaysKo: asset.keyTakeawaysKo,
+    let carousel: InstagramCarouselPlan;
+    const preferredCarousel = input.carouselPlan ?? null;
+    if (
+      preferredCarousel &&
+      preferredCarousel.sourceNarrativeFingerprint === narrativeContentFp
+    ) {
+      carousel = preferredCarousel;
+    } else {
+      const carouselInv = await invokeJson({
+        invoke: input.invoke,
+        profile: INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
+        maxAttempts: carouselAttempts,
+        payload: {
+          task: "instagram_carousel_plan",
+          editorialNarrativePlan: narrative,
+          instagramChannelConstraints: constraints,
+          canonicalAsset: {
+            assetId: asset.assetId,
+            titleKo: asset.titleKo,
+            openingHookKo: clip(asset.openingHookKo, 400),
+            keyTakeawaysKo: asset.keyTakeawaysKo,
+          },
         },
-      },
-    });
-    attemptCount += carouselInv.attemptCount;
-    // materializeInRepairLoop=false: materialize after JSON repair loop (do not move inside).
-    const carousel = materializeInstagramCarouselPlan({
-      assetId: asset.assetId,
-      assetVersion: asset.version,
-      sourceNarrativeFingerprint: narrativeContentFp,
-      modelProfile: INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
-      generatedAt: nowIso,
-      validBeatIds: new Set(narrative.beats.map((b) => b.beatId)),
-      minCards: constraints.minCards,
-      maxCards: constraints.maxCards,
-      llm: carouselInv.llm,
-    });
+      });
+      attemptCount += carouselInv.attemptCount;
+      // materializeInRepairLoop=false: materialize after JSON repair loop (do not move inside).
+      carousel = materializeInstagramCarouselPlan({
+        assetId: asset.assetId,
+        assetVersion: asset.version,
+        sourceNarrativeFingerprint: narrativeContentFp,
+        modelProfile: INSTAGRAM_CAROUSEL_PLANNER_HERMES_PROFILE,
+        generatedAt: nowIso,
+        validBeatIds: new Set(narrative.beats.map((b) => b.beatId)),
+        minCards: constraints.minCards,
+        maxCards: constraints.maxCards,
+        llm: carouselInv.llm,
+      });
+    }
     const carouselFp = buildInstagramCarouselContentFingerprint(carousel);
 
     const copyInv = await invokeJson({
       invoke: input.invoke,
       profile: INSTAGRAM_CARD_COPY_WRITER_HERMES_PROFILE,
       maxAttempts: cardCopyAttempts,
-      payload: {
-        task: "instagram_card_copy",
-        editorialNarrativePlan: narrative,
-        instagramCarouselPlan: carousel,
+      payload: buildInstagramCardCopyWriterPayload({
+        narrative,
+        carousel,
         canonicalAsset: {
           assetId: asset.assetId,
           titleKo: asset.titleKo,
+          openingHookKo: clip(asset.openingHookKo, 400),
           bodyKo: clip(asset.bodyKo, 2400),
           keyTakeawaysKo: asset.keyTakeawaysKo,
           supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
           forbiddenClaimsKo: asset.forbiddenClaimsKo,
         },
-      },
+      }),
     });
     attemptCount += copyInv.attemptCount;
     const cardCopy = materializeInstagramCardCopy({
@@ -377,37 +400,48 @@ export async function runInstagramEditorialPipeline(input: {
     });
     const cardCopyFp = buildInstagramCardCopyContentFingerprint(cardCopy);
 
-    const captionInv = await invokeJson({
-      invoke: input.invoke,
-      profile: INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
-      maxAttempts: captionAttempts,
-      payload: {
-        task: "instagram_caption",
-        editorialNarrativePlan: {
-          narrativePromise: narrative.narrativePromise,
-          audienceTakeaway: narrative.audienceTakeaway,
+    let caption: InstagramCaption | null = null;
+    if (input.skipCaption) {
+      caption = input.existingCaption ?? null;
+      if (!caption) {
+        throw new InstagramEditorialMaterializeError(
+          "caption_required",
+          "skipCaption requires existingCaption for assemble/persist",
+        );
+      }
+    } else {
+      const captionInv = await invokeJson({
+        invoke: input.invoke,
+        profile: INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
+        maxAttempts: captionAttempts,
+        payload: {
+          task: "instagram_caption",
+          editorialNarrativePlan: {
+            narrativePromise: narrative.narrativePromise,
+            audienceTakeaway: narrative.audienceTakeaway,
+          },
+          instagramCarouselPlan: carousel,
+          instagramCardCopy: cardCopy,
+          canonicalAsset: {
+            assetId: asset.assetId,
+            limitationsKo: asset.limitationsKo,
+            supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+            optionalCtaIntentKo: asset.optionalCtaIntentKo ?? null,
+          },
+          hashtagMax: constraints.hashtagMax,
         },
-        instagramCarouselPlan: carousel,
-        instagramCardCopy: cardCopy,
-        canonicalAsset: {
-          assetId: asset.assetId,
-          limitationsKo: asset.limitationsKo,
-          supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
-          optionalCtaIntentKo: asset.optionalCtaIntentKo ?? null,
-        },
+      });
+      attemptCount += captionInv.attemptCount;
+      caption = materializeInstagramCaption({
+        assetId: asset.assetId,
+        assetVersion: asset.version,
+        sourceCardCopyFingerprint: cardCopyFp,
+        modelProfile: INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
+        generatedAt: nowIso,
         hashtagMax: constraints.hashtagMax,
-      },
-    });
-    attemptCount += captionInv.attemptCount;
-    const caption = materializeInstagramCaption({
-      assetId: asset.assetId,
-      assetVersion: asset.version,
-      sourceCardCopyFingerprint: cardCopyFp,
-      modelProfile: INSTAGRAM_CAPTION_WRITER_HERMES_PROFILE,
-      generatedAt: nowIso,
-      hashtagMax: constraints.hashtagMax,
-      llm: captionInv.llm,
-    });
+        llm: captionInv.llm,
+      });
+    }
 
     if (input.packageRoot) {
       persistInstagramEditorialArtifacts({
@@ -417,7 +451,15 @@ export async function runInstagramEditorialPipeline(input: {
         cardCopy,
         caption,
         createdAt: nowIso,
+        cardCopyOnly: Boolean(input.skipCaption),
       });
+    }
+
+    if (!caption) {
+      throw new InstagramEditorialMaterializeError(
+        "caption_required",
+        "caption missing after card-copy stage",
+      );
     }
 
     const content = assemblePublishableInstagramFromEditorial({

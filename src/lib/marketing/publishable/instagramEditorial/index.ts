@@ -73,7 +73,15 @@ export {
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
 
 export {
+  buildInstagramCardCopyPromptCards,
+  buildInstagramCardCopyWriterPayload,
+  type InstagramCardCopyPromptCard,
+  type InstagramCardCopyBeatMessage,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";
+
+export {
   ensureInstagramEditorialHermesProfilesReady,
+  INSTAGRAM_CARD_COPY_WRITER_SOUL,
   INSTAGRAM_EDITORIAL_HERMES_PROFILE_SET,
 } from "@/lib/marketing/publishable/instagramEditorial/hermesIdentity";
 

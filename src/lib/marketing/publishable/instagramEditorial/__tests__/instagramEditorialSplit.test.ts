@@ -11,6 +11,9 @@ import {
   deriveLegacySlideHeadlines,
 } from "@/lib/marketing/publishable/instagramEditorial/assemblePublishable";
 import {
+  buildInstagramCardCopyWriterPayload,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";
+import {
   materializeEditorialNarrativePlan,
   materializeInstagramCaption,
   materializeInstagramCardCopy,
@@ -23,8 +26,10 @@ import {
   buildInstagramCardCopyContentFingerprint,
   buildInstagramCarouselContentFingerprint,
 } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
+import { INSTAGRAM_CARD_COPY_WRITER_SOUL } from "@/lib/marketing/publishable/instagramEditorial/hermesIdentity";
 import { resolveInstagramEditorialPipelineLifecycle } from "@/lib/marketing/publishable/instagramEditorial/lifecycle";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
+import { getMarketingAgentSemanticContract } from "@/lib/marketing/agentContracts/semanticRegistry";
 
 /** Dao-like Canonical facts — regression fixture (no live LLM). */
 const DAO_FACTS = {
@@ -128,23 +133,23 @@ function daoCardCopyLlm() {
       {
         cardId: "card-02",
         headline: "북쪽으로 올라가면 풍경부터 달라집니다",
-        body: "산악 국경 지대의 리듬이 남부 휴양과 다릅니다",
+        body: "산악 국경 지대에서는 휴양 리조트와 다른 고도·안개·산길의 리듬이 이어집니다",
       },
       {
         cardId: "card-03",
         headline: "랑선 국경, Dao족 마을",
-        body: "험준한 지형 속 생활 공간이 이야기를 받칩니다",
+        body: "산비탈의 경작지와 길, 주거 공간이 한 지형 안에 이어지는 북부 산악 생활환경을 보여줍니다",
       },
       {
         cardId: "card-04",
         headline: "nhà trình tường, 흙다짐 가옥",
-        body: "판축(rammed-earth) 구조가 구체적 건축 단서입니다",
+        body: "흙을 층층이 다져 벽을 만드는 nhà trình tường은 북부 산악 주거의 건축 방식을 보여주는 구체적 단서입니다",
         evidenceRefs: ["ev_dao_house"],
       },
       {
         cardId: "card-05",
         headline: "휴양 프레임 밖에서 읽히는 베트남",
-        body: "익숙한 해변 요약이 아니라 건축·생활의 payoff",
+        body: "해변 요약이 아니라 랑선 Dao족 마을과 흙다짐 가옥까지 이어진 건축·생활 리듬이 payoff입니다",
       },
     ],
   };
@@ -551,5 +556,108 @@ describe("instagram editorial lifecycle fingerprints", () => {
     });
     expect(life.cardCopy).toBe("stale");
     expect(life.caption).toBe("stale");
+  });
+});
+
+describe("instagram card copy context density contract", () => {
+  it("A. prompt cards include role / beatIds / beatMessages / communicationGoal", () => {
+    const narrative = materializeEditorialNarrativePlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceCanonicalFingerprint: "fp",
+      modelProfile: "x",
+      llm: daoNarrativeLlm(),
+    });
+    const carousel = materializeInstagramCarouselPlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceNarrativeFingerprint: buildEditorialNarrativeContentFingerprint(narrative),
+      modelProfile: "x",
+      validBeatIds: new Set(narrative.beats.map((b) => b.beatId)),
+      minCards: 3,
+      maxCards: 10,
+      llm: daoCarouselLlm(),
+    });
+    const payload = buildInstagramCardCopyWriterPayload({
+      narrative,
+      carousel,
+      canonicalAsset: {
+        assetId: "cma_dao",
+        titleKo: "title",
+        openingHookKo: "hook",
+        bodyKo: "body",
+        keyTakeawaysKo: ["a"],
+        supportedClaimBoundaryKo: "boundary",
+        forbiddenClaimsKo: ["금지주장"],
+      },
+    });
+    const cards = payload.cards as Array<Record<string, unknown>>;
+    expect(cards).toHaveLength(5);
+    expect(cards[0]).toMatchObject({
+      cardId: "card-01",
+      role: "hook_cover",
+      beatIds: ["beat_01"],
+      communicationGoal: expect.any(String),
+      visualPriority: "hero",
+    });
+    expect(cards[0]!.beatMessages).toEqual([
+      {
+        beatId: "beat_01",
+        purpose: "hook",
+        message: "다낭·푸꾸옥으로 기억하는 베트남 풍경을 떠올린다",
+      },
+    ]);
+    expect(cards[2]!.role).toBe("context");
+    expect((cards[2]!.beatMessages as unknown[]).length).toBeGreaterThan(0);
+    const canon = payload.canonicalAsset as Record<string, unknown>;
+    expect(canon.openingHookKo).toBe("hook");
+    expect(canon.forbiddenClaimsKo).toEqual(["금지주장"]);
+  });
+
+  it("B/C. SOUL distinguishes summary vs context and deprioritizes 2–3 line max", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Summary vs context/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/DO NOT summarize the whole source/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/select the context required by/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Information density/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(
+      /^\s*- Body: optional 2–3 short lines max/m,
+    );
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(
+      /Do \*\*not\*\* treat "2–3 short lines max" as the goal/,
+    );
+  });
+
+  it("D/E/F. semantic contract expands OWNS; closing CTA not forced; carousel not owned", () => {
+    const contract = getMarketingAgentSemanticContract("instagram-card-copy-writer");
+    expect(contract).toBeTruthy();
+    const notes = contract!.docs?.notes?.join("\n") ?? "";
+    expect(notes).toMatch(/card-level contextual explanation/i);
+    expect(notes).toMatch(/information density/i);
+    expect(notes).toMatch(/MUST NOT OWN:[\s\S]*cardId/i);
+    expect(contract!.authority.owns).toEqual(["instagram.cardCopy"]);
+    expect(contract!.authority.mustNotOwn).toContain("instagram.carouselStructure");
+    expect(contract!.authority.mustNotOwn).toContain("presentation.template");
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/not\*\* CTA by default/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/do not force CTA/);
+  });
+
+  it("Dao fixture: progression / density direction (no abstract-only 03/04; 05 recovers)", () => {
+    const copy = daoCardCopyLlm().cards;
+    const staleAbstract = ["거주 배경과 생활문화", "보여주는 면모", "도시 중심의 익숙한 베트남"];
+    for (const card of copy) {
+      for (const phrase of staleAbstract) {
+        expect(`${card.headline}\n${card.body ?? ""}`.includes(phrase)).toBe(false);
+      }
+    }
+    // card-02 must not merely restate beach/resort premise
+    expect(copy[1]!.body!).not.toMatch(/다낭·푸꾸옥·리조트 이미지가 먼저/);
+    expect(copy[1]!.body!).toMatch(/산악|국경|고도|리듬/);
+    // card-03/04 need concrete detail beyond abstract labels
+    expect((copy[2]!.body ?? "").length).toBeGreaterThan(30);
+    expect(copy[2]!.body!).toMatch(/산비탈|경작|주거|랑선|Dao/);
+    expect(copy[3]!.body!).toMatch(/nhà trình tường|흙|벽|건축/);
+    // closing recovers prior cards rather than slogan-only
+    expect(copy[4]!.body!).toMatch(/랑선|Dao|흙다짐|가옥/);
+    expect(copy[4]!.body!).not.toMatch(/또 하나의 기준|다양한 시각/);
   });
 });

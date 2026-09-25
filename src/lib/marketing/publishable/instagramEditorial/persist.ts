@@ -107,10 +107,20 @@ export function persistInstagramEditorialArtifacts(input: {
   narrative: EditorialNarrativePlan;
   carousel: InstagramCarouselPlan;
   cardCopy: InstagramCardCopy;
-  caption: InstagramCaption;
+  caption?: InstagramCaption | null;
   createdAt?: string;
+  /** When true, only overwrite card-copy (reuse Narrative/Carousel/Caption on disk). */
+  cardCopyOnly?: boolean;
 }): void {
   const createdAt = input.createdAt ?? new Date().toISOString();
+  if (input.cardCopyOnly) {
+    persistInstagramCardCopy({
+      packageRoot: input.packageRoot,
+      copy: input.cardCopy,
+      createdAt,
+    });
+    return;
+  }
   persistEditorialNarrativePlan({
     packageRoot: input.packageRoot,
     plan: input.narrative,
@@ -126,11 +136,13 @@ export function persistInstagramEditorialArtifacts(input: {
     copy: input.cardCopy,
     createdAt,
   });
-  persistInstagramCaption({
-    packageRoot: input.packageRoot,
-    caption: input.caption,
-    createdAt,
-  });
+  if (input.caption) {
+    persistInstagramCaption({
+      packageRoot: input.packageRoot,
+      caption: input.caption,
+      createdAt,
+    });
+  }
 }
 
 export function readEditorialNarrativePlanFromPackage(

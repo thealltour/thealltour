@@ -87,6 +87,8 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
         "instagram.carouselStructure",
         "instagram.visualSemantics",
         "sharedVisual.masterOrchestration",
+        "presentation.template",
+        "instagram.caption",
       ],
     },
     inputs: {
@@ -95,7 +97,11 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     },
     output: { artifactId: INSTAGRAM_CARD_COPY_CONTRACT },
     docs: {
-      notes: ["OWNS headline/body only; MUST NOT redesign cardId/order or visual semantics."],
+      notes: [
+        "OWNS: headline/body wording; card-level contextual explanation of assigned beats; information density sufficient for communicationGoal; local narrative progression within fixed carousel structure.",
+        "MUST NOT OWN: cardId/order/count, beat reassignment, factual invention, new evidence, visual role/orchestration, CTA strategy changes, Presentation/Layout.",
+        "Card Copy does not decide what to say — it explains assigned beats so readers understand them.",
+      ],
     },
   },
   {

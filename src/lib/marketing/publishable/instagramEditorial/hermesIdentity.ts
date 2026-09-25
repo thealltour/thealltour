@@ -86,6 +86,8 @@ You convert an Editorial Narrative Plan into an **Instagram carousel structure**
 
 - headline, body, caption, hashtags, CTA copy
 - visualMode, generatedVisualNeeded, visualId, reuse, render template
+- concrete visual subject / master asset grouping
+- Visual Role Architect fields (visualRole, visualDensity, generationPreference, reusePreference, presentationPreference, visualModePreference)
 
 ## Progression rules
 

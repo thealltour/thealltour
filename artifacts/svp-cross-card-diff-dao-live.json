@@ -1,0 +1,62 @@
+{
+  "packageRoot": "/mnt/HDD2TB/marketing-assets/2026/09/18/cmc_daily_marketing_production_2026_09_18_e0",
+  "vraReuse": true,
+  "svp": {
+    "strategySummary": "Designed a 4-master visual set for the 5 Instagram cards plus Threads slot 0 reuse. Card-01 (hero_cover) uses a dedicated editorial sunny beach master. Threads slot 0 reuses card-01's master as it aligns with the opening hook. Card-02 (bridge_statement) and card-03 (cultural_context) are split into distinct masters to satisfy neighbor-aware differentiation: card-02 focuses on a wide mountainous geographic transition (layered misty ridges along the northern border), while card-03 focuses on a close-up highland lived-environment view (cultivated mountain slopes and settlement structure near Lang Son) rather than collapsing into the same scenic geography. Card-04 (evidence_detail) uses an exclusive rammed-earth architectural detail master in object_or_detail mode. Card-05 (typography_anchor) sets generatedVisualNeeded to false (with a decisionTrace override) to use a clean minimalist typographic closing layout.",
+    "byCard": {
+      "card-01": {
+        "visualId": "social_visual_01",
+        "role": "hero_cover",
+        "mode": "editorial_photo",
+        "intent": "Sunny tropical beach resort in Vietnam with palm trees and turquoise water, establishing the familiar tourist framing."
+      },
+      "card-02": {
+        "visualId": "social_visual_02",
+        "role": "bridge_statement",
+        "mode": "editorial_photo",
+        "intent": "Wide scenic geography of misty mountain ridges along the northern border of Vietnam with an overcast sky showing a transition from coastal to alpine terrain."
+      },
+      "card-03": {
+        "visualId": "social_visual_03",
+        "role": "cultural_context",
+        "mode": null,
+        "intent": "Highland lived environment near Lang Son showing terraced cultivated plots, traditional paths, and highland settlement structure reflecting minority community life."
+      },
+      "card-04": {
+        "visualId": "social_visual_04",
+        "role": "architecture_detail",
+        "mode": "object_or_detail",
+        "intent": "Close-up architectural detail of a traditional rammed-earth wall (nhà trình tường) showing coarse earthen texture, layered compaction marks, and sturdy timber integration."
+      },
+      "card-05": {
+        "visualId": "social_visual_05",
+        "role": "typography_anchor",
+        "mode": null,
+        "intent": "Clean minimalist typographic closing layout with a subtle earthy gradient background summarizing the expanded perspective on Vietnam travel."
+      }
+    },
+    "decisionTrace": {
+      "overrides": [
+        {
+          "cardId": "card-05",
+          "field": "generationPreference",
+          "requested": "none",
+          "final": "false",
+          "reason": "Typography anchor uses a minimalist text layout without image generation."
+        }
+      ]
+    }
+  },
+  "astra": {
+    "card02": {
+      "visualId": "social_visual_02",
+      "role": "bridge_statement",
+      "visualIntent": "Wide scenic geography of misty mountain ridges along the northern border of Vietnam with an overcast, atmospheric sky showing a clear topographical transition from coastal lowlands to rugged alpine terrain. Atmosphere/lighting: Soft, diffused overcast daylight with low-hanging mountain fog and cool blue-gray atmospheric tones."
+    },
+    "card03": {
+      "visualId": "social_visual_03",
+      "role": "cultural_context",
+      "visualIntent": "Highland lived environment near Lang Son featuring rolling terraced cultivated plots, traditional beaten earth paths, and rustic hillside settlement structures reflecting minority community architecture. Atmosphere/lighting: Natural early morning or late afternoon natural side lighting that accentuates the textured contours of the hillside terraces."
+    }
+  }
+}

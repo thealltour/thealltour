@@ -211,7 +211,7 @@ export function buildSharedVisualPlannerInput(input: {
     sourceChannelSnapshot: buildSourceChannelSnapshot(bundle),
     outputSchema: {
       strategySummary:
-        "string — why this master set; shared/split cards; Threads reuse; note overrides",
+        "string — why this master set; shared/split cards; Threads reuse; how distinct masters differ (axes); note overrides",
       decisionTrace: {
         overrides: [
           {
@@ -230,7 +230,7 @@ export function buildSharedVisualPlannerInput(input: {
             "editorial_photo | object_or_detail | icon_infographic | contrast_diagram | map_context | fact_card | evidence_boundary | minimal_closing",
           generatedVisualNeeded: "boolean — YOUR decision (may override VRA generationPreference with trace)",
           visualIntent:
-            "concrete master brief: subject + context + purpose + composition + evidence limits",
+            "concrete master brief: subject + context + purpose + composition + evidence limits; distinct masters must be pixel-distinguishable (not synonym scenic landscape)",
           usages: [
             { channel: "threads", slotIndex: 0 },
             { channel: "instagram", cardId: "card_1" },
@@ -267,12 +267,17 @@ export function formatSharedVisualPlannerPrompt(
     "- You MUST NOT invent nonexistent channel slots/cardIds or Blog/Band/Kakao/Shortform usages.",
     "- Do NOT treat Worker sourceVisualId as master identity.",
     "- Prefer explaining decisions in strategySummary; put material overrides in decisionTrace.",
+    "- Cross-card differentiation: distinct masters for different VRA roles need pixel-distinguishable intents (subject class / scale / lived-environment / composition / distance) — not synonym scenic landscape.",
+    "- Neighbor-aware: before locking masters, compare adjacent Instagram transitions (01→02→03→04→05) for repeated subject family / scale / compositional function.",
+    "- Do NOT inflate master count just to differentiate; intentional continuity/reuse may keep similarity.",
+    "- cultural_context: if humans are unsafe, prefer lived-environment cues (architecture / dwelling / path / cultivated land / settlement) — not generic landscape-only fallback; no unsupported ethnicity/costume invention.",
     "",
     "Return ONLY JSON:",
     "{ strategySummary, decisionTrace?: { overrides: [{ cardId?, field, requested, final, reason }] }, visuals: [...] }",
     "field enum: generationPreference | visualModePreference | reusePreference | grouping | other",
     "Supported usages ONLY: threads.slotIndex (0 when Threads exists) or instagram.cardId from content/VRA.",
     "visualIntent must be concrete master-level brief — reject vague intents.",
+    "Distinct masters must stay image-distinguishable when they serve different VRA roles.",
     hasVra
       ? "VRA PRESENT: full card coverage + structured overrides for material divergences are mandatory."
       : "VRA ABSENT: legacy visualHints path — still prefer smallest sufficient shared set.",

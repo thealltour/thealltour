@@ -17,6 +17,11 @@ import type {
   CardTextDensity,
   CardTextPlacement,
 } from "@/lib/marketing/assets/cardnews/presentation/contracts";
+import {
+  preferredBodyPx,
+  preferredHeadlinePx,
+  TYPOGRAPHY_BODY_FILL_PAPER,
+} from "@/lib/marketing/assets/cardnews/typographyTokens";
 
 export type ImageBandGeometry = {
   x: number;
@@ -66,6 +71,7 @@ export type ResolvedTemplateLayout = {
   /** v2.3 content-aware diagnostics (optional). */
   contentAware?: {
     imageTextGap?: number;
+    textBandTop?: number;
     textBlockHeight: number;
     footerSafeY: number;
     preferredImageRatio?: number;
@@ -90,6 +96,18 @@ export const MIN_KICKER_HEADLINE_CLEAR_PX = 32;
  */
 export const MIN_IMAGE_TEXT_BAND_GAP_PX = 64;
 
+function densityHeadline(density: CardTextDensity, cover: boolean, statement: boolean): number {
+  if (statement) return preferredHeadlinePx(density, "statement");
+  if (cover) return preferredHeadlinePx(density, "cover");
+  return preferredHeadlinePx(density, "story");
+}
+
+function densityBody(density: CardTextDensity, cover = false, statement = false): number {
+  if (statement) return preferredBodyPx(density, "statement");
+  if (cover) return preferredBodyPx(density, "cover");
+  return preferredBodyPx(density, "story");
+}
+
 export function densityHeadlinePx(
   density: CardTextDensity,
   cover: boolean,
@@ -98,8 +116,12 @@ export function densityHeadlinePx(
   return densityHeadline(density, cover, statement);
 }
 
-export function densityBodyPx(density: CardTextDensity): number {
-  return densityBody(density);
+export function densityBodyPx(
+  density: CardTextDensity,
+  cover = false,
+  statement = false,
+): number {
+  return densityBody(density, cover, statement);
 }
 
 export function estimateGlyphTop(baselineY: number, fontPx: number): number {
@@ -180,20 +202,6 @@ function clampRatio(value: number | undefined, fallback: number, min: number, ma
   return Math.min(max, Math.max(min, n));
 }
 
-function densityHeadline(density: CardTextDensity, cover: boolean, statement: boolean): number {
-  if (statement) {
-    return density === "minimal" ? 82 : density === "compact" ? 74 : 78;
-  }
-  if (cover) {
-    return density === "minimal" ? 72 : density === "compact" ? 64 : 70;
-  }
-  return density === "minimal" ? 58 : density === "compact" ? 52 : 56;
-}
-
-function densityBody(density: CardTextDensity): number {
-  return density === "minimal" ? 32 : density === "compact" ? 30 : 34;
-}
-
 /**
  * Resolve presentation → pixel geometry on the target canvas.
  * Primary DoD is 4:5; other ratios use scaleY for vertical anchors.
@@ -217,7 +225,6 @@ export function resolveTemplateLayout(input: {
 
   const textWidth = geo.width - H_MARGIN * 2;
   const ink = CARDNEWS_BRAND.ink;
-  const muted = CARDNEWS_BRAND.muted;
   const white = CARDNEWS_BRAND.white;
 
   const brandSubtle = (opacity: number): BrandPlacement => ({
@@ -237,7 +244,7 @@ export function resolveTemplateLayout(input: {
   if (!input.hasVisual || p.template === "text_statement" || p.template === "closing_insight") {
     const isClosing = p.template === "closing_insight";
     const headlinePreferred = densityHeadline(density, false, !isClosing);
-    const bodyPreferred = densityBody(density);
+    const bodyPreferred = densityBody(density, false, !isClosing);
     const preferredHeadline = isClosing
       ? Math.max(headlinePreferred, 64)
       : Math.max(headlinePreferred, 72);
@@ -261,10 +268,10 @@ export function resolveTemplateLayout(input: {
         maxBodyHeight: geo.scaleY(isClosing ? 200 : 240),
         kickerY,
         headlinePreferred: preferredHeadline,
-        bodyPreferred: Math.max(bodyPreferred, 32),
+        bodyPreferred,
         fill: CARDNEWS_BRAND.paper,
         headlineFill: ink,
-        bodyFill: muted,
+        bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
         kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
       },
       overlay: null,
@@ -284,7 +291,7 @@ export function resolveTemplateLayout(input: {
   switch (p.template) {
     case "cover_full_bleed": {
       const headlinePreferred = densityHeadline(density, true, false);
-      const bodyPreferred = densityBody(density);
+      const bodyPreferred = densityBody(density, true, false);
       const textBlockH = geo.scaleY(hasKicker ? 380 : 340);
       const bandTop = geo.height - textBlockH + geo.scaleY(hasKicker ? 28 : 40);
       const { kickerY, headlineY } = resolveTextBandAnchors({
@@ -358,7 +365,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody(density),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,
@@ -456,7 +463,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody("compact"),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,
@@ -493,7 +500,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody(density),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,

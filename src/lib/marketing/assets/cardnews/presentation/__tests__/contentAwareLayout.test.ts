@@ -93,7 +93,7 @@ const LONG_BODY =
 
 describe("cardnews v2.3 content-aware layout", () => {
   it("bumps renderer version", () => {
-    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.3-content-aware-layout");
+    expect(CARDNEWS_RENDERER_VERSION).toBe("cardnews-render-v2.4-mobile-readable-typography");
   });
 
   it("A. cover_full_bleed keeps full-bleed image; short copy keeps golden text band", () => {
@@ -122,7 +122,9 @@ describe("cardnews v2.3 content-aware layout", () => {
     });
     expect(spec.layout.template).toBe("cover_full_bleed");
     expect(spec.layout.image).toEqual(baseline.image);
-    expect(spec.layout.text.y).toBe(baseline.text.y);
+    // Larger mobile body may raise the overlay/text band within fit logic; full-bleed stays.
+    expect(spec.layout.text.y).toBeLessThanOrEqual(baseline.text.y);
+    expect(spec.layout.text.y).toBeGreaterThanOrEqual(baseline.text.y - geo.scaleY(80));
     expect(spec.layout.overlay?.mode).toBe("gradient_dark");
     expect(spec.layout.brand.progressY).toBe(baseline.brand.progressY);
   });

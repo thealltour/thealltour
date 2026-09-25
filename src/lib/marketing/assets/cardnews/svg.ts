@@ -60,7 +60,7 @@ function textBlock(input: {
   y: number;
   fontSize: number;
   lineHeight: number;
-  weight: 400 | 700;
+  weight: 400 | 500 | 700;
   fill: string;
 }): string {
   if (input.lines.length === 0) return "";
@@ -225,7 +225,7 @@ export function buildCardNewsSvgFromSpec(
     y: bodyY,
     fontSize: spec.body.fontSize,
     lineHeight: spec.body.lineHeight,
-    weight: 400,
+    weight: 500,
     fill: layout.text.bodyFill,
   })}
   ${citation}

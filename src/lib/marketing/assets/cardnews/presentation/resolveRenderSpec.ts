@@ -30,6 +30,10 @@ import {
   measureTextBlockHeight,
 } from "@/lib/marketing/assets/cardnews/presentation/contentAwareLayout";
 import type { CardCitation } from "@/lib/marketing/assets/cardnews/svg";
+import {
+  TYPOGRAPHY_BODY_FILL_PAPER,
+  TYPOGRAPHY_LINE_HEIGHT,
+} from "@/lib/marketing/assets/cardnews/typographyTokens";
 
 export type ResolvedCardRenderSpec = {
   cardId: string;
@@ -79,11 +83,15 @@ function applyMobileLineHeights(
   headline: FittedText,
   body: FittedText,
 ): void {
-  if (template === "cover_full_bleed" || template === "text_statement") {
-    headline.lineHeight = Math.round(headline.fontSize * 1.15);
-    headline.height = headline.lines.length * headline.lineHeight;
-  }
-  body.lineHeight = Math.round(body.fontSize * 1.4);
+  const headlineMult =
+    template === "cover_full_bleed" || template === "text_statement"
+      ? 1.15
+      : TYPOGRAPHY_LINE_HEIGHT.headline;
+  const bodyMult =
+    template === "cover_full_bleed" ? TYPOGRAPHY_LINE_HEIGHT.coverBody : TYPOGRAPHY_LINE_HEIGHT.body;
+  headline.lineHeight = Math.round(headline.fontSize * headlineMult);
+  headline.height = headline.lines.length * headline.lineHeight;
+  body.lineHeight = Math.round(body.fontSize * bodyMult);
   body.height = body.lines.length * body.lineHeight;
 }
 
@@ -115,7 +123,7 @@ function fitPair(input: {
     maxWidth: input.textWidth,
     maxHeight: input.maxBodyHeight,
     maxLines: input.maxLinesBody,
-    overflow: input.card.role === "cta" ? "ellipsis" : "error",
+    overflow: "error",
     cardId: input.card.cardId,
     field: "body",
   });
@@ -154,7 +162,7 @@ function buildContentAwareImageBackedSpec(input: {
   const density = input.template === "evidence_detail" ? "compact" : p.textDensity;
   const textWidth = geo.width - 80 * 2;
   const headlinePreferred = densityHeadlinePx(density, false, false);
-  const bodyPreferred = densityBodyPx(density);
+  const bodyPreferred = densityBodyPx(density, false, false);
   const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
   const hasKicker = Boolean(input.explicitKicker);
   const maxLinesHeadline = 4;
@@ -191,23 +199,61 @@ function buildContentAwareImageBackedSpec(input: {
     hasCitation: Boolean(input.citation),
   });
 
-  // Pass 2: if overflow at min image/gap, refit fonts into remaining text budget.
+  // Pass 2: if overflow at min image/gap, shrink fonts into remaining text budget
+  // (body first, then headline) — never truncate.
   let headline = probe.headline;
   let body = probe.body;
   if (alloc.textOverflow) {
     const bandTop = alloc.image.y + alloc.image.height + alloc.metrics.imageTextGap;
     const textBudget = Math.max(64, alloc.footerSafeY - bandTop);
-    const fitted = fitPair({
-      card: input.card,
-      textWidth,
-      headlinePreferred,
-      bodyPreferred,
-      maxHeadlineHeight: Math.round(textBudget * 0.45),
-      maxBodyHeight: Math.round(textBudget * 0.55),
-      maxLinesHeadline,
-      maxLinesBody,
-    });
-    applyMobileLineHeights(input.template, fitted.headline, fitted.body);
+    let fitted: { headline: FittedText; body: FittedText } | null = null;
+    let bodyTry = bodyPreferred;
+    let headlineTry = headlinePreferred;
+    while (bodyTry >= CARDNEWS_SAFE.minBodyPx || headlineTry >= CARDNEWS_SAFE.minHeadlinePx) {
+      const candidate = fitPair({
+        card: input.card,
+        textWidth,
+        headlinePreferred: headlineTry,
+        bodyPreferred: bodyTry,
+        maxHeadlineHeight: Math.max(48, Math.round(textBudget * 0.5)),
+        maxBodyHeight: Math.max(48, textBudget),
+        maxLinesHeadline,
+        maxLinesBody: Math.max(maxLinesBody, 10),
+      });
+      applyMobileLineHeights(input.template, candidate.headline, candidate.body);
+      const blockH = measureTextBlockHeight({
+        hasKicker,
+        headlineHeight: candidate.headline.height,
+        bodyHeight: candidate.body.height,
+        headlineBodyGapPx,
+        headlineFontPx: candidate.headline.fontSize,
+      });
+      if (blockH <= textBudget) {
+        fitted = candidate;
+        break;
+      }
+      if (bodyTry > CARDNEWS_SAFE.minBodyPx) {
+        bodyTry -= 1;
+      } else if (headlineTry > CARDNEWS_SAFE.minHeadlinePx) {
+        headlineTry -= 1;
+      } else {
+        break;
+      }
+    }
+    if (!fitted) {
+      // Last attempt: locked mins with full budget — surface typed overflow if still impossible.
+      fitted = fitPair({
+        card: input.card,
+        textWidth,
+        headlinePreferred: CARDNEWS_SAFE.minHeadlinePx,
+        bodyPreferred: CARDNEWS_SAFE.minBodyPx,
+        maxHeadlineHeight: Math.max(48, Math.round(textBudget * 0.45)),
+        maxBodyHeight: Math.max(48, Math.round(textBudget * 0.7)),
+        maxLinesHeadline,
+        maxLinesBody: Math.max(maxLinesBody, 10),
+      });
+      applyMobileLineHeights(input.template, fitted.headline, fitted.body);
+    }
     headline = fitted.headline;
     body = fitted.body;
     textBlockHeight = measureTextBlockHeight({
@@ -242,7 +288,7 @@ function buildContentAwareImageBackedSpec(input: {
       bodyPreferred,
       fill: CARDNEWS_BRAND.paper,
       headlineFill: CARDNEWS_BRAND.ink,
-      bodyFill: CARDNEWS_BRAND.muted,
+      bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
       kickerFill: CARDNEWS_BRAND.blue,
     },
     overlay: null,
@@ -257,6 +303,7 @@ function buildContentAwareImageBackedSpec(input: {
     textPlacement: p.textPlacement,
     contentAware: {
       imageTextGap: alloc.metrics.imageTextGap,
+      textBandTop: alloc.metrics.textBandTop,
       textBlockHeight: alloc.metrics.textBlockHeight,
       footerSafeY: alloc.metrics.footerSafeY,
       preferredImageRatio: alloc.metrics.preferredImageRatio,
@@ -305,7 +352,7 @@ function buildContentAwareClosingSpec(input: {
     densityHeadlinePx(density, false, !isClosing),
     isClosing ? 64 : 72,
   );
-  const bodyPreferred = Math.max(densityBodyPx(density), 32);
+  const bodyPreferred = densityBodyPx(density, false, !isClosing);
   const headlineBodyGapPx = headlineBodyGapForDensity(density, geo);
   const hasKicker = Boolean(input.explicitKicker);
   const maxLinesBody = isClosing ? 8 : 6;
@@ -389,7 +436,7 @@ function buildContentAwareClosingSpec(input: {
       bodyPreferred,
       fill: CARDNEWS_BRAND.paper,
       headlineFill: CARDNEWS_BRAND.ink,
-      bodyFill: CARDNEWS_BRAND.muted,
+      bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
       kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
     },
     overlay: null,
@@ -404,6 +451,7 @@ function buildContentAwareClosingSpec(input: {
     textDensity: density,
     textPlacement: p.textPlacement,
     contentAware: {
+      textBandTop: alloc.textBandTop,
       textBlockHeight,
       footerSafeY: alloc.footerSafeY,
       remainingBelowText: alloc.metrics.remainingBelowText,
@@ -479,8 +527,6 @@ export function buildResolvedCardRenderSpec(input: {
       maxLinesBody,
     });
     applyMobileLineHeights(base.template, headline, body);
-    body.lineHeight = Math.round(body.fontSize * 1.28);
-    body.height = body.lines.length * body.lineHeight;
 
     let textBlockHeight = measureTextBlockHeight({
       hasKicker,
@@ -509,8 +555,6 @@ export function buildResolvedCardRenderSpec(input: {
         maxLinesBody,
       });
       applyMobileLineHeights(base.template, refit.headline, refit.body);
-      refit.body.lineHeight = Math.round(refit.body.fontSize * 1.28);
-      refit.body.height = refit.body.lines.length * refit.body.lineHeight;
       headline = refit.headline;
       body = refit.body;
       textBlockHeight = measureTextBlockHeight({
@@ -543,6 +587,7 @@ export function buildResolvedCardRenderSpec(input: {
         height: geo.height - Math.max(0, bandTop - geo.scaleY(40)),
       },
       contentAware: {
+        textBandTop: bandTop,
         textBlockHeight,
         footerSafeY: footerLimit,
         remainingBelowText: Math.max(0, footerLimit - (bandTop + textBlockHeight)),

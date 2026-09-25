@@ -23,11 +23,11 @@ export const IMAGE_TEXT_GAP = {
   max: 96,
 } as const;
 
-/** Headline↔body gap by density (4:5 base px). */
+import { TYPOGRAPHY_HEADLINE_BODY_GAP } from "@/lib/marketing/assets/cardnews/typographyTokens";
+
+/** Headline↔body gap by density (4:5 base px) — v2.4 mobile hierarchy. */
 export const HEADLINE_BODY_GAP: Record<CardTextDensity, number> = {
-  compact: 28,
-  standard: 36,
-  minimal: 40,
+  ...TYPOGRAPHY_HEADLINE_BODY_GAP,
 };
 
 export type ImageRatioBounds = {

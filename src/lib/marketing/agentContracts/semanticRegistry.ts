@@ -43,6 +43,15 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     },
     inputs: { required: ["canonical.factualBoundary"] },
     output: { artifactId: EDITORIAL_NARRATIVE_PLAN_CONTRACT },
+    docs: {
+      notes: [
+        "OWNS: narrativePromise, audienceTakeaway, ordered beats (purpose/message/evidenceRefs).",
+        "MUST NOT: channel card copy, carousel structure, visual semantics.",
+        "VOCABULARY BOUNDARY: planner fields (narrativePromise, beat.message, communicationGoal) are semantic instructions, not consumer surface wording or lexical copy seeds.",
+        "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
+        "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
+      ],
+    },
   },
   {
     profileId: "instagram-carousel-planner",
@@ -70,6 +79,10 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
         "OWNS: card count/order, editorial role, communicationGoal, beatIds, visualPriority.",
         "MUST NOT: final card copy, VRA visualRole, generatedVisualNeeded, visualMode, visualId, template, master grouping.",
         "Carousel editorialRole ≠ VRA visualRole.",
+        "VOCABULARY BOUNDARY: planner fields (narrativePromise, beat.message, communicationGoal) are semantic instructions, not consumer surface wording or lexical copy seeds.",
+        "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
+        "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
+        "High-risk lexical-anchor field: communicationGoal — state card job/intent, not finished headline/body.",
       ],
     },
   },
@@ -95,7 +108,10 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     },
     output: { artifactId: INSTAGRAM_CARD_COPY_CONTRACT },
     docs: {
-      notes: ["OWNS headline/body only; MUST NOT redesign cardId/order or visual semantics."],
+      notes: [
+        "OWNS headline/body only; MUST NOT redesign cardId/order or visual semantics.",
+        "VOCABULARY BOUNDARY (reader of planner outputs): narrativePromise / beat.message / communicationGoal are semantic instructions — preserve meaning, rewrite into natural consumer Korean; do not treat planner phrasing as lexical copy seed.",
+      ],
     },
   },
   {

@@ -1,0 +1,30 @@
+/**
+ * Planner vocabulary boundary — internal planning language ≠ consumer surface wording.
+ *
+ * Narrative / Carousel may use structural terms (frame, reframe, payoff, context, rhythm)
+ * for planning. Those fields are semantic instructions for downstream writers, not
+ * lexical seeds to paste into headlines/bodies.
+ *
+ * Not a blacklist: abstract planner terms remain allowed inside planner artifacts.
+ */
+
+/** Critical prompt invariants — asserted in tests / SOUL parity. */
+export const PLANNER_VOCABULARY_BOUNDARY_INVARIANTS = {
+  title: "VOCABULARY BOUNDARY (internal ≠ surface)",
+  notSurfaceCopy:
+    "Your wording is semantic instruction for downstream writers — NOT consumer-facing copy and NOT a lexical seed to preserve verbatim.",
+  downstreamMustRewrite:
+    "Downstream channel writers must preserve meaning/intent but rewrite into natural consumer Korean; they must not treat narrativePromise, beat.message, or communicationGoal as ready-made surface phrases.",
+  doNotPretendConsumer:
+    "Do not write as if you are authoring the final reader-facing sentences. Prefer concise planning language that states what meaning this beat/card must deliver.",
+  noBlacklist:
+    "Internal terms (frame / rhythm / payoff / context / reframe / lens) remain allowed for structure. This is not a banned-word list.",
+  highRiskFields:
+    "High-risk lexical-anchor fields: narrativePromise, payoff/closing beat.message, carousel communicationGoal.",
+} as const;
+
+export const PLANNER_VOCABULARY_BOUNDARY_SEMANTIC_NOTES = [
+  "VOCABULARY BOUNDARY: planner fields (narrativePromise, beat.message, communicationGoal) are semantic instructions, not consumer surface wording or lexical copy seeds.",
+  "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
+  "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
+] as const;

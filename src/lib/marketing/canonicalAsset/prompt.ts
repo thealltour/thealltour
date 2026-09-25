@@ -6,6 +6,10 @@
 
 import { ASSET_SOURCE_WRITER_ROLE } from "@/lib/marketing/canonicalAsset/contracts";
 import type { CanonicalAssetWriterInput } from "@/lib/marketing/canonicalAsset/contracts";
+import {
+  CANONICAL_NATURAL_KOREAN_SURFACE_CONTRACT_EN,
+  CANONICAL_PARTIAL_SUPPORT_HEDGE_LINES_EN,
+} from "@/lib/marketing/canonicalAsset/surfaceLanguageContract";
 
 /** Discovery-like archetypes: curiosity / reveal / exploration (snake or UPPER). */
 export const ASW_DISCOVERY_LIKE_ARCHETYPES = [
@@ -126,8 +130,8 @@ export const ASSET_SOURCE_WRITER_CONTRACT_PROMPT = [
   "- do not spend the opening primarily on generic destination framing",
   "- avoid turning a concrete Story into a broad \"this country is culturally diverse\" article",
   "- specific observable detail should carry the article",
-  "Prefer: concrete place / architecture / culture / food / experience / season /",
-  "urban rhythm / visible difference",
+  "Prefer: concrete place / architecture / food / experience / season /",
+  "visible difference / daily scenes / how people live or build (when evidence supports)",
   "Over abstract phrases such as (when not directly supported, or when they replace the concrete Story):",
   "- cultural diversity / 문화적 다양성",
   "- new motivation to revisit / 새로운 재방문 동기",
@@ -135,6 +139,8 @@ export const ASSET_SOURCE_WRITER_CONTRACT_PROMPT = [
   "- rich cultural heritage",
   "- unique experience",
   "- meaningful exploration / 탐색하는 것이 좋다",
+  "",
+  CANONICAL_NATURAL_KOREAN_SURFACE_CONTRACT_EN,
   "",
   "EVIDENCE DISCIPLINE (soft claims):",
   "Do not convert observation signal / research hypothesis / limited official description into:",
@@ -149,13 +155,7 @@ export const ASSET_SOURCE_WRITER_CONTRACT_PROMPT = [
   "- \"새로운 재방문의 동기를 부여한다\"",
   "- \"현명한 선택이다\"",
   "- \"실제 생활문화를 온전히 경험할 수 있다\"",
-  "When support is PARTIAL, prefer bounded language such as:",
-  "- 현재 확인된 자료에서는",
-  "- 확인 가능한 범위에서는",
-  "- ~을 보여주는 단서다",
-  "- ~을 탐색해볼 수 있다",
-  "- 실제 방문 경험은 추가 확인이 필요하다",
-  "Do not over-hedge every sentence.",
+  CANONICAL_PARTIAL_SUPPORT_HEDGE_LINES_EN,
   "",
   "decisionGuidanceKo SEMANTICS (field name stays; meaning is archetype-aware):",
   "- discovery-like: light exploration guidance is valid; short is fine;",

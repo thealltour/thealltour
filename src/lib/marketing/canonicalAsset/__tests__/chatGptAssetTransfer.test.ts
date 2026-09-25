@@ -251,6 +251,8 @@ describe("CANONICAL_ASSET_CHATGPT_TRANSFER export", () => {
     );
     expect(payload.notesKo.some((n) => n.includes("keyEvidenceKo"))).toBe(true);
     expect(payload.notesKo.some((n) => n.includes("forbiddenClaimsKo"))).toBe(true);
+    expect(payload.notesKo.some((n) => n.includes("자연스러운 한국어"))).toBe(true);
+    expect(payload.notesKo.some((n) => n.includes("금지하지 않습니다"))).toBe(true);
 
     const text = buildCanonicalAssetChatGptClipboardText(input);
     expect(text.trim().startsWith("{")).toBe(true);

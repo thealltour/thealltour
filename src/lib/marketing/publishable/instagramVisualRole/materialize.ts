@@ -19,12 +19,22 @@ import {
 } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
 import { stripEvidenceIdsFromText } from "@/lib/marketing/publishable/validate";
 
+/** Bounded diagnostics for repair prompts (no secrets / no raw LLM dump). */
+export type InstagramVisualRoleMaterializeDetails = {
+  cardId?: string;
+  field?: string;
+  invalidRawValue?: unknown;
+  allowedValues?: readonly string[];
+};
+
 export class InstagramVisualRoleMaterializeError extends Error {
   readonly code: string;
-  constructor(code: string, message: string) {
+  readonly details: InstagramVisualRoleMaterializeDetails | undefined;
+  constructor(code: string, message: string, details?: InstagramVisualRoleMaterializeDetails) {
     super(message);
     this.name = "InstagramVisualRoleMaterializeError";
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -117,6 +127,12 @@ export function materializeInstagramVisualRolePlan(input: {
       throw new InstagramVisualRoleMaterializeError(
         "invalid_visual_role",
         `Invalid visualRole on ${cardId}: got ${JSON.stringify(visualRoleRaw)}`,
+        {
+          cardId,
+          field: "visualRole",
+          invalidRawValue: visualRoleRaw,
+          allowedValues: INSTAGRAM_VISUAL_ROLES,
+        },
       );
     }
     const visualRole = visualRoleRaw as InstagramVisualRole;
@@ -145,7 +161,13 @@ export function materializeInstagramVisualRolePlan(input: {
     if (!inEnum(modeRaw, INSTAGRAM_VISUAL_MODE_PREFERENCES)) {
       throw new InstagramVisualRoleMaterializeError(
         "invalid_mode_pref",
-        `Invalid visualModePreference on ${cardId}`,
+        `Invalid visualModePreference on ${cardId}: got ${JSON.stringify(modeRaw)}`,
+        {
+          cardId,
+          field: "visualModePreference",
+          invalidRawValue: modeRaw,
+          allowedValues: INSTAGRAM_VISUAL_MODE_PREFERENCES,
+        },
       );
     }
     const visualModePreference = modeRaw as InstagramVisualModePreference;
@@ -165,6 +187,12 @@ export function materializeInstagramVisualRolePlan(input: {
       throw new InstagramVisualRoleMaterializeError(
         "invalid_presentation_pref",
         `Invalid presentationPreference on ${cardId}: got ${JSON.stringify(presentationRaw)}`,
+        {
+          cardId,
+          field: "presentationPreference",
+          invalidRawValue: presentationRaw,
+          allowedValues: INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
+        },
       );
     }
     const presentationPreference = presentationRaw as InstagramVisualPresentationPreference;

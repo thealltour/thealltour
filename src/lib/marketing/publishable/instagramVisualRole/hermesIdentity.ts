@@ -6,6 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
+  INSTAGRAM_VISUAL_MODE_PREFERENCES,
   INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
   INSTAGRAM_VISUAL_ROLE_ARCHITECT_HERMES_PROFILE,
   INSTAGRAM_VISUAL_ROLES,
@@ -15,6 +16,7 @@ const CONFIG_DONOR = "instagram-carousel-planner";
 
 const VISUAL_ROLE_ENUM_LINE = INSTAGRAM_VISUAL_ROLES.join(" | ");
 const PRESENTATION_PREF_ENUM_LINE = INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES.join(" | ");
+const MODE_PREF_ENUM_LINE = INSTAGRAM_VISUAL_MODE_PREFERENCES.join(" | ");
 
 export const INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL = `# Instagram Visual Role Architect
 
@@ -58,13 +60,25 @@ ${VISUAL_ROLE_ENUM_LINE}
 
 ${PRESENTATION_PREF_ENUM_LINE}
 
+## Allowed visualModePreference (exact strings only)
+
+${MODE_PREF_ENUM_LINE}
+
+- ONLY use one of the allowed visualModePreference values above.
+- Do not invent synonyms or descriptive labels (forbidden examples — not exhaustive):
+  typography_mood, typography_focus, typography_card, documentary, architectural_detail,
+  detail_shot, mood_plate.
+- Soft preference for Shared Visual Planner — not final visualMode.
+- Choice remains yours: e.g. closing_mood may use minimal_closing or typography or atmosphere
+  when the story fits — do not treat role as a forced mode mapping.
+
 ## You decide
 
 - visualRole per card — **only** from the allowed visualRole list above
 - visualPurpose (short why-this-visual)
 - visualPriority (may refine Carousel priority; keep hero for cover when appropriate)
 - visualDensity: dominant | strong | balanced | subtle
-- visualModePreference (soft preference for SVP — not final)
+- visualModePreference — **only** from the allowed visualModePreference list above
 - generationPreference: required | preferred | optional | none
 - presentationPreference — **only** from the allowed presentationPreference list above
 - reusePreference: exclusive_preferred | reusable | derivative_ok
@@ -134,7 +148,7 @@ Return ONLY valid JSON:
 \`\`\`
 
 cards[] must match Carousel cardIds exactly (same count and order).
-visualRole and presentationPreference must be exact allowed enum strings — never invent synonyms or copy carousel role.
+visualRole, presentationPreference, and visualModePreference must be exact allowed enum strings — never invent synonyms or copy carousel role.
 `.trim();
 
 function ensureProfile(input: {

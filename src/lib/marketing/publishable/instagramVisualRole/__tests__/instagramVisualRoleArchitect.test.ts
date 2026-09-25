@@ -43,6 +43,7 @@ import {
 import { resolveInstagramVisualRolePlanLifecycle } from "@/lib/marketing/publishable/instagramVisualRole/lifecycle";
 import { INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL } from "@/lib/marketing/publishable/instagramVisualRole/hermesIdentity";
 import {
+  INSTAGRAM_VISUAL_MODE_PREFERENCES,
   INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
   INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT,
   INSTAGRAM_VISUAL_ROLES,
@@ -985,6 +986,11 @@ describe("VRA visualRole contract enforcement", () => {
     for (const pref of INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES) {
       expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toContain(pref);
     }
+    for (const mode of INSTAGRAM_VISUAL_MODE_PREFERENCES) {
+      expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toContain(mode);
+    }
+    expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toMatch(/Allowed visualModePreference/i);
+    expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toMatch(/do not invent synonyms/i);
     expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toMatch(/different vocabularies/i);
     expect(INSTAGRAM_VISUAL_ROLE_ARCHITECT_SOUL).toMatch(/NEVER copy carousel/i);
 
@@ -1000,18 +1006,29 @@ describe("VRA visualRole contract enforcement", () => {
     for (const pref of INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES) {
       expect(prompt).toContain(pref);
     }
+    for (const mode of INSTAGRAM_VISUAL_MODE_PREFERENCES) {
+      expect(prompt).toContain(mode);
+    }
     expect(prompt).toMatch(/NEVER copy carousel role into visualRole/i);
     expect(prompt).toContain("vocabularyContract");
+    expect(prompt).toContain("allowedVisualModePreference");
 
     const repair = formatVisualRoleRepairHint(
       new InstagramVisualRoleMaterializeError(
         "invalid_visual_role",
         'Invalid visualRole on card-02: got "context"',
+        {
+          cardId: "card-02",
+          field: "visualRole",
+          invalidRawValue: "context",
+          allowedValues: INSTAGRAM_VISUAL_ROLES,
+        },
       ),
     );
     expect(repair).toContain("errorCode: invalid_visual_role");
     expect(repair).toContain('"context"');
     expect(repair).toContain(INSTAGRAM_VISUAL_ROLES.join(" | "));
+    expect(repair).toContain("allowedVisualModePreference:");
   });
 
   it("F. fixture parity — carousel role copy negative fixture fails materialize", () => {
@@ -1037,5 +1054,195 @@ describe("VRA visualRole contract enforcement", () => {
         llm: raw,
       }),
     ).toThrow(/invalid_visual_role|Invalid visualRole/i);
+  });
+});
+
+describe("VRA visualModePreference contract enforcement", () => {
+  function withModePrefs(modesByCard: Record<string, string>): ReturnType<typeof daoVraLlm> {
+    const base = daoVraLlm();
+    return {
+      ...base,
+      cards: base.cards.map((c) => ({
+        ...c,
+        visualModePreference: modesByCard[c.cardId] ?? c.visualModePreference,
+      })),
+    };
+  }
+
+  it("A–D. invented modes → invalid_mode_pref with exact raw", () => {
+    const carousel = daoCarousel();
+    for (const bad of ["typography_mood", "detail_shot", "documentary"] as const) {
+      try {
+        materializeInstagramVisualRolePlan({
+          assetId: "cma_dao",
+          assetVersion: 1,
+          sourceCarouselFingerprint: "fp_c",
+          sourceCardCopyFingerprint: "fp_cc",
+          carousel,
+          llm: withModePrefs({ "card-05": bad }),
+        });
+        expect.unreachable("expected throw");
+      } catch (error) {
+        expect(error).toBeInstanceOf(InstagramVisualRoleMaterializeError);
+        const err = error as InstagramVisualRoleMaterializeError;
+        expect(err.code).toBe("invalid_mode_pref");
+        expect(err.message).toContain(bad);
+        expect(err.message).toMatch(/got/);
+        expect(err.details?.cardId).toBe("card-05");
+        expect(err.details?.field).toBe("visualModePreference");
+        expect(err.details?.invalidRawValue).toBe(bad);
+        expect(err.details?.allowedValues).toEqual([...INSTAGRAM_VISUAL_MODE_PREFERENCES]);
+      }
+    }
+  });
+
+  it("E. repair hint includes invalid raw + allowedVisualModePreference", () => {
+    const repair = formatVisualRoleRepairHint(
+      new InstagramVisualRoleMaterializeError(
+        "invalid_mode_pref",
+        'Invalid visualModePreference on card-05: got "typography_mood"',
+        {
+          cardId: "card-05",
+          field: "visualModePreference",
+          invalidRawValue: "typography_mood",
+          allowedValues: INSTAGRAM_VISUAL_MODE_PREFERENCES,
+        },
+      ),
+    );
+    expect(repair).toContain("errorCode: invalid_mode_pref");
+    expect(repair).toContain("cardId: card-05");
+    expect(repair).toContain("field: visualModePreference");
+    expect(repair).toContain('"typography_mood"');
+    expect(repair).toContain("allowedVisualModePreference:");
+    expect(repair).toContain(INSTAGRAM_VISUAL_MODE_PREFERENCES.join(" | "));
+    expect(repair).toMatch(/Do not invent synonyms/i);
+  });
+
+  it("F. repair response with valid enum → PASS", async () => {
+    const carousel = daoCarousel();
+    const cardCopy = daoCardCopy(carousel);
+    const dir = mkdtempSync(join(tmpdir(), "vra-mode-repair-ok-"));
+    const donor = join(dir, "profiles", "instagram-carousel-planner");
+    mkdirSync(donor, { recursive: true });
+    writeFileSync(join(donor, "config.yaml"), "model: stub\n", "utf8");
+    let attempt = 0;
+    const invoke = vi.fn(async (prompt: { text: string }) => {
+      attempt += 1;
+      if (attempt === 1) {
+        expect(prompt.text).not.toContain("errorCode:");
+        return JSON.stringify(withModePrefs({ "card-05": "typography_mood" }));
+      }
+      expect(prompt.text).toContain("errorCode: invalid_mode_pref");
+      expect(prompt.text).toContain("allowedVisualModePreference:");
+      expect(prompt.text).toContain('"typography_mood"');
+      return JSON.stringify(withModePrefs({ "card-05": "typography" }));
+    });
+    try {
+      const result = await ensureInstagramVisualRolePlan({
+        packageRoot: dir,
+        approvedCanonicalAsset: approvedAsset,
+        hermesHome: dir,
+        forceRegenerate: true,
+        carousel,
+        cardCopy,
+        invoke,
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.status).toBe("generated");
+        expect(result.plan.cards.find((c) => c.cardId === "card-05")?.visualModePreference).toBe(
+          "typography",
+        );
+      }
+      expect(invoke).toHaveBeenCalledTimes(2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("G. repair with another invented synonym → fail_closed", async () => {
+    const carousel = daoCarousel();
+    const cardCopy = daoCardCopy(carousel);
+    const dir = mkdtempSync(join(tmpdir(), "vra-mode-repair-fail-"));
+    const donor = join(dir, "profiles", "instagram-carousel-planner");
+    mkdirSync(donor, { recursive: true });
+    writeFileSync(join(donor, "config.yaml"), "model: stub\n", "utf8");
+    let attempt = 0;
+    const invoke = vi.fn(async () => {
+      attempt += 1;
+      return JSON.stringify(
+        withModePrefs({
+          "card-05": attempt === 1 ? "typography_mood" : "typography_focus",
+        }),
+      );
+    });
+    try {
+      const result = await ensureInstagramVisualRolePlan({
+        packageRoot: dir,
+        approvedCanonicalAsset: approvedAsset,
+        hermesHome: dir,
+        forceRegenerate: true,
+        carousel,
+        cardCopy,
+        invoke,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("invalid_mode_pref");
+        expect(result.error.message).toContain("typography_focus");
+      }
+      expect(invoke).toHaveBeenCalledTimes(2);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("H. valid mode preferences materialize", () => {
+    const carousel = daoCarousel();
+    for (const mode of [
+      "editorial_photo",
+      "object_or_detail",
+      "minimal_closing",
+      "typography",
+      "atmosphere",
+    ] as const) {
+      const plan = materializeInstagramVisualRolePlan({
+        assetId: "cma_dao",
+        assetVersion: 1,
+        sourceCarouselFingerprint: "fp_c",
+        sourceCardCopyFingerprint: "fp_cc",
+        carousel,
+        llm: withModePrefs({ "card-05": mode }),
+      });
+      expect(plan.cards.find((c) => c.cardId === "card-05")?.visualModePreference).toBe(mode);
+    }
+  });
+
+  it("J. presentationPreference still rejects invented values with got raw", () => {
+    const carousel = daoCarousel();
+    try {
+      materializeInstagramVisualRolePlan({
+        assetId: "cma_dao",
+        assetVersion: 1,
+        sourceCarouselFingerprint: "fp_c",
+        sourceCardCopyFingerprint: "fp_cc",
+        carousel,
+        llm: {
+          ...daoVraLlm(),
+          cards: daoVraLlm().cards.map((c) =>
+            c.cardId === "card-02"
+              ? { ...c, presentationPreference: "card_contained" }
+              : c,
+          ),
+        },
+      });
+      expect.unreachable("expected throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(InstagramVisualRoleMaterializeError);
+      const err = error as InstagramVisualRoleMaterializeError;
+      expect(err.code).toBe("invalid_presentation_pref");
+      expect(err.message).toContain("card_contained");
+      expect(err.details?.invalidRawValue).toBe("card_contained");
+    }
   });
 });

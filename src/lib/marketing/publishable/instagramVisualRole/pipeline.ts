@@ -17,6 +17,7 @@ import {
   readInstagramCarouselPlanFromPackage,
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
 import {
+  INSTAGRAM_VISUAL_MODE_PREFERENCES,
   INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
   INSTAGRAM_VISUAL_ROLE_ARCHITECT_HERMES_PROFILE,
   INSTAGRAM_VISUAL_ROLE_PLAN_CONTRACT,
@@ -72,21 +73,51 @@ function extractJsonObject(raw: string): unknown {
 
 /** Repair hint for contract failures — includes code, raw value, allowed enums. */
 export function formatVisualRoleRepairHint(error: Error): string {
-  const code =
-    error instanceof InstagramVisualRoleMaterializeError ? error.code : "vra_invoke_failed";
+  const mat =
+    error instanceof InstagramVisualRoleMaterializeError ? error : null;
+  const code = mat?.code ?? "vra_invoke_failed";
+  const details = mat?.details;
+  const rawFromDetails =
+    details?.invalidRawValue !== undefined
+      ? JSON.stringify(details.invalidRawValue)
+      : null;
   const rawMatch = error.message.match(/got\s+(\S+|null|undefined)/);
-  const invalidRaw = rawMatch?.[1] ?? "(see message)";
+  const invalidRaw = rawFromDetails ?? rawMatch?.[1] ?? "(see message)";
+  const cardId = details?.cardId ?? "(unknown)";
+  const field = details?.field;
+  const modeEnumLine = INSTAGRAM_VISUAL_MODE_PREFERENCES.join(" | ");
+
+  if (code === "invalid_mode_pref") {
+    return [
+      "Previous output used an invalid visualModePreference.",
+      `errorCode: ${code}`,
+      `cardId: ${cardId}`,
+      `field: visualModePreference`,
+      `invalidRawValue: ${invalidRaw}`,
+      `allowedVisualModePreference: ${modeEnumLine}`,
+      "Choose exactly one allowed value.",
+      "Do not invent synonyms (e.g. typography_mood, detail_shot, documentary).",
+      "Preserve unrelated card decisions unless necessary.",
+      "Return the full valid VRA JSON only.",
+    ].join("\n");
+  }
+
   return [
     `Previous output failed.`,
     `errorCode: ${code}`,
     `message: ${error.message}`,
+    field ? `field: ${field}` : null,
+    details?.cardId ? `cardId: ${details.cardId}` : null,
     `invalidRawValue: ${invalidRaw}`,
     `allowedVisualRole: ${INSTAGRAM_VISUAL_ROLES.join(" | ")}`,
     `allowedPresentationPreference: ${INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES.join(" | ")}`,
+    `allowedVisualModePreference: ${modeEnumLine}`,
     `Carousel role and VRA visualRole are different vocabularies.`,
     `Do not copy carousel role vocabulary into visualRole (e.g. never use reframe, context, closing, contrast, cta as visualRole).`,
     `Return valid JSON only. Match carousel cardIds. Use only allowed enum strings.`,
-  ].join(" ");
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join(" ");
 }
 
 export function buildInstagramVisualRoleArchitectPrompt(input: {
@@ -99,10 +130,20 @@ export function buildInstagramVisualRoleArchitectPrompt(input: {
   const payload = {
     task: "instagram_visual_role_plan",
     vocabularyContract: {
-      note: "Carousel role ≠ VRA visualRole. Never copy carousel role into visualRole.",
+      note: "Carousel role ≠ VRA visualRole. Never copy carousel role into visualRole. visualModePreference is a separate soft-preference vocabulary — use only allowedVisualModePreference.",
       allowedVisualRole: [...INSTAGRAM_VISUAL_ROLES],
       allowedPresentationPreference: [...INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES],
+      allowedVisualModePreference: [...INSTAGRAM_VISUAL_MODE_PREFERENCES],
       forbiddenVisualRoleExamples: ["reframe", "context", "closing", "contrast", "cta", "hook_cover"],
+      forbiddenVisualModePreferenceExamples: [
+        "typography_mood",
+        "typography_focus",
+        "typography_card",
+        "documentary",
+        "architectural_detail",
+        "detail_shot",
+        "mood_plate",
+      ],
     },
     editorialAuthority: {
       factualBoundary: "approved_canonical",

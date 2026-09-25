@@ -106,6 +106,17 @@ export type RenderCardNewsPackageInput = {
   presentationPlan?: CardPresentationPlan | null;
   /** Persist presentation plan to package when rendering (default true when package writable). */
   persistPresentationPlan?: boolean;
+  /**
+   * When false, do not plan/write `context/media-brief.json`.
+   * Use for in-memory cardPlan copy overlays that must not replace the on-disk
+   * legacy brief (sha guard + dual-SoT). Default true.
+   */
+  persistMediaBrief?: boolean;
+  /**
+   * Manifest `mediaBrief` when `persistMediaBrief` is false.
+   * Prefer the on-disk brief so manifest stays aligned with the artifact.
+   */
+  manifestMediaBrief?: MediaBrief;
   now?: Date;
 };
 
@@ -394,15 +405,16 @@ export async function renderCardNewsPackage(
     }
   }
 
-  const planned: PlannedPackageArtifact[] = [
-    {
+  const planned: PlannedPackageArtifact[] = [];
+  if (input.persistMediaBrief !== false) {
+    planned.push({
       relativePath: "context/media-brief.json",
       content: stableJsonBytes(brief),
       kind: "media_brief",
       origin: "media_brief",
       mediaType: "application/json",
-    },
-  ];
+    });
+  }
 
   const cardMetas: CardNewsRenderCardMeta[] = specs.map((spec, offset) => {
     const relativePath = cardRelativePath(spec.index, geometry);
@@ -508,10 +520,14 @@ export async function renderCardNewsPackage(
 
   const merged = mergeArtifacts(existingManifest?.artifacts ?? [], written);
   const createdAt = existingManifest?.createdAt ?? timestamp;
+  const manifestBrief =
+    input.persistMediaBrief === false
+      ? (input.manifestMediaBrief ?? existingManifest?.mediaBrief ?? brief)
+      : brief;
   const identical =
     existingManifest != null &&
     artifactsMatch(existingManifest.artifacts, merged) &&
-    existingManifest.mediaBrief.candidateId === brief.candidateId;
+    existingManifest.mediaBrief.candidateId === manifestBrief.candidateId;
 
   const manifest = parseMarketingAssetManifest({
     contract: MARKETING_ASSET_MANIFEST_CONTRACT,
@@ -521,7 +537,7 @@ export async function renderCardNewsPackage(
     createdAt,
     updatedAt: identical ? existingManifest.updatedAt : timestamp,
     stage: "source",
-    mediaBrief: brief,
+    mediaBrief: manifestBrief,
     artifacts: merged,
     provenance: existingManifest?.provenance ?? {
       exportedFrom: "completed-marketing-candidate",

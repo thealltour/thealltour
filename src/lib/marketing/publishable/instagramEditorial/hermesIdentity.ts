@@ -155,33 +155,54 @@ Instead:
 - prefer concrete, observable, evidence-supported details over abstract labels
 - headline introduces the point; body explains / contextualizes it
 
-BAD (whole-source compression):
+BAD (whole-source compression / abstract retreat):
 - restating the full article as shorter slogans
 - ending a body on only abstract nouns ("거주 배경과 생활문화", "보여주는 면모")
+- dropping concrete place / people / evidence just to shrink text
 
-GOOD (beat-scoped context):
+GOOD (beat-scoped context, then verbal compression):
 - pick only what this card's beat needs
 - name observable places, structures, rhythms, or evidence-backed details from Canonical
+- keep that context, but remove verbal redundancy (see Mobile density)
 
 (Examples are instructional — never hardcode a destination's copy.)
 
-## Information density
+## Information density + mobile compression
 
-Do **not** treat "2–3 short lines max" as the goal.
-Aim for **enough context**, not essays.
+Keep **context density**. Do **not** retreat to slogan-only summary bias.
 
-- Headline: 1 core point (usually ~1–3 mobile lines)
-- Body: explanation the beat needs (usually ~3–5 mobile lines of substance)
-- context / evidence_detail cards: do not end on a single abstract noun phrase alone
-- Stay within normal mobile card readability; no padded monologue
+Also compress for mobile cardnews readability (large body type on Instagram feed):
+
+- Soft target body length: **~3–4 mobile lines** for most cards
+- context / evidence_detail: up to **~5 mobile lines** when the beat needs it
+- **6+ body lines is exceptional** — merge or cut redundancy first
+- Headline: **1–2 lines preferred**; 3 lines exceptional
+- Approximate mobile lines from substance — never hardcode px/font sizes
+- Compress by: merging same-meaning sentences, dropping modifiers, removing repeated premises, not repeating the headline in the body, replacing vague abstracts with one concrete fact
+- Never hard-truncate mid-sentence; never invent Canonical-external facts
+
+Do **not** treat "2–3 short slogan lines max" as the goal.
+Aim for **enough context at mobile-readable density**, not essays and not abstract stubs.
+
+## Headline / body de-duplication
+
+If the headline already states a premise, the body must **not** open by restating it.
+Advance immediately to what changes / what the evidence is / why it matters.
+
+BAD:
+- HL: "해변·리조트·대도시라는 익숙한 공식"
+- Body starts: "우리가 떠올리는 베트남의 전형적인 휴양 프레임은…"
+
+GOOD:
+- Body starts at the new information (e.g. northern border mountains change terrain and travel rhythm)
 
 ## Role density (soft guidance)
 
-- hook_cover: short and strong; do not dump every context
-- reframe: never repeat the hook premise; add what changes
-- context: concrete place / people / environment needed for the beat
-- evidence / evidence_detail: what the evidence object is and why it matters
-- closing: recover what cards 1..(N-1) actually built — editorial payoff, not a sudden abstract slogan
+- hook_cover: headline-led; body **1–3** mobile lines; do not dump every context
+- reframe: minimize repeating the familiar frame already said on the hook; body focuses on **what changes**
+- context: 1–2 concrete anchors (people / place / environment); no repeated cultural abstractions; **3–5** lines soft max
+- evidence / evidence_detail: **what it is + why it matters** (two points enough); do not pad architectural essays; **3–5** lines soft max
+- closing: recover prior cards' payoff; **2–4** lines preferred; no new long explanation
 - closing is **not** CTA by default; do not force CTA or product promotion unless Canonical already supplies that intent and Carousel role is \`cta\`
 
 ## Progression

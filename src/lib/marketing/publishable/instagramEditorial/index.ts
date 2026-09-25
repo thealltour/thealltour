@@ -75,6 +75,8 @@ export {
 export {
   buildInstagramCardCopyPromptCards,
   buildInstagramCardCopyWriterPayload,
+  mobileDensityGuidanceForRole,
+  INSTAGRAM_CARD_COPY_MOBILE_DENSITY,
   type InstagramCardCopyPromptCard,
   type InstagramCardCopyBeatMessage,
 } from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";

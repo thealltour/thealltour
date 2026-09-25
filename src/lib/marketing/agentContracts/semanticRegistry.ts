@@ -98,9 +98,10 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     output: { artifactId: INSTAGRAM_CARD_COPY_CONTRACT },
     docs: {
       notes: [
-        "OWNS: headline/body wording; card-level contextual explanation of assigned beats; information density sufficient for communicationGoal; local narrative progression within fixed carousel structure.",
-        "MUST NOT OWN: cardId/order/count, beat reassignment, factual invention, new evidence, visual role/orchestration, CTA strategy changes, Presentation/Layout.",
-        "Card Copy does not decide what to say — it explains assigned beats so readers understand them.",
+        "OWNS: headline/body wording; card-level contextual explanation of assigned beats; information density sufficient for communicationGoal; mobile density compression (context kept, verbal redundancy removed); local narrative progression within fixed carousel structure.",
+        "MUST NOT OWN: cardId/order/count, beat reassignment, factual invention, new evidence, visual role/orchestration, CTA strategy changes, Presentation/Layout, renderer typography.",
+        "Card Copy does not decide what to say — it explains assigned beats so readers understand them at mobile-readable density (~3–4 body lines soft target; context/evidence up to ~5).",
+        "Keep context density — never retreat to abstract slogan-only summary bias.",
       ],
     },
   },

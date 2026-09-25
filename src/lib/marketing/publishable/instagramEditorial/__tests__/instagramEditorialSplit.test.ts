@@ -12,6 +12,7 @@ import {
 } from "@/lib/marketing/publishable/instagramEditorial/assemblePublishable";
 import {
   buildInstagramCardCopyWriterPayload,
+  mobileDensityGuidanceForRole,
 } from "@/lib/marketing/publishable/instagramEditorial/cardCopyPrompt";
 import {
   materializeEditorialNarrativePlan,
@@ -132,24 +133,24 @@ function daoCardCopyLlm() {
       },
       {
         cardId: "card-02",
-        headline: "북쪽으로 올라가면 풍경부터 달라집니다",
-        body: "산악 국경 지대에서는 휴양 리조트와 다른 고도·안개·산길의 리듬이 이어집니다",
+        headline: "북쪽으로 가면 여행 리듬부터 달라진다",
+        body: "국경 산악 지대는 휴양 리조트와 다른 고도·안개·산길의 호흡이 이어집니다",
       },
       {
         cardId: "card-03",
         headline: "랑선 국경, Dao족 마을",
-        body: "산비탈의 경작지와 길, 주거 공간이 한 지형 안에 이어지는 북부 산악 생활환경을 보여줍니다",
+        body: "산비탈 경작지와 주거 공간이 한 지형 안에 이어지는 북부 산악 생활환경입니다",
       },
       {
         cardId: "card-04",
         headline: "nhà trình tường, 흙다짐 가옥",
-        body: "흙을 층층이 다져 벽을 만드는 nhà trình tường은 북부 산악 주거의 건축 방식을 보여주는 구체적 단서입니다",
+        body: "흙을 층층이 다져 벽을 만드는 nhà trình tường은 북부 산악 주거의 구체적 건축 단서입니다",
         evidenceRefs: ["ev_dao_house"],
       },
       {
         cardId: "card-05",
         headline: "휴양 프레임 밖에서 읽히는 베트남",
-        body: "해변 요약이 아니라 랑선 Dao족 마을과 흙다짐 가옥까지 이어진 건축·생활 리듬이 payoff입니다",
+        body: "랑선 Dao족 마을과 흙다짐 가옥까지 이어진 건축·생활 리듬이 payoff입니다",
       },
     ],
   };
@@ -614,17 +615,19 @@ describe("instagram card copy context density contract", () => {
     expect(canon.forbiddenClaimsKo).toEqual(["금지주장"]);
   });
 
-  it("B/C. SOUL distinguishes summary vs context and deprioritizes 2–3 line max", () => {
+  it("B/C. SOUL keeps summary-vs-context; rejects slogan-only max", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Summary vs context/i);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/DO NOT summarize the whole source/i);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/select the context required by/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Information density/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Information density \+ mobile compression/i);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(
       /^\s*- Body: optional 2–3 short lines max/m,
     );
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(
-      /Do \*\*not\*\* treat "2–3 short lines max" as the goal/,
+      /Do \*\*not\*\* treat "2–3 short slogan lines max" as the goal/,
     );
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/~3–4 mobile lines/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Headline \/ body de-duplication/);
   });
 
   it("D/E/F. semantic contract expands OWNS; closing CTA not forced; carousel not owned", () => {
@@ -633,7 +636,9 @@ describe("instagram card copy context density contract", () => {
     const notes = contract!.docs?.notes?.join("\n") ?? "";
     expect(notes).toMatch(/card-level contextual explanation/i);
     expect(notes).toMatch(/information density/i);
+    expect(notes).toMatch(/mobile density compression/i);
     expect(notes).toMatch(/MUST NOT OWN:[\s\S]*cardId/i);
+    expect(notes).toMatch(/never retreat to abstract slogan/i);
     expect(contract!.authority.owns).toEqual(["instagram.cardCopy"]);
     expect(contract!.authority.mustNotOwn).toContain("instagram.carouselStructure");
     expect(contract!.authority.mustNotOwn).toContain("presentation.template");
@@ -659,5 +664,140 @@ describe("instagram card copy context density contract", () => {
     // closing recovers prior cards rather than slogan-only
     expect(copy[4]!.body!).toMatch(/랑선|Dao|흙다짐|가옥/);
     expect(copy[4]!.body!).not.toMatch(/또 하나의 기준|다양한 시각/);
+  });
+});
+
+describe("instagram card copy mobile density compression", () => {
+  function approxMobileLines(text: string): number {
+    const t = text.trim();
+    if (!t) return 0;
+    // Approximate Korean mobile card line under v2.4 body scale (~18 graphemes).
+    return Math.max(1, Math.ceil([...t].length / 18));
+  }
+
+  it("A. summary-vs-context contract still present", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/DO NOT summarize the whole source/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Keep \*\*context density\*\*/);
+  });
+
+  it("B. progression guidance retained", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/## Progression/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/must not finish by only re-describing/);
+  });
+
+  it("C. abstract-only body forbidden", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/abstract retreat|abstract nouns/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Never let the body end as those labels alone/);
+    const copy = daoCardCopyLlm().cards;
+    for (const card of copy) {
+      expect(card.body).not.toMatch(/^(거주 배경과 생활문화|보여주는 면모)$/);
+    }
+  });
+
+  it("D. body 3–4 lines soft target in SOUL + payload", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/~3–4 mobile lines/);
+    const narrative = materializeEditorialNarrativePlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceCanonicalFingerprint: "fp",
+      modelProfile: "x",
+      llm: daoNarrativeLlm(),
+    });
+    const carousel = materializeInstagramCarouselPlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceNarrativeFingerprint: buildEditorialNarrativeContentFingerprint(narrative),
+      modelProfile: "x",
+      validBeatIds: new Set(narrative.beats.map((b) => b.beatId)),
+      minCards: 3,
+      maxCards: 10,
+      llm: daoCarouselLlm(),
+    });
+    const payload = buildInstagramCardCopyWriterPayload({
+      narrative,
+      carousel,
+      canonicalAsset: {
+        assetId: "cma_dao",
+        titleKo: "t",
+        openingHookKo: "h",
+        bodyKo: "b",
+        keyTakeawaysKo: [],
+        supportedClaimBoundaryKo: null,
+        forbiddenClaimsKo: [],
+      },
+    });
+    const density = payload.mobileDensityContract as Record<string, unknown>;
+    expect(density.defaultBodyLines).toEqual({ min: 3, softTargetMax: 4 });
+    expect(String(density.principle)).toMatch(/context density/i);
+    const cards = payload.cards as Array<{ role: string; mobileDensity: { bodySoftTargetLines: string } }>;
+    const reframe = cards.find((c) => c.role === "reframe");
+    expect(reframe?.mobileDensity.bodySoftTargetLines).toBe("3–4");
+  });
+
+  it("E. context/evidence allow up to 5 lines", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/up to \*\*~5 mobile lines\*\*/);
+    expect(mobileDensityGuidanceForRole("context").bodySoftTargetLines).toBe("3–5");
+    expect(mobileDensityGuidanceForRole("evidence_detail").bodySoftTargetLines).toBe("3–5");
+  });
+
+  it("F. hook may be shorter (1–3)", () => {
+    expect(mobileDensityGuidanceForRole("hook_cover").bodySoftTargetLines).toBe("1–3");
+    expect(approxMobileLines(daoCardCopyLlm().cards[0]!.body!)).toBeLessThanOrEqual(3);
+  });
+
+  it("G. closing prefers 2–4 lines", () => {
+    expect(mobileDensityGuidanceForRole("closing").bodySoftTargetLines).toBe("2–4");
+    expect(approxMobileLines(daoCardCopyLlm().cards[4]!.body!)).toBeLessThanOrEqual(4);
+  });
+
+  it("H. forbidden claims still in payload / SOUL", () => {
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/forbiddenClaimsKo/);
+    const narrative = materializeEditorialNarrativePlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceCanonicalFingerprint: "fp",
+      modelProfile: "x",
+      llm: daoNarrativeLlm(),
+    });
+    const carousel = materializeInstagramCarouselPlan({
+      assetId: "cma_dao",
+      assetVersion: 1,
+      sourceNarrativeFingerprint: buildEditorialNarrativeContentFingerprint(narrative),
+      modelProfile: "x",
+      validBeatIds: new Set(narrative.beats.map((b) => b.beatId)),
+      minCards: 3,
+      maxCards: 10,
+      llm: daoCarouselLlm(),
+    });
+    const payload = buildInstagramCardCopyWriterPayload({
+      narrative,
+      carousel,
+      canonicalAsset: {
+        assetId: "cma_dao",
+        titleKo: "t",
+        openingHookKo: "h",
+        bodyKo: "b",
+        keyTakeawaysKo: [],
+        supportedClaimBoundaryKo: "boundary",
+        forbiddenClaimsKo: ["금지주장"],
+      },
+    });
+    expect((payload.canonicalAsset as { forbiddenClaimsKo: string[] }).forbiddenClaimsKo).toEqual([
+      "금지주장",
+    ]);
+  });
+
+  it("I/J. fixture copy stays concrete + soft mobile length; no abstract retreat", () => {
+    const copy = daoCardCopyLlm().cards;
+    expect(copy[1]!.body!).toMatch(/산악|국경|고도|리듬|호흡/);
+    expect(copy[1]!.body!).not.toMatch(/전형적인 휴양 프레임은/);
+    expect(copy[2]!.body!).toMatch(/산비탈|경작|주거|랑선|Dao/);
+    expect(copy[3]!.body!).toMatch(/nhà trình tường|흙/);
+    expect(copy[4]!.body!).toMatch(/랑선|Dao|흙다짐|가옥/);
+    // Soft length: reframe/context/evidence approx ≤5; closing ≤4
+    expect(approxMobileLines(copy[1]!.body!)).toBeLessThanOrEqual(5);
+    expect(approxMobileLines(copy[2]!.body!)).toBeLessThanOrEqual(5);
+    expect(approxMobileLines(copy[3]!.body!)).toBeLessThanOrEqual(5);
+    expect(approxMobileLines(copy[4]!.body!)).toBeLessThanOrEqual(4);
   });
 });

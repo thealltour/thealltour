@@ -128,6 +128,8 @@ export async function composeNaverBandPublishableContent(input: {
    */
   useNaverBandCopySpecialist?: boolean;
   packageRoot?: string | null;
+  /** When true, specialist must not reuse package band-copy artifacts. */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -170,6 +172,7 @@ export async function composeNaverBandPublishableContent(input: {
       now: input.now,
       packageRoot: input.packageRoot,
       modelProfile: input.modelProfile,
+      forceRegenerate: Boolean(input.forceRegenerate),
     });
     // Fail-closed: do not quietly fall back to channel-editor-naver-band / deterministic.
     return result.content;

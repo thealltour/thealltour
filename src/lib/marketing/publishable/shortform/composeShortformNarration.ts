@@ -160,6 +160,8 @@ export async function composeShortformNarration(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
+  /** Accepted for composeOpts parity; shortform has no specialist package-reuse path. */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();

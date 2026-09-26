@@ -236,6 +236,8 @@ export async function composeThreadsPublishableContent(input: {
    */
   useThreadsCopySpecialist?: boolean;
   packageRoot?: string | null;
+  /** When true, specialist must not reuse package threads-copy artifacts. */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -279,6 +281,7 @@ export async function composeThreadsPublishableContent(input: {
       now: input.now,
       packageRoot: input.packageRoot,
       modelProfile: input.modelProfile,
+      forceRegenerate: Boolean(input.forceRegenerate),
     });
     // Fail-closed: do not quietly fall back to channel-editor-threads / deterministic.
     return result.content;

@@ -1,3 +1,9 @@
+import {
+  CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN,
+  CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
+  KAKAO_NATURAL_KOREAN_TONE_EN,
+} from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
+
 export function kakaoChannelWritingContract(options?: {
   hasApprovedCanonicalAsset?: boolean;
 }): string {
@@ -14,6 +20,10 @@ export function kakaoChannelWritingContract(options?: {
     angleLine,
     "Avoid '놓치지 마세요', '지금 바로', '단독!', '마감 임박!' unless verified campaign facts exist in the approved asset (usually they do not).",
     "Emoji optional 0–3. Keep short. No evidence IDs. No fake personal experience.",
+    "",
+    CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN,
+    KAKAO_NATURAL_KOREAN_TONE_EN,
+    CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
   ].join("\n");
 }
 

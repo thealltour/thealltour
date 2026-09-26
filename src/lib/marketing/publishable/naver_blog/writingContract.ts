@@ -2,6 +2,12 @@
  * Naver Blog writing contract — search usefulness as FORMAT only, not Story authority.
  */
 
+import {
+  CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN,
+  CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
+  NAVER_BLOG_NATURAL_KOREAN_TONE_EN,
+} from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
+
 export function naverBlogWritingContract(options?: {
   hasApprovedCanonicalAsset?: boolean;
 }): string {
@@ -30,6 +36,10 @@ export function naverBlogWritingContract(options?: {
     "No fake first-person ('제가 직접 가보니') unless first-party evidence exists (it does not).",
     "Emoji optional 0–3 total; not required.",
     "CTA: next research/check step; consultation only if commercialIntent supports it. No invented links.",
+    "",
+    CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN,
+    NAVER_BLOG_NATURAL_KOREAN_TONE_EN,
+    CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
   ].join("\n");
 }
 

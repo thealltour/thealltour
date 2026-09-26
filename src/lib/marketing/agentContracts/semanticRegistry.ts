@@ -3,6 +3,7 @@
  * Migrated agents: editorial + visual chain (+ optional channel copy metadata).
  */
 
+import { CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import type { MarketingAgentSemanticContract } from "@/lib/marketing/agentContracts/semanticContract";
 import {
   EDITORIAL_NARRATIVE_PLAN_CONTRACT,
@@ -292,7 +293,13 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       optional: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
     },
     output: { artifactId: NAVER_BLOG_COPY_CONTRACT },
-    docs: { notes: ["Phase 3D: lifecycle wired; Structure order authority preserved."] },
+    docs: {
+      notes: [
+        "Phase 3D: lifecycle wired; Structure order authority preserved.",
+        ...CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES,
+        "CHANNEL TONE: natural written Korean blog; longer breath OK; avoid report/academic nominalization.",
+      ],
+    },
   },
   {
     profileId: "naver-band-copy-writer",
@@ -315,6 +322,8 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     docs: {
       notes: [
         "Phase 3D: lifecycle wired. OWNS channel-native wording; MUST NOT alter Canonical facts/Narrative meaning; no forced CTA.",
+        ...CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES,
+        "CHANNEL TONE: direct community Korean; keep context; avoid strategy-memo voice.",
       ],
     },
   },

@@ -5,6 +5,7 @@
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { buildCrossChannelNaturalKoreanSoulSection } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import {
   NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
   NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
@@ -123,6 +124,8 @@ Do not reorder, drop, or invent sections. You may compress/expand prose within e
 - Evidence-safe: no invented geographic categories ("남부 프레임"), no unsupported cultural claims
 - FAQ answers only for structure faqPlan items that are answerable
 - CTA: follow structure ctaIntent; informational discovery → non-sales closing (perspective / limitation ok)
+
+${buildCrossChannelNaturalKoreanSoulSection("naver_blog")}
 
 ## Output
 

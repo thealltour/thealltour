@@ -24,6 +24,7 @@ import {
   NAVER_BAND_COPY_WRITER_HERMES_PROFILE,
   type NaverBandCopyArtifact,
 } from "@/lib/marketing/publishable/naverBandCopy/contracts";
+import { CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import { ensureNaverBandCopyWriterHermesReady } from "@/lib/marketing/publishable/naverBandCopy/hermesIdentity";
 import {
   NaverBandCopyMaterializeError,
@@ -275,6 +276,7 @@ export async function runNaverBandCopySpecialist(input: {
       maxAttempts,
       payload: {
         task: "naver_band_copy",
+        naturalKoreanSyntaxNote: CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
         editorialAuthority: {
           factualBoundary: "approved_canonical",
           narrativeSequence: "editorial_narrative_plan",

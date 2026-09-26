@@ -5,6 +5,7 @@
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { buildCrossChannelNaturalKoreanSoulSection } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import {
   NAVER_BAND_COPY_PREFERRED_MAX_CHARS,
   NAVER_BAND_COPY_PREFERRED_MIN_CHARS,
@@ -77,7 +78,7 @@ Good:
   - Keep mixed-region familiar frames (e.g. 다낭·푸꾸옥·호치민·하노이) — do NOT collapse into "남부", "중부", "도시권".
 - Do NOT invent interpretive contrasts Canonical does not state.
   Bad: "현지인의 진짜 삶", "수백 년 전통", "관광지에선 볼 수 없는", "꼭 가봐야 할", "휴양 광고가 아니라".
-  Prefer: Canonical-supported wording (생활문화, 건축적 맥락, 공식 기록).
+  Prefer: Canonical-supported concrete wording (what/where/who/how from the asset — not abstract stacks like 건축적 맥락 alone).
 - No invented accessibility / experience / cost / recommendation / visit difficulty.
 - If limitations matter, one short clause — do not turn the whole post into a disclaimer.
 
@@ -86,6 +87,8 @@ Good:
 - Preferred: ${NAVER_BAND_COPY_PREFERRED_MIN_CHARS}–${NAVER_BAND_COPY_PREFERRED_MAX_CHARS} Korean characters
 - Soft specialist maximum: ${NAVER_BAND_COPY_SPECIALIST_MAX_CHARS} (never write an essay)
 - Title: reuse Canonical title or lightly shorten — no clickbait, no new facts
+
+${buildCrossChannelNaturalKoreanSoulSection("naver_band")}
 
 ## You decide
 

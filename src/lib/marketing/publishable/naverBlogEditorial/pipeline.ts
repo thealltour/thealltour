@@ -24,6 +24,7 @@ import {
   type NaverBlogCopy,
   type NaverBlogStructurePlan,
 } from "@/lib/marketing/publishable/naverBlogEditorial/contracts";
+import { CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import { buildNaverBlogStructureContentFingerprint } from "@/lib/marketing/publishable/naverBlogEditorial/fingerprint";
 import {
   ensureNaverBlogEditorialHermesProfilesReady,
@@ -401,6 +402,7 @@ export async function runNaverBlogEditorialPipeline(input: {
       maxAttempts: copyAttempts,
       payload: {
         task: "naver_blog_copy",
+        naturalKoreanSyntaxNote: CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE,
         editorialAuthority: {
           factualBoundary: "approved_canonical",
           narrativeSequence: "editorial_narrative_plan",

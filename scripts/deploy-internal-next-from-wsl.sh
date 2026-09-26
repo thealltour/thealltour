@@ -112,7 +112,28 @@ print(f"updated {f}")
 PY
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
-  echo ">>> SYNC Pi scripts → WSL workspace (assert + verify helpers)"
+  echo ">>> SYNC Pi working tree → WSL workspace (source; not node_modules/.next/.env.local)"
+  rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+    --exclude=node_modules/ \
+    --exclude=.next/ \
+    --exclude=.git/ \
+    --exclude=.env.local \
+    --exclude=.env.build-test \
+    --exclude=.verify-lock-hash \
+    --exclude='*.log' \
+    --exclude=coverage/ \
+    --exclude=.turbo/ \
+    --exclude=.cache/ \
+    --exclude=tmp/ \
+    --exclude=temp/ \
+    --exclude='*.tsbuildinfo' \
+    --exclude=artifacts/ \
+    --exclude=data/ \
+    --exclude=.wip-build-quarantine/ \
+    "${PI_REPO}/" \
+    "${HERMES_WSL_VERIFY_HOST}:${HERMES_WSL_WORKSPACE}/"
+
+  echo ">>> SYNC Pi deploy/assert scripts → WSL (executable helpers)"
   rsync -az -e "ssh ${SSH_OPTS[*]}" \
     "${PI_REPO}/scripts/assert-next-build-not-placeholder.sh" \
     "${PI_REPO}/scripts/verify-from-pi.sh" \

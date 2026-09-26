@@ -16,6 +16,7 @@ import {
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
 } from "@/lib/marketing/publishable/composerRuntime";
+import { formatForceRegenerateAvoidBlock } from "@/lib/marketing/publishable/channelRegenerationFreshness";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeKakaoChannelPublishableDeterministic } from "@/lib/marketing/publishable/kakao_channel/deterministicKakao";
 import { kakaoChannelWritingContract } from "@/lib/marketing/publishable/kakao_channel/writingContract";
@@ -29,8 +30,16 @@ import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/cha
 function buildPrompt(
   input: PublishableComposerInput,
   repairHint?: string | null,
+  forceRegenerate?: boolean,
 ): ChannelComposerPromptParts {
   const hasApproved = Boolean(input.approvedCanonicalAsset);
+  const forceBlock =
+    forceRegenerate === true
+      ? formatForceRegenerateAvoidBlock({
+          priorBody: input.qualityRevision?.priorBody ?? null,
+          regenerationNonce: `kakao_channel:${input.sourceRevision ?? "regen"}`,
+        })
+      : "";
   return buildChannelComposerPromptParts({
     channel: "kakao_channel",
     writingContract: [
@@ -38,6 +47,7 @@ function buildPrompt(
       "Channel: concise Kakao decision aid / action. Match approved decision. No invented urgency/price.",
       formatCorePackPromptBlock(input),
       formatQualityRevisionPromptBlock(input.qualityRevision),
+      forceBlock,
     ]
       .filter(Boolean)
       .join("\n"),
@@ -122,12 +132,13 @@ export async function composeKakaoChannelPublishableContent(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
-  /** Accepted for composeOpts parity; Kakao has no specialist package-reuse path. */
+  /** Soft-reuse prevention via FORCE_REGENERATE avoid block when prior body is injected. */
   forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   const allowFallback = input.allowDeterministicFallback !== false;
+  const forceRegenerate = Boolean(input.forceRegenerate);
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     const det = allowFallback
@@ -153,7 +164,7 @@ export async function composeKakaoChannelPublishableContent(input: {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
       channel: "kakao_channel",
-      buildPrompt: (hint) => buildPrompt(input.composerInput, hint),
+      buildPrompt: (hint) => buildPrompt(input.composerInput, hint, forceRegenerate),
       parseAndValidate: (raw) => {
         const parsed = parseBodyJson(raw);
         if (!parsed) return { ok: false, category: "invalid_json", message: "kakao_json_parse_failed" };

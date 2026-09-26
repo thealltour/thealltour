@@ -45,6 +45,7 @@ import {
   materializeInstagramCarouselPlan,
 } from "@/lib/marketing/publishable/instagramEditorial/materialize";
 import { persistInstagramEditorialArtifacts } from "@/lib/marketing/publishable/instagramEditorial/persist";
+import { formatForceRegenerateAvoidBlock } from "@/lib/marketing/publishable/channelRegenerationFreshness";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import {
   CHANNEL_INPUT_AUTHORITY_VERSION,
@@ -247,11 +248,23 @@ export async function runInstagramEditorialPipeline(input: {
   hermesHome?: string;
   /** Prebuilt Narrative Plan — skips narrative LLM when fingerprint matches. */
   narrativePlan?: EditorialNarrativePlan | null;
+  /**
+   * Channel-scoped regenerate: never read package carousel/card/caption for reuse
+   * (pipeline already always regenerates those; this flag injects avoid/nonce prompts).
+   */
+  forceRegenerate?: boolean;
 }): Promise<InstagramEditorialPipelineResult> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   const constraints = input.constraints ?? DEFAULT_INSTAGRAM_CHANNEL_CONSTRAINTS;
   let attemptCount = 0;
+  const forceRegenerate = Boolean(input.forceRegenerate);
+  const forceAvoidBlock = forceRegenerate
+    ? formatForceRegenerateAvoidBlock({
+        priorBody: input.composerInput.qualityRevision?.priorBody ?? null,
+        regenerationNonce: `instagram:${nowIso}`,
+      })
+    : null;
 
   ensureInstagramEditorialHermesProfilesReady(input.hermesHome);
   // Phase 3C: contract-driven lifecycle/failure metadata (behavior preserved).
@@ -340,6 +353,7 @@ export async function runInstagramEditorialPipeline(input: {
         task: "instagram_carousel_plan",
         editorialNarrativePlan: narrative,
         instagramChannelConstraints: constraints,
+        ...(forceAvoidBlock ? { forceRegenerateNote: forceAvoidBlock } : {}),
         canonicalAsset: {
           assetId: asset.assetId,
           titleKo: asset.titleKo,
@@ -368,19 +382,22 @@ export async function runInstagramEditorialPipeline(input: {
       profile: INSTAGRAM_CARD_COPY_WRITER_HERMES_PROFILE,
       maxAttempts: cardCopyAttempts,
       useCardCopyStructuredPrompt: true,
-      payload: buildInstagramCardCopyWriterPayload({
-        narrative,
-        carousel,
-        canonicalAsset: {
-          assetId: asset.assetId,
-          titleKo: asset.titleKo,
-          openingHookKo: clip(asset.openingHookKo, 400),
-          bodyKo: clip(asset.bodyKo, 2400),
-          keyTakeawaysKo: asset.keyTakeawaysKo,
-          supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
-          forbiddenClaimsKo: asset.forbiddenClaimsKo,
-        },
-      }),
+      payload: {
+        ...buildInstagramCardCopyWriterPayload({
+          narrative,
+          carousel,
+          canonicalAsset: {
+            assetId: asset.assetId,
+            titleKo: asset.titleKo,
+            openingHookKo: clip(asset.openingHookKo, 400),
+            bodyKo: clip(asset.bodyKo, 2400),
+            keyTakeawaysKo: asset.keyTakeawaysKo,
+            supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+            forbiddenClaimsKo: asset.forbiddenClaimsKo,
+          },
+        }),
+        ...(forceAvoidBlock ? { forceRegenerateNote: forceAvoidBlock } : {}),
+      },
     });
     attemptCount += copyInv.attemptCount;
     const cardCopy = materializeInstagramCardCopy({
@@ -406,6 +423,7 @@ export async function runInstagramEditorialPipeline(input: {
         },
         instagramCarouselPlan: carousel,
         instagramCardCopy: cardCopy,
+        ...(forceAvoidBlock ? { forceRegenerateNote: forceAvoidBlock } : {}),
         canonicalAsset: {
           assetId: asset.assetId,
           limitationsKo: asset.limitationsKo,
@@ -444,7 +462,8 @@ export async function runInstagramEditorialPipeline(input: {
       cardCopy,
       caption,
       nowIso,
-      modelProfile: input.modelProfile ?? "instagram-editorial-split",
+      // Prefer editorial-split label over legacy channel-editor-instagram for observability.
+      modelProfile: "instagram-editorial-split",
       attemptCount,
       latencyMs: Date.now() - started,
     });

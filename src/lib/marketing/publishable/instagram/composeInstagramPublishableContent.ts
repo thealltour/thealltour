@@ -345,7 +345,7 @@ export async function composeInstagramPublishableContent(input: {
   useEditorialSplit?: boolean;
   /** Persist editorial artifacts when set. */
   packageRoot?: string | null;
-  /** Reserved for parity with other channel composers (Instagram pipeline does not package-reuse). */
+  /** When true, never package-reuse editorial artifacts; force fresh carousel/card/caption LLM. */
   forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
@@ -389,6 +389,7 @@ export async function composeInstagramPublishableContent(input: {
       modelProfile: input.modelProfile,
       packageRoot: input.packageRoot,
       narrativePlan: input.composerInput.editorialNarrativePlan,
+      forceRegenerate: Boolean(input.forceRegenerate),
     });
     // Fail-closed: do not quietly fall back to caption/slide heuristics.
     return result.content;

@@ -187,12 +187,25 @@ export function MarketingReviewChannelTabs({
         throw new Error(detail ? `${base}: ${detail}` : base);
       }
       await onReload();
+      const regen = data.regeneration as
+        | {
+            attemptCount?: number;
+            latencyMs?: number | null;
+            bodyChanged?: boolean;
+          }
+        | undefined;
+      const diag =
+        regen && typeof regen.attemptCount === "number"
+          ? ` (attempts=${regen.attemptCount}` +
+            (typeof regen.latencyMs === "number" ? `, ${regen.latencyMs}ms` : "") +
+            `, bodyChanged=${regen.bodyChanged === true ? "yes" : "no"})`
+          : "";
       onMessage(
         qualityRevision
-          ? `${active.label} Body 재생성 완료 (Channel Editor · Value 힌트 반영).`
+          ? `${active.label} Body 재생성 완료 (Channel Editor · Value 힌트 반영).${diag}`
           : active.awaitingGeneration
-            ? `${active.label} 생성 완료.`
-            : `${active.label} 재생성 완료.`,
+            ? `${active.label} 생성 완료.${diag}`
+            : `${active.label} 재생성 완료.${diag}`,
       );
     } catch (error) {
       onMessage(error instanceof Error ? error.message : "regenerate_failed");

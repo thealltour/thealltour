@@ -30,6 +30,12 @@ import { stampChannelFromApprovedAsset } from "@/lib/marketing/publishable/appro
 import { createNotGeneratedChannelContent } from "@/lib/marketing/publishable/channelWorkspace";
 import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
 import { CHANNEL_INPUT_AUTHORITY_VERSION } from "@/lib/marketing/publishable/composerRuntime";
+import {
+  evaluateScopedRegenerationFreshness,
+  markStaleScopedRegeneration,
+  mergeForceRegenerateQualityRevision,
+  publishableBodiesEqual,
+} from "@/lib/marketing/publishable/channelRegenerationFreshness";
 import { ensureEditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/ensureEditorialNarrativePlan";
 import { buildEditorialNarrativeContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import {
@@ -294,13 +300,39 @@ export async function ensurePublishableContent(
   const invoke = blocked ? null : input.invoke;
   const allowDeterministicFallback =
     input.allowDeterministicFallback ?? !scopedOnly;
-  const composeOptsFor = (channel: PublishableChannel) => {
+  const composeOptsFor = (
+    channel: PublishableChannel,
+    options?: { identicalBodyRetry?: boolean },
+  ) => {
     // Scoped channel regenerate must never reuse specialist package artifacts.
     const forceRegenerate = input.forceRegenerateChannels?.length
       ? input.forceRegenerateChannels.includes(channel)
       : Boolean(input.forceRegenerate);
+    const prior = existing?.[channel];
+    const regenerationNonce = `${channel}:${nowIso}${
+      options?.identicalBodyRetry ? ":retry" : ""
+    }`;
+    let channelComposerInput = composerInput;
+    if (forceRegenerate) {
+      const mergedQr = mergeForceRegenerateQualityRevision({
+        existing: composerInput.qualityRevision,
+        priorBody: prior?.body?.trim() ? prior.body : null,
+        regenerationNonce,
+      });
+      if (options?.identicalBodyRetry) {
+        mergedQr.hints = [
+          "CRITICAL: previous regenerate returned an identical body. Rewrite with substantially different wording and structure.",
+          ...mergedQr.hints,
+        ].slice(0, 8);
+        mergedQr.reasons = ["regeneration_body_unchanged", ...mergedQr.reasons].slice(0, 6);
+      }
+      channelComposerInput = {
+        ...composerInput,
+        qualityRevision: mergedQr,
+      };
+    }
     return {
-      composerInput,
+      composerInput: channelComposerInput,
       now,
       invoke,
       modelProfile: modelProfileFor(channel),
@@ -343,8 +375,15 @@ export async function ensurePublishableContent(
   const coreGateBlocks = (channel: PublishableChannel): boolean =>
     Boolean(coreGate?.blockedChannels.includes(channel));
 
-  const isScopedLlmSuccess = (content: PublishableChannelContent): boolean =>
-    content.provenance.composer === "llm" && content.publishableSuccess === true;
+  const isScopedLlmSuccess = (
+    content: PublishableChannelContent,
+    previous?: PublishableChannelContent,
+  ): boolean => {
+    if (content.provenance.composer !== "llm" || content.publishableSuccess !== true) {
+      return false;
+    }
+    return evaluateScopedRegenerationFreshness({ prior: previous, next: content }).ok;
+  };
 
   /** Persist prior artifact when scoped regenerate fails (never write diagnostic fallback). */
   const channelForPersist = (
@@ -353,7 +392,7 @@ export async function ensurePublishableContent(
     previous: PublishableChannelContent | undefined,
   ): PublishableChannelContent => {
     if (!input.forceRegenerateChannels?.includes(channel)) return composed;
-    if (isScopedLlmSuccess(composed)) return composed;
+    if (isScopedLlmSuccess(composed, previous)) return composed;
     if (previous?.body?.trim()) return previous;
     return composed;
   };
@@ -504,8 +543,35 @@ export async function ensurePublishableContent(
   );
   const freshlyComposed = new Set<PublishableChannel>();
   for (const [index, task] of composeTasks.entries()) {
-    resolvedChannels.set(task.channel, composed[index]!);
-    freshlyComposed.add(task.channel);
+    let next = composed[index]!;
+    const channel = task.channel;
+    const previous = existing?.[channel];
+    const forced = Boolean(input.forceRegenerateChannels?.includes(channel));
+
+    // Soft-reuse: one bounded retry when LLM returned an identical prior body.
+    if (
+      forced &&
+      previous?.body?.trim() &&
+      next.provenance.composer === "llm" &&
+      next.publishableSuccess === true &&
+      (next.provenance.attemptCount ?? 0) >= 1 &&
+      publishableBodiesEqual(previous.body, next.body)
+    ) {
+      next = await composerFor[channel](composeOptsFor(channel, { identicalBodyRetry: true }));
+    }
+
+    if (forced) {
+      const freshness = evaluateScopedRegenerationFreshness({ prior: previous, next });
+      if (!freshness.ok) {
+        next = markStaleScopedRegeneration({
+          content: next,
+          failureMessage: freshness.failureMessage,
+        });
+      }
+    }
+
+    resolvedChannels.set(channel, next);
+    freshlyComposed.add(channel);
   }
 
   const bundle: PublishableContentBundle = {
@@ -668,7 +734,19 @@ export async function ensurePublishableContent(
                       : channel === "instagram"
                         ? bundle.instagram
                         : bundle.kakao_channel;
-            return !slot || !isScopedLlmSuccess(slot);
+            const previous =
+              channel === "threads"
+                ? existing?.threads
+                : channel === "shortform"
+                  ? existing?.shortform
+                  : channel === "naver_blog"
+                    ? existing?.naver_blog
+                    : channel === "naver_band"
+                      ? existing?.naver_band
+                      : channel === "instagram"
+                        ? existing?.instagram
+                        : existing?.kakao_channel;
+            return !slot || !isScopedLlmSuccess(slot, previous);
           });
         // Do not clobber prior Marketing Value scores with empty/failure assessments.
         if (!scopedFailed) {

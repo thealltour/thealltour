@@ -19,6 +19,7 @@ import {
   propositionBlocksPolishedGeneration,
   resolveFailureStatus,
 } from "@/lib/marketing/publishable/composerRuntime";
+import { formatForceRegenerateAvoidBlock } from "@/lib/marketing/publishable/channelRegenerationFreshness";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { composeShortformNarrationDeterministic } from "@/lib/marketing/publishable/shortform/deterministicShortform";
 import { SHORTFORM_NARRATION_WRITING_CONTRACT } from "@/lib/marketing/publishable/shortform/writingContract";
@@ -32,7 +33,15 @@ import type { ChannelComposerPromptParts } from "@/lib/marketing/publishable/cha
 function buildShortformPrompt(
   input: PublishableComposerInput,
   repairHint?: string | null,
+  forceRegenerate?: boolean,
 ): ChannelComposerPromptParts {
+  const forceBlock =
+    forceRegenerate === true
+      ? formatForceRegenerateAvoidBlock({
+          priorBody: input.qualityRevision?.priorBody ?? null,
+          regenerationNonce: `shortform:${input.sourceRevision ?? "regen"}`,
+        })
+      : "";
   return buildChannelComposerPromptParts({
     channel: "shortform",
     writingContract: [
@@ -41,6 +50,7 @@ function buildShortformPrompt(
       "If hook promises N things / one rule / a checklist, body MUST deliver it — without changing the approved Story.",
       formatCorePackPromptBlock(input),
       formatQualityRevisionPromptBlock(input.qualityRevision),
+      forceBlock,
     ]
       .filter(Boolean)
       .join("\n"),
@@ -160,12 +170,13 @@ export async function composeShortformNarration(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
-  /** Accepted for composeOpts parity; shortform has no specialist package-reuse path. */
+  /** Soft-reuse prevention via FORCE_REGENERATE avoid block when prior body is injected. */
   forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
   const allowFallback = input.allowDeterministicFallback !== false;
+  const forceRegenerate = Boolean(input.forceRegenerate);
 
   if (propositionBlocksPolishedGeneration(input.composerInput.contentProposition)) {
     const det = allowFallback
@@ -191,7 +202,7 @@ export async function composeShortformNarration(input: {
     const result = await invokeWithBoundedRepair({
       invoke: input.invoke,
       channel: "shortform",
-      buildPrompt: (hint) => buildShortformPrompt(input.composerInput, hint),
+      buildPrompt: (hint) => buildShortformPrompt(input.composerInput, hint, forceRegenerate),
       parseAndValidate: (raw) => {
         const parsed = parseShortformJson(raw, input.composerInput);
         if (!parsed) return { ok: false, category: "invalid_json", message: "shortform_json_parse_failed" };

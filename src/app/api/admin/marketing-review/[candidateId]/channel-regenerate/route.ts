@@ -27,6 +27,7 @@ import { generateChannelAsset } from "@/lib/marketing/canonicalAsset/approveAndG
 import { resolveChannelEditorHermesProfile } from "@/lib/marketing/publishable/channelEditorIdentity";
 import { readManualAstraHandoff } from "@/lib/marketing/publishable/manualAstraHandoff";
 import { readSharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan";
+import { buildChannelRegenerationDiagnostics } from "@/lib/marketing/publishable/channelRegenerationFreshness";
 
 export const dynamic = "force-dynamic";
 
@@ -164,6 +165,10 @@ export async function POST(request: Request, context: RouteContext) {
 
     const channel = parsed.data.channel as PublishableChannel;
     const hermesProfile = resolveChannelEditorHermesProfile(channel);
+    const priorBody =
+      entry?.humanDraft?.body?.trim()
+        ? entry.humanDraft.body
+        : entry?.aiDraft?.body ?? null;
 
     const bundle = await generateChannelAsset({
       candidate,
@@ -188,15 +193,22 @@ export async function POST(request: Request, context: RouteContext) {
     });
 
     const slot = bundle[channel];
+    const regeneration = buildChannelRegenerationDiagnostics({
+      slot,
+      priorBody,
+    });
 
     const llmOk =
       Boolean(slot?.body?.trim()) &&
       slot?.provenance.composer === "llm" &&
-      slot.publishableSuccess === true;
+      slot.publishableSuccess === true &&
+      regeneration.status === "generated";
 
     if (!llmOk) {
-      const failureCategory = slot?.provenance.failureCategory ?? "unknown";
+      const failureCategory =
+        regeneration.failureCategory ?? slot?.provenance.failureCategory ?? "unknown";
       const failureMessage =
+        regeneration.failureMessage ??
         slot?.provenance.failureMessage ??
         "channel generate failed without LLM publishable success";
       const timeoutHint =
@@ -214,6 +226,7 @@ export async function POST(request: Request, context: RouteContext) {
           publishableSuccess: slot?.publishableSuccess ?? false,
           completionTimeoutMs: timeoutMs,
           modelProfile: hermesProfile,
+          regeneration,
           hint: "이전 패키지 본문은 유지했습니다. diagnostic fallback으로 덮어쓰지 않았습니다.",
         },
         { status: 502 },
@@ -292,6 +305,7 @@ export async function POST(request: Request, context: RouteContext) {
       completionTimeoutMs: timeoutMs,
       acrbLoaded: Boolean(audienceContentResearchBrief),
       modelProfile: hermesProfile,
+      regeneration,
       derivedVisualArtifacts: {
         autoRefresh: false,
         sharedVisualPlanPresent: Boolean(sharedVisualPlan),

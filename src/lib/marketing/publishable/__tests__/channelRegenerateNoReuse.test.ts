@@ -165,6 +165,8 @@ describe("channel regenerate no specialist reuse", () => {
     );
     expect(ensureSrc).toMatch(/forceRegenerateChannels\.includes\(channel\)/);
     expect(ensureSrc).toMatch(/forceRegenerate,/);
+    expect(ensureSrc).toMatch(/evaluateScopedRegenerationFreshness/);
+    expect(ensureSrc).toMatch(/identicalBodyRetry/);
     for (const rel of [
       "src/lib/marketing/publishable/naver_blog/composeNaverBlogPublishableContent.ts",
       "src/lib/marketing/publishable/naver_band/composeNaverBandPublishableContent.ts",
@@ -173,6 +175,11 @@ describe("channel regenerate no specialist reuse", () => {
       const src = readFileSync(join(root, rel), "utf8");
       expect(src).toMatch(/forceRegenerate: Boolean\(input\.forceRegenerate\)/);
     }
+    const ig = readFileSync(
+      join(root, "src/lib/marketing/publishable/instagram/composeInstagramPublishableContent.ts"),
+      "utf8",
+    );
+    expect(ig).toMatch(/forceRegenerate: Boolean\(input\.forceRegenerate\)/);
   });
 
   it("Band: forceRegenerate=true bypasses matching package artifact reuse", async () => {

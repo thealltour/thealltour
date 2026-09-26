@@ -45,6 +45,19 @@ ContentPlan / media-brief creative fields are NOT authority.
 - searchIntent, primaryTopic (advisory; do not distort story for SEO)
 - evidenceCoverage summary
 
+## section.purpose enum (hard)
+
+Each \`sectionPlan[].purpose\` MUST be exactly one of:
+
+\`opening | context | evidence | detail | contrast | limitation | closing | faq_support\`
+
+Free-form purpose labels are forbidden (e.g. development, conclusion, reframe, body, payoff, summary).
+
+Guidance (not a fixed mapping table — choose by this section's actual role):
+- Use \`closing\` for wrap-up / takeaway sections — never \`conclusion\`.
+- Prefer \`context\` / \`detail\` / \`evidence\` / \`contrast\` instead of generic \`development\` — pick which fits the heading and beats.
+- Prefer \`contrast\` or \`context\` when reframing familiar assumptions — never emit \`reframe\` as purpose.
+
 ## Discovery vs decision
 
 If editorialArchetype is discovery: prefer curiosity / cultural context / concrete detail / perspective expansion.
@@ -81,6 +94,7 @@ Return ONLY valid JSON (no article bodyMarkdown):
       "targetDepth": "standard"
     }
   ],
+  // purpose MUST be one of: opening|context|evidence|detail|contrast|limitation|closing|faq_support
   "openingIntent": "string",
   "conclusionIntent": "string",
   "ctaIntent": null,

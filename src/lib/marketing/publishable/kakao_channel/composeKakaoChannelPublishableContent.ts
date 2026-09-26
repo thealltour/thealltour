@@ -122,6 +122,8 @@ export async function composeKakaoChannelPublishableContent(input: {
   invoke?: PublishableLlmInvoke | null;
   modelProfile?: string | null;
   allowDeterministicFallback?: boolean;
+  /** Accepted for composeOpts parity; Kakao has no specialist package-reuse path. */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();

@@ -294,37 +294,44 @@ export async function ensurePublishableContent(
   const invoke = blocked ? null : input.invoke;
   const allowDeterministicFallback =
     input.allowDeterministicFallback ?? !scopedOnly;
-  const composeOptsFor = (channel: PublishableChannel) => ({
-    composerInput,
-    now,
-    invoke,
-    modelProfile: modelProfileFor(channel),
-    allowDeterministicFallback,
-    ...(channel === "instagram"
-      ? {
-          useEditorialSplit: input.useInstagramEditorialSplit !== false,
-          packageRoot: input.packageRoot ?? null,
-        }
-      : {}),
-    ...(channel === "threads"
-      ? {
-          useThreadsCopySpecialist: input.useThreadsCopySpecialist !== false,
-          packageRoot: input.packageRoot ?? null,
-        }
-      : {}),
-    ...(channel === "naver_blog"
-      ? {
-          useNaverBlogEditorialSplit: input.useNaverBlogEditorialSplit !== false,
-          packageRoot: input.packageRoot ?? null,
-        }
-      : {}),
-    ...(channel === "naver_band"
-      ? {
-          useNaverBandCopySpecialist: input.useNaverBandCopySpecialist !== false,
-          packageRoot: input.packageRoot ?? null,
-        }
-      : {}),
-  });
+  const composeOptsFor = (channel: PublishableChannel) => {
+    // Scoped channel regenerate must never reuse specialist package artifacts.
+    const forceRegenerate = input.forceRegenerateChannels?.length
+      ? input.forceRegenerateChannels.includes(channel)
+      : Boolean(input.forceRegenerate);
+    return {
+      composerInput,
+      now,
+      invoke,
+      modelProfile: modelProfileFor(channel),
+      allowDeterministicFallback,
+      forceRegenerate,
+      ...(channel === "instagram"
+        ? {
+            useEditorialSplit: input.useInstagramEditorialSplit !== false,
+            packageRoot: input.packageRoot ?? null,
+          }
+        : {}),
+      ...(channel === "threads"
+        ? {
+            useThreadsCopySpecialist: input.useThreadsCopySpecialist !== false,
+            packageRoot: input.packageRoot ?? null,
+          }
+        : {}),
+      ...(channel === "naver_blog"
+        ? {
+            useNaverBlogEditorialSplit: input.useNaverBlogEditorialSplit !== false,
+            packageRoot: input.packageRoot ?? null,
+          }
+        : {}),
+      ...(channel === "naver_band"
+        ? {
+            useNaverBandCopySpecialist: input.useNaverBandCopySpecialist !== false,
+            packageRoot: input.packageRoot ?? null,
+          }
+        : {}),
+    };
+  };
 
   /**
    * Core fact gate. A scoped regenerate is an explicit operator request, so it

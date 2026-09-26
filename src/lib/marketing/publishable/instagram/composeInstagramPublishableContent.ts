@@ -345,6 +345,8 @@ export async function composeInstagramPublishableContent(input: {
   useEditorialSplit?: boolean;
   /** Persist editorial artifacts when set. */
   packageRoot?: string | null;
+  /** Reserved for parity with other channel composers (Instagram pipeline does not package-reuse). */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();

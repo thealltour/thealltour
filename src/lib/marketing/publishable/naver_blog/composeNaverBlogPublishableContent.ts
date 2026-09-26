@@ -182,6 +182,8 @@ export async function composeNaverBlogPublishableContent(input: {
    */
   useNaverBlogEditorialSplit?: boolean;
   packageRoot?: string | null;
+  /** When true, specialist must not reuse package structure/copy artifacts. */
+  forceRegenerate?: boolean;
 }): Promise<PublishableChannelContent> {
   const nowIso = (input.now ?? new Date()).toISOString();
   const started = Date.now();
@@ -238,6 +240,7 @@ export async function composeNaverBlogPublishableContent(input: {
       now: input.now,
       packageRoot: input.packageRoot,
       modelProfile: input.modelProfile,
+      forceRegenerate: Boolean(input.forceRegenerate),
     });
     return result.content;
   }

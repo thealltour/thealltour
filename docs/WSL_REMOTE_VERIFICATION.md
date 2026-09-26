@@ -188,7 +188,7 @@ EXIT_CODE=<code>
 ## Boundaries (다시 한 번)
 
 - Pi `node_modules` ⇄ WSL `node_modules` 복사 금지  
-- `.next` 양방향 복사 금지  
-- Pi `.env.local` rsync 금지  
-- WSL build artifact를 Pi에 배포하지 않음  
-- systemd / production restart / Pi `npm run build` 자동화 없음  
+- `.next` 양방향 복사 금지 (**verify `--build` artifact는 Pi 배포용이 아님**)  
+- Pi `.env.local`을 verify rsync로 밀어넣지 않음  
+- WSL placeholder build(`example.supabase.co`)를 Pi에 배포하지 않음 — 필요 시 `scripts/deploy-internal-next-from-wsl.sh`  
+- systemd / production restart는 `scripts/restart-thealltour-internal.sh` (placeholder 가드 포함)  

@@ -46,7 +46,11 @@ export HERMES_PI_PATH=/home/ysh/thealltour
 export HERMES_BUILD_WORKSPACE=/home/you/thealltour-verify
 ```
 
-선택: workspace에 `.env.build-test` (Pi `.env.local` 복사 금지). 템플릿: `scripts/env.build-test.example`.
+선택: workspace에 `.env.build-test` (Pi `.env.local` 전체 rsync 금지). 템플릿: `scripts/env.build-test.example`.
+
+**금지:** `example.supabase.co`가 박힌 WSL `.next`를 Pi로 rsync. Edge middleware가 ENOTFOUND → Internal Server Error가 됩니다.  
+배포용 빌드: Pi에서 `./scripts/deploy-internal-next-from-wsl.sh` (실 `.env.local`로 WSL 빌드 → 가드 → `.next`만 설치 → restart).
+
 
 ## Commands
 
@@ -86,8 +90,11 @@ typecheck 실패 시 tests/build는 실행하지 않습니다.
 1. Cursor가 **Pi** working tree 수정 (uncommitted 포함)
 2. WSL: `./scripts/verify-from-pi.sh --fast`
 3. 통과 후: `./scripts/verify-from-pi.sh --build`
-4. 성공하면 Pi에서는 **기존처럼** 필요 시만 on-Pi `npm run build` + `systemctl restart thealltour-internal`  
-   (이 스크립트는 Pi에 artifact를 보내지 않음)
+4. 성공하면 Pi 배포는 **verify `.next`를 그대로 쓰지 말 것**.  
+   - 배포: `./scripts/deploy-internal-next-from-wsl.sh` (실 env 빌드 + placeholder 가드 + restart)  
+   - 또는 on-Pi `npm run build` 후 `./scripts/restart-thealltour-internal.sh`  
+   (`verify-from-pi.sh` / `verify-on-wsl.sh`는 Pi에 artifact를 보내지 않음)
+
 
 ## Sync excludes
 
@@ -110,8 +117,9 @@ Pi production path(`/home/ysh/thealltour`)나 `/`, `/home` 등은 abort합니다
 |------|------|
 | `next.config.ts` | build 시 secret hard-require 없음 (`ANALYZE`만 선택) |
 | Auth providers | lazy `requiredEnv` — import만으로는 build fail 드묾 |
-| 권장 WSL | `.env.build-test`에 필요 시 `NEXT_PUBLIC_*` placeholder만 |
-| 금지 | Pi `.env.local` 전체 rsync |
+| 권장 WSL | `.env.build-test`에는 Supabase placeholder를 넣지 말 것 (또는 verify가 skip). 배포 빌드는 workspace `.env.local` |
+| 금지 | Pi `.env.local` 전체를 verify sync로 밀어넣기; placeholder `.next`를 Pi에 rsync |
+| 가드 | `scripts/assert-next-build-not-placeholder.sh` — `example.supabase.co` 등이 `.next`에 있으면 deploy/restart 거부 |
 
 ## Native caveats
 

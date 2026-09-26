@@ -91,8 +91,25 @@ push/pull만으로는 production runtime이 바뀌지 않는다.
 cd /home/ysh/thealltour
 git pull
 # lockfile이 바뀌었으면 npm ci 또는 npm install
-npm run build
-sudo systemctl restart thealltour-internal.service
+
+# 권장: WSL에서 실 env로 빌드 후 .next만 설치 + restart 가드
+./scripts/deploy-internal-next-from-wsl.sh
+
+# 또는 on-Pi build:
+# npm run build
+# ./scripts/restart-thealltour-internal.sh
+```
+
+`sudo systemctl restart thealltour-internal.service`만 하면 **이미 설치된 `.next`를 그대로** 띄운다.  
+WSL verify용 placeholder 빌드를 Pi `.next`에 덮어쓴 뒤 restart하면 admin 페이지가 Internal Server Error가 된다.
+
+재시작 전 가드:
+
+```bash
+./scripts/assert-next-build-not-placeholder.sh .next
+./scripts/restart-thealltour-internal.sh
+sudo systemctl status thealltour-internal.service --no-pager
+ss -ltnp | grep ':3000'
 ```
 
 git hook / CI auto-deploy는 두지 않는다.

@@ -147,6 +147,8 @@ if [[ "$SKIP_SYNC" -eq 0 ]]; then
     --exclude=.verify-lock-hash
     --exclude=.env.local
     --exclude=.env.verify-local
+    # WSL may keep a local .env.build-test; do not clobber with Pi copies.
+    --exclude=.env.build-test
     --exclude='*.log'
     --exclude=coverage/
     --exclude=.turbo/
@@ -170,20 +172,81 @@ if [[ "$SKIP_SYNC" -eq 0 ]]; then
     print_summary
     exit 0
   fi
+
+  # hermes-tools/scripts/verify-from-pi.sh can lag the Pi repo. After sync, re-exec
+  # the workspace copy so placeholder-env guards and assert scripts are current.
+  WS_VERIFY="${HERMES_BUILD_WORKSPACE}/scripts/verify-from-pi.sh"
+  if [[ -f "$WS_VERIFY" ]]; then
+    self="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+    ws="$(readlink -f "$WS_VERIFY" 2>/dev/null || realpath "$WS_VERIFY" 2>/dev/null || echo "$WS_VERIFY")"
+    if [[ "$self" != "$ws" ]]; then
+      echo ">>> RE-EXEC workspace verify script (synced from Pi)"
+      re_args=(--skip-sync)
+      if [[ "$MODE" == "build" ]]; then
+        re_args+=(--build)
+      else
+        re_args+=(--fast)
+      fi
+      [[ "$SKIP_TESTS" -eq 1 ]] && re_args+=(--skip-tests)
+      [[ -n "$TEST_PATTERN" ]] && re_args+=(--test "$TEST_PATTERN")
+      exec bash "$WS_VERIFY" "${re_args[@]}"
+    fi
+  fi
 else
   STAGE_SYNC="SKIP (--skip-sync)"
 fi
 
 cd "$HERMES_BUILD_WORKSPACE"
 
-# Optional build-test env (do not require Pi secrets)
+# Optional build-test env (do not require Pi secrets).
+# CRITICAL: never export placeholder Supabase hosts into process.env — they override
+# .env.local for `next build` and bake example.supabase.co into Edge middleware.
+# That poisoned .next must never be rsynced to Pi (Internal Server Error).
+is_placeholder_supabase_value() {
+  local v="$1"
+  [[ "$v" == *example.supabase.co* || "$v" == *example.supabase.com* ]] && return 0
+  [[ "$v" == *public-anon-placeholder* || "$v" == *service-role-placeholder* ]] && return 0
+  return 1
+}
+
+load_build_test_env_file() {
+  local f="$1"
+  local skipped=0
+  local loaded=0
+  local line key val
+  echo ">>> ENV: loading ${f} (placeholder Supabase keys skipped)"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # strip CR, comments, blanks
+    line="${line%$'\r'}"
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" == *"="* ]] || continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    # strip optional surrounding quotes
+    if [[ "$val" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"; fi
+    if [[ "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"; fi
+    if is_placeholder_supabase_value "$val"; then
+      echo "    skip ${key}=<placeholder> (would poison next build inlining)"
+      skipped=$((skipped + 1))
+      continue
+    fi
+    export "${key}=${val}"
+    loaded=$((loaded + 1))
+  done <"$f"
+  echo "    loaded=${loaded} skipped_placeholder=${skipped}"
+}
+
 if [[ -f .env.build-test ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env.build-test
-  set +a
+  load_build_test_env_file .env.build-test
 elif [[ -f "${SCRIPT_DIR}/env.build-test.example" && ! -f .env.build-test ]]; then
   echo "NOTE: no .env.build-test in workspace (optional). See scripts/env.build-test.example"
+fi
+
+if [[ -f .env.local ]]; then
+  echo "NOTE: .env.local present in workspace — Next will load it for build (preferred over placeholders)"
 fi
 
 # --- Node runtime (non-interactive SSH: do not rely on shell profile) -------
@@ -284,7 +347,20 @@ if [[ "$MODE" == "build" ]]; then
     fail_stage BUILD "NEXT BUILD: FAIL"
   fi
   T_BUILD="$(elapsed "$t0")"
-  STAGE_BUILD="PASS"
+  # Verify may intentionally build with placeholders; never treat that as Pi-deployable.
+  echo ">>> NEXT BUILD GUARD: assert-next-build-not-placeholder.sh"
+  if ASSERT_NEXT_ALLOW_PLACEHOLDER=1 bash "${SCRIPT_DIR}/assert-next-build-not-placeholder.sh" .next; then
+    if [[ -f .next/THEALLTOUR_DEPLOYABLE ]]; then
+      STAGE_BUILD="PASS (deployable marker written — still do not auto-deploy)"
+    else
+      STAGE_BUILD="PASS (verify-only; NOT for Pi — see .next/THEALLTOUR_NOT_FOR_PI_DEPLOY)"
+      echo "WARNING: This WSL .next must NOT be rsynced to Pi." >&2
+      echo "         Use ./scripts/deploy-internal-next-from-wsl.sh from Pi for a real-env build." >&2
+    fi
+  else
+    STAGE_BUILD="FAIL (placeholder guard)"
+    fail_stage BUILD "NEXT BUILD GUARD: FAIL"
+  fi
 else
   STAGE_BUILD="SKIP (--fast)"
 fi

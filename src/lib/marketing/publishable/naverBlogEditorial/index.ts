@@ -3,6 +3,7 @@ export {
   NAVER_BLOG_COPY_CONTRACT,
   NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
   NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
+  NAVER_BLOG_SECTION_PURPOSES,
   type NaverBlogStructurePlan,
   type NaverBlogCopy,
 } from "@/lib/marketing/publishable/naverBlogEditorial/contracts";
@@ -27,6 +28,14 @@ export {
   hasNaverBlogUnsafeGeneralization,
   hasNaverBlogForcedCta,
 } from "@/lib/marketing/publishable/naverBlogEditorial/materialize";
+export {
+  NAVER_BLOG_SECTION_PURPOSE_ENUM_LINE,
+  NAVER_BLOG_STRUCTURE_PURPOSE_REPAIR_MAX,
+  buildNaverBlogStructurePurposeRepairHint,
+  isAllowedNaverBlogSectionPurpose,
+  listInvalidSectionPurposes,
+  structureLlmHasInvalidPurposes,
+} from "@/lib/marketing/publishable/naverBlogEditorial/purposeRepair";
 export {
   persistNaverBlogStructurePlan,
   persistNaverBlogCopy,

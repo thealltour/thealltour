@@ -19,6 +19,7 @@ import { assemblePublishableNaverBlogFromEditorial } from "@/lib/marketing/publi
 import {
   NAVER_BLOG_COPY_CONTRACT,
   NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
+  NAVER_BLOG_SECTION_PURPOSES,
   NAVER_BLOG_STRUCTURE_PLAN_CONTRACT,
   NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
   type NaverBlogCopy,
@@ -40,6 +41,13 @@ import {
   readNaverBlogCopyFromPackage,
   readNaverBlogStructurePlanFromPackage,
 } from "@/lib/marketing/publishable/naverBlogEditorial/persist";
+import {
+  NAVER_BLOG_SECTION_PURPOSE_ENUM_LINE,
+  NAVER_BLOG_STRUCTURE_PURPOSE_REPAIR_MAX,
+  buildNaverBlogStructurePurposeRepairHint,
+  listInvalidSectionPurposes,
+  structureLlmHasInvalidPurposes,
+} from "@/lib/marketing/publishable/naverBlogEditorial/purposeRepair";
 import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/composeThreadsPublishableContent";
 import { validatePublishableText } from "@/lib/marketing/publishable/validate";
 import {
@@ -287,50 +295,80 @@ export async function runNaverBlogEditorialPipeline(input: {
   } else {
     try {
       ensureNaverBlogEditorialHermesProfilesReady(input.hermesHome);
+      const structurePayload: Record<string, unknown> = {
+        task: "naver_blog_structure_plan",
+        editorialAuthority: {
+          factualBoundary: "approved_canonical",
+          narrativeSequence: "editorial_narrative_plan",
+          blogStructure: "naver_blog_structure_planner",
+          wording: "naver_blog_copy_writer",
+        },
+        canonicalAsset: {
+          assetId: asset.assetId,
+          assetVersion: asset.version,
+          titleKo: asset.titleKo,
+          openingHookKo: clip(asset.openingHookKo, 600),
+          bodyKo: clip(asset.bodyKo, 3200),
+          keyTakeawaysKo: asset.keyTakeawaysKo,
+          decisionGuidanceKo: asset.decisionGuidanceKo,
+          supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
+          limitationsKo: asset.limitationsKo,
+          forbiddenClaimsKo: asset.forbiddenClaimsKo,
+          editorialArchetype: asset.editorialArchetype ?? null,
+        },
+        editorialNarrativePlan: {
+          narrativePromise: narrative.narrativePromise,
+          audienceTakeaway: narrative.audienceTakeaway,
+          beats: narrative.beats,
+        },
+        evidenceBoundary: {
+          evidenceRefIds: input.composerInput.evidenceRefIds,
+          avoidedStatements: input.composerInput.avoidedStatements,
+          unsupportedClaims: input.composerInput.unsupportedClaims,
+        },
+        searchIntentAdvisory: {
+          note: "Advisory only — do not distort story for SEO",
+          researchSearchIntent: input.composerInput.research?.searchIntentPrimary ?? null,
+        },
+        commercialIntent: input.composerInput.commercialIntent,
+        sectionPurposeEnum: {
+          allowed: [...NAVER_BLOG_SECTION_PURPOSES],
+          note: `Each sectionPlan[].purpose MUST be exactly one of: ${NAVER_BLOG_SECTION_PURPOSE_ENUM_LINE}. Free-form labels forbidden.`,
+        },
+      };
       const inv = await invokeJson({
         invoke: input.invoke,
         profile: NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
         maxAttempts: structureAttempts,
-        payload: {
-          task: "naver_blog_structure_plan",
-          editorialAuthority: {
-            factualBoundary: "approved_canonical",
-            narrativeSequence: "editorial_narrative_plan",
-            blogStructure: "naver_blog_structure_planner",
-            wording: "naver_blog_copy_writer",
-          },
-          canonicalAsset: {
-            assetId: asset.assetId,
-            assetVersion: asset.version,
-            titleKo: asset.titleKo,
-            openingHookKo: clip(asset.openingHookKo, 600),
-            bodyKo: clip(asset.bodyKo, 3200),
-            keyTakeawaysKo: asset.keyTakeawaysKo,
-            decisionGuidanceKo: asset.decisionGuidanceKo,
-            supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,
-            limitationsKo: asset.limitationsKo,
-            forbiddenClaimsKo: asset.forbiddenClaimsKo,
-            editorialArchetype: asset.editorialArchetype ?? null,
-          },
-          editorialNarrativePlan: {
-            narrativePromise: narrative.narrativePromise,
-            audienceTakeaway: narrative.audienceTakeaway,
-            beats: narrative.beats,
-          },
-          evidenceBoundary: {
-            evidenceRefIds: input.composerInput.evidenceRefIds,
-            avoidedStatements: input.composerInput.avoidedStatements,
-            unsupportedClaims: input.composerInput.unsupportedClaims,
-          },
-          searchIntentAdvisory: {
-            note: "Advisory only — do not distort story for SEO",
-            researchSearchIntent: input.composerInput.research?.searchIntentPrimary ?? null,
-          },
-          commercialIntent: input.composerInput.commercialIntent,
-        },
+        payload: structurePayload,
       });
       attemptCount += inv.attemptCount;
-      // materializeInRepairLoop=false: materialize after JSON repair loop.
+      let structureLlm: unknown = inv.llm;
+
+      // Purpose-only bounded repair BEFORE fail-closed materialize (no alias map).
+      for (
+        let purposeRepair = 0;
+        purposeRepair < NAVER_BLOG_STRUCTURE_PURPOSE_REPAIR_MAX &&
+        structureLlmHasInvalidPurposes(structureLlm);
+        purposeRepair += 1
+      ) {
+        const invalid = listInvalidSectionPurposes(structureLlm);
+        const repaired = await invokeJson({
+          invoke: input.invoke,
+          profile: NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
+          maxAttempts: 1,
+          payload: {
+            ...structurePayload,
+            task: "naver_blog_structure_plan_purpose_repair",
+            previousStructureOutput: structureLlm,
+            PURPOSE_REPAIR: buildNaverBlogStructurePurposeRepairHint(invalid),
+          },
+        });
+        attemptCount += repaired.attemptCount;
+        structureLlm = repaired.llm;
+      }
+
+      // materializeInRepairLoop=false: materialize after JSON + purpose repair loops.
       structure = materializeNaverBlogStructurePlan({
         assetId: asset.assetId,
         assetVersion: asset.version,
@@ -338,7 +376,7 @@ export async function runNaverBlogEditorialPipeline(input: {
         narrative,
         modelProfile: NAVER_BLOG_STRUCTURE_PLANNER_HERMES_PROFILE,
         generatedAt: nowIso,
-        llm: inv.llm,
+        llm: structureLlm,
       });
       if (input.packageRoot) {
         persistNaverBlogStructurePlan({

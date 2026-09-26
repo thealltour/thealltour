@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { CARD_COPY_NATURAL_KOREAN_CONTRACT_EN } from "@/lib/marketing/agentContracts/cardCopyNaturalKoreanContract";
+import { buildCrossChannelNaturalKoreanSoulSection } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import {
   CARD_COPY_UPSTREAM_VOCABULARY_BOUNDARY,
   PLANNER_VOCABULARY_BOUNDARY_INVARIANTS,
@@ -307,6 +308,15 @@ Write the Instagram **caption only** (separate from card copy).
 - redesign carousel story / card count / roles
 - add new visual instructions
 - invent new facts beyond Canonical
+
+${buildCrossChannelNaturalKoreanSoulSection("instagram_caption")}
+
+## Closing
+
+- Roles remain: hook → context → evidence-safe explanation → optional CTA
+- Promotional framing and curiosity hooks are allowed when evidence-safe
+- Do not force a final abstract sentence about perspective / awareness / broader view / decision criteria
+- Problem to avoid: English-like nominalization and abstract synthesis — not marketing tone itself
 
 ## Output
 

@@ -3,7 +3,7 @@
  *
  * Shared instructional guidance for channel writers after Approved Canonical
  * is already natural Korean. Prevents re-introducing English-like nominalization,
- * unnecessary passives, and planner/editorial jargon leakage.
+ * unnecessary passives, planner jargon leakage, and forced abstract synthesis endings.
  *
  * NOT a marketing-expression ban. NOT a blacklist / replacement map.
  * Channel tone differences live in per-channel addenda / SOUL sections.
@@ -44,14 +44,23 @@ export const CROSS_CHANNEL_ABSTRACT_NOUNS_RECONSIDER = [
   "경험",
 ] as const;
 
-/** Habitual translationese scaffolds to reconsider (not banned). */
+/**
+ * Habitual translationese scaffolds (pattern labels only — do not paste long bad samples repeatedly).
+ */
 export const CROSS_CHANNEL_TRANSLATIONESE_SCAFFOLDS = [
-  "~하는 것은 ~을 의미합니다",
-  "~로 인식하는 것은",
-  "~을 통해 ~할 수 있습니다",
+  "~하는 것은 …",
+  "~로 인식하는 것은 …",
+  "~을 통해 …할 수 있습니다",
   "~라는 점에서 의미가 있습니다",
   "~에 대한 이해를 제공합니다",
 ] as const;
+
+/** Shared invariant — concrete endings are valid; abstract synthesis is not forced. */
+export const CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_EN =
+  "A concrete fact, contrast, or observation is a valid ending. Do not force an abstract synthesis about perspective, meaning, awareness, insight, or decision criteria." as const;
+
+export const CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_KO =
+  "구체적인 사실·차이·관찰로 끝나도 충분하다. 마지막 문장을 관점·의미·인식·시야·통찰·판단 기준으로 억지로 추상화하지 않는다." as const;
 
 /** Qualitative scan patterns for Dao review reports (zero-count NOT required). */
 export const CROSS_CHANNEL_REVIEW_SCAN_PATTERNS = [
@@ -76,7 +85,7 @@ export const CROSS_CHANNEL_PROMOTIONAL_FRAMING_ALLOWED = [
   "익숙한 여행과 다른 선택",
 ] as const;
 
-/** Shared English block — embed in Blog/Band SOUL and Kakao/Shortform writing contracts. */
+/** Shared English block — embed in channel SOUL / writing contracts. */
 export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN = [
   "NATURAL KOREAN SYNTAX (cross-channel shared):",
   "Preserve upstream semantics/facts/Story intent/evidence boundary.",
@@ -89,23 +98,19 @@ export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN = [
   "- Upstream wording is semantic instruction, not phrasing to preserve.",
   `- ${U.preserveMeaningNotForm}`,
   "",
+  "NO FORCED ABSTRACT SYNTHESIS:",
+  CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_EN,
+  "Payoff may remain a semantic outcome — it does not require a separate abstract closing sentence.",
+  "CTA rules and promotional hooks are unchanged; this only blocks forced perspective/meaning/insight/criteria endings.",
+  "",
   "ANTI-OVER-NOMINALIZATION:",
   "Do not build English-like subjects from long noun phrases.",
-  '  Weak:  "베트남을 단일한 휴양지가 아니라 지역별 문화적 배경이 다른 국가로 인식하는 것은 여행을 바라보는 시선을 넓혀줍니다."',
-  '  Better: "베트남은 지역마다 풍경과 생활 모습이 꽤 다릅니다."',
   "Prefer saying what differs (place / people / building / action) over abstract→abstract explanation.",
-  '  Weak:  "문화적 맥락에 대한 이해를 넓혀줍니다."',
-  "  Better: name the concrete difference when evidence supports it.",
+  "One contrast is enough — do not inventory long bad phrase lists.",
   "",
-  "TRANSLATIONESE SCAFFOLDS (reconsider as habitual skeletons — not banned):",
+  "TRANSLATIONESE SCAFFOLDS (pattern labels — not a phrase inventory to paste):",
   ...CROSS_CHANNEL_TRANSLATIONESE_SCAFFOLDS.map((s) => `- ${s}`),
-  "Use only when genuinely natural in context; do not default to them.",
-  "",
-  "ACTIVE / DIRECT PREFERENCE:",
-  "Unnecessary passive / impersonal voice — reduce when active/direct Korean reads more naturally.",
-  '  Weak:  "여행 정보가 휴양지 중심으로 채워져 있습니다."',
-  '  Better: "베트남 여행 정보를 찾다 보면 휴양지 이야기를 먼저 접하게 됩니다."',
-  "Passive is allowed when it is the natural Korean choice — do not ban it.",
+  "Do not default to these skeletons. Passive is allowed when it is the natural Korean choice.",
   "",
   "ABSTRACT NOUNS (not a blacklist):",
   `Words such as ${CROSS_CHANNEL_ABSTRACT_NOUNS_RECONSIDER.join(" / ")} are ALLOWED.`,
@@ -113,7 +118,7 @@ export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN = [
   "No deterministic replacement. Zero-count is NOT required.",
   "",
   "PLANNER / EDITORIAL JARGON LEAKAGE:",
-  "Do not paste planner/editorial synthesis (frame/rhythm/context stacks, 읽어내다/조명하다-style interpretation)",
+  "Do not paste planner/editorial synthesis (frame/rhythm/context stacks, interpretive reading verbs)",
   "as finished channel copy. Re-express meaning in channel-native Korean.",
   "",
   "PROMOTIONAL FRAMING:",
@@ -133,6 +138,7 @@ export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN = [
 /** Compact note for INPUT_JSON / writing-contract append. */
 export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE = [
   "Rewrite upstream meaning into natural Korean syntax for this channel.",
+  CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_EN,
   "Anti-over-nominalization; prefer direct/active when more natural; no blacklist.",
   "Upstream wording is semantic instruction, not phrasing to preserve.",
   "Evidence safety unchanged — do not strengthen claims.",
@@ -140,19 +146,37 @@ export const CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_NOTE = [
 
 export const CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES = [
   "NATURAL KOREAN SYNTAX: channel writers own surface wording; upstream Canonical/Narrative/Planner are semantic sources, not lexical authority.",
+  "NO FORCED ABSTRACT SYNTHESIS: concrete fact/contrast/observation is a valid ending; do not force perspective/meaning/insight/criteria closings.",
   "Anti-over-nominalization and direct/active preference are instructional — not blacklists or replacement maps.",
   "Promotional framing allowed when evidence-safe; factual body claims stay within supportedClaimBoundary.",
   "Natural Korean ≠ less information — preserve channel density contracts.",
 ] as const;
 
+/** Threads — conversational; concrete ending OK. */
+export const THREADS_NATURAL_KOREAN_TONE_EN = [
+  "CHANNEL TONE — THREADS:",
+  "Conversational compression. Valid endings: concrete observation, concrete contrast, light question, or no ending.",
+  "Do not force abstract editorial synthesis as the last sentence.",
+  '"rhythm" is an internal craft term — not a consumer lexical seed.',
+].join("\n");
+
+/** Instagram Caption. */
+export const INSTAGRAM_CAPTION_NATURAL_KOREAN_TONE_EN = [
+  "CHANNEL TONE — INSTAGRAM CAPTION:",
+  "Roles: hook → context → evidence-safe explanation → optional CTA.",
+  "Promotional framing and curiosity hooks are allowed when evidence-safe.",
+  "Do not force a final abstract sentence about perspective / awareness / broader view / decision criteria.",
+  "Problem to avoid: English-like nominalization and abstract synthesis — not marketing tone itself.",
+].join("\n");
+
 /** Naver Blog — written Korean, longer breath OK. */
 export const NAVER_BLOG_NATURAL_KOREAN_TONE_EN = [
   "CHANNEL TONE — NAVER BLOG:",
   "Longer written Korean is OK. Natural article flow: concrete example → explanation → limitations.",
-  "Avoid report/academic nominalization stacks and habitual scaffolds",
-  '("이러한 관점에서", "이를 통해", "의미를 갖습니다").',
+  "Avoid report/academic nominalization stacks and habitual scaffolds.",
   "Do not pile multiple abstractions into one sentence.",
   "Not every sentence must be colloquial — aim for natural written Korean blog prose.",
+  "Section headings should name concrete topics — not abstract perspective slogans.",
 ].join("\n");
 
 /** Naver Band — direct, community-friendly. */
@@ -161,7 +185,7 @@ export const NAVER_BAND_NATURAL_KOREAN_TONE_EN = [
   "More direct and friendly than Blog. Short paragraphs; immediately understandable.",
   "Sound like a community post explaining to a person — not a strategy memo or report.",
   "Keep needed context; do not over-cut information while naturalizing.",
-  "Avoid heavy editorial interpretation and abstract closings.",
+  "Prefer one concrete takeaway or observation — not forced abstract conclusions.",
 ].join("\n");
 
 /** Kakao — fast comprehension; promotional OK. */
@@ -169,7 +193,9 @@ export const KAKAO_NATURAL_KOREAN_TONE_EN = [
   "CHANNEL TONE — KAKAO CHANNEL:",
   "Fast comprehension. Short direct sentences; put core interest/benefit early.",
   "Natural promotional Korean is OK. CTA clear and light when present.",
-  "Avoid long noun-phrase subjects and packing reason/interpretation/conclusion into one sentence.",
+  "Discovery/cultural stories: concrete observation or factual contrast; optional informational close.",
+  "Decision/practical stories: compact decision aid / actionable next step when grounded.",
+  "Do not force action/decision synthesis when there is no CTA.",
   "Looking like an ad is fine — unnatural Korean is not.",
 ].join("\n");
 
@@ -177,22 +203,28 @@ export const KAKAO_NATURAL_KOREAN_TONE_EN = [
 export const SHORTFORM_NATURAL_KOREAN_TONE_EN = [
   "CHANNEL TONE — SHORTFORM:",
   "Strongest spoken-Korean priority. Must sound natural when read aloud (voice-over).",
-  "Short breath; active preference; concrete nouns/verbs; one message per sentence.",
-  "Avoid long noun phrases, abstract editorial synthesis, and press-release tone.",
-  "Reconsider interpretive verbs (읽어내다 / 조명하다 / 인식하다) when direct speech works.",
+  "Preferred arc: hook → concrete fact/context → concrete contrast/detail → natural close.",
+  "Close/action is optional. Payoff is a semantic outcome — not a mandatory abstract sentence.",
+  "Do not force spoken closings like forced awareness / criteria / perspective-widening formulations.",
 ].join("\n");
 
-export function buildCrossChannelNaturalKoreanSoulSection(channel: CrossChannelNaturalKoreanChannel): string {
+export function buildCrossChannelNaturalKoreanSoulSection(
+  channel: CrossChannelNaturalKoreanChannel,
+): string {
   const tone =
-    channel === "naver_blog"
-      ? NAVER_BLOG_NATURAL_KOREAN_TONE_EN
-      : channel === "naver_band"
-        ? NAVER_BAND_NATURAL_KOREAN_TONE_EN
-        : channel === "kakao_channel"
-          ? KAKAO_NATURAL_KOREAN_TONE_EN
-          : channel === "shortform"
-            ? SHORTFORM_NATURAL_KOREAN_TONE_EN
-            : "";
+    channel === "threads"
+      ? THREADS_NATURAL_KOREAN_TONE_EN
+      : channel === "instagram_caption"
+        ? INSTAGRAM_CAPTION_NATURAL_KOREAN_TONE_EN
+        : channel === "naver_blog"
+          ? NAVER_BLOG_NATURAL_KOREAN_TONE_EN
+          : channel === "naver_band"
+            ? NAVER_BAND_NATURAL_KOREAN_TONE_EN
+            : channel === "kakao_channel"
+              ? KAKAO_NATURAL_KOREAN_TONE_EN
+              : channel === "shortform"
+                ? SHORTFORM_NATURAL_KOREAN_TONE_EN
+                : "";
   return ["## Natural Korean syntax", CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN, tone]
     .filter(Boolean)
     .join("\n\n");

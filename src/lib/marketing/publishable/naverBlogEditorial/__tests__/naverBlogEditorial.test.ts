@@ -231,7 +231,7 @@ function structureLlm() {
       },
     ],
     openingIntent: "familiar mixed-region frame then northern border reframe",
-    conclusionIntent: "perspective expansion with evidence limitation",
+    conclusionIntent: "concrete observation with evidence limitation",
     ctaIntent: null,
     faqPlan: [],
     searchIntent: "베트남 북부 국경 Dao족 nhà trình tường",

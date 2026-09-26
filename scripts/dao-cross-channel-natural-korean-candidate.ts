@@ -1,26 +1,32 @@
 /**
- * Dao cross-channel Natural Korean syntax review helper.
+ * Dao cross-channel Natural Korean + no-forced-abstract-synthesis review helper.
  *
  * Default: read existing package channel surfaces + scan patterns + contract wiring.
  * Does NOT overwrite production package artifacts.
  *
  *   npx tsx scripts/dao-cross-channel-natural-korean-candidate.ts
  *
- * Optional future: LIVE_GENERATE=1 can call channel writers (not required for this PR).
+ * Fresh channel regeneration is operator-driven after this PR lands — not run here.
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 import {
   CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN,
+  CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_EN,
   CROSS_CHANNEL_REVIEW_SCAN_PATTERNS,
   countCrossChannelReviewPatternHits,
 } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import { readCanonicalAssetFromPackage } from "@/lib/marketing/canonicalAsset/persistence";
+import { INSTAGRAM_CAPTION_WRITER_SOUL } from "@/lib/marketing/publishable/instagramEditorial/hermesIdentity";
 import { NAVER_BAND_COPY_WRITER_SOUL } from "@/lib/marketing/publishable/naverBandCopy/hermesIdentity";
-import { NAVER_BLOG_COPY_WRITER_SOUL } from "@/lib/marketing/publishable/naverBlogEditorial/hermesIdentity";
+import {
+  NAVER_BLOG_COPY_WRITER_SOUL,
+  NAVER_BLOG_STRUCTURE_PLANNER_SOUL,
+} from "@/lib/marketing/publishable/naverBlogEditorial/hermesIdentity";
 import { kakaoChannelWritingContract } from "@/lib/marketing/publishable/kakao_channel/writingContract";
 import { SHORTFORM_NARRATION_WRITING_CONTRACT } from "@/lib/marketing/publishable/shortform/writingContract";
+import { THREADS_COPY_WRITER_SOUL } from "@/lib/marketing/publishable/threadsCopy/hermesIdentity";
 
 const PKG =
   process.env.DAO_PACKAGE_ROOT ??
@@ -50,7 +56,6 @@ function channelBodies(pkg: string): Record<string, string> {
     const body = pub?.[ch]?.body?.trim();
     if (body) out[ch] = body;
   }
-  // Prefer specialist artifacts when present
   const blog = readJson(join(pkg, "context/naver-blog-copy.json")) as { bodyMarkdown?: string } | null;
   if (blog?.bodyMarkdown?.trim()) out.naver_blog = blog.bodyMarkdown;
   const band = readJson(join(pkg, "context/naver-band-copy.json")) as { body?: string } | null;
@@ -62,22 +67,41 @@ function channelBodies(pkg: string): Record<string, string> {
   return out;
 }
 
+function closingTail(text: string, n = 2): string {
+  const parts = text
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.slice(-n).join("\n");
+}
+
 function main(): void {
   mkdirSync(OUT_DIR, { recursive: true });
   const asset = readCanonicalAssetFromPackage(PKG);
   const bodies = channelBodies(PKG);
   const scans: Record<string, Record<string, number>> = {};
+  const closingSnippets: Record<string, string> = {};
   for (const [ch, body] of Object.entries(bodies)) {
     scans[ch] = countCrossChannelReviewPatternHits(body);
+    closingSnippets[ch] = closingTail(body, 2);
   }
 
   const wiring = {
+    sharedNoForcedAbstractSynthesis:
+      CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN.includes(
+        CROSS_CHANNEL_NO_FORCED_ABSTRACT_SYNTHESIS_EN,
+      ),
+    threadsSoulHasContract: /NATURAL KOREAN SYNTAX/.test(THREADS_COPY_WRITER_SOUL),
+    threadsConcreteEnding: /concrete observation/.test(THREADS_COPY_WRITER_SOUL),
+    captionSoulHasContract: /NATURAL KOREAN SYNTAX/.test(INSTAGRAM_CAPTION_WRITER_SOUL),
+    blogStructureNoRequiredPerspectiveExpansion:
+      /Do NOT require perspective expansion/.test(NAVER_BLOG_STRUCTURE_PLANNER_SOUL),
     blogSoulHasContract: /NATURAL KOREAN SYNTAX/.test(NAVER_BLOG_COPY_WRITER_SOUL),
-    bandSoulHasContract: /NATURAL KOREAN SYNTAX/.test(NAVER_BAND_COPY_WRITER_SOUL),
-    kakaoContractHas: /NATURAL KOREAN SYNTAX/.test(
+    bandConcreteTakeaway: /One concrete takeaway or observation/.test(NAVER_BAND_COPY_WRITER_SOUL),
+    kakaoArchetypeAware: /ARCHETYPE-AWARE CLOSE/.test(
       kakaoChannelWritingContract({ hasApprovedCanonicalAsset: true }),
     ),
-    shortformContractHas: /NATURAL KOREAN SYNTAX/.test(SHORTFORM_NARRATION_WRITING_CONTRACT),
+    shortformConcreteArc: /hook → concrete fact\/context/.test(SHORTFORM_NARRATION_WRITING_CONTRACT),
     sharedContractChars: CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN.length,
     reviewPatterns: CROSS_CHANNEL_REVIEW_SCAN_PATTERNS.map((p) => p.id),
   };
@@ -95,16 +119,31 @@ function main(): void {
       : null,
     channelsPresent: Object.keys(bodies),
     patternScans: scans,
+    closingSnippetsForManualReview: closingSnippets,
     wiring,
+    regenerationPrep: {
+      productionOverwrite: false,
+      freshCandidateReady: true,
+      manualReviewChannels: [
+        "threads",
+        "instagram_caption",
+        "instagram_card_copy",
+        "naver_blog",
+        "naver_band",
+        "kakao_channel",
+        "shortform",
+      ],
+      focus: "closing 1–2 sentences vs prior abstract synthesis",
+    },
     note:
-      "Qualitative scan only — zero-count is NOT required. Fresh LLM generation left for operator LIVE_GENERATE (not run by default; no production overwrite).",
+      "Qualitative scan only — zero-count is NOT required. Do NOT overwrite production package. Fresh LLM regen is operator-driven after merge/deploy.",
     liveGenerate: process.env.LIVE_GENERATE === "1" ? "requested_but_not_implemented_in_this_pr_default" : "skipped",
   };
 
   writeFileSync(join(OUT_DIR, "review-report.json"), `${JSON.stringify(report, null, 2)}\n`);
 
   const md = [
-    "# Dao Cross-Channel Natural Korean — Review Report",
+    "# Dao Cross-Channel — Natural Korean + No Forced Abstract Synthesis",
     "",
     `Package: \`${PKG}\``,
     "",
@@ -113,26 +152,30 @@ function main(): void {
       ? `- ${asset.titleKo} (v${asset.version}, ${asset.status})`
       : "- missing",
     "",
-    "## Channel surfaces scanned",
+    "## Wiring (instruction readiness)",
+    ...Object.entries(wiring).map(([k, v]) => `- ${k}: ${JSON.stringify(v)}`),
+    "",
+    "## Channel surfaces scanned (existing — not overwritten)",
     ...Object.keys(bodies).map((ch) => `- ${ch} (${bodies[ch].length} chars)`),
     "",
+    "## Closing tails (manual review focus)",
+    ...Object.entries(closingSnippets).map(([ch, snip]) => `### ${ch}\n\`\`\`\n${snip}\n\`\`\``),
+    "",
     "## Pattern hits (informational — not pass/fail)",
+    ...Object.entries(scans).map(
+      ([ch, hits]) =>
+        `- **${ch}**: ${Object.entries(hits)
+          .filter(([, n]) => n > 0)
+          .map(([id, n]) => `${id}=${n}`)
+          .join(", ") || "(none)"}`,
+    ),
     "",
-    "| channel | " + CROSS_CHANNEL_REVIEW_SCAN_PATTERNS.map((p) => p.id).join(" | ") + " |",
-    "|---|---" + CROSS_CHANNEL_REVIEW_SCAN_PATTERNS.map(() => "").join("|---") + "|",
-    ...Object.entries(scans).map(([ch, hits]) => {
-      return `| ${ch} | ${CROSS_CHANNEL_REVIEW_SCAN_PATTERNS.map((p) => hits[p.id] ?? 0).join(" | ")} |`;
-    }),
-    "",
-    "## Contract wiring",
-    `- Blog SOUL: ${wiring.blogSoulHasContract}`,
-    `- Band SOUL: ${wiring.bandSoulHasContract}`,
-    `- Kakao writing contract: ${wiring.kakaoContractHas}`,
-    `- Shortform writing contract: ${wiring.shortformContractHas}`,
-    "",
-    "Production overwrite: **not performed**.",
+    "## Regeneration",
+    "- Production package overwrite: **forbidden** in this PR",
+    "- Fresh candidate generation: prepare after checks PASS; compare closing 1–2 sentences",
     "",
   ].join("\n");
+
   writeFileSync(join(OUT_DIR, "review-report.md"), md);
   console.log(JSON.stringify({ outDir: OUT_DIR, channels: Object.keys(bodies), wiring }, null, 2));
 }

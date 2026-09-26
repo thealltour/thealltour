@@ -37,7 +37,7 @@ function buildShortformPrompt(
     channel: "shortform",
     writingContract: [
       SHORTFORM_NARRATION_WRITING_CONTRACT,
-      "Structure: hook → payoff → concrete useful information → close/action.",
+      "Structure: hook → concrete fact/context → concrete contrast/detail → natural close (close/action optional; payoff is semantic, not a forced abstract sentence).",
       "If hook promises N things / one rule / a checklist, body MUST deliver it — without changing the approved Story.",
       formatCorePackPromptBlock(input),
       formatQualityRevisionPromptBlock(input.qualityRevision),

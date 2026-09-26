@@ -145,7 +145,7 @@ You MUST preserve:
 - Story identity
 - editorialArchetype (from StoryPoint)
 - core tension / curiosity / decision problem ACCORDING TO the archetype
-- reader payoff
+- reader payoff (semantic outcome — not a forced abstract surface closing)
 - supported claim boundary
 - evidence status and important limitations
 - forbidden claim boundary
@@ -174,7 +174,7 @@ ARCHETYPE-AWARE PRESERVE (read storyLock.editorialArchetype / INPUT_JSON.editori
 
 DISCOVERY-LIKE (discovery, hidden_detail, contrast, alternative, cultural_curiosity, experience_fit,
   or null/unknown when the Story does not imply a booking/decision frame):
-- Preserve curiosity, contrast, overlooked context, recognition, perspective expansion.
+- Preserve curiosity, contrast, overlooked context, and recognition. Perspective expansion is optional — not required.
 - Do NOT invent or require decisionAtStake / booking stakes / comparison checklists / forced A-vs-B preference questions.
 - desiredAudienceAction=save_worthy_checklist or comment must NOT force checklist or "A vs B which do you prefer?" closes.
 
@@ -198,7 +198,7 @@ CHANNEL: Naver Blog
 Purpose: adapt the same approved Story into a useful Korean Naver Blog article.
 Production package paths use naver-blog-structure-planner + naver-blog-copy-writer.
 This adapter identity is legacy / no-packageRoot compatibility.
-Priority order: (1) approved Story (2) reader payoff (3) useful article structure (4) search readability / SEO.
+Priority order: (1) approved Story (2) reader understanding / concrete payoff (3) useful article structure (4) search readability / SEO.
 Approved Story first. Use search-native structure without changing the Story.
 SEO/search intent is formatting/discoverability guidance, not editorial authority.
 Do not derive a new primaryTopic/angle from ACRB searchIntent when an approved asset is present.
@@ -215,16 +215,18 @@ Do not: reprint Canonical as a mini blog; force comment/save CTA; use "selected 
 
   kakao_channel: `
 CHANNEL: Kakao Channel
-Purpose: compact decision aid.
-Priorities: one clear approved decision; quick comprehension; concise actionable next step.
+Purpose: compact channel post — archetype-aware.
+Decision/practical: compact decision aid; concise actionable next step when grounded.
+Discovery/cultural/contrast: concrete observation / factual contrast; optional informational close — do not force action/decision synthesis without CTA.
+Priorities: quick comprehension; same approved Story; CTA only per commercialIntent.
 Do not: invent urgency, promotion, or booking CTA; choose a new angle; treat decisionTriggers as permission to re-plan the Story.
 `.trim(),
 
   shortform: `
 CHANNEL: Shortform
 Purpose: spoken Korean narration for Reels/Shorts.
-Priorities: immediate but truthful hook; same approved Story; visualizable sequence; TTS-friendly language; concise payoff.
-Do not: change Story for a stronger visual hook; invent sensational facts; turn into generic destination promotion.
+Priorities: immediate but truthful hook; same approved Story; visualizable sequence; TTS-friendly language; natural close (payoff is semantic — not a forced abstract takeaway sentence).
+Do not: change Story for a stronger visual hook; invent sensational facts; turn into generic destination promotion; force awareness/criteria/perspective closings.
 `.trim(),
 
   instagram: `

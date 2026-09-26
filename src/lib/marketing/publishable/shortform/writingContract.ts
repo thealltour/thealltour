@@ -20,7 +20,9 @@ export const SHORTFORM_NARRATION_WRITING_CONTRACT = [
 - 긴 문어체 보고서 문장
 - 원문에 없는 예약 타이밍·미래 가격·자극적 사실 발명
 
-권장(강제 아님): hook → 유용한 맥락 → 1–3개 포인트 → 짧은 takeaway/CTA
+권장(강제 아님): hook → concrete fact/context → concrete contrast/detail → natural close
+close/action은 optional. payoff는 semantic outcome이며 별도 추상 문장으로 말할 필요 없음.
+소리 내어 읽었을 때 부자연스러운 인식하다/기준을 얻다/시선을 넓히다 류의 추상 결론을 억지로 만들지 않는다.
 commercialIntent가 informational이면 판매 CTA 금지.
 
 JSON only:

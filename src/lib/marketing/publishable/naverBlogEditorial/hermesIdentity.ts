@@ -48,7 +48,7 @@ ContentPlan / media-brief creative fields are NOT authority.
 
 ## Discovery vs decision
 
-If editorialArchetype is discovery: prefer curiosity / cultural context / concrete detail / perspective expansion.
+If editorialArchetype is discovery: prefer curiosity / concrete context / concrete detail / reader understanding (what differs, what is interesting, what can be verified). Do NOT require perspective expansion as a structural value.
 Do NOT force checklist, A-vs-B comparison tables, "추천 대상", "현명한 선택", or save/compare CTAs.
 Decision/practical archetypes may use criteria structures when grounded in Canonical.
 
@@ -56,7 +56,7 @@ Decision/practical archetypes may use criteria structures when grounded in Canon
 
 - Do not invent facts, visitability, experiences, prices, or locations beyond evidence.
 - Mixed-region Canonical examples (e.g. 다낭·푸꾸옥·호치민·하노이) must NOT be collapsed into invented categories like "남부 베트남" / "남부 프레임".
-- Prefer Canonical-supported wording (생활문화, 건축적 맥락, 공식 기록).
+- Prefer Canonical-supported concrete wording (what/where/who/how from the asset). Avoid abstract section headings that force perspective slogans.
 - Forbidden interpretive inventions: "관광 광고가 아니라", "현지인의 진짜 삶", "수백 년 이어온", "꼭 가봐야 할".
 
 ## FAQ
@@ -123,7 +123,8 @@ Do not reorder, drop, or invent sections. You may compress/expand prose within e
 - Discovery: curiosity and concrete detail; no forced checklist/A-vs-B/save CTAs
 - Evidence-safe: no invented geographic categories ("남부 프레임"), no unsupported cultural claims
 - FAQ answers only for structure faqPlan items that are answerable
-- CTA: follow structure ctaIntent; informational discovery → non-sales closing (perspective / limitation ok)
+- CTA: follow structure ctaIntent; informational discovery → non-sales closing
+- Non-sales closing may be: concrete observation, factual contrast, limitation, unanswered question, or concise takeaway — perspective synthesis is NOT required
 
 ${buildCrossChannelNaturalKoreanSoulSection("naver_blog")}
 

@@ -71,19 +71,21 @@ describe("Cross-Channel Natural Korean Syntax", () => {
     );
   });
 
-  it("C. anti-over-nominalization guidance (instructional examples)", () => {
-    expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(/인식하는 것은/);
+  it("C. anti-over-nominalization guidance (pattern-first, minimal examples)", () => {
+    expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(/ANTI-OVER-NOMINALIZATION/);
     expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(
-      /지역마다 풍경과 생활 모습이 꽤 다릅니다/,
+      /Prefer saying what differs/,
     );
     for (const s of CROSS_CHANNEL_TRANSLATIONESE_SCAFFOLDS) {
       expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toContain(s);
     }
+    // Do not repeat long bad samples as lexical seeds
+    expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).not.toMatch(
+      /베트남을 단일한 휴양지가 아니라/,
+    );
   });
 
-  it("D. active/direct Korean preference (passive not banned)", () => {
-    expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(/ACTIVE \/ DIRECT PREFERENCE/);
-    expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(/채워져 있습니다/);
+  it("D. passive allowed when natural (no long passive inventory)", () => {
     expect(CROSS_CHANNEL_NATURAL_KOREAN_SYNTAX_CONTRACT_EN).toMatch(
       /Passive is allowed when it is the natural Korean choice/,
     );

@@ -169,14 +169,19 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
 
   it("D: concrete-before-abstract rule", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/CONCRETE-BEFORE-ABSTRACT/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/문화적 맥락을 읽어내게 됩니다/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/다른 주거 방식과 생활 모습/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Prefer naming what differs/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/Keep examples minimal/);
+    // Strong negative phrase seeds intentionally reduced (lexical seed risk)
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/문화적 맥락을 읽어내게 됩니다/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/여행의 리듬이 달라집니다/);
   });
 
   it("E: noun-stack avoidance guidance", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/KOREAN NOUN-STACK/);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/생활문화 기록/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/휴양 프레임/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/문화적 맥락/);
+    // Do not re-seed the strongest Dao bad phrases in the inventory
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/휴양 프레임 밖에서 읽는 생활 리듬/);
   });
 
   it("F: interpretive verb guidance", () => {
@@ -229,7 +234,8 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
   it("J: closing-card natural-language rule", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/CLOSING CARD/);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/forced philosophical synthesis/i);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/휴양 프레임 밖에서 읽는 생활 리듬/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/concrete fact, contrast, or observation/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/휴양 프레임 밖에서 읽는 생활 리듬/);
     expect(mobileDensityGuidanceForRole("closing").notes.join(" ")).toMatch(/frame\/rhythm/i);
   });
 

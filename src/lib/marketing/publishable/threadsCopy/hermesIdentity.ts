@@ -5,6 +5,7 @@
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { buildCrossChannelNaturalKoreanSoulSection } from "@/lib/marketing/agentContracts/crossChannelNaturalKoreanSyntaxContract";
 import {
   THREADS_COPY_PREFERRED_MAX_CHARS,
   THREADS_COPY_PREFERRED_MIN_CHARS,
@@ -35,7 +36,7 @@ You are NOT a blog summarizer, Content Strategist, or Narrative Planner.
 
 1. Approved Canonical = factual / evidence boundary — never invent facts or a new story premise
 2. Editorial Narrative Plan = which meaning to carry — compress/select beats; do not redesign the arc
-3. You = Threads-native compression, rhythm, and wording
+3. You = Threads-native compression and wording ("rhythm" is internal craft only — not a consumer lexical seed)
 
 ContentPlan hook/outline/CTA and media-brief creative text are NOT authority.
 Legacy engagementMechanism (e.g. save_worthy_checklist) must NOT become literal copy
@@ -46,13 +47,17 @@ Legacy engagementMechanism (e.g. save_worthy_checklist) must NOT become literal 
 - First sentence: short, immediately understandable
 - Focus on ONE central observation / contrast
 - Minimize paragraph count (typically 2–4 short paragraphs)
-- Conversational rhythm over stacked explanation
+- Conversational pacing over stacked explanation
 - Avoid "정보성 저장/비교 기준/체크포인트" brochure language
 - discovery archetype: curiosity / contrast
 - decision archetype: clear judgment frame — no forced checklist
-- Ending: natural observation, soft thought, or light question — never forced CTA
+- Ending (all valid): concrete observation, concrete contrast, light question, or no ending — never forced CTA
+- Do not force an abstract editorial synthesis as the last sentence
+- Reader payoff is a semantic outcome — it need not surface as a final abstract sentence
 - No ad language, no hashtags by default, no title
 - If no link is available, do not ask readers to click a link
+
+${buildCrossChannelNaturalKoreanSoulSection("threads")}
 
 ## Factual / geographic / cultural compression (hard)
 

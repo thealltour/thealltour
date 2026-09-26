@@ -139,6 +139,12 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       optional: ["canonical.factualBoundary", "editorialNarrative.storySequence"],
     },
     output: { artifactId: INSTAGRAM_CAPTION_CONTRACT },
+    docs: {
+      notes: [
+        ...CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES,
+        "CHANNEL TONE: Instagram caption — hook/context/evidence-safe explanation/optional CTA; promotional framing OK; no forced abstract closing.",
+      ],
+    },
   },
   {
     profileId: "instagram-visual-role-architect",
@@ -263,7 +269,13 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       optional: ["canonical.factualBoundary"],
     },
     output: { artifactId: THREADS_COPY_CONTRACT },
-    docs: { notes: ["Phase 3A metadata only — channel copy behavior unchanged."] },
+    docs: {
+      notes: [
+        "Threads Copy Specialist — conversational body.",
+        ...CROSS_CHANNEL_NATURAL_KOREAN_SEMANTIC_NOTES,
+        "CHANNEL TONE: concrete observation/contrast/light question/none are valid endings; rhythm is internal craft only.",
+      ],
+    },
   },
   {
     profileId: "naver-blog-structure-planner",
@@ -278,7 +290,12 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       optional: ["canonical.factualBoundary"],
     },
     output: { artifactId: NAVER_BLOG_STRUCTURE_PLAN_CONTRACT },
-    docs: { notes: ["Phase 3A metadata only."] },
+    docs: {
+      notes: [
+        "Structure owns section plan/titles/FAQ intent — not full article body.",
+        "Discovery structure preference: curiosity / concrete context / concrete detail / reader understanding — perspective expansion is NOT a required structural value.",
+      ],
+    },
   },
   {
     profileId: "naver-blog-copy-writer",

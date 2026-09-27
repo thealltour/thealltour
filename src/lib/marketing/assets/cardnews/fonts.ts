@@ -81,11 +81,20 @@ function woffToSfnt(woff: Buffer): Buffer {
 
 let cached: CardNewsFontFiles | null = null;
 
+function pretendardPackageRoot(): string {
+  const fromCwd = join(process.cwd(), "node_modules", "pretendard");
+  if (existsSync(join(fromCwd, "package.json"))) return fromCwd;
+  // Turbopack rewrites a static require.resolve() into a numeric module id in server bundles,
+  // so this fallback only yields a path in unbundled runtimes (vitest, tsx scripts).
+  const resolved: unknown = require.resolve("pretendard/package.json");
+  if (typeof resolved !== "string") {
+    throw new Error(`Cannot locate pretendard package (cwd=${process.cwd()})`);
+  }
+  return join(resolved, "..");
+}
+
 function pretendardWoff(fileName: string): string {
-  // Resolve via package.json so Turbopack does not try to bundle .woff as modules
-  // (dynamic require.resolve("…/*.woff") pulls the whole static/woff directory into the graph).
-  const packageRoot = join(require.resolve("pretendard/package.json"), "..");
-  return join(packageRoot, "dist", "web", "static", "woff", fileName);
+  return join(pretendardPackageRoot(), "dist", "web", "static", "woff", fileName);
 }
 
 export function ensureCardNewsFonts(): CardNewsFontFiles {

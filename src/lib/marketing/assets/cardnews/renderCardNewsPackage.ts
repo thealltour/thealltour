@@ -104,8 +104,21 @@ export type RenderCardNewsPackageInput = {
   aspectRatio?: CardNewsAspectRatio | null;
   /** Precomputed presentation plan; if absent, deterministic layout fallback is used. */
   presentationPlan?: CardPresentationPlan | null;
+  /** Editorial carousel roles by cardId — preferred Presentation input when present. */
+  editorialRolesByCardId?: Record<string, string>;
   /** Persist presentation plan to package when rendering (default true when package writable). */
   persistPresentationPlan?: boolean;
+  /**
+   * When false, do not plan/write `context/media-brief.json`.
+   * Use for in-memory cardPlan copy overlays that must not replace the on-disk
+   * legacy brief (sha guard + dual-SoT). Default true.
+   */
+  persistMediaBrief?: boolean;
+  /**
+   * Manifest `mediaBrief` when `persistMediaBrief` is false.
+   * Prefer the on-disk brief so manifest stays aligned with the artifact.
+   */
+  manifestMediaBrief?: MediaBrief;
   now?: Date;
 };
 
@@ -187,6 +200,8 @@ function resolvePresentationPlanForRender(input: {
   visualIdsByCard: Record<string, string | null>;
   graphicOnly: boolean;
   presentationPlan?: CardPresentationPlan | null;
+  /** Prefer editorial carousel roles when available (Presentation input). */
+  editorialRolesByCardId?: Record<string, string>;
 }): CardPresentationPlan {
   // Phase 3C: assert policy even on reuse; missing/mismatched plan → deterministic_fallback.
   assertCardPresentationArtifactContractParity();
@@ -216,7 +231,9 @@ function resolvePresentationPlanForRender(input: {
     sourceInstagramFingerprint: sourceFp,
     cards: input.cards.map((card, i) => ({
       cardId: card.cardId,
-      role: legacyRoleToPresentationHint(card.role),
+      role:
+        input.editorialRolesByCardId?.[card.cardId] ??
+        legacyRoleToPresentationHint(card.role),
       hasVisual: !input.graphicOnly && Boolean(input.visuals[card.cardId]),
       visualId: visualIds[i],
       headlineHint: card.headline,
@@ -348,6 +365,7 @@ export async function renderCardNewsPackage(
     visualIdsByCard,
     graphicOnly,
     presentationPlan: input.presentationPlan,
+    editorialRolesByCardId: input.editorialRolesByCardId,
   });
   const presentationByCard = new Map(presentationPlan.cards.map((c) => [c.cardId, c]));
 
@@ -394,15 +412,16 @@ export async function renderCardNewsPackage(
     }
   }
 
-  const planned: PlannedPackageArtifact[] = [
-    {
+  const planned: PlannedPackageArtifact[] = [];
+  if (input.persistMediaBrief !== false) {
+    planned.push({
       relativePath: "context/media-brief.json",
       content: stableJsonBytes(brief),
       kind: "media_brief",
       origin: "media_brief",
       mediaType: "application/json",
-    },
-  ];
+    });
+  }
 
   const cardMetas: CardNewsRenderCardMeta[] = specs.map((spec, offset) => {
     const relativePath = cardRelativePath(spec.index, geometry);
@@ -508,10 +527,14 @@ export async function renderCardNewsPackage(
 
   const merged = mergeArtifacts(existingManifest?.artifacts ?? [], written);
   const createdAt = existingManifest?.createdAt ?? timestamp;
+  const manifestBrief =
+    input.persistMediaBrief === false
+      ? (input.manifestMediaBrief ?? existingManifest?.mediaBrief ?? brief)
+      : brief;
   const identical =
     existingManifest != null &&
     artifactsMatch(existingManifest.artifacts, merged) &&
-    existingManifest.mediaBrief.candidateId === brief.candidateId;
+    existingManifest.mediaBrief.candidateId === manifestBrief.candidateId;
 
   const manifest = parseMarketingAssetManifest({
     contract: MARKETING_ASSET_MANIFEST_CONTRACT,
@@ -521,7 +544,7 @@ export async function renderCardNewsPackage(
     createdAt,
     updatedAt: identical ? existingManifest.updatedAt : timestamp,
     stage: "source",
-    mediaBrief: brief,
+    mediaBrief: manifestBrief,
     artifacts: merged,
     provenance: existingManifest?.provenance ?? {
       exportedFrom: "completed-marketing-candidate",

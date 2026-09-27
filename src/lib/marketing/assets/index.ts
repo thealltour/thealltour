@@ -105,6 +105,8 @@ export {
   INSTAGRAM_CARDNEWS_ASPECT_RATIOS,
   applyInstagramCardnewsToBrief,
   buildInstagramCardnewsCards,
+  diffInstagramCardPlanCopyParity,
+  resolveInstagramCardnewsRenderBrief,
   resolveInstagramCardnewsSkip,
 } from "@/lib/marketing/assets/cardnews/instagramCards";
 export {

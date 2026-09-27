@@ -65,8 +65,8 @@ describe("presentation contract", () => {
     expect(plan.cards.map((c) => c.template)).toEqual([
       "cover_full_bleed",
       "text_statement",
-      "photo_top_story",
-      "evidence_detail",
+      "photo_overlay_editorial",
+      "photo_overlay_editorial",
       "closing_insight",
     ]);
     expect(plan.cards.map((c) => c.cardId)).toEqual(daoCards.map((c) => c.cardId));
@@ -178,7 +178,7 @@ describe("template geometry — no 904×300 strip", () => {
     expect(layout.image?.width).not.toBe(904);
   });
 
-  it("photo_top_story and evidence_detail cover ≥50% canvas", () => {
+  it("photo_overlay_editorial covers full canvas (≥80%)", () => {
     for (const card of [daoCards[2]!, daoCards[3]!]) {
       const plan = buildDeterministicCardPresentationPlan({
         assetId: "dao",
@@ -186,15 +186,34 @@ describe("template geometry — no 904×300 strip", () => {
         sourceInstagramFingerprint: "fp",
         cards: [card],
       });
+      expect(plan.cards[0]!.template).toBe("photo_overlay_editorial");
       const layout = resolveTemplateLayout({
         presentation: plan.cards[0]!,
         geometry: geo,
         hasVisual: true,
       });
-      expect(imageCoverageRatio(layout, geo)).toBeGreaterThanOrEqual(0.45);
-      expect(layout.image?.height ?? 0).toBeGreaterThan(500);
-      expect(layout.preserveAspectRatio).not.toMatch(/904/);
+      expect(layout.image).toEqual({ x: 0, y: 0, width: 1080, height: 1350, rx: 0 });
+      expect(imageCoverageRatio(layout, geo)).toBeGreaterThanOrEqual(0.8);
+      expect(layout.overlay?.mode).toBe("gradient_dark");
     }
+  });
+
+  it("evidence_detail remains available via inset textSafeArea hint", () => {
+    const plan = buildDeterministicCardPresentationPlan({
+      assetId: "dao",
+      assetVersion: 1,
+      sourceInstagramFingerprint: "fp",
+      cards: [
+        {
+          cardId: "card_ev",
+          role: "evidence_detail",
+          hasVisual: true,
+          visualId: "sv",
+          textSafeAreaHint: "inset framed detail for object study",
+        },
+      ],
+    });
+    expect(plan.cards[0]!.template).toBe("evidence_detail");
   });
 
   it("text_statement has no image band", () => {
@@ -366,7 +385,7 @@ describe("svg render — templates emit geometry", () => {
     expect(headlineTop - kickerBottom).toBeGreaterThanOrEqual(MIN_KICKER_HEADLINE_CLEAR_PX);
   });
 
-  it("without kicker, photo templates keep image→headline gap without empty kicker slot", () => {
+  it("without kicker, overlay templates keep full-bleed image and lower text band", () => {
     for (const cardInput of [daoCards[2]!, daoCards[3]!]) {
       const plan = buildDeterministicCardPresentationPlan({
         assetId: "dao",
@@ -374,6 +393,7 @@ describe("svg render — templates emit geometry", () => {
         sourceInstagramFingerprint: "fp",
         cards: [cardInput],
       });
+      expect(plan.cards[0]!.template).toBe("photo_overlay_editorial");
       const layoutNoKicker = resolveTemplateLayout({
         presentation: plan.cards[0]!,
         geometry: geo,
@@ -386,19 +406,48 @@ describe("svg render — templates emit geometry", () => {
         hasVisual: true,
         hasKicker: true,
       });
-      expect(layoutNoKicker.image).not.toBeNull();
-      const imageBottom = layoutNoKicker.image!.y + layoutNoKicker.image!.height;
+      expect(layoutNoKicker.image).toEqual({ x: 0, y: 0, width: 1080, height: 1350, rx: 0 });
+      expect(layoutNoKicker.overlay?.mode).toBe("gradient_dark");
       const headlineTop = estimateGlyphTop(
         layoutNoKicker.text.y,
         layoutNoKicker.text.headlinePreferred,
       );
-      expect(headlineTop - imageBottom).toBeGreaterThanOrEqual(MIN_IMAGE_TEXT_BAND_GAP_PX);
-      // No reserved kicker stack: headline sits higher than when kicker is present.
-      expect(layoutNoKicker.text.y).toBeLessThan(layoutWithKicker.text.y);
+      expect(headlineTop).toBeGreaterThan(geo.height * 0.4);
+      // Kicker path still resolves anchors without colliding glyphs.
+      if (layoutWithKicker.text.kickerY !== layoutWithKicker.text.y) {
+        const kickerBottom = estimateGlyphBottom(layoutWithKicker.text.kickerY, 20);
+        const hlTop = estimateGlyphTop(
+          layoutWithKicker.text.y,
+          layoutWithKicker.text.headlinePreferred,
+        );
+        expect(hlTop - kickerBottom).toBeGreaterThanOrEqual(MIN_KICKER_HEADLINE_CLEAR_PX);
+      }
     }
   });
-});
 
+  it("photo_top_story still keeps image→headline gap when selected", () => {
+    const presentation = {
+      cardId: "card-pt",
+      template: "photo_top_story" as const,
+      imagePlacement: "top" as const,
+      imageHeightRatio: 0.48,
+      cropMode: "cover" as const,
+      focalAlignment: "center" as const,
+      textPlacement: "bottom" as const,
+      overlayMode: "none" as const,
+      textDensity: "standard" as const,
+    };
+    const layout = resolveTemplateLayout({
+      presentation,
+      geometry: geo,
+      hasVisual: true,
+      hasKicker: false,
+    });
+    const imageBottom = layout.image!.y + layout.image!.height;
+    const headlineTop = estimateGlyphTop(layout.text.y, layout.text.headlinePreferred);
+    expect(headlineTop - imageBottom).toBeGreaterThanOrEqual(MIN_IMAGE_TEXT_BAND_GAP_PX);
+  });
+});
 function escapeSnippet(value: string): string {
   return value
     .replaceAll("&", "&amp;")

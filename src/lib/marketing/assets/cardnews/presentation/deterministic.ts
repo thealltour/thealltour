@@ -37,24 +37,13 @@ function mapLegacyRole(role: string): string {
 function pickTemplate(card: PresentationCardInput): CardPresentationTemplate {
   const role = mapLegacyRole(card.role);
   const hasVisual = card.hasVisual;
-  const headline = (card.headlineHint ?? "").toLowerCase();
+  const safe = (card.textSafeAreaHint ?? "").toLowerCase();
 
   if (
     hasVisual &&
     (role === "hook_cover" || role === "cover" || role.includes("hook"))
   ) {
     return "cover_full_bleed";
-  }
-  if (
-    hasVisual &&
-    (role === "evidence_detail" ||
-      card.visualMode === "object_or_detail" ||
-      /nhà|trình|tường|흙다짐|건축|가옥|architecture|detail/i.test(headline))
-  ) {
-    return "evidence_detail";
-  }
-  if (hasVisual && (role === "evidence" || role.includes("evidence"))) {
-    return "photo_top_story";
   }
   if (
     !hasVisual &&
@@ -65,18 +54,23 @@ function pickTemplate(card: PresentationCardInput): CardPresentationTemplate {
   if (!hasVisual) {
     return "text_statement";
   }
-  if (role === "closing" || role === "cta") {
-    return "photo_overlay_editorial";
+
+  // Keep evidence_detail available for explicit inset/framed advisory — not role-forced.
+  if (
+    safe.includes("inset") ||
+    safe.includes("framed detail") ||
+    safe.includes("evidence frame") ||
+    safe.includes("object frame")
+  ) {
+    return "evidence_detail";
   }
-  // textSafeArea lower third → prefer photo_top (text bottom on solid) or overlay-bottom cover-like
-  const safe = (card.textSafeAreaHint ?? "").toLowerCase();
-  if (safe.includes("lower") || safe.includes("bottom")) {
-    return "photo_top_story";
-  }
-  if (safe.includes("upper") || safe.includes("top")) {
+
+  // Default image-backed story family: full-bleed lower-third overlay.
+  // Includes reframe / context / evidence / evidence_detail roles when a visual exists.
+  if (safe.includes("upper") || safe.includes("top half") || safe.includes("keep lower busy")) {
     return "photo_bottom_story";
   }
-  return "photo_top_story";
+  return "photo_overlay_editorial";
 }
 
 function presentationForCard(card: PresentationCardInput): CardPresentation {
@@ -95,7 +89,8 @@ function presentationForCard(card: PresentationCardInput): CardPresentation {
         focalAlignment: "center",
         textPlacement: "overlay-bottom",
         overlayMode: "gradient_dark",
-        textDensity: "compact",
+        // v2.6: same mobile-readable density family as overlay story cards.
+        textDensity: "standard",
       };
     case "evidence_detail":
       return {
@@ -134,7 +129,8 @@ function presentationForCard(card: PresentationCardInput): CardPresentation {
         focalAlignment: "center",
         textPlacement: "overlay-bottom",
         overlayMode: "gradient_dark",
-        textDensity: "compact",
+        // Overlay story + cover share the mobile-readable standard density family.
+        textDensity: "standard",
       };
     case "closing_insight":
       return {

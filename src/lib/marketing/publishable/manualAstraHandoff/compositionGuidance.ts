@@ -25,18 +25,18 @@ export function buildCompositionGuidance(visual: SharedVisual): string {
   const mode = visual.visualMode;
 
   if (family === "object_detail" || mode === "object_or_detail") {
-    return "Detail-forward framing with enough environmental context to understand the subject; avoid an overly tight crop that leaves no quiet edge for overlay.";
+    return "Detail-forward framing with enough environmental context; keep primary texture in center/upper field and leave the lower third quiet for Korean overlay text.";
   }
   if (family === "map_context" || mode === "map_context") {
     return "Clear geographic/context framing; keep labels out of the image (no baked map typography).";
   }
   if (family === "subject_detail") {
-    return "Subject-forward editorial framing with restrained commercial tone; leave one quiet edge for Korean overlay text.";
+    return "Subject-forward editorial framing with restrained commercial tone; keep primary subject center/upper and leave the lower third uncluttered for Korean overlay.";
   }
   if (family === "context_cover" || mode === "editorial_photo") {
-    return "Strong primary subject/context, uncluttered composition, natural lighting; reserve a clean area for card headline overlay.";
+    return "Strong primary subject/context in center/upper field, uncluttered composition, natural lighting; reserve a quiet lower third for large Korean headline/body overlay.";
   }
-  return "Clean travel-editorial composition with a clear primary subject and restrained commercial tone.";
+  return "Clean travel-editorial composition with a clear primary subject (center/upper) and a quiet lower third for Korean editorial overlay; restrained commercial tone.";
 }
 
 export function buildTextSafeArea(visual: SharedVisual): string {
@@ -44,13 +44,15 @@ export function buildTextSafeArea(visual: SharedVisual): string {
     return "Keep composition clean; no mandatory text overlay area (Threads-oriented usage).";
   }
   const family = normalizeRoleFamily(visual.role);
+  const lowerThird =
+    "Keep the lower third sufficiently uncluttered for a large Korean headline/body overlay. Avoid placing the primary subject or critical detail directly behind the lower text-safe region.";
   if (family === "object_detail" || visual.visualMode === "object_or_detail") {
-    return "Keep the central detail clear and leave one edge visually quiet for Korean card text.";
+    return `${lowerThird} Keep the central material/detail readable in the middle/upper frame; do not rely on the lower third for the primary texture.`;
   }
-  if (family === "context_cover" || family === "information") {
-    return "Leave a clean upper-third area for Korean headline overlay; avoid placing critical faces/details under the expected text block.";
+  if (family === "context_cover" || family === "information" || family === "subject_detail") {
+    return `${lowerThird} Prefer primary subject/context in the center or upper field so the lower overlay band stays quiet.`;
   }
-  return "Preserve one clean region for Korean overlay text; do not bake any text into the image.";
+  return `${lowerThird} Do not bake any text, logo, or signage into the image.`;
 }
 
 export function batchConsistencyIntent(archetype: string | null | undefined): string {

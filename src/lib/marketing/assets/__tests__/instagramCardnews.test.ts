@@ -14,6 +14,8 @@ import { renderCardNewsPackage } from "@/lib/marketing/assets/cardnews/renderCar
 import {
   buildInstagramCardnewsCards,
   applyInstagramCardnewsToBrief,
+  diffInstagramCardPlanCopyParity,
+  resolveInstagramCardnewsRenderBrief,
   resolveInstagramCardnewsSkip,
 } from "@/lib/marketing/assets/cardnews/instagramCards";
 import { renderInstagramCardnewsForPackage } from "@/lib/marketing/assets/cardnews/instagramCardnews";
@@ -23,6 +25,7 @@ import {
   PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
   type PublishableChannelContent,
   type PublishableContentBundle,
+  type PublishableInstagramCardPlan,
 } from "@/lib/marketing/publishable/contracts";
 
 const tempDirs: string[] = [];
@@ -261,13 +264,19 @@ describe("Instagram cardnews render step", () => {
     expect(result.renders).toEqual([]);
   });
 
-  it("skips when the brief carries no cardnews cards", async () => {
+  it("enables cardnews from publishable slides when disk brief has none", async () => {
+    // Export may lag; render must still resolve copy from publishable authority.
     const assetRoot = tempRoot();
     const packageRoot = seedPackage({ assetRoot, bundle: bundle(), cardnewsEnabled: false });
-    const result = await renderInstagramCardnewsForPackage({ packageRoot, assetRoot });
-    expect(result.status).toBe("skipped");
-    expect(result.skipReason).toBe("cardnews_not_in_brief");
-  });
+    const result = await renderInstagramCardnewsForPackage({
+      packageRoot,
+      assetRoot,
+      graphicOnly: true,
+      now: new Date("2026-09-14T00:00:00.000Z"),
+    });
+    expect(result.status).toBe("rendered");
+    expect(result.cardCount).toBeGreaterThanOrEqual(4);
+  }, 60_000);
 
   it("skips an incomplete package instead of throwing", async () => {
     const assetRoot = tempRoot();
@@ -277,5 +286,136 @@ describe("Instagram cardnews render step", () => {
     });
     expect(result.status).toBe("skipped");
     expect(result.skipReason).toBe("package_incomplete");
+  });
+});
+
+/** Dao production fixture — current Card Copy / cardPlan headlines. */
+const DAO_CURRENT_CARD_PLAN: PublishableInstagramCardPlan[] = [
+  {
+    cardId: "card-01",
+    role: "cover",
+    headline: "해변으로 기억하는 베트남",
+    body: "다낭·푸꾸옥·리조트 이미지가 먼저 떠오릅니다",
+    visualIntent: "",
+  },
+  {
+    cardId: "card-02",
+    role: "information",
+    headline: "북쪽으로 올라가면 풍경부터 달라집니다",
+    body: "산악 국경 지대의 리듬이 남부 휴양과 다릅니다",
+    visualIntent: "",
+  },
+  {
+    cardId: "card-03",
+    role: "information",
+    headline: "랑선 국경, Dao족 마을",
+    body: "험준한 지형 속 생활 공간이 이야기를 받칩니다",
+    visualIntent: "",
+  },
+  {
+    cardId: "card-04",
+    role: "evidence",
+    headline: "nhà trình tường, 흙다짐 가옥",
+    body: "판축(rammed-earth) 구조가 구체적 건축 단서입니다",
+    visualIntent: "",
+  },
+  {
+    cardId: "card-05",
+    role: "cta",
+    headline: "휴양 프레임 밖에서 읽히는 베트남",
+    body: "익숙한 해변 요약이 아니라 건축·생활의 payoff",
+    visualIntent: "",
+  },
+];
+
+/** Stale media-brief / slideHeadlines copy that must never win over cardPlan. */
+const DAO_STALE_HEADLINES = [
+  "해변과 리조트만 떠올렸다면",
+  "익숙한 베트남의 풍경 너머",
+  "북부 국경지대와 Dao족의 기록",
+  "전통 흙다짐 주택 ‘nhà trình tường’",
+  "베트남을 바라보는 또 하나의 기준",
+];
+
+const DAO_STALE_BRIEF_PHRASES = [
+  "도시 중심의 익숙한 베트남",
+  "우리가 주로 접해온",
+  "거주 배경과 생활문화",
+  "보여주는 면모",
+];
+
+describe("Instagram cardnews copy SoT parity", () => {
+  it("prefers cardPlan over stale slideHeadlines and media-brief cards", () => {
+    const brief = createCardNewsVerificationBrief();
+    brief.formats.cardnews.cards = DAO_STALE_HEADLINES.map((headline, i) => ({
+      cardId: `card_${i + 1}`,
+      role: (i === 0 ? "cover" : i === 4 ? "cta" : "information") as
+        | "cover"
+        | "information"
+        | "cta",
+      headline,
+      body: DAO_STALE_BRIEF_PHRASES[Math.min(i, DAO_STALE_BRIEF_PHRASES.length - 1)]!,
+      visualIntent: "",
+      evidenceRefs: [],
+    }));
+
+    const ig = instagramContent({
+      instagramMeta: {
+        hook: "hook",
+        hashtags: [],
+        slideHeadlines: DAO_STALE_HEADLINES,
+        cta: null,
+        altText: null,
+        cardPlan: DAO_CURRENT_CARD_PLAN,
+      },
+    });
+    const b = bundle({ instagram: ig });
+
+    const resolved = resolveInstagramCardnewsRenderBrief(brief, b);
+    const cards = resolved.formats.cardnews.cards;
+
+    expect(cards.map((c) => c.headline)).toEqual(DAO_CURRENT_CARD_PLAN.map((c) => c.headline));
+    expect(cards.map((c) => c.body)).toEqual(DAO_CURRENT_CARD_PLAN.map((c) => c.body));
+    expect(cards.map((c) => c.cardId)).toEqual(DAO_CURRENT_CARD_PLAN.map((c) => c.cardId));
+
+    for (const phrase of DAO_STALE_BRIEF_PHRASES) {
+      expect(cards.some((c) => c.headline.includes(phrase) || c.body.includes(phrase))).toBe(
+        false,
+      );
+    }
+    for (const stale of DAO_STALE_HEADLINES) {
+      expect(cards.some((c) => c.headline === stale)).toBe(false);
+    }
+
+    expect(diffInstagramCardPlanCopyParity(b, cards)).toEqual([]);
+  });
+
+  it("keeps legacy slideHeadlines fallback when cardPlan is absent", () => {
+    const cards = buildInstagramCardnewsCards(instagramContent());
+    expect(cards[0]!.headline).toBe("탑승 직전 체크");
+    expect(diffInstagramCardPlanCopyParity(bundle(), cards)).toEqual([]);
+  });
+
+  it("fails parity when resolved copy drifts from cardPlan", () => {
+    const ig = instagramContent({
+      instagramMeta: {
+        hook: "hook",
+        hashtags: [],
+        slideHeadlines: DAO_STALE_HEADLINES,
+        cta: null,
+        altText: null,
+        cardPlan: DAO_CURRENT_CARD_PLAN,
+      },
+    });
+    const mismatches = diffInstagramCardPlanCopyParity(bundle({ instagram: ig }), [
+      { cardId: "card_1", headline: DAO_STALE_HEADLINES[0]!, body: DAO_STALE_BRIEF_PHRASES[0]! },
+      ...DAO_CURRENT_CARD_PLAN.slice(1).map((c) => ({
+        cardId: c.cardId,
+        headline: c.headline,
+        body: c.body,
+      })),
+    ]);
+    expect(mismatches.some((m) => m.field === "headline")).toBe(true);
+    expect(mismatches.some((m) => m.field === "cardId")).toBe(true);
   });
 });

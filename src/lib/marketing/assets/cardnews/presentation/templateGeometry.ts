@@ -17,6 +17,17 @@ import type {
   CardTextDensity,
   CardTextPlacement,
 } from "@/lib/marketing/assets/cardnews/presentation/contracts";
+import {
+  preferredBodyPx,
+  preferredHeadlinePx,
+  TYPOGRAPHY_BODY_FILL_PAPER,
+} from "@/lib/marketing/assets/cardnews/typographyTokens";
+import {
+  OVERLAY_TEXT_INSETS,
+  PAPER_TEXT_INSETS,
+  overlayTextMaxWidth,
+  paperTextMaxWidth,
+} from "@/lib/marketing/assets/cardnews/overlayTextInsets";
 
 export type ImageBandGeometry = {
   x: number;
@@ -46,6 +57,11 @@ export type BrandPlacement = {
   progressY: number;
   showTopBar: boolean;
   showBottomAccent: boolean;
+  /** v2.6 closing: hairline above brand wordmark (signature, not CTA). */
+  signatureRule?: { x: number; y: number; width: number; height: number };
+  /** v2.6 closing: small dual-bar editorial accent (no copy). */
+  showEditorialAccent?: boolean;
+  editorialAccentY?: number;
 };
 
 export type ResolvedTemplateLayout = {
@@ -63,9 +79,20 @@ export type ResolvedTemplateLayout = {
   preserveAspectRatio: string;
   textDensity: CardTextDensity;
   textPlacement: CardTextPlacement;
+  /** v2.3 content-aware diagnostics (optional). */
+  contentAware?: {
+    imageTextGap?: number;
+    textBandTop?: number;
+    textBlockHeight: number;
+    footerSafeY: number;
+    preferredImageRatio?: number;
+    actualImageRatio?: number;
+    remainingBelowText: number;
+    internalDeadZone?: number;
+  };
 };
 
-const H_MARGIN = 80;
+const H_MARGIN = PAPER_TEXT_INSETS.left;
 const V_MARGIN = 88;
 
 /** SVG <text y> is baseline — glyph box extends above/below. */
@@ -75,10 +102,38 @@ const KICKER_FONT_PX = 20;
 /** Clear air between kicker glyph bottom and headline glyph top (non-cover). */
 export const MIN_KICKER_HEADLINE_CLEAR_PX = 32;
 /**
- * Image bottom → text-band start (kicker top) for photo_top / evidence.
- * Previous rhythm was ~36px to kicker baseline (~11px visual to headline) — too tight.
+ * Image bottom → text-band start preferred gap (legacy constant).
+ * Prefer {@link IMAGE_TEXT_GAP} from contentAwareLayout for v2.3 allocation.
  */
-export const MIN_IMAGE_TEXT_BAND_GAP_PX = 88;
+export const MIN_IMAGE_TEXT_BAND_GAP_PX = 64;
+
+function densityHeadline(density: CardTextDensity, cover: boolean, statement: boolean): number {
+  if (statement) return preferredHeadlinePx(density, "statement");
+  if (cover) return preferredHeadlinePx(density, "cover");
+  return preferredHeadlinePx(density, "story");
+}
+
+function densityBody(density: CardTextDensity, cover = false, statement = false): number {
+  if (statement) return preferredBodyPx(density, "statement");
+  if (cover) return preferredBodyPx(density, "cover");
+  return preferredBodyPx(density, "story");
+}
+
+export function densityHeadlinePx(
+  density: CardTextDensity,
+  cover: boolean,
+  statement: boolean,
+): number {
+  return densityHeadline(density, cover, statement);
+}
+
+export function densityBodyPx(
+  density: CardTextDensity,
+  cover = false,
+  statement = false,
+): number {
+  return densityBody(density, cover, statement);
+}
 
 export function estimateGlyphTop(baselineY: number, fontPx: number): number {
   return baselineY - Math.round(fontPx * ASCENT_RATIO);
@@ -158,20 +213,6 @@ function clampRatio(value: number | undefined, fallback: number, min: number, ma
   return Math.min(max, Math.max(min, n));
 }
 
-function densityHeadline(density: CardTextDensity, cover: boolean, statement: boolean): number {
-  if (statement) {
-    return density === "minimal" ? 82 : density === "compact" ? 74 : 78;
-  }
-  if (cover) {
-    return density === "minimal" ? 72 : density === "compact" ? 64 : 70;
-  }
-  return density === "minimal" ? 58 : density === "compact" ? 52 : 56;
-}
-
-function densityBody(density: CardTextDensity): number {
-  return density === "minimal" ? 32 : density === "compact" ? 30 : 34;
-}
-
 /**
  * Resolve presentation → pixel geometry on the target canvas.
  * Primary DoD is 4:5; other ratios use scaleY for vertical anchors.
@@ -193,9 +234,9 @@ export function resolveTemplateLayout(input: {
   const overlayMode = p.overlayMode ?? "none";
   const hasKicker = Boolean(input.hasKicker);
 
-  const textWidth = geo.width - H_MARGIN * 2;
+  const paperTextWidth = paperTextMaxWidth(geo.width);
+  const overlayWidth = overlayTextMaxWidth(geo.width);
   const ink = CARDNEWS_BRAND.ink;
-  const muted = CARDNEWS_BRAND.muted;
   const white = CARDNEWS_BRAND.white;
 
   const brandSubtle = (opacity: number): BrandPlacement => ({
@@ -211,17 +252,38 @@ export function resolveTemplateLayout(input: {
     showBottomAccent: false,
   });
 
+  const brandSignatureClosing = (): BrandPlacement => ({
+    wordmark: {
+      x: H_MARGIN,
+      y: geo.height - geo.scaleY(156),
+      width: 340,
+      height: 58,
+      opacity: 0.95,
+    },
+    progressY: geo.height - geo.scaleY(48),
+    showTopBar: true,
+    showBottomAccent: true,
+    signatureRule: {
+      x: H_MARGIN,
+      y: geo.height - geo.scaleY(186),
+      width: 112,
+      height: 2,
+    },
+    showEditorialAccent: true,
+    editorialAccentY: geo.scaleY(72),
+  });
+
   // No visual → force text/closing family (clarity-first vertical rhythm)
   if (!input.hasVisual || p.template === "text_statement" || p.template === "closing_insight") {
     const isClosing = p.template === "closing_insight";
     const headlinePreferred = densityHeadline(density, false, !isClosing);
-    const bodyPreferred = densityBody(density);
+    const bodyPreferred = densityBody(density, false, !isClosing);
     const preferredHeadline = isClosing
       ? Math.max(headlinePreferred, 64)
       : Math.max(headlinePreferred, 72);
     // Without kicker, start higher so we do not leave a dead empty slot.
     const bandTop = geo.scaleY(
-      hasKicker ? (isClosing ? 400 : 340) : isClosing ? 280 : 220,
+      hasKicker ? (isClosing ? 340 : 340) : isClosing ? 220 : 220,
     );
     const { kickerY, headlineY } = resolveTextBandAnchors({
       bandTopY: bandTop,
@@ -234,23 +296,19 @@ export function resolveTemplateLayout(input: {
       text: {
         x: H_MARGIN,
         y: headlineY,
-        width: textWidth,
+        width: paperTextWidth,
         maxHeadlineHeight: geo.scaleY(isClosing ? 300 : 380),
         maxBodyHeight: geo.scaleY(isClosing ? 200 : 240),
         kickerY,
         headlinePreferred: preferredHeadline,
-        bodyPreferred: Math.max(bodyPreferred, 32),
+        bodyPreferred,
         fill: CARDNEWS_BRAND.paper,
         headlineFill: ink,
-        bodyFill: muted,
+        bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
         kickerFill: isClosing ? CARDNEWS_BRAND.orange : CARDNEWS_BRAND.blue,
       },
       overlay: null,
-      brand: {
-        ...brandSubtle(isClosing ? 0.9 : 0.4),
-        showTopBar: true,
-        showBottomAccent: isClosing,
-      },
+      brand: isClosing ? brandSignatureClosing() : { ...brandSubtle(0.4), showTopBar: true, showBottomAccent: false },
       cropMode,
       focalAlignment: focal,
       preserveAspectRatio,
@@ -262,7 +320,7 @@ export function resolveTemplateLayout(input: {
   switch (p.template) {
     case "cover_full_bleed": {
       const headlinePreferred = densityHeadline(density, true, false);
-      const bodyPreferred = densityBody(density);
+      const bodyPreferred = densityBody(density, true, false);
       const textBlockH = geo.scaleY(hasKicker ? 380 : 340);
       const bandTop = geo.height - textBlockH + geo.scaleY(hasKicker ? 28 : 40);
       const { kickerY, headlineY } = resolveTextBandAnchors({
@@ -274,17 +332,17 @@ export function resolveTemplateLayout(input: {
         template: "cover_full_bleed",
         image: { x: 0, y: 0, width: geo.width, height: geo.height, rx: 0 },
         text: {
-          x: H_MARGIN,
+          x: OVERLAY_TEXT_INSETS.left,
           y: headlineY,
-          width: textWidth,
+          width: overlayWidth,
           maxHeadlineHeight: geo.scaleY(200),
-          maxBodyHeight: geo.scaleY(110),
+          maxBodyHeight: geo.scaleY(200),
           kickerY,
           headlinePreferred,
           bodyPreferred,
           fill: "transparent",
           headlineFill: white,
-          bodyFill: "rgba(255,255,255,0.88)",
+          bodyFill: "rgba(255,255,255,0.92)",
           kickerFill: "rgba(255,255,255,0.75)",
         },
         overlay: {
@@ -294,7 +352,7 @@ export function resolveTemplateLayout(input: {
         },
         brand: {
           wordmark: {
-            x: H_MARGIN,
+            x: OVERLAY_TEXT_INSETS.left,
             y: geo.scaleY(48),
             width: 160,
             height: 30,
@@ -328,7 +386,7 @@ export function resolveTemplateLayout(input: {
         text: {
           x: H_MARGIN,
           y: headlineY,
-          width: textWidth,
+          width: paperTextWidth,
           maxHeadlineHeight: geo.scaleY(200),
           maxBodyHeight: Math.max(80, imageY - headlineY - geo.scaleY(120)),
           kickerY,
@@ -336,7 +394,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody(density),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,
@@ -349,12 +407,11 @@ export function resolveTemplateLayout(input: {
       };
     }
     case "photo_overlay_editorial": {
-      const headlinePreferred = densityHeadline(density, true, false);
-      const textBottom = p.textPlacement === "overlay-top";
-      const bandH = geo.scaleY(hasKicker ? 360 : 320);
-      const bandTop = textBottom
-        ? geo.scaleY(hasKicker ? 100 : 88)
-        : geo.height - bandH + geo.scaleY(hasKicker ? 16 : 28);
+      // Full-bleed overlay family — same canvas image as cover; shared body scale.
+      const headlinePreferred = densityHeadline(density, false, false);
+      const bodyPreferred = densityBody(density, false, false);
+      const bandH = geo.scaleY(hasKicker ? 420 : 380);
+      const bandTop = geo.height - bandH + geo.scaleY(hasKicker ? 16 : 28);
       const { kickerY, headlineY } = resolveTextBandAnchors({
         bandTopY: bandTop,
         headlineFontPx: headlinePreferred,
@@ -364,28 +421,28 @@ export function resolveTemplateLayout(input: {
         template: "photo_overlay_editorial",
         image: { x: 0, y: 0, width: geo.width, height: geo.height, rx: 0 },
         text: {
-          x: H_MARGIN,
+          x: OVERLAY_TEXT_INSETS.left,
           y: headlineY,
-          width: textWidth,
-          maxHeadlineHeight: geo.scaleY(180),
-          maxBodyHeight: geo.scaleY(100),
+          width: overlayWidth,
+          maxHeadlineHeight: geo.scaleY(220),
+          maxBodyHeight: geo.scaleY(280),
           kickerY,
           headlinePreferred,
-          bodyPreferred: densityBody(density),
+          bodyPreferred,
           fill: "transparent",
           headlineFill: white,
-          bodyFill: "rgba(255,255,255,0.9)",
-          kickerFill: "rgba(255,255,255,0.7)",
+          bodyFill: "rgba(255,255,255,0.92)",
+          kickerFill: "rgba(255,255,255,0.75)",
         },
         overlay: {
           mode: overlayMode === "none" ? "gradient_dark" : overlayMode,
-          y: textBottom ? 0 : geo.height - bandH - geo.scaleY(60),
-          height: bandH + geo.scaleY(60),
+          y: geo.height - bandH - geo.scaleY(80),
+          height: bandH + geo.scaleY(80),
         },
         brand: {
           wordmark: {
-            x: H_MARGIN,
-            y: textBottom ? geo.height - geo.scaleY(72) : geo.scaleY(48),
+            x: OVERLAY_TEXT_INSETS.left,
+            y: geo.scaleY(48),
             width: 160,
             height: 30,
             opacity: 0.5,
@@ -426,7 +483,7 @@ export function resolveTemplateLayout(input: {
         text: {
           x: H_MARGIN,
           y: headlineY,
-          width: textWidth,
+          width: paperTextWidth,
           maxHeadlineHeight: geo.scaleY(140),
           maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(180)),
           kickerY,
@@ -434,7 +491,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody("compact"),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,
@@ -463,7 +520,7 @@ export function resolveTemplateLayout(input: {
         text: {
           x: H_MARGIN,
           y: headlineY,
-          width: textWidth,
+          width: paperTextWidth,
           maxHeadlineHeight: geo.scaleY(200),
           maxBodyHeight: Math.max(80, geo.height - headlineY - geo.scaleY(200)),
           kickerY,
@@ -471,7 +528,7 @@ export function resolveTemplateLayout(input: {
           bodyPreferred: densityBody(density),
           fill: CARDNEWS_BRAND.paper,
           headlineFill: ink,
-          bodyFill: muted,
+          bodyFill: TYPOGRAPHY_BODY_FILL_PAPER,
           kickerFill: CARDNEWS_BRAND.blue,
         },
         overlay: null,
@@ -494,6 +551,8 @@ export function imageCoverageRatio(layout: ResolvedTemplateLayout, geometry: Car
 
 export const PRESENTATION_SAFE_MARGINS = {
   horizontal: H_MARGIN,
+  overlayLeft: OVERLAY_TEXT_INSETS.left,
+  overlayRight: OVERLAY_TEXT_INSETS.right,
   vertical: V_MARGIN,
   legacyPadX: CARDNEWS_SAFE.padX,
 } as const;

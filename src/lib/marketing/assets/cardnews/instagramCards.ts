@@ -1,8 +1,17 @@
 /**
  * Instagram carousel → cardnews card mapping.
  *
- * Pure: no sharp, no filesystem. Prefer cardPlan (storyboard) when present;
- * fall back to slideHeadlines + caption lines for legacy drafts.
+ * Pure: no sharp, no filesystem.
+ *
+ * Copy authority (production):
+ *   publishable.instagram.instagramMeta.cardPlan  ← assembled from Instagram Card Copy
+ * Legacy fallback (no usable cardPlan):
+ *   slideHeadlines + caption body lines
+ *
+ * `media-brief.formats.cardnews.cards` is NOT copy-authoritative. Render/export must
+ * resolve through {@link resolveInstagramCardnewsRenderBrief} so stale brief copy
+ * cannot silently win over a current cardPlan.
+ *
  * Planning-only visual metadata (visualId etc.) stays on instagramMeta — not CardNewsCard.
  */
 
@@ -93,6 +102,9 @@ export function buildInstagramCardnewsCards(
   const meta = instagram.instagramMeta;
   if (!meta) return [];
 
+  // Prefer cardPlan whenever it carries usable headlines — even if shorter than
+  // slideHeadlines — so a current Card Copy plan is never displaced by stale
+  // legacy slideHeadlines that still sit on the same publishable meta.
   const plan = meta.cardPlan?.filter((c) => c.headline?.trim()) ?? [];
   if (plan.length >= INSTAGRAM_CARDNEWS_MIN_SLIDES) {
     return cardsFromPlan(plan, evidenceRefIds.slice(0, 8));
@@ -151,6 +163,10 @@ export function buildInstagramCardnewsCards(
  * Enables the cardnews format when Instagram is a selected, publishable channel.
  * Without this the brief's `cardnews.enabled` depends on an `instagram_carousel`
  * format hint that the operator's channel selection never touches.
+ *
+ * Replaces `formats.cardnews.cards` with cardPlan/slideHeadlines-derived copy.
+ * Does not persist — callers that must not rewrite `media-brief.json` should
+ * keep the result in memory only (see render step).
  */
 export function applyInstagramCardnewsToBrief(
   brief: MediaBrief,
@@ -178,4 +194,78 @@ export function applyInstagramCardnewsToBrief(
       },
     },
   });
+}
+
+/**
+ * In-memory render/export brief: overlay publishable cardPlan copy onto the
+ * disk media-brief without rewriting the artifact. Prefer this over reading
+ * `formats.cardnews.cards` as-is.
+ */
+export function resolveInstagramCardnewsRenderBrief(
+  brief: MediaBrief,
+  bundle: PublishableContentBundle,
+): MediaBrief {
+  return applyInstagramCardnewsToBrief(brief, bundle);
+}
+
+export type InstagramCardCopyParityMismatch = {
+  index: number;
+  field: "cardId" | "headline" | "body";
+  expected: string;
+  actual: string;
+};
+
+/**
+ * Source-parity check: when publishable.cardPlan is the production SoT,
+ * resolved renderer cards must match plan cardId/headline/body in order.
+ * Returns mismatches (empty = ok). Does not throw.
+ */
+export function diffInstagramCardPlanCopyParity(
+  bundle: PublishableContentBundle,
+  resolvedCards: ReadonlyArray<Pick<CardNewsCard, "cardId" | "headline" | "body">>,
+): InstagramCardCopyParityMismatch[] {
+  const plan =
+    bundle.instagram?.instagramMeta?.cardPlan?.filter((c) => c.headline?.trim()) ?? [];
+  if (plan.length < INSTAGRAM_CARDNEWS_MIN_SLIDES) return [];
+
+  const mismatches: InstagramCardCopyParityMismatch[] = [];
+  const n = Math.min(plan.length, resolvedCards.length);
+  for (let i = 0; i < n; i++) {
+    const expected = plan[i]!;
+    const actual = resolvedCards[i]!;
+    const expectedId = expected.cardId || `card-${String(i + 1).padStart(2, "0")}`;
+    if (actual.cardId !== expectedId) {
+      mismatches.push({
+        index: i,
+        field: "cardId",
+        expected: expectedId,
+        actual: actual.cardId,
+      });
+    }
+    if (actual.headline !== expected.headline) {
+      mismatches.push({
+        index: i,
+        field: "headline",
+        expected: expected.headline,
+        actual: actual.headline,
+      });
+    }
+    if ((actual.body || "") !== (expected.body || "")) {
+      mismatches.push({
+        index: i,
+        field: "body",
+        expected: expected.body || "",
+        actual: actual.body || "",
+      });
+    }
+  }
+  if (resolvedCards.length !== plan.length) {
+    mismatches.push({
+      index: Math.min(resolvedCards.length, plan.length),
+      field: "cardId",
+      expected: `len=${plan.length}`,
+      actual: `len=${resolvedCards.length}`,
+    });
+  }
+  return mismatches;
 }

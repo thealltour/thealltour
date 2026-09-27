@@ -15,6 +15,7 @@ import type { MediaBrief } from "@/lib/marketing/assets/contracts";
 import type { CardNewsAspectRatio } from "@/lib/marketing/assets/cardnews/brand";
 import {
   INSTAGRAM_CARDNEWS_ASPECT_RATIOS,
+  resolveInstagramCardnewsRenderBrief,
   resolveInstagramCardnewsSkip,
   type InstagramCardnewsSkipReason,
 } from "@/lib/marketing/assets/cardnews/instagramCards";
@@ -76,9 +77,12 @@ export type RenderInstagramCardnewsResult = {
 };
 
 /**
- * Renders from the persisted brief as-is. The export step is what turns the
- * Instagram selection into `cardnews.enabled` + cards, so rendering never
- * rewrites `context/media-brief.json` and never trips the artifact sha guard.
+ * Renders Instagram cardnews for a package.
+ *
+ * Copy source: in-memory overlay of publishable.cardPlan (via
+ * {@link resolveInstagramCardnewsRenderBrief}) — never trusts stale
+ * `context/media-brief.json` cardnews headlines/bodies as authority.
+ * Disk brief is left untouched so the artifact sha guard is not tripped.
  */
 export async function renderInstagramCardnewsForPackage(input: {
   packageRoot: string;
@@ -89,14 +93,14 @@ export async function renderInstagramCardnewsForPackage(input: {
   now?: Date;
 }): Promise<RenderInstagramCardnewsResult> {
   const bundle = readPackagePublishableBundle(input.packageRoot);
-  const brief = readPackageMediaBrief(input.packageRoot);
+  const diskBrief = readPackageMediaBrief(input.packageRoot);
   const base = { packageRoot: input.packageRoot, aspectRatios: [], cardCount: 0, renders: [] };
 
-  if (!bundle || !brief) {
+  if (!bundle || !diskBrief) {
     return {
       status: "skipped",
       skipReason: "package_incomplete",
-      candidateId: bundle?.candidateId ?? brief?.candidateId ?? null,
+      candidateId: bundle?.candidateId ?? diskBrief?.candidateId ?? null,
       ...base,
     };
   }
@@ -105,6 +109,9 @@ export async function renderInstagramCardnewsForPackage(input: {
   if (skip) {
     return { status: "skipped", skipReason: skip, candidateId: bundle.candidateId, ...base };
   }
+
+  // Prefer cardPlan / slideHeadlines over whatever copy sits on disk media-brief.
+  const brief = resolveInstagramCardnewsRenderBrief(diskBrief, bundle);
   if (!brief.formats.cardnews.enabled || brief.formats.cardnews.cards.length === 0) {
     return {
       status: "skipped",
@@ -136,6 +143,14 @@ export async function renderInstagramCardnewsForPackage(input: {
         manifest: sharedVisualManifest,
       });
 
+  const { readInstagramCarouselPlanFromPackage } = await import(
+    "@/lib/marketing/publishable/instagramEditorial/persist"
+  );
+  const carousel = readInstagramCarouselPlanFromPackage(input.packageRoot);
+  const editorialRolesByCardId = carousel
+    ? Object.fromEntries(carousel.cards.map((c) => [c.cardId, c.role]))
+    : undefined;
+
   if (visualMap.warnings.length > 0) {
     console.info(
       "[instagram-cardnews] shared visual injection",
@@ -155,12 +170,16 @@ export async function renderInstagramCardnewsForPackage(input: {
     renders.push(
       await renderCardNewsPackage({
         mediaBrief: brief,
+        // Overlay copy must not rewrite legacy media-brief.json (sha + dual-SoT).
+        persistMediaBrief: false,
+        manifestMediaBrief: diskBrief,
         assetRoot: input.assetRoot ?? null,
         aspectRatio,
         dryRun: input.dryRun,
         graphicOnly: input.graphicOnly,
         visuals: visualMap.visuals,
         allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
+        editorialRolesByCardId,
         now: input.now,
       }),
     );

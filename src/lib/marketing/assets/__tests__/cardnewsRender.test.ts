@@ -72,7 +72,7 @@ describe("CardNews text layout", () => {
   it("11. minimum readable font size is enforced", () => {
     const fitted = fitText({
       text: "짧은 본문",
-      preferredFontSize: 32,
+      preferredFontSize: 48,
       minFontSize: 20,
       maxWidth: 800,
       maxHeight: 200,
@@ -130,16 +130,16 @@ describe("CardNews renderer", () => {
   it("9. long wrapped text stays inside the canvas box", () => {
     const fitted = fitText({
       text: "가을 단풍 시즌을 앞두고 이동·예약 정보가 바뀌었습니다. 출발 전에 최신 공지를 확인하면 일정을 덜 흔들립니다. 교통편 운행 시간과 입장 예약을 순서대로 점검하세요.",
-      preferredFontSize: 30,
+      preferredFontSize: 48,
       minFontSize: CARDNEWS_SAFE.minBodyPx,
       maxWidth: CARDNEWS_WIDTH - CARDNEWS_SAFE.padX * 2,
-      maxHeight: 360,
+      maxHeight: 520,
       maxLines: 8,
       overflow: "error",
       cardId: "card-long",
       field: "body",
     });
-    expect(fitted.height).toBeLessThanOrEqual(360);
+    expect(fitted.height).toBeLessThanOrEqual(520);
     expect(fitted.fontSize).toBeGreaterThanOrEqual(CARDNEWS_SAFE.minBodyPx);
   });
 

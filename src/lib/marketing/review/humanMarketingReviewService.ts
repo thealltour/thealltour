@@ -41,11 +41,30 @@ import {
   type ReviewablePublishableChannel,
 } from "@/lib/marketing/review/channelReviews";
 import { persistChannelHumanEditToPackage } from "@/lib/marketing/review/persistChannelHumanEdit";
+import {
+  approveInstagramCardCopyReview,
+  persistInstagramCardCopyReview,
+  updateInstagramCardCopyReviewDrafts,
+  type InstagramCardCopyEdit,
+  type InstagramCardCopyReview,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
+import {
+  assertInstagramVisualCarryOverAvailable,
+  buildInstagramCardCopyReviewView,
+  defaultInstagramCardCopyPackageRoot,
+  freshInstagramCardCopyReviewForReset,
+  resolveMutableInstagramCardCopyReview,
+  withInstagramCardCopyReview,
+  type InstagramCardCopyReviewView,
+} from "@/lib/marketing/review/instagramCardCopyReview";
+import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 
 export type HumanMarketingReviewServiceDeps = {
   candidateRepo: DailyMarketingRunRepository;
   reviewRepo: HumanMarketingReviewRepository;
   now?: () => Date;
+  /** Package root for Instagram card copy review (tests); defaults to MARKETING_ASSET_ROOT layout. */
+  resolvePackageRoot?: (candidate: CompletedMarketingCandidate) => string;
   /** Optional injections for CG-3 shortform approval gate (tests). */
   shortformCatalog?: MarketingMediaSourceCatalogRepository;
   shortformJobRepository?: ShortformVideoRenderJobRepository;
@@ -448,6 +467,119 @@ export class HumanMarketingReviewService {
     });
 
     return saved;
+  }
+
+  private async loadEditableCardCopyReviewTarget(candidateId: string, reviewedBy: string | null) {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    if (isCandidateDiagnosticsOnly(candidate.status)) throw new Error("diagnostics_only_candidate");
+    const review = await this.loadMutableReview(candidateId, reviewedBy);
+    if (review.status === "rejected" || review.status === "manually_published") {
+      throw new Error("review_not_editable");
+    }
+    assertAllowedTransition(review.status, review.status === "pending" ? "editing" : review.status);
+    const packageRoot = (this.deps.resolvePackageRoot ?? defaultInstagramCardCopyPackageRoot)(candidate);
+    return { review, packageRoot, nowIso: this.now().toISOString() };
+  }
+
+  private async commitInstagramCardCopyReview(input: {
+    review: HumanMarketingReview;
+    packageRoot: string;
+    cardCopyReview: InstagramCardCopyReview;
+    nowIso: string;
+  }): Promise<InstagramCardCopyReviewView> {
+    // Package first: the gates read the sidecar, so a failed DB write must not leave an older approval live.
+    persistInstagramCardCopyReview({ packageRoot: input.packageRoot, review: input.cardCopyReview });
+    const saved = await this.deps.reviewRepo.update(withInstagramCardCopyReview(input));
+    return buildInstagramCardCopyReviewView({
+      candidateId: saved.candidateId,
+      packageRoot: input.packageRoot,
+      review: saved,
+      nowIso: input.nowIso,
+    });
+  }
+
+  async getInstagramCardCopyReview(candidateId: string): Promise<InstagramCardCopyReviewView> {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    return buildInstagramCardCopyReviewView({
+      candidateId,
+      packageRoot: (this.deps.resolvePackageRoot ?? defaultInstagramCardCopyPackageRoot)(candidate),
+      review: await this.deps.reviewRepo.findByCandidateId(candidateId),
+      nowIso: this.now().toISOString(),
+    });
+  }
+
+  /** Card-level text edits only; any save returns the card copy review to pending. */
+  async saveInstagramCardCopyReview(input: {
+    candidateId: string;
+    cards: InstagramCardCopyEdit[];
+    reviewedBy: string | null;
+  }): Promise<InstagramCardCopyReviewView> {
+    const target = await this.loadEditableCardCopyReviewTarget(input.candidateId, input.reviewedBy);
+    const { base, current } = resolveMutableInstagramCardCopyReview({
+      candidateId: input.candidateId,
+      packageRoot: target.packageRoot,
+      review: target.review,
+      updatedBy: input.reviewedBy,
+      nowIso: target.nowIso,
+    });
+    return this.commitInstagramCardCopyReview({
+      ...target,
+      cardCopyReview: updateInstagramCardCopyReviewDrafts({
+        review: current,
+        base,
+        edits: input.cards,
+        updatedBy: input.reviewedBy,
+        nowIso: target.nowIso,
+      }),
+    });
+  }
+
+  /** Unblocks VRA/SVP/render for the current effective card copy. Channel caption approval is separate. */
+  async approveInstagramCardCopyReview(input: {
+    candidateId: string;
+    reviewedBy: string | null;
+    keepExistingVisuals?: boolean;
+  }): Promise<InstagramCardCopyReviewView> {
+    const target = await this.loadEditableCardCopyReviewTarget(input.candidateId, input.reviewedBy);
+    const { base, current } = resolveMutableInstagramCardCopyReview({
+      candidateId: input.candidateId,
+      packageRoot: target.packageRoot,
+      review: target.review,
+      updatedBy: input.reviewedBy,
+      nowIso: target.nowIso,
+    });
+    if (input.keepExistingVisuals) {
+      assertInstagramVisualCarryOverAvailable({ packageRoot: target.packageRoot, review: current });
+    }
+    return this.commitInstagramCardCopyReview({
+      ...target,
+      cardCopyReview: approveInstagramCardCopyReview({
+        review: current,
+        base,
+        approvedBy: input.reviewedBy,
+        nowIso: target.nowIso,
+        keepExistingVisuals: input.keepExistingVisuals,
+      }),
+    });
+  }
+
+  /** Drops all card edits and restarts from the current generated card copy. */
+  async resetInstagramCardCopyReview(input: {
+    candidateId: string;
+    reviewedBy: string | null;
+  }): Promise<InstagramCardCopyReviewView> {
+    const target = await this.loadEditableCardCopyReviewTarget(input.candidateId, input.reviewedBy);
+    return this.commitInstagramCardCopyReview({
+      ...target,
+      cardCopyReview: freshInstagramCardCopyReviewForReset({
+        candidateId: input.candidateId,
+        packageRoot: target.packageRoot,
+        updatedBy: input.reviewedBy,
+        nowIso: target.nowIso,
+      }),
+    });
   }
 
   /**

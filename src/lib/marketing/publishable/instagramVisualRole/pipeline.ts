@@ -12,10 +12,8 @@ import {
   buildInstagramCardCopyContentFingerprint,
   buildInstagramCarouselContentFingerprint,
 } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
-import {
-  readInstagramCardCopyFromPackage,
-  readInstagramCarouselPlanFromPackage,
-} from "@/lib/marketing/publishable/instagramEditorial/persist";
+import { resolveEffectiveInstagramCardCopy } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
+import { readInstagramCarouselPlanFromPackage } from "@/lib/marketing/publishable/instagramEditorial/persist";
 import {
   INSTAGRAM_VISUAL_MODE_PREFERENCES,
   INSTAGRAM_VISUAL_PRESENTATION_PREFERENCES,
@@ -226,7 +224,7 @@ export async function ensureInstagramVisualRolePlan(input: {
 }): Promise<EnsureInstagramVisualRolePlanResult> {
   const carousel =
     input.carousel ?? readInstagramCarouselPlanFromPackage(input.packageRoot);
-  const cardCopy = input.cardCopy ?? readInstagramCardCopyFromPackage(input.packageRoot);
+  const cardCopy = input.cardCopy ?? resolveEffectiveInstagramCardCopy(input.packageRoot);
 
   if (!carousel || !cardCopy) {
     return {

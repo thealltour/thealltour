@@ -1,6 +1,8 @@
 import { requireAdminPermission } from "@/lib/apiAuth";
 import { marketingAssetErrorResponse } from "@/lib/marketing/assets/assetApiErrors";
+import type { RenderInstagramCardnewsResult } from "@/lib/marketing/assets/cardnews/instagramCardnews";
 import { renderCandidateInstagramCardnews } from "@/lib/marketing/assets/cardnews/renderCandidateInstagramCardnews";
+import { INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,6 +10,17 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ candidateId: string }> };
+
+function skippedNote(result: RenderInstagramCardnewsResult): string {
+  const state = result.cardCopyReviewState;
+  if (result.skipReason === "card_copy_review_required" && state && state !== "approved" && state !== "not_applicable") {
+    return INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO[state];
+  }
+  if (result.skipReason === "shared_visual_plan_stale") {
+    return "카드 문구가 바뀌어 비주얼 계획이 오래되었습니다. 카드 문구 검토에서 「기존 비주얼 유지하고 승인」을 선택하거나 Shared Visual Plan을 다시 생성하세요.";
+  }
+  return `렌더를 건너뛰었습니다 (${result.skipReason ?? "unknown"}).`;
+}
 
 /**
  * Admin: start Instagram cardnews PNG render for a candidate HDD package.
@@ -60,9 +73,10 @@ export async function POST(request: Request, context: RouteContext) {
         wrote: result.status === "rendered" && !dryRun,
         paths,
         sharedVisualInjection: result.sharedVisualInjection ?? null,
+        cardCopyReviewState: result.cardCopyReviewState ?? null,
         note:
           result.status === "skipped"
-            ? `렌더를 건너뛰었습니다 (${result.skipReason ?? "unknown"}).`
+            ? skippedNote(result)
             : dryRun
               ? "dry-run: 파일을 쓰지 않았습니다."
               : `카드뉴스 ${result.cardCount}장 × ${result.aspectRatios.join(", ")} 렌더를 완료했습니다.`,

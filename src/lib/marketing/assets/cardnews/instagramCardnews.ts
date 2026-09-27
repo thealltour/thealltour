@@ -29,7 +29,13 @@ import {
   PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
   type PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
+import {
+  overlayEffectiveInstagramCardCopyForPackage,
+  resolveInstagramCardCopyReviewGate,
+  type InstagramCardCopyReviewGateState,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import { resolveInstagramVisualRoleLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { buildInstagramRendererVisualMapSafe } from "@/lib/marketing/publishable/sharedVisualDelivery";
 import { getSharedVisualRenderCacheDir } from "@/lib/marketing/publishable/sharedVisualDelivery/normalizeImageForRenderer";
 import { readSharedVisualAssetsManifest } from "@/lib/marketing/publishable/sharedVisualAssets";
@@ -60,7 +66,14 @@ export function readPackageMediaBrief(packageRoot: string): MediaBrief | null {
 
 export type RenderInstagramCardnewsResult = {
   status: "rendered" | "skipped";
-  skipReason?: InstagramCardnewsSkipReason | "package_incomplete" | "cardnews_not_in_brief";
+  skipReason?:
+    | InstagramCardnewsSkipReason
+    | "package_incomplete"
+    | "cardnews_not_in_brief"
+    | "card_copy_review_required"
+    | "shared_visual_plan_stale";
+  /** Present when the Instagram card copy human review gate blocked the render. */
+  cardCopyReviewState?: InstagramCardCopyReviewGateState;
   candidateId: string | null;
   packageRoot: string;
   aspectRatios: CardNewsAspectRatio[];
@@ -110,8 +123,35 @@ export async function renderInstagramCardnewsForPackage(input: {
     return { status: "skipped", skipReason: skip, candidateId: bundle.candidateId, ...base };
   }
 
+  const cardCopyGate = resolveInstagramCardCopyReviewGate(input.packageRoot);
+  if (cardCopyGate.state !== "not_applicable" && cardCopyGate.state !== "approved") {
+    return {
+      status: "skipped",
+      skipReason: "card_copy_review_required",
+      cardCopyReviewState: cardCopyGate.state,
+      candidateId: bundle.candidateId,
+      ...base,
+    };
+  }
+  // Visuals were planned for the copy VRA saw; after a card copy edit they must be re-planned.
+  if (
+    !input.graphicOnly &&
+    cardCopyGate.state === "approved" &&
+    resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale"
+  ) {
+    return {
+      status: "skipped",
+      skipReason: "shared_visual_plan_stale",
+      candidateId: bundle.candidateId,
+      ...base,
+    };
+  }
+
   // Prefer cardPlan / slideHeadlines over whatever copy sits on disk media-brief.
-  const brief = resolveInstagramCardnewsRenderBrief(diskBrief, bundle);
+  const brief = resolveInstagramCardnewsRenderBrief(
+    diskBrief,
+    overlayEffectiveInstagramCardCopyForPackage(bundle, input.packageRoot),
+  );
   if (!brief.formats.cardnews.enabled || brief.formats.cardnews.cards.length === 0) {
     return {
       status: "skipped",

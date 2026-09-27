@@ -28,6 +28,27 @@ export const updateChannelReviewDraftSchema = z.object({
   humanNotes: z.string().max(4_000).nullable().optional(),
 });
 
+/** Text fields only — cardId/role/evidenceRefs cannot be edited through review. */
+export const instagramCardCopyReviewActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("save"),
+    cards: z
+      .array(
+        z.object({
+          cardId: z.string().min(1).max(64),
+          kicker: z.string().max(200).nullable().optional(),
+          headline: z.string().max(400),
+          body: z.string().max(2_000).nullable().optional(),
+          microcopy: z.string().max(400).nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(12),
+  }),
+  z.object({ action: z.literal("approve"), keepExistingVisuals: z.boolean().optional() }),
+  z.object({ action: z.literal("reset") }),
+]);
+
 export const setChannelReviewStatusSchema = z.object({
   channel: channelReviewChannelSchema,
   status: z.enum(["approved", "skipped", "needs_review"]),

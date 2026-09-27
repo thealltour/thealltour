@@ -14,6 +14,10 @@ import {
   PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
   type PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
+import {
+  INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO,
+  resolveInstagramCardCopyReviewGate,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { approvedAssetToManualAstraContext } from "@/lib/marketing/publishable/refreshDerivedVisualArtifacts";
 import { readManualAstraHandoff } from "@/lib/marketing/publishable/manualAstraHandoff";
@@ -56,6 +60,21 @@ function readPublishableBundle(packageRoot: string): PublishableContentBundle | 
   } catch {
     return null;
   }
+}
+
+/** VRA/SVP must not start from unreviewed Instagram card copy; other channels alone are not gated. */
+function assertInstagramCardCopyReviewedForVisualPlan(
+  packageRoot: string,
+  bundle: PublishableContentBundle,
+): void {
+  if (!bundle.instagram || !(bundle.targetChannels ?? []).includes("instagram")) return;
+  const gate = resolveInstagramCardCopyReviewGate(packageRoot);
+  if (gate.state === "not_applicable" || gate.state === "approved") return;
+  throw new AstraHandoffOperatorError(
+    "instagram_card_copy_review_required",
+    INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO[gate.state],
+    409,
+  );
 }
 
 async function resolvePackageRoot(candidateId: string): Promise<{
@@ -300,6 +319,7 @@ export async function generateSharedVisualPlanForCandidate(input: {
       409,
     );
   }
+  assertInstagramCardCopyReviewedForVisualPlan(resolved.packageRoot, bundle);
 
   const result = await generateSharedVisualPlanWithLlm({
     packageRoot: resolved.packageRoot,

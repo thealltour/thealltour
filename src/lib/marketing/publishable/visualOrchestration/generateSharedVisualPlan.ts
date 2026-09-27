@@ -10,6 +10,7 @@
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
 import { resolveInstagramNarrativeForVisualPlanning } from "@/lib/marketing/publishable/channelSources/visualNarrative";
+import { overlayEffectiveInstagramCardCopyForPackage } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { buildInstagramVisualRoleContentFingerprint } from "@/lib/marketing/publishable/instagramVisualRole/fingerprint";
 import {
   ensureInstagramVisualRolePlan,
@@ -155,9 +156,10 @@ export async function generateSharedVisualPlanWithLlm(input: {
     }
   }
 
+  // Planner sees reviewed card copy; the plan's source snapshot stays bound to the on-disk bundle.
   const plannerInput = buildSharedVisualPlannerInput({
     approvedAsset: input.approvedCanonicalAsset,
-    bundle: input.bundle,
+    bundle: overlayEffectiveInstagramCardCopyForPackage(input.bundle, input.packageRoot),
     instagramVisualRolePlan: visualRolePlan,
   });
   const vraFp = visualRolePlan

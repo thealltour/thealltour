@@ -243,8 +243,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
         ok?: boolean;
         code?: string;
       };
-      setMessage(data.message ?? (res.ok ? "Shared Visual Plan을 생성했습니다." : "Plan 생성 실패"));
       await load();
+      setMessage(data.message ?? (res.ok ? "Shared Visual Plan을 생성했습니다." : "Plan 생성 실패"));
     } catch {
       setMessage("Shared Visual Plan 생성에 실패했습니다.");
     } finally {
@@ -261,8 +261,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
         { method: "POST" },
       );
       const data = (await res.json()) as { message?: string; ok?: boolean };
-      setMessage(data.message ?? (res.ok ? "Astra Handoff를 생성했습니다." : "Handoff 생성 실패"));
       await load();
+      setMessage(data.message ?? (res.ok ? "Astra Handoff를 생성했습니다." : "Handoff 생성 실패"));
     } catch {
       setMessage("Astra Handoff 생성에 실패했습니다.");
     } finally {
@@ -286,8 +286,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
           setMessage(data.message ?? "업로드에 실패했습니다.");
           return;
         }
-        setMessage(data.message ?? "업로드했습니다.");
         await load();
+        setMessage(data.message ?? "업로드했습니다.");
       } catch {
         setMessage("업로드에 실패했습니다.");
       } finally {
@@ -364,10 +364,10 @@ export function MarketingReviewAstraHandoffPanel(props: {
         setMessage(data.message ?? "카드뉴스 렌더를 시작하지 못했습니다.");
         return;
       }
+      await load();
       setMessage(
         data.note ?? (data.status === "skipped" ? "렌더를 건너뛰었습니다." : "렌더를 완료했습니다."),
       );
-      await load();
     } catch {
       setMessage("카드뉴스 렌더를 시작하지 못했습니다.");
     } finally {

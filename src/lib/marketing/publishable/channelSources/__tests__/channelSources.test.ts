@@ -36,7 +36,10 @@ import type { PublishableLlmInvoke } from "@/lib/marketing/publishable/threads/c
 import type { VisualRoleArchitectInvoke } from "@/lib/marketing/publishable/instagramVisualRole/pipeline";
 import { generateSharedVisualPlanWithLlm } from "@/lib/marketing/publishable/visualOrchestration/generateSharedVisualPlan";
 import { resolveSharedVisualPlanLifecycle } from "@/lib/marketing/publishable/visualOrchestration/lifecycle";
-import { generateAstraHandoffForCandidate } from "@/lib/marketing/publishable/visualOrchestration/operatorService";
+import {
+  generateAstraHandoffForCandidate,
+  generateSharedVisualPlanForCandidate,
+} from "@/lib/marketing/publishable/visualOrchestration/operatorService";
 import { resolveSharedVisualPlanLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT } from "@/lib/marketing/editorialDirector/researchHandoff/contracts";
 import {
@@ -87,6 +90,14 @@ import {
   readInstagramCardCopyFromPackage,
   readInstagramCarouselPlanFromPackage,
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
+import {
+  approveInstagramCardCopyReview,
+  buildInstagramCardCopyReview,
+  persistInstagramCardCopyReview,
+  readInstagramCardCopyReviewFromPackage,
+  resolveInstagramCardCopyReviewGate,
+  updateInstagramCardCopyReviewDrafts,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import type { InstagramVisualRolePlan } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
 import { resolveInstagramVisualRolePlanLifecycle } from "@/lib/marketing/publishable/instagramVisualRole/lifecycle";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
@@ -783,6 +794,54 @@ describe("Channel source selection", () => {
     expect(ok.review.updatedAt).toBe(SWITCH_AT.toISOString());
   });
 
+  it("treats Instagram card copy edits as a human draft and never carries them to the new source", () => {
+    const c = importOk();
+    const hermesCardCopy = readInstagramCardCopyFromPackage(packageRoot)!;
+    const cardCopyReview = updateInstagramCardCopyReviewDrafts({
+      review: buildInstagramCardCopyReview({
+        candidateId: CANDIDATE_ID,
+        cardCopy: hermesCardCopy,
+        carousel: readInstagramCarouselPlanFromPackage(packageRoot),
+        source: { kind: "hermes_auto", candidateRef: null },
+        updatedBy: "ysh",
+        nowIso: T0,
+      }),
+      base: hermesCardCopy,
+      edits: [{ cardId: "k1", headline: "사람이 고친 표지" }],
+      updatedBy: "ysh",
+      nowIso: T0,
+    });
+    persistInstagramCardCopyReview({ packageRoot, review: cardCopyReview });
+    const withCardEdits = review();
+    withCardEdits.channelReviews!.instagram = {
+      channel: "instagram",
+      status: "needs_review",
+      aiDraft: { title: null, body: "Hermes 인스타 캡션" },
+      humanDraft: null,
+      validationWarnings: [],
+      lastEditedAt: T0,
+      approvedAt: null,
+      skippedAt: null,
+      notes: null,
+      cardCopyReview,
+    };
+
+    const blocked = select("instagram", "external_editorial", { importId: c.importId, review: withCardEdits });
+    expect(blocked).toMatchObject({ ok: false, status: 409, code: "human_edited_channel_requires_confirm" });
+    expect(readInstagramCardCopyReviewFromPackage(packageRoot)).not.toBeNull();
+
+    const ok = expectOk(
+      select("instagram", "external_editorial", {
+        importId: c.importId,
+        review: withCardEdits,
+        allowOverwriteHuman: true,
+      }),
+    );
+    expect(ok.review.channelReviews!.instagram!.cardCopyReview).toBeUndefined();
+    expect(readInstagramCardCopyReviewFromPackage(packageRoot)).toBeNull();
+    expect(resolveInstagramCardCopyReviewGate(packageRoot).state).toBe("review_missing");
+  });
+
   it("switches Instagram carousel+card-copy so VRA goes stale, and restore makes it fresh again", () => {
     const c = importOk();
     const hermesCarousel = readInstagramCarouselPlanFromPackage(packageRoot)!;
@@ -1267,5 +1326,68 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     const handoff = await generateAstraHandoffForCandidate({ candidateId: CANDIDATE_ID, invoke: writer });
     expect(handoff.ok).toBe(false);
     expect(writer).not.toHaveBeenCalled();
+  });
+
+  it("blocks Shared Visual Plan generation for Instagram until the card copy review is approved", async () => {
+    const c = importOk();
+    expectOk(select("instagram", "external_editorial", { importId: c.importId }));
+    const invoke = vi.fn(async () => JSON.stringify(SVP_LLM));
+    await expect(generateSharedVisualPlanForCandidate({ candidateId: CANDIDATE_ID, invoke })).rejects.toMatchObject({
+      code: "instagram_card_copy_review_required",
+      httpStatus: 409,
+    });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("an approved card copy edit makes SVP + handoff stale, and VRA regenerates from the effective copy", async () => {
+    const { result } = await generatePlanOnExternalInstagram();
+    expect(result.ok).toBe(true);
+    const base = readInstagramCardCopyFromPackage(packageRoot)!;
+    const firstCardId = base.cards[0]!.cardId;
+    const edited = updateInstagramCardCopyReviewDrafts({
+      review: buildInstagramCardCopyReview({
+        candidateId: CANDIDATE_ID,
+        cardCopy: base,
+        carousel: readInstagramCarouselPlanFromPackage(packageRoot),
+        source: { kind: "external_editorial", candidateRef: null },
+        updatedBy: "ysh",
+        nowIso: T0,
+      }),
+      base,
+      edits: [{ cardId: firstCardId, headline: "사람이 고친 표지 문구" }],
+      updatedBy: "ysh",
+      nowIso: T0,
+    });
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T0 }),
+    });
+
+    const plan = readSharedVisualPlan(packageRoot)!;
+    expect(resolveSharedVisualPlanLifecycleForPackage({ packageRoot, plan, bundle: readBundle() })).toBe("stale");
+    const writer = astraWriterInvoke();
+    expect((await generateAstraHandoffForCandidate({ candidateId: CANDIDATE_ID, invoke: writer })).ok).toBe(false);
+    expect(writer).not.toHaveBeenCalled();
+
+    const vraInvoke = vi.fn<VisualRoleArchitectInvoke>(async () => JSON.stringify(VRA_LLM));
+    const regenerated = await generateSharedVisualPlanWithLlm({
+      packageRoot,
+      bundle: readBundle(),
+      approvedCanonicalAsset: asset(),
+      invoke: async () => JSON.stringify(SVP_LLM),
+      invokeVisualRoleArchitect: vraInvoke,
+      hermesHome,
+      now: RESTORE_AT,
+    });
+    expect(regenerated.ok).toBe(true);
+    expect(vraInvoke.mock.calls[0]![0].text).toContain("사람이 고친 표지 문구");
+    expect(readInstagramCardCopyFromPackage(packageRoot)).toEqual(base);
+    expect(
+      resolveSharedVisualPlanLifecycleForPackage({
+        packageRoot,
+        plan: readSharedVisualPlan(packageRoot)!,
+        bundle: readBundle(),
+      }),
+    ).toBe("fresh");
   });
 });

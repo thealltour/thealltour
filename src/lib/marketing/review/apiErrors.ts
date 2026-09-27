@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { HumanReviewTransitionError, HumanReviewPolicyError } from "@/lib/marketing/review/transitions";
 import { HumanReviewEligibilityError } from "@/lib/marketing/review/bootstrap/humanReviewEligibilityError";
+import { InstagramCardCopyReviewError } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 
 export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (error instanceof HumanReviewTransitionError) {
@@ -11,6 +12,17 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof HumanReviewEligibilityError) {
     return NextResponse.json({ message: error.message, reason: error.reason }, { status: 422 });
+  }
+  if (error instanceof InstagramCardCopyReviewError) {
+    const conflict =
+      error.code === "base_changed" ||
+      error.code === "review_missing" ||
+      error.code === "card_copy_missing" ||
+      error.code === "visual_carry_over_unavailable";
+    return NextResponse.json(
+      { message: error.messageKo, code: error.code },
+      { status: conflict ? 409 : 422 },
+    );
   }
   const message = error instanceof Error ? error.message : "unknown_error";
   if (message === "candidate_not_found") {

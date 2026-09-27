@@ -108,8 +108,8 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         : data.wrote
           ? `HDD 패키지를 저장했습니다${data.relativePackagePath ? ` (${data.relativePackagePath})` : ""}.`
           : "HDD보내기를 완료했습니다.";
-      setMessage(data.note ? `${base} ${data.note}` : base);
       await load();
+      setMessage(data.note ? `${base} ${data.note}` : base);
     } catch {
       setMessage("HDD보내기에 실패했습니다.");
     } finally {
@@ -138,10 +138,10 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         setMessage(data.message ?? "카드뉴스 렌더를 시작하지 못했습니다.");
         return;
       }
+      await load();
       setMessage(
         data.note ?? (data.status === "skipped" ? "렌더를 건너뛰었습니다." : "렌더를 완료했습니다."),
       );
-      await load();
     } catch {
       setMessage("카드뉴스 렌더를 시작하지 못했습니다.");
     } finally {

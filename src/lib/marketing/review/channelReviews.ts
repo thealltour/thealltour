@@ -43,6 +43,10 @@ export type ChannelReviewEntry = {
   notes: string | null;
   /** MQ-5 — compact marketing value (optional, additive). */
   marketingValue?: import("@/lib/marketing/value/contracts").MarketingValueCompact | null;
+  /** Instagram only — card-level human review; package sidecar mirrors it for the pipeline. */
+  cardCopyReview?:
+    | import("@/lib/marketing/publishable/instagramEditorial/cardCopyReview").InstagramCardCopyReview
+    | null;
 };
 
 export type ChannelReviewsMap = Partial<

@@ -15,6 +15,7 @@ import { MarketingReviewChannelChecklist } from "@/components/admin/marketing-re
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import { MarketingReviewCanonicalAssetPanel } from "@/components/admin/marketing-review/MarketingReviewCanonicalAssetPanel";
 import { MarketingReviewExternalEditorialPanel } from "@/components/admin/marketing-review/MarketingReviewExternalEditorialPanel";
+import { MarketingReviewInstagramCardCopyPanel } from "@/components/admin/marketing-review/MarketingReviewInstagramCardCopyPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
@@ -467,6 +468,11 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </label>
           {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
         </AdminCard>
+
+        <MarketingReviewInstagramCardCopyPanel
+          candidateId={candidate.candidateId}
+          canEdit={detail.canEdit}
+        />
 
         <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
 

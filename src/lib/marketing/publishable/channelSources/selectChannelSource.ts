@@ -40,6 +40,10 @@ import type {
   PublishableChannelContent,
   PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
+import {
+  hasInstagramCardHumanEdits,
+  INSTAGRAM_CARD_COPY_REVIEW_RELATIVE_PATH,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import type { ChannelReviewEntry } from "@/lib/marketing/review/channelReviews";
 import type { HumanMarketingReview } from "@/lib/marketing/review/types";
 
@@ -119,7 +123,18 @@ function withSlot(
 }
 
 function hasHumanDraft(review: HumanMarketingReview, channel: PublishableChannel): boolean {
-  return Boolean(review.channelReviews?.[channel]?.humanDraft?.body?.trim());
+  const entry = review.channelReviews?.[channel];
+  return Boolean(entry?.humanDraft?.body?.trim()) || hasInstagramCardHumanEdits(entry?.cardCopyReview);
+}
+
+/** Card copy review belongs to the source it was made on; a switch never carries it over. */
+function withCardCopyReviewCleared(
+  channel: PublishableChannel,
+  sidecars: Record<string, unknown | null>,
+): Record<string, unknown | null> {
+  return channel === "instagram"
+    ? { ...sidecars, [INSTAGRAM_CARD_COPY_REVIEW_RELATIVE_PATH]: null }
+    : sidecars;
 }
 
 export function syncReviewChannelAiDraft(input: {
@@ -242,7 +257,7 @@ export function selectChannelSource(input: SelectChannelSourceInput): SelectChan
         nowIso,
       }).ref;
     }
-    writeSidecars(input.packageRoot, materialized.sidecars, nowIso);
+    writeSidecars(input.packageRoot, withCardCopyReviewCleared(input.channel, materialized.sidecars), nowIso);
     const nextBundle = withSlot(bundle, input.channel, materialized.slot, nowIso);
     writePublishableBundle(input.packageRoot, nextBundle, nowIso);
     const selection = writeChannelSourceSelectionRecord({
@@ -337,7 +352,7 @@ export function selectChannelSource(input: SelectChannelSourceInput): SelectChan
         },
       }
     : null;
-  writeSidecars(input.packageRoot, snapshot.sidecars, nowIso);
+  writeSidecars(input.packageRoot, withCardCopyReviewCleared(input.channel, snapshot.sidecars), nowIso);
   const nextBundle = withSlot(bundle, input.channel, restoredSlot, nowIso);
   writePublishableBundle(input.packageRoot, nextBundle, nowIso);
   const selection = writeChannelSourceSelectionRecord({

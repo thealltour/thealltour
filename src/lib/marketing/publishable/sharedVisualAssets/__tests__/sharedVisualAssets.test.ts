@@ -22,9 +22,11 @@ import {
   formatUsageLine,
   getSharedVisualUploadStatus,
   isSharedVisualAssetsStale,
+  listRebindableSharedVisualIds,
   parseSharedVisualAssetsManifest,
   persistSharedVisualAssetsManifest,
   readSharedVisualAssetsManifest,
+  rebindSharedVisualAssetsToHandoff,
   sharedVisualStoredRelativePath,
   uploadSharedVisualAsset,
   validateSharedVisualUploadBytes,
@@ -509,6 +511,95 @@ describe("Shared Visual Assets Operator v1", () => {
       expect(parseSharedVisualAssetsManifest(JSON.parse(JSON.stringify(manifest)))).toEqual(
         manifest,
       );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("N. rebind keeps uploaded files after plan regeneration without re-upload", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sva-n-"));
+    try {
+      const oldHandoff = makeHandoff();
+      for (const visualId of ["social_visual_01", "social_visual_03"]) {
+        uploadSharedVisualAsset({
+          packageRoot: dir,
+          handoff: oldHandoff,
+          sharedVisualPlan: plan(),
+          visualId,
+          bytes: PNG_1X1,
+          now: new Date("2026-09-18T13:00:00.000Z"),
+        });
+      }
+      rmSync(join(dir, SHARED_VISUAL_MEDIA_DIR, "social_visual_03.png"));
+
+      const newPlan = plan({ sourceVisualPlanFingerprint: "fp_plan_regenerated" });
+      const newHandoff = makeHandoff({ sourceVisualPlanFingerprint: "fp_plan_regenerated" });
+      const before = readSharedVisualAssetsManifest(dir);
+      expect(
+        isSharedVisualAssetsStale({ manifest: before!, handoff: newHandoff, sharedVisualPlan: newPlan }),
+      ).toBe(true);
+      expect(
+        listRebindableSharedVisualIds({
+          packageRoot: dir,
+          handoff: newHandoff,
+          sharedVisualPlan: newPlan,
+          manifest: before,
+        }),
+      ).toEqual(["social_visual_01"]);
+
+      const { manifest, reboundVisualIds } = rebindSharedVisualAssetsToHandoff({
+        packageRoot: dir,
+        handoff: newHandoff,
+        sharedVisualPlan: newPlan,
+      });
+      expect(reboundVisualIds).toEqual(["social_visual_01"]);
+      expect(manifest.assets.map((a) => a.visualId)).toEqual(["social_visual_01"]);
+      expect(manifest.assets[0]?.uploadedAt).toBe("2026-09-18T13:00:00.000Z");
+      expect(
+        isSharedVisualAssetsStale({ manifest, handoff: newHandoff, sharedVisualPlan: newPlan }),
+      ).toBe(false);
+      expect(readFileSync(join(dir, SHARED_VISUAL_MEDIA_DIR, "social_visual_01.png")).equals(PNG_1X1)).toBe(
+        true,
+      );
+      expect(
+        listRebindableSharedVisualIds({
+          packageRoot: dir,
+          handoff: newHandoff,
+          sharedVisualPlan: newPlan,
+          manifest,
+        }),
+      ).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("O. rebind refuses a handoff that no longer matches the plan", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sva-o-"));
+    try {
+      const handoff = makeHandoff();
+      uploadSharedVisualAsset({
+        packageRoot: dir,
+        handoff,
+        sharedVisualPlan: plan(),
+        visualId: "social_visual_01",
+        bytes: PNG_1X1,
+      });
+      const newPlan = plan({ sourceVisualPlanFingerprint: "fp_plan_regenerated" });
+      expect(
+        listRebindableSharedVisualIds({
+          packageRoot: dir,
+          handoff,
+          sharedVisualPlan: newPlan,
+          manifest: readSharedVisualAssetsManifest(dir),
+        }),
+      ).toEqual([]);
+      expect(() =>
+        rebindSharedVisualAssetsToHandoff({ packageRoot: dir, handoff, sharedVisualPlan: newPlan }),
+      ).toThrow(/일치하지 않습니다/);
+      expect(() =>
+        rebindSharedVisualAssetsToHandoff({ packageRoot: dir, handoff, sharedVisualPlan: plan() }),
+      ).toThrow(/연결할 기존 업로드 이미지가 없습니다/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -37,22 +37,43 @@ export function resolveInstagramVisualRoleLifecycleForPackage(
   });
 }
 
-export function resolveSharedVisualPlanLifecycleForPackage(input: {
+type SharedVisualPlanPackageInput = {
   packageRoot: string;
   plan: SharedVisualPlan | null | undefined;
   bundle: PublishableContentBundle | null | undefined;
-}): VisualArtifactLifecycleStatus {
-  const status = resolveSharedVisualPlanLifecycle({
+};
+
+function resolveBundleBoundSharedVisualPlanLifecycle(
+  input: SharedVisualPlanPackageInput,
+): VisualArtifactLifecycleStatus {
+  return resolveSharedVisualPlanLifecycle({
     plan: input.plan,
     bundle: input.bundle,
     currentInstagramVisualRoleFingerprint: readCurrentInstagramVisualRoleFingerprint(input.packageRoot),
   });
-  if (
-    status === "fresh" &&
+}
+
+function hasInstagramVisualRoleDrift(input: SharedVisualPlanPackageInput): boolean {
+  return Boolean(
     input.plan?.sourceInstagramVisualRoleFingerprint &&
-    resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale"
-  ) {
-    return "stale";
-  }
+      resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale",
+  );
+}
+
+export function resolveSharedVisualPlanLifecycleForPackage(
+  input: SharedVisualPlanPackageInput,
+): VisualArtifactLifecycleStatus {
+  const status = resolveBundleBoundSharedVisualPlanLifecycle(input);
+  if (status === "fresh" && hasInstagramVisualRoleDrift(input)) return "stale";
   return status;
+}
+
+/**
+ * The plan still matches the channel bundle and is stale only because the reviewed Instagram card
+ * copy moved past its visual role plan. Existing handoff/uploads stay usable; re-planning is optional.
+ */
+export function isSharedVisualPlanStaleOnlyFromInstagramCardCopy(
+  input: SharedVisualPlanPackageInput,
+): boolean {
+  return resolveBundleBoundSharedVisualPlanLifecycle(input) === "fresh" && hasInstagramVisualRoleDrift(input);
 }

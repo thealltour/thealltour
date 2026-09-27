@@ -13,7 +13,9 @@ import {
   getSharedVisualUploadStatus,
   isManualAstraHandoffSourceStale,
   isSharedVisualAssetsStale,
+  listRebindableSharedVisualIds,
   readSharedVisualAssetsManifest,
+  rebindSharedVisualAssetsToHandoff,
   SharedVisualUploadError,
   uploadSharedVisualAsset,
   type SharedVisualAsset,
@@ -54,8 +56,12 @@ export type AstraHandoffOperatorView = {
   handoff: ManualAstraHandoff | null;
   handoffFingerprint: string | null;
   handoffStale: boolean;
+  /** Handoff no longer matches the plan fingerprint — uploads are refused server-side. */
+  handoffSourceStale: boolean;
   assetsManifest: SharedVisualAssetsManifest | null;
   assetsStale: boolean;
+  /** Stale uploads that the operator may re-bind to the current handoff without re-uploading. */
+  rebindableVisualIds: string[];
   uploadStatus: SharedVisualUploadStatus | null;
   slots: AstraHandoffOperatorSlot[];
   message: string | null;
@@ -90,8 +96,10 @@ export async function getAstraHandoffOperatorView(
       handoff: null,
       handoffFingerprint: null,
       handoffStale: false,
+      handoffSourceStale: false,
       assetsManifest: null,
       assetsStale: false,
+      rebindableVisualIds: [],
       uploadStatus: null,
       slots: [],
       message: "HDD 마케팅 패키지가 없습니다. 먼저 산출물을 내보내 주세요.",
@@ -110,8 +118,10 @@ export async function getAstraHandoffOperatorView(
       handoff: null,
       handoffFingerprint: null,
       handoffStale: false,
+      handoffSourceStale: false,
       assetsManifest,
       assetsStale: false,
+      rebindableVisualIds: [],
       uploadStatus: null,
       slots: [],
       message: "Manual Astra Handoff가 아직 없습니다.",
@@ -161,11 +171,42 @@ export async function getAstraHandoffOperatorView(
     handoff,
     handoffFingerprint,
     handoffStale,
+    handoffSourceStale: handoffStale,
     assetsManifest,
     assetsStale,
+    rebindableVisualIds: listRebindableSharedVisualIds({
+      packageRoot: resolved.packageRoot,
+      handoff,
+      sharedVisualPlan,
+      manifest: assetsManifest,
+    }),
     uploadStatus,
     slots,
     message: null,
+  };
+}
+
+export async function rebindAstraHandoffSharedVisuals(input: { candidateId: string }): Promise<{
+  reboundVisualIds: string[];
+  uploadStatus: SharedVisualUploadStatus;
+}> {
+  const resolved = await resolvePackageRoot(input.candidateId);
+  if (!resolved) {
+    throw new AstraHandoffOperatorError("package_missing", "HDD 마케팅 패키지가 없습니다.", 404);
+  }
+  const handoff = readManualAstraHandoff(resolved.packageRoot);
+  if (!handoff) {
+    throw new AstraHandoffOperatorError("handoff_missing", "Manual Astra Handoff가 없습니다.", 404);
+  }
+  const sharedVisualPlan = readSharedVisualPlan(resolved.packageRoot);
+  const { manifest, reboundVisualIds } = rebindSharedVisualAssetsToHandoff({
+    packageRoot: resolved.packageRoot,
+    handoff,
+    sharedVisualPlan,
+  });
+  return {
+    reboundVisualIds,
+    uploadStatus: getSharedVisualUploadStatus({ handoff, manifest, sharedVisualPlan }),
   };
 }
 

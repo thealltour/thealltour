@@ -10,7 +10,11 @@ import { resolvePackageArtifactPath } from "@/lib/marketing/assets/paths";
 import { overwritePackageArtifact } from "@/lib/marketing/assets/writeArtifact";
 import type { ManualAstraHandoff } from "@/lib/marketing/publishable/manualAstraHandoff/contracts";
 import { isStableSocialVisualId } from "@/lib/marketing/publishable/socialVisualPlan";
-import type { SharedVisualAsset } from "@/lib/marketing/publishable/sharedVisualAssets/contracts";
+import {
+  SHARED_VISUAL_ASSETS_CONTRACT,
+  type SharedVisualAsset,
+  type SharedVisualAssetsManifest,
+} from "@/lib/marketing/publishable/sharedVisualAssets/contracts";
 import { computeManualAstraHandoffFingerprint } from "@/lib/marketing/publishable/sharedVisualAssets/handoffFingerprint";
 import {
   MAX_SHARED_VISUAL_UPLOAD_BYTES,
@@ -21,7 +25,10 @@ import {
   readSharedVisualAssetsManifest,
   upsertSharedVisualAsset,
 } from "@/lib/marketing/publishable/sharedVisualAssets/persist";
-import { isManualAstraHandoffSourceStale } from "@/lib/marketing/publishable/sharedVisualAssets/status";
+import {
+  isManualAstraHandoffSourceStale,
+  isSharedVisualAssetsStale,
+} from "@/lib/marketing/publishable/sharedVisualAssets/status";
 import type { SharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualPlan/contracts";
 
 export class SharedVisualUploadError extends Error {
@@ -205,4 +212,92 @@ export function uploadSharedVisualAsset(input: {
   }
 
   return { asset, manifest };
+}
+
+function uploadedFileExists(packageRoot: string, storedPath: string): boolean {
+  try {
+    return existsSync(resolvePackageArtifactPath({ packageRoot, relativePath: storedPath }));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Previously uploaded visuals that can be re-bound to the current (fresh) handoff:
+ * the manifest is stale, the visualId is still requested, and the file is on disk.
+ */
+export function listRebindableSharedVisualIds(input: {
+  packageRoot: string;
+  handoff: ManualAstraHandoff;
+  sharedVisualPlan: SharedVisualPlan | null;
+  manifest: SharedVisualAssetsManifest | null;
+}): string[] {
+  const { manifest, handoff } = input;
+  if (!manifest) return [];
+  if (isManualAstraHandoffSourceStale({ handoff, sharedVisualPlan: input.sharedVisualPlan })) {
+    return [];
+  }
+  if (!isSharedVisualAssetsStale({ manifest, handoff, sharedVisualPlan: input.sharedVisualPlan })) {
+    return [];
+  }
+  const requested = new Set(handoff.visuals.map((v) => v.visualId));
+  return manifest.assets
+    .filter(
+      (a) =>
+        a.status === "uploaded" &&
+        requested.has(a.visualId) &&
+        uploadedFileExists(input.packageRoot, a.storedPath),
+    )
+    .map((a) => a.visualId);
+}
+
+/**
+ * Operator-confirmed: keep previously uploaded files and bind them to the current handoff/plan
+ * without re-uploading. Files are neither copied nor deleted; only the manifest is rewritten.
+ */
+export function rebindSharedVisualAssetsToHandoff(input: {
+  packageRoot: string;
+  handoff: ManualAstraHandoff;
+  sharedVisualPlan: SharedVisualPlan | null;
+  now?: Date;
+}): { manifest: SharedVisualAssetsManifest; reboundVisualIds: string[] } {
+  if (isManualAstraHandoffSourceStale({ handoff: input.handoff, sharedVisualPlan: input.sharedVisualPlan })) {
+    throw new SharedVisualUploadError(
+      "stale_handoff",
+      "현재 Astra 요청문이 최신 Visual Plan과 일치하지 않습니다. 새 요청문을 생성한 뒤 연결하세요.",
+      409,
+    );
+  }
+  const existing = readSharedVisualAssetsManifest(input.packageRoot);
+  const reboundVisualIds = listRebindableSharedVisualIds({
+    packageRoot: input.packageRoot,
+    handoff: input.handoff,
+    sharedVisualPlan: input.sharedVisualPlan,
+    manifest: existing,
+  });
+  if (!existing || reboundVisualIds.length === 0) {
+    throw new SharedVisualUploadError(
+      "nothing_to_rebind",
+      "현재 Astra 요청문에 연결할 기존 업로드 이미지가 없습니다.",
+      409,
+    );
+  }
+
+  const expectedById = new Map(input.handoff.visuals.map((v) => [v.visualId, v.expectedFilename]));
+  const keep = new Set(reboundVisualIds);
+  const nowIso = (input.now ?? new Date()).toISOString();
+  const manifest: SharedVisualAssetsManifest = {
+    contract: SHARED_VISUAL_ASSETS_CONTRACT,
+    sourceAssetId: input.handoff.sourceAssetId,
+    sourceAssetVersion: input.handoff.sourceAssetVersion,
+    sourceSharedVisualPlanFingerprint: input.handoff.sourceSharedVisualPlanFingerprint,
+    sourceManualAstraHandoffFingerprint: computeManualAstraHandoffFingerprint(input.handoff),
+    updatedAt: nowIso,
+    assets: existing.assets
+      .filter((a) => keep.has(a.visualId))
+      .map((a) => ({ ...a, expectedFilename: expectedById.get(a.visualId) ?? a.expectedFilename }))
+      .sort((a, b) => a.visualId.localeCompare(b.visualId)),
+  };
+  persistSharedVisualAssetsManifest({ packageRoot: input.packageRoot, manifest, createdAt: nowIso });
+  return { manifest, reboundVisualIds };
 }

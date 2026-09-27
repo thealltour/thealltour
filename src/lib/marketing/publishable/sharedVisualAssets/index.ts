@@ -23,6 +23,8 @@ export {
   upsertSharedVisualAsset,
 } from "@/lib/marketing/publishable/sharedVisualAssets/persist";
 export {
+  listRebindableSharedVisualIds,
+  rebindSharedVisualAssetsToHandoff,
   uploadSharedVisualAsset,
   validateSharedVisualUploadBytes,
   sharedVisualStoredRelativePath,

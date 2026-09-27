@@ -64,7 +64,9 @@ type HandoffViewDto = {
   handoff: HandoffDto | null;
   handoffFingerprint: string | null;
   handoffStale: boolean;
+  handoffSourceStale: boolean;
   assetsStale: boolean;
+  rebindableVisualIds: string[];
   uploadStatus: UploadStatusDto | null;
   slots: SlotDto[];
   message: string | null;
@@ -74,6 +76,7 @@ type ViewDto = {
   candidateId: string;
   packagePresent: boolean;
   message: string | null;
+  planStaleFromCardCopyOnly: boolean;
   plan: {
     status: "not_generated" | "fresh" | "stale";
     statusLabel: string;
@@ -112,10 +115,11 @@ function SlotRow(props: {
   candidateId: string;
   slot: SlotDto;
   uploadDisabled: boolean;
+  uploadDetached: boolean;
   busyVisualId: string | null;
   onUpload: (visualId: string, file: File) => Promise<void>;
 }) {
-  const { candidateId, slot, uploadDisabled, busyVisualId, onUpload } = props;
+  const { candidateId, slot, uploadDisabled, uploadDetached, busyVisualId, onUpload } = props;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const busy = busyVisualId === slot.visualId;
   const uploaded = slot.uploaded;
@@ -124,8 +128,10 @@ function SlotRow(props: {
     <div className="rounded-lg border border-[var(--border)] p-3 space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="font-medium text-sm">{slot.visualId}</div>
-        <div className="text-xs text-[var(--text-secondary)]">
-          {uploaded ? "✓ 업로드됨" : "미업로드"}
+        <div
+          className={`text-xs ${uploaded && uploadDetached ? "text-[var(--warning)]" : "text-[var(--text-secondary)]"}`}
+        >
+          {uploaded ? (uploadDetached ? "업로드됨 · 현재 요청문과 연결 안 됨" : "✓ 업로드됨") : "미업로드"}
         </div>
       </div>
       <div className="text-xs text-[var(--text-secondary)] space-y-1">
@@ -201,6 +207,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
   const [handoffBusy, setHandoffBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [renderBusy, setRenderBusy] = useState(false);
+  const [rebindBusy, setRebindBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -296,6 +303,28 @@ export function MarketingReviewAstraHandoffPanel(props: {
     },
     [candidateId, load],
   );
+
+  const rebindUploads = useCallback(async () => {
+    setRebindBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/shared-visuals/rebind`,
+        { method: "POST" },
+      );
+      const data = (await res.json()) as { message?: string };
+      if (!res.ok) {
+        setMessage(data.message ?? "기존 이미지 연결에 실패했습니다.");
+        return;
+      }
+      await load();
+      setMessage(data.message ?? "기존 업로드 이미지를 연결했습니다.");
+    } catch {
+      setMessage("기존 이미지 연결에 실패했습니다.");
+    } finally {
+      setRebindBusy(false);
+    }
+  }, [candidateId, load]);
 
   const exportToHdd = useCallback(async () => {
     setExportBusy(true);
@@ -398,8 +427,12 @@ export function MarketingReviewAstraHandoffPanel(props: {
   const plan = view.plan;
   const handoffView = view.handoff;
   const handoff = handoffView.handoff;
-  const uploadDisabled = !handoff || handoffView.handoffStale;
+  const uploadDisabled = !handoff || handoffView.handoffSourceStale;
   const progress = handoffView.uploadStatus;
+  const rebindable = handoffView.rebindableVisualIds ?? [];
+  const cardCopyDriftOnly = view.planStaleFromCardCopyOnly;
+  const handoffDriftOnly =
+    handoffView.handoffStale && !handoffView.handoffSourceStale && cardCopyDriftOnly;
 
   return (
     <AdminCard className="space-y-6 p-4">
@@ -419,7 +452,12 @@ export function MarketingReviewAstraHandoffPanel(props: {
           stale이 되며, 자동으로 재생성되지 않습니다.
         </p>
 
-        {plan.status === "stale" ? (
+        {plan.status === "stale" && cardCopyDriftOnly ? (
+          <p className="text-sm text-[var(--text-secondary)]">
+            카드 문구가 Plan 생성 이후 바뀌었습니다. 기존 Plan·Handoff·업로드 이미지로 그대로
+            카드뉴스를 렌더할 수 있습니다. 이미지 구성을 새로 잡고 싶을 때만 재생성하세요.
+          </p>
+        ) : plan.status === "stale" ? (
           <p className="text-sm text-[var(--warning)]">
             채널 결과가 변경되어 Plan이 오래되었습니다. 검토 후 재생성하세요. (기존 Plan은
             유지됩니다.)
@@ -471,16 +509,20 @@ export function MarketingReviewAstraHandoffPanel(props: {
             className={`text-xs ${statusBadgeClass(
               !handoff
                 ? "not_generated"
-                : handoffView.handoffStale
-                  ? "stale"
-                  : "fresh",
+                : handoffDriftOnly
+                  ? "not_generated"
+                  : handoffView.handoffStale
+                    ? "stale"
+                    : "fresh",
             )}`}
           >
             {!handoff
               ? "아직 생성되지 않음"
-              : handoffView.handoffStale
-                ? "오래됨(stale)"
-                : "최신"}
+              : handoffDriftOnly
+                ? "문구 변경됨 · 기존 이미지 사용 가능"
+                : handoffView.handoffStale
+                  ? "오래됨(stale)"
+                  : "최신"}
             {handoff ? ` · visuals ${handoff.visualCount}` : ""}
           </div>
         </div>
@@ -514,19 +556,42 @@ export function MarketingReviewAstraHandoffPanel(props: {
               <p className="text-sm font-medium">{handoff.contentTitleKo}</p>
             ) : null}
 
-            {handoffView.handoffStale ? (
+            {handoffView.handoffSourceStale ? (
               <p className="text-sm text-[var(--warning)]">
                 현재 Astra 요청문이 최신 Visual Plan과 일치하지 않습니다. Handoff를 재생성한 뒤
                 업로드하세요.
               </p>
+            ) : handoffView.handoffStale && !handoffDriftOnly ? (
+              <p className="text-sm text-[var(--warning)]">
+                채널 결과가 바뀌어 Handoff가 오래되었습니다. 이미지 구성을 새로 잡으려면 Plan과
+                Handoff를 재생성하세요.
+              </p>
             ) : null}
 
-            {handoffView.assetsStale && !handoffView.handoffStale ? (
+            {handoffView.assetsStale && !handoffView.handoffSourceStale ? (
               <p className="text-sm text-[var(--warning)]">
                 업로드된 Shared Visual 매핑이 현재 Handoff/Plan과 어긋납니다. visualId만 같다고
                 같은 이미지가 아닙니다. 필요 시 다시 업로드하세요. (기존 파일은 삭제되지
                 않습니다.)
               </p>
+            ) : null}
+
+            {rebindable.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+                <p className="text-sm">
+                  이전 Plan 기준으로 업로드한 이미지 {rebindable.length}개({rebindable.join(", ")})가
+                  현재 Astra 요청문과 연결되어 있지 않아 카드뉴스에 들어가지 않습니다. 아래 미리보기를
+                  확인하고, 그대로 쓸 이미지라면 다시 업로드하지 않고 현재 요청문에 연결할 수 있습니다.
+                </p>
+                <button
+                  type="button"
+                  disabled={rebindBusy || busyVisualId !== null}
+                  onClick={() => void rebindUploads()}
+                  className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
+                >
+                  {rebindBusy ? "연결 중…" : "기존 업로드 이미지를 현재 요청문에 연결"}
+                </button>
+              </div>
             ) : null}
 
             {progress ? (
@@ -586,6 +651,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
                     candidateId={candidateId}
                     slot={slot}
                     uploadDisabled={uploadDisabled}
+                    uploadDetached={handoffView.assetsStale}
                     busyVisualId={busyVisualId}
                     onUpload={onUpload}
                   />

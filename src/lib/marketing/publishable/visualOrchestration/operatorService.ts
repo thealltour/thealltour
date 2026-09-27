@@ -27,6 +27,7 @@ import {
   getSharedVisualUploadStatus,
   isManualAstraHandoffSourceStale,
   isSharedVisualAssetsStale,
+  listRebindableSharedVisualIds,
   readSharedVisualAssetsManifest,
 } from "@/lib/marketing/publishable/sharedVisualAssets";
 import { formatUsageLine } from "@/lib/marketing/publishable/manualAstraHandoff/formatCopyText";
@@ -35,7 +36,10 @@ import {
   resolveManualAstraHandoffLifecycle,
   type VisualArtifactLifecycleStatus,
 } from "@/lib/marketing/publishable/visualOrchestration/lifecycle";
-import { resolveSharedVisualPlanLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
+import {
+  isSharedVisualPlanStaleOnlyFromInstagramCardCopy,
+  resolveSharedVisualPlanLifecycleForPackage,
+} from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
 import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfileAsync";
@@ -116,6 +120,8 @@ export type VisualOrchestrationOperatorView = {
       usageLabels: string[];
     }>;
   };
+  /** Plan is stale only because reviewed Instagram card copy changed; existing visuals stay usable. */
+  planStaleFromCardCopyOnly: boolean;
   handoff: AstraHandoffOperatorView;
   canGenerateHandoff: boolean;
   handoffBlockReason: string | null;
@@ -133,8 +139,10 @@ export async function getVisualOrchestrationOperatorView(
       handoff: null,
       handoffFingerprint: null,
       handoffStale: false,
+      handoffSourceStale: false,
       assetsManifest: null,
       assetsStale: false,
+      rebindableVisualIds: [],
       uploadStatus: null,
       slots: [],
       message: "HDD 마케팅 패키지가 없습니다. 먼저 산출물을 내보내 주세요.",
@@ -143,6 +151,7 @@ export async function getVisualOrchestrationOperatorView(
       candidateId,
       packagePresent: false,
       message: emptyHandoff.message,
+      planStaleFromCardCopyOnly: false,
       plan: {
         status: "not_generated",
         statusLabel: lifecycleLabelKo("not_generated"),
@@ -183,8 +192,10 @@ export async function getVisualOrchestrationOperatorView(
         handoff: null,
         handoffFingerprint: null,
         handoffStale: false,
+        handoffSourceStale: false,
         assetsManifest,
         assetsStale: false,
+        rebindableVisualIds: [],
         uploadStatus: null,
         slots: [],
         message:
@@ -230,26 +241,44 @@ export async function getVisualOrchestrationOperatorView(
           handoff: handoffRaw,
           handoffFingerprint,
           handoffStale,
+          handoffSourceStale: isManualAstraHandoffSourceStale({
+            handoff: handoffRaw,
+            sharedVisualPlan: plan,
+          }),
           assetsManifest,
           assetsStale,
+          rebindableVisualIds: listRebindableSharedVisualIds({
+            packageRoot: resolved.packageRoot,
+            handoff: handoffRaw,
+            sharedVisualPlan: plan,
+            manifest: assetsManifest,
+          }),
           uploadStatus,
           slots,
           message: null,
         };
       })();
 
+  const planStaleFromCardCopyOnly = isSharedVisualPlanStaleOnlyFromInstagramCardCopy({
+    packageRoot: resolved.packageRoot,
+    plan,
+    bundle,
+  });
   const canGenerateHandoff = planLifecycle === "fresh";
   const handoffBlockReason =
     planLifecycle === "not_generated"
       ? "Shared Visual Plan이 없습니다."
-      : planLifecycle === "stale"
-        ? "Shared Visual Plan이 오래되었습니다. Plan을 먼저 재생성하세요."
-        : null;
+      : planStaleFromCardCopyOnly
+        ? "카드 문구가 Plan 생성 이후 바뀌어, Handoff를 새로 만들려면 Plan부터 재생성해야 합니다. 기존 Handoff와 업로드 이미지로 렌더하는 데는 필요 없습니다."
+        : planLifecycle === "stale"
+          ? "Shared Visual Plan이 오래되었습니다. Plan을 먼저 재생성하세요."
+          : null;
 
   return {
     candidateId: resolved.candidateId,
     packagePresent: true,
     message: null,
+    planStaleFromCardCopyOnly,
     plan: {
       status: planLifecycle,
       statusLabel: lifecycleLabelKo(planLifecycle),

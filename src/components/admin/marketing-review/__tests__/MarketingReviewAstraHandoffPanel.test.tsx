@@ -18,6 +18,7 @@ function readyView(overrides: Record<string, unknown> = {}) {
     candidateId: "cmc_astra",
     packagePresent: true,
     message: null,
+    planStaleFromCardCopyOnly: false,
     plan: {
       status: "fresh",
       statusLabel: "최신",
@@ -52,7 +53,9 @@ function readyView(overrides: Record<string, unknown> = {}) {
       },
       handoffFingerprint: "fp",
       handoffStale: false,
+      handoffSourceStale: false,
       assetsStale: false,
+      rebindableVisualIds: [],
       uploadStatus: {
         required: 2,
         uploaded: 1,
@@ -184,6 +187,7 @@ describe("MarketingReviewAstraHandoffPanel", () => {
         readyView({
           handoff: {
             handoffStale: true,
+            handoffSourceStale: true,
             uploadStatus: {
               required: 2,
               uploaded: 1,
@@ -208,6 +212,75 @@ describe("MarketingReviewAstraHandoffPanel", () => {
     const replaceBtn = screen.getByRole("button", { name: "교체" });
     expect(uploadBtn).toHaveProperty("disabled", true);
     expect(replaceBtn).toHaveProperty("disabled", true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps upload enabled when only the reviewed card copy moved past the plan", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () =>
+          readyView({
+            planStaleFromCardCopyOnly: true,
+            plan: { ...readyView().plan, status: "stale", statusLabel: "오래됨" },
+            handoff: { handoffStale: true, handoffSourceStale: false },
+          }),
+      })),
+    );
+
+    render(<MarketingReviewAstraHandoffPanel candidateId="cmc_astra" />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/문구 변경됨 · 기존 이미지 사용 가능/)).toBeTruthy();
+    });
+    expect(screen.queryByText(/최신 Visual Plan과 일치하지 않습니다/)).toBeNull();
+    expect(screen.getByText(/이미지 구성을 새로 잡고 싶을 때만 재생성하세요/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "이미지 업로드" })).toHaveProperty("disabled", false);
+    expect(screen.getByRole("button", { name: "교체" })).toHaveProperty("disabled", false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("rebinds previously uploaded visuals to the current handoff on request", async () => {
+    let rebound = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/shared-visuals/rebind") && init?.method === "POST") {
+        rebound = true;
+        return {
+          ok: true,
+          json: async () => ({ message: "기존 업로드 이미지 1개를 현재 Astra 요청문에 연결했습니다." }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () =>
+          readyView({
+            handoff: rebound
+              ? {}
+              : { assetsStale: true, rebindableVisualIds: ["social_visual_01"] },
+          }),
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<MarketingReviewAstraHandoffPanel candidateId="cmc_astra" />);
+
+    const button = await screen.findByRole("button", {
+      name: "기존 업로드 이미지를 현재 요청문에 연결",
+    });
+    expect(screen.getByText("업로드됨 · 현재 요청문과 연결 안 됨")).toBeTruthy();
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1개를 현재 Astra 요청문에 연결했습니다/)).toBeTruthy();
+    });
+    expect(
+      screen.queryByRole("button", { name: "기존 업로드 이미지를 현재 요청문에 연결" }),
+    ).toBeNull();
+    expect(screen.getByText("✓ 업로드됨")).toBeTruthy();
 
     vi.unstubAllGlobals();
   });

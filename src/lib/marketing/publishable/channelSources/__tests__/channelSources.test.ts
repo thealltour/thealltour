@@ -40,7 +40,10 @@ import {
   generateAstraHandoffForCandidate,
   generateSharedVisualPlanForCandidate,
 } from "@/lib/marketing/publishable/visualOrchestration/operatorService";
-import { resolveSharedVisualPlanLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
+import {
+  isSharedVisualPlanStaleOnlyFromInstagramCardCopy,
+  resolveSharedVisualPlanLifecycleForPackage,
+} from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT } from "@/lib/marketing/editorialDirector/researchHandoff/contracts";
 import {
   CHANNEL_SOURCE_SELECTION_RELATIVE_PATH,
@@ -1301,6 +1304,7 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     const plan = readSharedVisualPlan(packageRoot)!;
     expect(plan.sourceInstagramVisualRoleFingerprint).toBe(buildInstagramVisualRoleContentFingerprint(vra));
     expect(resolveSharedVisualPlanLifecycleForPackage({ packageRoot, plan, bundle: readBundle() })).toBe("fresh");
+    expect(isSharedVisualPlanStaleOnlyFromInstagramCardCopy({ packageRoot, plan, bundle: readBundle() })).toBe(false);
     // Regression guard: the old call shape (no current VRA fingerprint) mislabels this fresh plan.
     expect(resolveSharedVisualPlanLifecycle({ plan, bundle: readBundle() })).toBe("stale");
 
@@ -1321,6 +1325,7 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     });
     const plan = readSharedVisualPlan(packageRoot)!;
     expect(resolveSharedVisualPlanLifecycleForPackage({ packageRoot, plan, bundle: readBundle() })).toBe("stale");
+    expect(isSharedVisualPlanStaleOnlyFromInstagramCardCopy({ packageRoot, plan, bundle: readBundle() })).toBe(false);
 
     const writer = astraWriterInvoke();
     const handoff = await generateAstraHandoffForCandidate({ candidateId: CANDIDATE_ID, invoke: writer });
@@ -1365,6 +1370,7 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
 
     const plan = readSharedVisualPlan(packageRoot)!;
     expect(resolveSharedVisualPlanLifecycleForPackage({ packageRoot, plan, bundle: readBundle() })).toBe("stale");
+    expect(isSharedVisualPlanStaleOnlyFromInstagramCardCopy({ packageRoot, plan, bundle: readBundle() })).toBe(true);
     const writer = astraWriterInvoke();
     expect((await generateAstraHandoffForCandidate({ candidateId: CANDIDATE_ID, invoke: writer })).ok).toBe(false);
     expect(writer).not.toHaveBeenCalled();

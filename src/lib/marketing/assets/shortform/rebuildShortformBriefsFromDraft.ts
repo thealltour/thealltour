@@ -32,6 +32,7 @@ import { applyPublishableContentToMediaBrief } from "@/lib/marketing/publishable
 import { ensurePublishableContentSync } from "@/lib/marketing/publishable/ensurePublishableContentSync";
 import { looksLikeInternalPlanningBody } from "@/lib/marketing/publishable/validate";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
+import { reconcileChannelSourceSelection } from "@/lib/marketing/publishable/channelSources/selection";
 import { buildThreadsPostText } from "@/lib/marketing/publishable/applyToMediaBrief";
 
 export type RebuildShortformBriefsResult =
@@ -175,6 +176,7 @@ export async function rebuildShortformBriefsFromDraft(input: {
       bundle: publishable,
       createdAt: nowIso,
     });
+    reconcileChannelSourceSelection({ packageRoot, bundle: publishable, nowIso });
     overwritePackageArtifact({
       packageRoot,
       planned: {

@@ -14,6 +14,7 @@ import { MarketingReviewShortformSourcesPanel } from "@/components/admin/marketi
 import { MarketingReviewChannelChecklist } from "@/components/admin/marketing-review/MarketingReviewChannelChecklist";
 import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/MarketingReviewChannelTabs";
 import { MarketingReviewCanonicalAssetPanel } from "@/components/admin/marketing-review/MarketingReviewCanonicalAssetPanel";
+import { MarketingReviewExternalEditorialPanel } from "@/components/admin/marketing-review/MarketingReviewExternalEditorialPanel";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
@@ -242,6 +243,15 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
         <MarketingReviewCanonicalAssetPanel
           candidateId={candidate.candidateId}
           asset={context.canonicalAsset}
+          canEdit={detail.canEdit}
+          busy={busy}
+          onBusy={setBusy}
+          onMessage={setMessage}
+          onReload={reloadContext}
+        />
+
+        <MarketingReviewExternalEditorialPanel
+          candidateId={candidate.candidateId}
           canEdit={detail.canEdit}
           busy={busy}
           onBusy={setBusy}

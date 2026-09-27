@@ -29,15 +29,13 @@ import { formatUsageLine } from "@/lib/marketing/publishable/manualAstraHandoff/
 import {
   lifecycleLabelKo,
   resolveManualAstraHandoffLifecycle,
-  resolveSharedVisualPlanLifecycle,
   type VisualArtifactLifecycleStatus,
 } from "@/lib/marketing/publishable/visualOrchestration/lifecycle";
+import { resolveSharedVisualPlanLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { CHANNEL_REGENERATE_COMPOSER_TIMEOUT_MS_DEFAULT } from "@/lib/marketing/cron/marketingPlanSpecialists";
 import { resolveMarketingCronHermesTimeoutMs } from "@/lib/marketing/cron/hermesSpawnFailure";
 import { invokeHermesProfileAsync } from "@/lib/marketing/cron/invokeHermesProfileAsync";
-import { buildInstagramVisualRoleContentFingerprint } from "@/lib/marketing/publishable/instagramVisualRole/fingerprint";
 import { ensureInstagramVisualRoleArchitectHermesReady } from "@/lib/marketing/publishable/instagramVisualRole/hermesIdentity";
-import { readInstagramVisualRolePlanFromPackage } from "@/lib/marketing/publishable/instagramVisualRole/persist";
 import { generateSharedVisualPlanWithLlm } from "@/lib/marketing/publishable/visualOrchestration/generateSharedVisualPlan";
 import { generateManualAstraHandoffWithLlm } from "@/lib/marketing/publishable/visualOrchestration/generateManualAstraHandoff";
 import type { AstraHandoffOperatorSlot, AstraHandoffOperatorView } from "@/lib/marketing/publishable/sharedVisualAssets/operatorService";
@@ -47,11 +45,6 @@ import {
 } from "@/lib/marketing/publishable/sharedVisualAssets/operatorService";
 
 export { AstraHandoffOperatorError, astraHandoffOperatorErrorResponse };
-
-function currentVraFingerprint(packageRoot: string): string | null {
-  const plan = readInstagramVisualRolePlanFromPackage(packageRoot);
-  return plan ? buildInstagramVisualRoleContentFingerprint(plan) : null;
-}
 
 function readPublishableBundle(packageRoot: string): PublishableContentBundle | null {
   const path = join(packageRoot, PUBLISHABLE_CONTENT_RELATIVE_PATH);
@@ -150,10 +143,10 @@ export async function getVisualOrchestrationOperatorView(
 
   const bundle = readPublishableBundle(resolved.packageRoot);
   const plan = readSharedVisualPlan(resolved.packageRoot);
-  const planLifecycle = resolveSharedVisualPlanLifecycle({
+  const planLifecycle = resolveSharedVisualPlanLifecycleForPackage({
+    packageRoot: resolved.packageRoot,
     plan,
     bundle,
-    currentInstagramVisualRoleFingerprint: currentVraFingerprint(resolved.packageRoot),
   });
   const handoffRaw = readManualAstraHandoff(resolved.packageRoot);
   const handoffLifecycle = resolveManualAstraHandoffLifecycle({
@@ -326,10 +319,10 @@ export async function generateSharedVisualPlanForCandidate(input: {
   if (!result.ok) {
     return {
       ok: false,
-      planStatus: resolveSharedVisualPlanLifecycle({
+      planStatus: resolveSharedVisualPlanLifecycleForPackage({
+        packageRoot: resolved.packageRoot,
         plan: result.previousPlan,
         bundle,
-        currentInstagramVisualRoleFingerprint: currentVraFingerprint(resolved.packageRoot),
       }),
       visualCount: result.previousPlan?.visuals.length ?? 0,
       error: result.error,
@@ -369,7 +362,11 @@ export async function generateAstraHandoffForCandidate(input: {
       409,
     );
   }
-  const planLifecycle = resolveSharedVisualPlanLifecycle({ plan, bundle });
+  const planLifecycle = resolveSharedVisualPlanLifecycleForPackage({
+    packageRoot: resolved.packageRoot,
+    plan,
+    bundle,
+  });
   const asset = readCanonicalAssetFromPackage(resolved.packageRoot);
   const approved = asset && isApprovedCanonicalAsset(asset) ? asset : null;
 

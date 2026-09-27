@@ -9,7 +9,7 @@
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
-import { readEditorialNarrativePlanFromPackage } from "@/lib/marketing/publishable/instagramEditorial/persist";
+import { resolveInstagramNarrativeForVisualPlanning } from "@/lib/marketing/publishable/channelSources/visualNarrative";
 import { buildInstagramVisualRoleContentFingerprint } from "@/lib/marketing/publishable/instagramVisualRole/fingerprint";
 import {
   ensureInstagramVisualRolePlan,
@@ -125,7 +125,7 @@ export async function generateSharedVisualPlanWithLlm(input: {
         return input.invoke(prompt.text);
       });
 
-    const narrative = readEditorialNarrativePlanFromPackage(input.packageRoot);
+    const narrative = resolveInstagramNarrativeForVisualPlanning(input.packageRoot);
     const vra = await ensureInstagramVisualRolePlan({
       packageRoot: input.packageRoot,
       approvedCanonicalAsset: input.approvedCanonicalAsset,

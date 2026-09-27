@@ -232,6 +232,10 @@ export type PublishableChannelContent = {
     /** STEP 2 — approved-asset adapter vs legacy. */
     compositionMode?: "approved_asset_adapter" | "legacy_proposition_driven" | null;
     inputAuthorityVersion?: string | null;
+    /** Channel source that materialized this slot; absent ⇒ Hermes Auto. `composer` is unchanged by this. */
+    generationSource?: "hermes_auto" | "external_editorial";
+    /** Package-relative path of the external editorial candidate when generationSource is external. */
+    externalCandidateRef?: string | null;
   };
   validation: PublishableValidationResult;
   /**

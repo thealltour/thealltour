@@ -282,9 +282,14 @@ export async function POST(request: Request, context: RouteContext) {
 
     // Channel regenerate does NOT rebuild Shared Visual Plan / Astra Handoff.
     // Existing artifacts become stale when sourceChannelSnapshot no longer matches.
-    const { resolveSharedVisualPlanLifecycle, resolveManualAstraHandoffLifecycle } =
-      await import("@/lib/marketing/publishable/visualOrchestration/lifecycle");
-    const planLifecycle = resolveSharedVisualPlanLifecycle({
+    const { resolveManualAstraHandoffLifecycle } = await import(
+      "@/lib/marketing/publishable/visualOrchestration/lifecycle"
+    );
+    const { resolveSharedVisualPlanLifecycleForPackage } = await import(
+      "@/lib/marketing/publishable/visualOrchestration/packageLifecycle"
+    );
+    const planLifecycle = resolveSharedVisualPlanLifecycleForPackage({
+      packageRoot,
       plan: sharedVisualPlan,
       bundle,
     });

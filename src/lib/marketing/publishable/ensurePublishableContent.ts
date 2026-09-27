@@ -45,6 +45,7 @@ import {
 import { persistCoreContentPack } from "@/lib/marketing/publishable/core/persistCoreContentPack";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
+import { reconcileChannelSourceSelection } from "@/lib/marketing/publishable/channelSources/selection";
 import {
   resolvePublishableComposerConcurrency,
   runWithConcurrency,
@@ -713,6 +714,11 @@ export async function ensurePublishableContent(
           packageRoot: input.packageRoot,
           bundle: persistBundle,
           createdAt: nowIso,
+        });
+        reconcileChannelSourceSelection({
+          packageRoot: input.packageRoot,
+          bundle: persistBundle,
+          nowIso,
         });
         persistCoreContentPack({
           packageRoot: input.packageRoot,

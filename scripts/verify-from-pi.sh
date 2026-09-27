@@ -80,13 +80,13 @@ assert_safe_workspace() {
   if [[ "$dest" != *thealltour* && "$dest" != *verify* && "$dest" != *build-workspace* ]]; then
     die "HERMES_BUILD_WORKSPACE must contain 'thealltour', 'verify', or 'build-workspace' in the path (got: $dest)"
   fi
-  if [[ "$dest" == "/home/ysh/thealltour" || "$dest" == "/home/ysh/theallcloud" ]]; then
+  if [[ "$dest" == "/home/ysh/thealltour" ]]; then
     die "Refusing to use Pi production path as HERMES_BUILD_WORKSPACE"
   fi
   if [[ -e "$dest" ]]; then
     local resolved
     resolved="$(readlink -f "$dest" 2>/dev/null || realpath "$dest" 2>/dev/null || echo "$dest")"
-    if [[ "$resolved" == "/home/ysh/thealltour" || "$resolved" == "/home/ysh/theallcloud" ]]; then
+    if [[ "$resolved" == "/home/ysh/thealltour" ]]; then
       die "Resolved workspace points at Pi production tree: $resolved"
     fi
   fi

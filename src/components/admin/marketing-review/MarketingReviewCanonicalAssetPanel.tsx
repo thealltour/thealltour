@@ -169,6 +169,42 @@ export function MarketingReviewCanonicalAssetPanel({
     }
   }
 
+  const isCurrentVersionApproved =
+    asset.present &&
+    asset.status === "approved" &&
+    asset.version != null &&
+    asset.approvedVersion === asset.version;
+
+  async function copyResearchEditorialHandoff() {
+    if (!isCurrentVersionApproved) {
+      onMessage("현재 버전이 승인된 공통 원문만 Research Editorial JSON으로 복사할 수 있습니다.");
+      return;
+    }
+    onBusy(true);
+    onMessage("");
+    try {
+      const res = await fetch(
+        `/api/admin/marketing-review/${candidateId}/research-editorial-handoff`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      const json = (await res.json().catch(() => ({}))) as { text?: string; message?: string };
+      if (!res.ok || typeof json.text !== "string") {
+        onMessage(json.message ?? "Research Editorial JSON을 만들지 못했습니다.");
+        return;
+      }
+      await navigator.clipboard.writeText(json.text);
+      onMessage(`복사 완료 — ${json.message ?? "Research Editorial용 JSON을 만들었습니다."}`);
+    } catch {
+      onMessage("Research Editorial JSON 복사에 실패했습니다.");
+    } finally {
+      onBusy(false);
+    }
+  }
+
   function previewImport() {
     const parsed = parseImportOrFail();
     if (!parsed) return;
@@ -405,6 +441,19 @@ export function MarketingReviewCanonicalAssetPanel({
           className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           ChatGPT용 원문 복사
+        </button>
+        <button
+          type="button"
+          disabled={busy || !canEdit || !isCurrentVersionApproved}
+          onClick={() => void copyResearchEditorialHandoff()}
+          title={
+            isCurrentVersionApproved
+              ? undefined
+              : "현재 버전이 승인된 공통 원문에서만 사용할 수 있습니다."
+          }
+          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
+        >
+          Research Editorial용 JSON 복사
         </button>
       </div>
 

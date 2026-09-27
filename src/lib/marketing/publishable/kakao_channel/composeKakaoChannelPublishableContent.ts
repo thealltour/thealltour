@@ -44,7 +44,7 @@ function buildPrompt(
     channel: "kakao_channel",
     writingContract: [
       kakaoChannelWritingContract({ hasApprovedCanonicalAsset: hasApproved }),
-      "Channel: concise Kakao decision aid / action. Match approved decision. No invented urgency/price.",
+      "Channel: compact scannable Kakao adaptation. Archetype-aware — decision aid/action only when grounded; discovery/contrast may omit CTA. No invented urgency/price/links.",
       formatCorePackPromptBlock(input),
       formatQualityRevisionPromptBlock(input.qualityRevision),
       forceBlock,

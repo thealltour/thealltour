@@ -5,7 +5,6 @@
  */
 
 import {
-  CARD_COPY_NATURAL_KOREAN_CONTRACT_EN,
   CARD_COPY_SURFACE_WRITING_REQUIREMENTS_NOTE,
 } from "@/lib/marketing/agentContracts/cardCopyNaturalKoreanContract";
 import { CARD_COPY_UPSTREAM_VOCABULARY_BOUNDARY } from "@/lib/marketing/agentContracts/plannerVocabularyBoundary";
@@ -137,8 +136,8 @@ export function mobileDensityGuidanceForRole(
         role,
         bodySoftTargetLines: "2–4",
         notes: [
-          "Recover prior-card payoff in concrete natural Korean; prefer 2–4 lines.",
-          "No new long explanation; not CTA by default; avoid forced frame/rhythm metaphors.",
+          "Recover prior-card payoff as a concrete place/person/building/documented difference/limitation; prefer 2–4 lines.",
+          "No new long explanation; not CTA by default; do not echo planner criteria/perspective/insight/diversity as the close.",
         ],
       };
     default:
@@ -211,7 +210,6 @@ export function buildInstagramCardCopyWriterPayload(input: {
       ],
     },
     surfaceWritingRequirements: CARD_COPY_SURFACE_WRITING_REQUIREMENTS_NOTE,
-    naturalKoreanContractSummary: CARD_COPY_NATURAL_KOREAN_CONTRACT_EN.slice(0, 800),
     canonicalAsset: input.canonicalAsset,
   };
 }

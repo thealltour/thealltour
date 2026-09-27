@@ -1,4 +1,5 @@
 import type { EditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/contracts";
+import { hasImperativeNowActionCta } from "@/lib/marketing/publishable/forcedCtaDetection";
 import {
   THREADS_COPY_CONTRACT,
   THREADS_COPY_ENDING_INTENTS,
@@ -36,12 +37,19 @@ function isEndingIntent(value: unknown): value is ThreadsCopyEndingIntent {
   );
 }
 
-/** Forced CTA / brochure engagement phrasing that Threads specialist must not emit. */
-export const FORCED_THREADS_CTA_RE =
-  /저장해\s*두(?:고|세요)|비교해\s*보(?:세요|아요)|댓글(?:로)?\s*(?:달아|남겨)|클릭해\s*보|링크(?:를)?\s*(?:눌러|클릭)|팔로우해|지금\s*예약/i;
+/**
+ * Engagement / brochure CTA phrasing (save/comment/click/follow + soft "비교해 보세요").
+ * Does NOT ban topic/analysis mentions of decision verbs (e.g. "지금 예약할까").
+ * Imperative "지금 예약하세요" / "지금 구매하세요" etc. are handled via hasImperativeNowActionCta.
+ */
+export const FORCED_THREADS_ENGAGEMENT_CTA_RE =
+  /저장해\s*두(?:고|세요)|비교해\s*보(?:세요|아요)|댓글(?:로)?\s*(?:달아|남겨)|클릭해\s*보|링크(?:를)?\s*(?:눌러|클릭)|팔로우해/i;
+
+/** @deprecated Prefer FORCED_THREADS_ENGAGEMENT_CTA_RE + hasImperativeNowActionCta; kept for test imports. */
+export const FORCED_THREADS_CTA_RE = FORCED_THREADS_ENGAGEMENT_CTA_RE;
 
 export function hasForcedThreadsCta(body: string): boolean {
-  return FORCED_THREADS_CTA_RE.test(body);
+  return FORCED_THREADS_ENGAGEMENT_CTA_RE.test(body) || hasImperativeNowActionCta(body);
 }
 
 export function materializeThreadsCopy(input: {

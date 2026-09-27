@@ -1,3 +1,6 @@
+import {
+  channelTreatAsDiscoveryLike,
+} from "@/lib/marketing/publishable/editorialArchetype";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { stripEvidenceIdsFromText } from "@/lib/marketing/publishable/validate";
 
@@ -17,21 +20,35 @@ export function composeKakaoChannelPublishableDeterministic(input: PublishableCo
     ...input.usableFacts.slice(0, 2).map((f) => stripEvidenceIdsFromText(f.statement)),
   ].filter(Boolean);
 
-  const cta =
-    input.commercialIntent === "commercial"
-      ? "일정·조건은 공식 안내 확인 후 상담으로 이어가 보세요."
-      : input.commercialIntent === "mixed"
-        ? "필요하면 상품/일정 확인, 정보만 가져가셔도 됩니다."
-        : "공식 안내 기준으로 체크만 해 두셔도 충분해요.";
+  const intent = (input.commercialIntent ?? "informational").toLowerCase();
+  const archetype =
+    input.storyLock?.editorialArchetype ??
+    input.approvedCanonicalAsset?.editorialArchetype ??
+    null;
+  const discoveryLike = channelTreatAsDiscoveryLike(
+    typeof archetype === "string" ? archetype : null,
+  );
+
+  let cta: string | null = null;
+  if (intent === "commercial") {
+    cta = "일정·조건은 공식 안내 확인 후 상담으로 이어가 보세요.";
+  } else if (intent === "mixed" || intent === "consideration") {
+    // Soft guidance only when not discovery/contrast
+    if (!discoveryLike) {
+      cta = "필요하면 상품/일정 확인, 정보만 가져가셔도 됩니다.";
+    }
+  }
+  // informational: CTA may be null (observation close = body ends on points)
 
   const lines = [
     angle,
     "",
     "핵심만 짧게:",
     ...points.slice(0, 3).map((p, i) => `${i + 1}) ${p}`),
-    "",
-    cta,
   ];
+  if (cta) {
+    lines.push("", cta);
+  }
 
   return {
     title: null,

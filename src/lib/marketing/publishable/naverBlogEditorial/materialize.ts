@@ -1,4 +1,5 @@
 import type { EditorialNarrativePlan } from "@/lib/marketing/publishable/editorialNarrative/contracts";
+import { hasImperativeNowActionCta } from "@/lib/marketing/publishable/forcedCtaDetection";
 import {
   NAVER_BLOG_COPY_CONTRACT,
   NAVER_BLOG_COPY_WRITER_HERMES_PROFILE,
@@ -47,14 +48,14 @@ export const NAVER_BLOG_UNSAFE_GENERALIZATION_RE =
   /남부\s*프레임|남부\s*베트남(?!\s*관광)|관광\s*광고가\s*아니라|휴양\s*광고가\s*아니라|현지인의\s*진짜\s*삶|수백\s*년\s*이어온|꼭\s*가봐야/i;
 
 export const NAVER_BLOG_FORCED_CTA_RE =
-  /지금\s*예약|저장해\s*두|문의하세|비교\s*후\s*선택|클릭해\s*보|팔로우해/i;
+  /저장해\s*두|문의하세|비교\s*후\s*선택|클릭해\s*보|팔로우해/i;
 
 export function hasNaverBlogUnsafeGeneralization(text: string): boolean {
   return NAVER_BLOG_UNSAFE_GENERALIZATION_RE.test(text);
 }
 
 export function hasNaverBlogForcedCta(text: string): boolean {
-  return NAVER_BLOG_FORCED_CTA_RE.test(text);
+  return NAVER_BLOG_FORCED_CTA_RE.test(text) || hasImperativeNowActionCta(text);
 }
 
 export function materializeNaverBlogStructurePlan(input: {

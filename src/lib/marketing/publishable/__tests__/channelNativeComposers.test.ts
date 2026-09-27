@@ -416,7 +416,7 @@ describe("CG-4B channel-native composers", () => {
     expect(kakao.body.length).toBeLessThan(900);
     expect(kakao.body).not.toMatch(/놓치지 마세요|지금 바로|마감 임박/);
     expect(kakao.body).not.toMatch(/\d{1,3}(?:,\d{3})+\s*원/);
-    expect(kakao.body).toMatch(/공식|확인|체크/);
+    // informational discovery/contrast: CTA is optional — no forced 체크/확인 soft CTA
 
     const commercial = await composeKakaoChannelPublishableContent({
       composerInput: {

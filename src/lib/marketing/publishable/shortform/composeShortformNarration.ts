@@ -46,7 +46,7 @@ function buildShortformPrompt(
     channel: "shortform",
     writingContract: [
       SHORTFORM_NARRATION_WRITING_CONTRACT,
-      "Structure: hook → payoff → concrete useful information → close/action.",
+      "Structure: archetype-aware — discovery/contrast ends on concrete contrast/difference/limitation; decision/practical may use grounded close; commercial may use supported CTA. Do not force abstract payoff, takeaway, or close/action for informational discovery.",
       "If hook promises N things / one rule / a checklist, body MUST deliver it — without changing the approved Story.",
       formatCorePackPromptBlock(input),
       formatQualityRevisionPromptBlock(input.qualityRevision),

@@ -167,22 +167,30 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
     expect(CARD_COPY_NATURAL_KOREAN_CONTRACT_EN).toMatch(/REWRITE meaning/i);
   });
 
-  it("D: concrete-before-abstract rule", () => {
+  it("D: concrete-before-abstract rule (positive examples, no Weak lexical seeds)", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/CONCRETE-BEFORE-ABSTRACT/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/문화적 맥락을 읽어내게 됩니다/);
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/다른 주거 방식과 생활 모습/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/해변과 리조트 밖에서 만나는/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/Weak:\s*"문화적 맥락을 읽어내게/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/Weak:\s*"여행의 리듬이/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/Weak:\s*"휴양 프레임/);
   });
 
-  it("E: noun-stack avoidance guidance", () => {
+  it("E: noun-stack avoidance guidance (positive preferred forms)", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/KOREAN NOUN-STACK/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/생활문화 기록/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/휴양 프레임/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/이어온 생활 모습/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/전통 주거와 생활 모습/);
+    // Unwanted compounds must not be repeated as Weak:/e.g. seeds in SOUL
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/e\.g\. 생활문화 기록 \/ 생활 리듬 \/ 휴양 프레임/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/"생활문화 기록" →/);
   });
 
-  it("F: interpretive verb guidance", () => {
+  it("F: interpretive verb guidance without Korean verb inventory seed", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/INTERPRETIVE VERBS/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/읽어내다/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/볼 수 있다/);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/direct evidence-supported verbs/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(
+      /Overused editorial verbs to reconsider: 읽어내다/,
+    );
   });
 
   it("G: no blacklist/replacement implementation", () => {
@@ -228,9 +236,19 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
 
   it("J: closing-card natural-language rule", () => {
     expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/CLOSING CARD/);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/forced philosophical synthesis/i);
-    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(/휴양 프레임 밖에서 읽는 생활 리듬/);
-    expect(mobileDensityGuidanceForRole("closing").notes.join(" ")).toMatch(/frame\/rhythm/i);
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(
+      /place, person, building, documented difference, or limitation/i,
+    );
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).toMatch(
+      /Do not convert upstream takeaway[\s\S]*criteria, perspective, insight/i,
+    );
+    expect(INSTAGRAM_CARD_COPY_WRITER_SOUL).not.toMatch(/Weak:\s*"휴양 프레임 밖에서 읽는 생활 리듬"/);
+    expect(mobileDensityGuidanceForRole("closing").notes.join(" ")).toMatch(
+      /criteria\/perspective\/insight\/diversity/i,
+    );
+    expect(CARD_COPY_SURFACE_WRITING_REQUIREMENTS_NOTE).toMatch(
+      /For closing cards, end on a concrete observed\/documented difference/i,
+    );
   });
 
   it("K: semanticRegistry ownership updated", () => {
@@ -288,7 +306,7 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
     expect(meta.cardPlan?.map((c) => c.headline)).toEqual(cardCopy.cards.map((c) => c.headline));
   });
 
-  it("M: prompt sections A–D + surface requirements present", () => {
+  it("M: prompt sections A–D + surface requirements present; no truncated NK summary", () => {
     const user = buildInstagramCardCopyWriterUserPrompt(payload());
     expect(user).toContain("=== A. FACTUAL SOURCE ===");
     expect(user).toContain("=== B. CARD STRUCTURE ===");
@@ -298,6 +316,8 @@ describe("Card Copy Natural Korean Consumer Voice", () => {
     expect(payload().promptSections).toMatchObject({
       C_SEMANTIC_INTENT: expect.stringContaining("SEMANTIC INTENT ONLY"),
     });
+    expect(payload()).not.toHaveProperty("naturalKoreanContractSummary");
+    expect(user).not.toMatch(/naturalKoreanContractSummary/);
   });
 
   it("qualitative: Dao naturalized fixture reduces abstraction cluster vs old surface", () => {

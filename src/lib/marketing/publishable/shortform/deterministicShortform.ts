@@ -1,7 +1,9 @@
 /**
  * Deterministic shortform narration — spoken Korean segments, no internal headings.
+ * Archetype-aware close: informational discovery may omit soft CTA.
  */
 
+import { channelTreatAsDiscoveryLike } from "@/lib/marketing/publishable/editorialArchetype";
 import type { PublishableNarrationSegment } from "@/lib/marketing/publishable/contracts";
 import type { PublishableComposerInput } from "@/lib/marketing/publishable/inputs";
 import { stripEvidenceIdsFromText } from "@/lib/marketing/publishable/validate";
@@ -36,10 +38,25 @@ export function composeShortformNarrationDeterministic(input: PublishableCompose
     return clip(f, 160) || `포인트 ${i + 1}`;
   });
 
-  const close =
-    input.commercialIntent === "informational" || input.commercialIntent === "mixed"
-      ? `일정 짜실 때 참고만 해 두시면 충분해요.`
-      : `관심 있으면 옵션만 천천히 비교해 보세요.`;
+  const intent = (input.commercialIntent ?? "informational").toLowerCase();
+  const archetype =
+    input.storyLock?.editorialArchetype ??
+    input.approvedCanonicalAsset?.editorialArchetype ??
+    null;
+  const discoveryLike = channelTreatAsDiscoveryLike(
+    typeof archetype === "string" ? archetype : null,
+  );
+
+  let close: string | null = null;
+  if (intent === "commercial") {
+    close = `관심 있으면 옵션만 천천히 비교해 보세요.`;
+  } else if (!discoveryLike && (intent === "mixed" || intent === "consideration")) {
+    close = `일정 짜실 때 참고만 해 두시면 충분해요.`;
+  } else if (!discoveryLike && intent === "informational") {
+    // decision/practical informational may keep a soft practical close
+    close = `일정 짜실 때 참고만 해 두시면 충분해요.`;
+  }
+  // informational + discovery/contrast: no forced takeaway/CTA — last body point is the close
 
   const rawSegments: Array<{ purpose: string; narrationText: string; visualIntent: string }> = [
     {
@@ -68,11 +85,15 @@ export function composeShortformNarrationDeterministic(input: PublishableCompose
     });
   }
 
-  rawSegments.push({
-    purpose: "close",
-    narrationText: close,
-    visualIntent: dest ? `${dest} journey wrap-up` : "travel takeaway lifestyle",
-  });
+  if (close) {
+    rawSegments.push({
+      purpose: "close",
+      narrationText: close,
+      visualIntent: dest ? `${dest} journey wrap-up` : "travel takeaway lifestyle",
+    });
+  } else if (rawSegments.length > 0) {
+    rawSegments[rawSegments.length - 1]!.purpose = "close";
+  }
 
   const segments: PublishableNarrationSegment[] = rawSegments
     .filter((seg) => seg.narrationText.trim().length > 0)

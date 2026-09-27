@@ -384,3 +384,174 @@ describe("threadsCopy specialist", () => {
     }
   });
 });
+
+describe("threadsCopy specialist — ending / planner / advisory regressions", () => {
+  function materializeOk(body: string, endingIntent: string) {
+    const asset = approvedAsset();
+    const plan = narrative(asset);
+    return materializeThreadsCopy({
+      assetId: asset.assetId,
+      assetVersion: asset.version,
+      sourceNarrativeFingerprint: buildEditorialNarrativeContentFingerprint(plan),
+      narrative: plan,
+      llm: {
+        body,
+        selectedNarrativeBeats: ["beat_01", "beat_03"],
+        endingIntent,
+        evidenceRefs: ["ev_dao"],
+        mediaPlan: null,
+      },
+    });
+  }
+
+  it("A. concrete observation ending is accepted", () => {
+    const body = [
+      "다낭·푸꾸옥·호치민은 익숙한 베트남 풍경입니다.",
+      "",
+      "북부 국경지대 기록에는 Dao족과 nhà trình tường이 등장합니다.",
+      "",
+      "해변·대도시와는 출발점이 다른 지역의 모습입니다.",
+    ].join("\n");
+    const copy = materializeOk(body, "observation");
+    expect(copy.endingIntent).toBe("observation");
+    expect(copy.body.length).toBeLessThanOrEqual(THREADS_BODY_MAX_CHARS);
+  });
+
+  it("B. no separate ending (endingIntent=none) is accepted", () => {
+    const body = [
+      "다낭·푸꾸옥의 휴양과 호치민 도심이 익숙하다면,",
+      "북부 국경지대 Dao족과 nhà trình tường 기록부터 다른 풍경이 열립니다.",
+    ].join("\n");
+    const copy = materializeOk(body, "none");
+    expect(copy.endingIntent).toBe("none");
+  });
+
+  it("C. light question ending is accepted", () => {
+    const body = [
+      "해변·리조트로만 베트남을 떠올렸다면,",
+      "북부 국경지대 Dao족 마을의 흙다짐 주택은 어떻게 다를까요?",
+    ].join("\n");
+    const copy = materializeOk(body, "soft_question");
+    expect(copy.endingIntent).toBe("soft_question");
+    expect(hasForcedThreadsCta(copy.body)).toBe(false);
+  });
+
+  it("D. SOUL: planner lexical boundary — preserve beat, rewrite phrasing", () => {
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /Editorial Narrative Plan is semantic guidance, not a lexical source/i,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /rewrite planner wording into natural[\s\S]*conversational Korean/i,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /rather than copying abstract planner phrasing/i,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /"rhythm" is an internal writing concept, not suggested surface vocabulary/,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /Prefer direct, everyday Korean over abstract editorial phrasing/,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /Do not replace a concrete fact or contrast with meta-language/,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(
+      /never invent an abstract lesson[\s\S]*comparison criterion/i,
+    );
+    expect(THREADS_COPY_WRITER_SOUL).not.toMatch(
+      /Ending: natural observation, soft thought, or light question — never forced CTA/,
+    );
+  });
+
+  it("E. desiredAudienceAction=compare must not force abstract comparison-criterion close", async () => {
+    const asset = approvedAsset();
+    const plan = narrative(asset);
+    let capturedUser = "";
+    await runThreadsCopySpecialist({
+      composerInput: {
+        ...composerInput(asset, plan),
+        corePack: {
+          desiredAudienceAction: "compare",
+          engagementMechanism: "save_worthy_checklist",
+        } as PublishableComposerInput["corePack"],
+      },
+      invoke: async (parts) => {
+        capturedUser = typeof parts === "string" ? parts : parts.user;
+        return JSON.stringify({
+          body: [
+            "다낭·푸꾸옥·호치민은 익숙한 풍경입니다.",
+            "",
+            "북부 국경지대에는 Dao족과 nhà trình tường 기록이 있습니다.",
+          ].join("\n"),
+          selectedNarrativeBeats: ["beat_01", "beat_03"],
+          endingIntent: "observation",
+          evidenceRefs: ["ev_dao"],
+        });
+      },
+    });
+    expect(capturedUser).toMatch(/desiredAudienceAction/);
+    expect(capturedUser).toMatch(/Advisory only/);
+    expect(capturedUser).toMatch(/Do not emit save\/compare\/checklist CTA phrasing/);
+    expect(capturedUser).toMatch(
+      /Do not turn desiredAudienceAction or engagementMechanism into/,
+    );
+    expect(capturedUser).toMatch(
+      /closing lesson, reader payoff, comparison criterion, or abstract takeaway/,
+    );
+    // Instruction target: ban criterion/payoff synthesis closings — not factual contrast.
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Never force CTA/);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/비교 기준/);
+  });
+
+  it("F. natural factual comparison language is still allowed", () => {
+    const body = [
+      "해변 휴양지와 북부 국경 산악 마을의 풍경을 나란히 보면 차이가 분명합니다.",
+      "",
+      "Dao족과 nhà trình tường 기록이 그 차이를 보여줍니다.",
+    ].join("\n");
+    expect(hasForcedThreadsCta(body)).toBe(false);
+    const copy = materializeOk(body, "observation");
+    expect(copy.body).toMatch(/나란히 보면|차이/);
+  });
+
+  it("G. forced CTA regression still fail-closed", () => {
+    expect(() =>
+      materializeOk("좋아요. 저장해두고 비교해보세요.", "observation"),
+    ).toThrow(/forced engagement\/CTA|forced_cta/i);
+    expect(hasForcedThreadsCta("댓글로 남겨주세요")).toBe(true);
+    expect(hasForcedThreadsCta("링크를 클릭해 보세요")).toBe(true);
+  });
+
+  it("H. geographic compression hard rules unchanged", () => {
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Geographic grouping must stay faithful/i);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/남부 프레임/);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Do NOT invent a new geographic category/);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Do NOT invent interpretive contrasts/);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/다낭·푸꾸옥·호치민·하노이/);
+  });
+
+  it("I. hard max 500 unchanged; preferred band 180–420", () => {
+    expect(THREADS_BODY_MAX_CHARS).toBe(500);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Preferred:\s*180–420/);
+    expect(THREADS_COPY_WRITER_SOUL).toMatch(/Hard maximum:\s*500/);
+    const long = "가".repeat(THREADS_BODY_MAX_CHARS + 1);
+    expect(() => materializeOk(long, "observation")).toThrow(/exceeds|too_long/i);
+  });
+
+  it("semanticRegistry: canonical required + current specialist notes", async () => {
+    const { requireMarketingAgentSemanticContract } = await import(
+      "@/lib/marketing/agentContracts/semanticRegistry"
+    );
+    const threads = requireMarketingAgentSemanticContract("threads-copy-writer");
+    expect(threads.inputs.required).toEqual(
+      expect.arrayContaining([
+        "editorialNarrative.storySequence",
+        "canonical.factualBoundary",
+      ]),
+    );
+    expect(threads.inputs.optional ?? []).not.toContain("canonical.factualBoundary");
+    expect(threads.docs?.notes?.join("\n") ?? "").not.toMatch(/Phase 3A metadata only/);
+    expect(threads.docs?.notes?.join("\n") ?? "").toMatch(/semantic guidance, not a lexical source/i);
+    expect(threads.docs?.notes?.join("\n") ?? "").toMatch(/fail-closed/i);
+  });
+});

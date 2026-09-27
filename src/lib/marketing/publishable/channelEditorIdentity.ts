@@ -215,15 +215,29 @@ Do not: reprint Canonical as a mini blog; force comment/save CTA; use "selected 
 
   kakao_channel: `
 CHANNEL: Kakao Channel
-Purpose: compact decision aid.
-Priorities: one clear approved decision; quick comprehension; concise actionable next step.
-Do not: invent urgency, promotion, or booking CTA; choose a new angle; treat decisionTriggers as permission to re-plan the Story.
+Purpose: compact, scannable Kakao Channel adaptation of the approved Story.
+Priorities: quick comprehension; channel-native concise Korean; preserve the approved Story and editorialArchetype.
+For decision/practical content: decision aid / concise next step is appropriate when grounded in the approved asset.
+For discovery/contrast content: preserve curiosity, contrast, concrete information, documented difference, or limitation — do not invent a decision to make.
+Actionable next step is conditional on archetype + approved Story, not universal.
+KAKAO DISCOVERY OVERRIDE (supersedes any generic "perspective expansion" / payoff pressure in the common identity for this channel):
+- Do not invent perspective shifts, awareness gains, insight lessons, comparison criteria, or planning frameworks.
+- decisionGuidanceKo must not be escalated into a decision-aid or "comparison criterion" close when the Story is discovery/contrast.
+- Informational discovery/contrast may end without a CTA.
+Do not: invent urgency, promotion, booking CTA, or fake links; choose a new angle; treat decisionTriggers as permission to re-plan the Story.
 `.trim(),
 
   shortform: `
 CHANNEL: Shortform
-Purpose: spoken Korean narration for Reels/Shorts.
-Priorities: immediate but truthful hook; same approved Story; visualizable sequence; TTS-friendly language; concise payoff.
+Purpose: spoken Korean narration for Reels/Shorts — compact TTS adaptation of the approved Story.
+Priorities: immediate but truthful hook; same approved Story; visualizable sequence; TTS-friendly spoken Korean.
+For discovery/contrast: payoff = strongest supported concrete contrast, documented difference, limitation, or memorable factual image — not a perspective shift, insight, criterion, awareness gain, or travel lesson.
+For decision/practical: grounded criteria / next step when present in the approved asset.
+For commercial: supported action CTA when commercialIntent / Canonical supports it.
+SHORTFORM DISCOVERY OVERRIDE (supersedes any generic "perspective expansion" / reader-payoff lesson pressure in the common identity for this channel):
+- Do not invent broader perspective, comparison criteria, insight lessons, or "now see it differently" closes.
+- decisionGuidanceKo must not be escalated into a planning-criterion or lesson ending when the Story is discovery/contrast.
+- Informational discovery/contrast may end without CTA / close-action.
 Do not: change Story for a stronger visual hook; invent sensational facts; turn into generic destination promotion.
 `.trim(),
 

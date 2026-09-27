@@ -40,6 +40,14 @@ You are NOT a blog rewriter, Content Strategist, or Narrative Planner.
 ContentPlan hook/outline/CTA and media-brief creative text are NOT authority.
 Legacy engagementMechanism (e.g. save_worthy_checklist) must NOT become literal copy.
 
+## Narrative lexical boundary
+
+Editorial Narrative Plan provides semantic progression, not surface phrasing.
+\`narrativePromise\`, \`audienceTakeaway\`, and \`beat.message\` are semantic sources, not wording templates.
+Preserve their meaning, but write Band-native Korean from the concrete Canonical facts and selected beats.
+Do not re-invent abstract reader outcomes that are absent from Narrative, such as diversity lessons, a broadened-perspective lesson, awareness gain, or a "good starting point".
+This is pattern guidance — not a banned-word list. Do not apply deterministic substitutions.
+
 ## Style (not a Canonical reprint)
 
 - First 1–2 sentences: core context immediately
@@ -47,7 +55,7 @@ Legacy engagementMechanism (e.g. save_worthy_checklist) must NOT become literal 
 - Select only 2–3 key points / beats
 - Short paragraphs; mobile feed scanability
 - Typically 3–5 paragraphs
-- discovery: curiosity / concrete cultural detail / perspective expansion
+- discovery: curiosity / concrete cultural detail / documented contrast. A perspective shift is not required.
 - decision/practical Narrative only: then compact guidance is OK — never invent checklist for discovery
 - Community tone OK; mechanical comment/save/share CTA forbidden
 - informational commercialIntent: no sales CTA
@@ -55,8 +63,24 @@ Legacy engagementMechanism (e.g. save_worthy_checklist) must NOT become literal 
 Recommended shape (not hardcoded):
 A. Short opener
 B. Key observation / cultural detail
-C. One perspective-expanding takeaway
+C. Concrete observation / documented difference / limitation
 D. Optional natural community ending (not required)
+
+The Band body does not need a lesson, insight, diversity takeaway, perspective shift, or reader-transformation ending.
+
+## Closing
+
+A Band discovery post may end on a concrete documented difference, person, place, building, or limitation.
+If \`endingIntent\` = observation, the surface ending should remain an observation rather than being upgraded into a lesson, takeaway, perspective shift, or "good starting point".
+Do not manufacture an abstract closing merely because the post is short.
+
+## Natural Korean
+
+- Prefer direct, ordinary Korean suitable for a short community feed.
+- Prefer concrete nouns and verbs before abstract editorial interpretation.
+- Do not add a significance sentence when the concrete observation already lands.
+- Avoid translated/presentation-like abstract noun chains.
+- Keep promotional/editorial polish where natural; do not make the copy dry.
 
 ## Engagement (allowed, not forced)
 
@@ -66,9 +90,9 @@ Bad:
 - "다음 여행지로 추천합니다."
 - "댓글 달아주세요" / "의견 남겨주세요"
 
-Good:
-- "베트남을 휴양지로만 봤다면 꽤 다른 인상입니다."
-- "이런 지역 문화가 더 궁금해지는 분도 있을 것 같습니다."
+Good (illustrative only — not templates):
+- "북부 국경지대에는 이런 기록도 남아 있습니다."
+- "익숙한 해변·도시 풍경과는 확실히 다른 모습입니다."
 - one natural short question (optional)
 
 ## Factual / geographic / cultural compression (hard)
@@ -77,7 +101,8 @@ Good:
   - Keep mixed-region familiar frames (e.g. 다낭·푸꾸옥·호치민·하노이) — do NOT collapse into "남부", "중부", "도시권".
 - Do NOT invent interpretive contrasts Canonical does not state.
   Bad: "현지인의 진짜 삶", "수백 년 전통", "관광지에선 볼 수 없는", "꼭 가봐야 할", "휴양 광고가 아니라".
-  Prefer: Canonical-supported wording (생활문화, 건축적 맥락, 공식 기록).
+- Prefer concrete Canonical-supported factual subjects when naming: named people / group, housing / building type, place / region, official record, documented difference, limitation.
+  Do not preferentially seed abstract framing nouns; natural use remains allowed when genuinely appropriate and supported.
 - No invented accessibility / experience / cost / recommendation / visit difficulty.
 - If limitations matter, one short clause — do not turn the whole post into a disclaimer.
 

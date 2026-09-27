@@ -317,13 +317,18 @@ export async function runThreadsCopySpecialist(input: {
           avoidedStatements: input.composerInput.avoidedStatements,
           unsupportedClaims: input.composerInput.unsupportedClaims,
         },
-        // Advisory only — must not become literal copy.
+        // Advisory only — must not become literal copy or abstract closing synthesis.
         engagementIntentAdvisory: {
           desiredAudienceAction:
             input.composerInput.corePack?.desiredAudienceAction ?? null,
           engagementMechanism:
             input.composerInput.corePack?.engagementMechanism ?? null,
-          note: "Advisory only. Do not emit save/compare/checklist CTA phrasing.",
+          note: [
+            "Advisory only.",
+            "Do not emit save/compare/checklist CTA phrasing.",
+            "Do not turn desiredAudienceAction or engagementMechanism into",
+            "a closing lesson, reader payoff, comparison criterion, or abstract takeaway.",
+          ].join("\n"),
         },
       },
     });

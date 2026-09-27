@@ -21,7 +21,7 @@ export const MARKETING_AGENT_CONTRACT_DEBT: readonly MarketingAgentContractDebtE
     kind: "legacy_channel_editor",
     profileOrPath: "channel-editor-*",
     reason:
-      "Legacy channel composers excluded from semantic registry migration; production specialists must not silent-fallback to them. Lifecycle wiring deferred.",
+      "Legacy channel composers excluded from semantic registry migration; production specialists must not silent-fallback to them. Lifecycle wiring deferred. Exception notes: (1) kakao_channel production remains channel-editor-kakao via composeKakaoChannelPublishableContent (owns Kakao surface wording; Canonical=factual; Narrative=semantic; decision framing archetype-dependent; informational discovery may omit CTA). (2) shortform production remains channel-editor-shortform via composeShortformNarration (owns Shortform surface narration; Canonical=factual; Narrative=semantic; payoff/CTA archetype-dependent; discovery concrete observation close valid). No Kakao/Shortform specialist created in this phase.",
     phaseTarget: "phase-5",
     allowed: true,
   },

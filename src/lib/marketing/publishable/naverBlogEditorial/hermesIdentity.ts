@@ -54,13 +54,35 @@ Each \`sectionPlan[].purpose\` MUST be exactly one of:
 Free-form purpose labels are forbidden (e.g. development, conclusion, reframe, body, payoff, summary).
 
 Guidance (not a fixed mapping table — choose by this section's actual role):
-- Use \`closing\` for wrap-up / takeaway sections — never \`conclusion\`.
+- Use \`closing\` for concrete resolution or wrap-up — never \`conclusion\`.
+  A closing may return to: a documented difference; a person/place/building already introduced; a limitation; or an open question.
+  It does not need to manufacture a takeaway about perspective, awareness, criteria, insight, or planning value.
 - Prefer \`context\` / \`detail\` / \`evidence\` / \`contrast\` instead of generic \`development\` — pick which fits the heading and beats.
 - Prefer \`contrast\` or \`context\` when reframing familiar assumptions — never emit \`reframe\` as purpose.
 
+## Heading quality
+
+Section headings should primarily name the concrete subject of the section: place, people, architecture, record, contrast, limitation, or question.
+Do not turn headings into editorial synthesis about perspective, awareness, meaning, insight, diversity, or criteria.
+A heading should tell the reader what the section is about, not what the reader is supposed to realize.
+This is guidance for structural labels — not a banned-word list.
+
+## Opening / conclusion intents (semantic planning)
+
+- \`openingIntent\` describes the opening's job, not polished reader-facing prose. Keep it concrete and semantic.
+- \`conclusionIntent\` is semantic planning guidance, not final reader-facing prose. Keep it short and concrete.
+  State what the final section should resolve or recap.
+  Do not write \`conclusionIntent\` as a reader-transformation sentence about what the reader should recognize, broaden, gain, or use as a criterion.
+
+## Narrative lexical boundary
+
+Narrative \`narrativePromise\`, \`audienceTakeaway\`, and \`beat.message\` are semantic sources, not wording templates for headings, \`openingIntent\`, or \`conclusionIntent\`.
+Preserve intended meaning, but do not paste or compress abstract Narrative wording directly into Blog structure fields.
+
 ## Discovery vs decision
 
-If editorialArchetype is discovery: prefer curiosity / cultural context / concrete detail / perspective expansion.
+If editorialArchetype is discovery: prefer curiosity / concrete context / concrete detail / documented contrast.
+A perspective shift is not required.
 Do NOT force checklist, A-vs-B comparison tables, "추천 대상", "현명한 선택", or save/compare CTAs.
 Decision/practical archetypes may use criteria structures when grounded in Canonical.
 
@@ -68,7 +90,8 @@ Decision/practical archetypes may use criteria structures when grounded in Canon
 
 - Do not invent facts, visitability, experiences, prices, or locations beyond evidence.
 - Mixed-region Canonical examples (e.g. 다낭·푸꾸옥·호치민·하노이) must NOT be collapsed into invented categories like "남부 베트남" / "남부 프레임".
-- Prefer Canonical-supported wording (생활문화, 건축적 맥락, 공식 기록).
+- Prefer concrete Canonical-supported factual subjects when naming structure: named people / ethnic group, housing / building type, place / region, documented difference, official record, limitation.
+  Do not preferentially seed abstract framing nouns; natural use remains allowed when genuinely appropriate.
 - Forbidden interpretive inventions: "관광 광고가 아니라", "현지인의 진짜 삶", "수백 년 이어온", "꼭 가봐야 할".
 
 ## FAQ
@@ -123,11 +146,75 @@ You receive:
 ## Authority
 
 1. Canonical = factual/evidence
-2. Narrative = story progression
-3. Structure Plan = section order, headings, intents
-4. You = wording, sentence connection, depth within section targetDepth
+2. Narrative = story progression (semantic)
+3. Structure Plan = section structure authority (order, section count, headings, planned intents)
+4. You = final Korean surface wording, sentence connection, depth within section targetDepth
+
+Structure headings define the section subject/order and should normally be preserved.
+\`openingIntent\` and \`conclusionIntent\` are semantic planning guidance, not wording templates.
+Editorial Narrative \`narrativePromise\`, \`audienceTakeaway\`, and \`beat.message\` are semantic progression sources, not surface phrasing.
 
 Do not reorder, drop, or invent sections. You may compress/expand prose within each planned section.
+
+## Planner lexical boundary
+
+Do not paste or lightly paraphrase \`openingIntent\`, \`conclusionIntent\`, \`narrativePromise\`, \`audienceTakeaway\`, or \`beat.message\` into final prose.
+Preserve intended meaning, but rewrite from the section's concrete subject, facts, and evidence.
+
+## Natural Korean
+
+- Write natural Korean prose, not translated editorial English.
+- Prefer direct clauses and concrete nouns/verbs over long nominalized constructions.
+- Prefer concrete place / people / building / recorded difference before abstract interpretation.
+- Do not add abstract editorial synthesis when the section's concrete content already lands.
+- Keep polished editorial/marketing tone where appropriate; do not make the article dry.
+- Avoid abstract subject → abstract conclusion chains, metaphorical editorial verbs used instead of concrete description, and reader-transformation endings.
+
+## Anti-translationese
+
+Avoid presentation-like or translated editorial prose:
+- long nominalized subjects
+- abstract noun chains
+- repeated meta-verbs about showing, revealing, expanding, recognizing
+- sentences whose only function is to tell the reader what to realize
+Prefer ordinary written Korean with clear actions and concrete subjects.
+This is pattern guidance — not a banned-word list. Do not apply deterministic substitutions.
+
+## Concrete content may end without interpretation
+
+After presenting a concrete fact, contrast, limitation, or documented detail, you do not need to add a sentence explaining what it symbolizes, proves, expands, changes, or becomes a criterion for.
+Do not manufacture editorial significance merely to complete a paragraph.
+This is pattern guidance — not a banned-word list.
+
+## Evidence-safe elaboration
+
+\`targetDepth\` controls explanatory depth, not factual expansion.
+Do not fill a section by inventing:
+- material comparisons not stated in Canonical
+- causal explanations
+- environmental adaptation claims
+- popularity/frequency claims
+- lifestyle conclusions
+- architectural function or historical interpretation
+unless explicitly supported by Canonical.
+
+## Canonical support before descriptive strengthening
+
+Descriptive adjectives and explanatory clauses must remain within the Canonical-supported claim boundary.
+If Canonical only establishes a people/group, housing type, location, or recorded difference, state that directly.
+Do not infer why the housing exists, why a material was chosen, how residents adapted, or what the architecture proves.
+
+## Paragraph endings
+
+A Blog paragraph may end on the concrete information it just established.
+Do not append a generic significance sentence about:
+- reader awareness
+- broader understanding
+- perspective
+- starting point
+- criterion
+- proof of a larger idea
+unless that meaning is specifically required and supported.
 
 ## Style
 
@@ -136,7 +223,9 @@ Do not reorder, drop, or invent sections. You may compress/expand prose within e
 - Discovery: curiosity and concrete detail; no forced checklist/A-vs-B/save CTAs
 - Evidence-safe: no invented geographic categories ("남부 프레임"), no unsupported cultural claims
 - FAQ answers only for structure faqPlan items that are answerable
-- CTA: follow structure ctaIntent; informational discovery → non-sales closing (perspective / limitation ok)
+- CTA: follow structure ctaIntent; informational discovery → non-sales closing.
+  A concrete observation, documented difference, limitation, or open question is sufficient.
+  Do not manufacture a perspective shift, awareness gain, insight, criterion, or planning value just to create a closing.
 
 ## Output
 

@@ -22,6 +22,7 @@ import {
   NAVER_BLOG_STRUCTURE_PLAN_CONTRACT,
 } from "@/lib/marketing/publishable/naverBlogEditorial/contracts";
 import { NAVER_BAND_COPY_CONTRACT } from "@/lib/marketing/publishable/naverBandCopy/contracts";
+import { CARD_COPY_SEMANTIC_REGISTRY_NOTES } from "@/lib/marketing/agentContracts/cardCopyNaturalKoreanContract";
 
 export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticContract[] = [
   {
@@ -45,11 +46,16 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
     output: { artifactId: EDITORIAL_NARRATIVE_PLAN_CONTRACT },
     docs: {
       notes: [
-        "OWNS: narrativePromise, audienceTakeaway, ordered beats (purpose/message/evidenceRefs).",
-        "MUST NOT: channel card copy, carousel structure, visual semantics.",
+        "OWNS: story sequence + semantic reader promise (narrativePromise, audienceTakeaway, ordered beats purpose/message/evidenceRefs).",
+        "MUST NOT: channel card copy, carousel structure, visual semantics, final consumer Korean for any channel.",
         "VOCABULARY BOUNDARY: planner fields (narrativePromise, beat.message, communicationGoal) are semantic instructions, not consumer surface wording or lexical copy seeds.",
         "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
         "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
+        "promise / takeaway / beat.message are semantic planning fields — not polished surface-like editorial copy.",
+        "High-risk fields describe the semantic job (establish/contrast/document/limit/leave open) — not reader transformation, lesson, or decision criterion.",
+        "Payoff/closing may be concrete resolution: documented difference, person/place/building, evidence limitation, unresolved curiosity, or demonstrated contrast. No mandatory perspective/criterion/awareness transformation.",
+        "Do not promote concrete Canonical facts into abstract reader outcomes unless Canonical supports that outcome.",
+        "Downstream rewriting is not a substitute for good upstream semantic representation. Canonical-only facts required.",
       ],
     },
   },
@@ -82,7 +88,9 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
         "VOCABULARY BOUNDARY: planner fields (narrativePromise, beat.message, communicationGoal) are semantic instructions, not consumer surface wording or lexical copy seeds.",
         "Downstream writers preserve meaning but rewrite into natural consumer Korean — do not require verbatim preservation of planner phrasing.",
         "Internal structure terms (frame/reframe/payoff/context/rhythm) are allowed for planning; this is not a blacklist.",
-        "High-risk lexical-anchor field: communicationGoal — state card job/intent, not finished headline/body.",
+        "communicationGoal = short concrete semantic job (show/distinguish/establish/resolve) — not a reader-transformation sentence about realizing/gaining/criteria.",
+        "Closing may be a concrete resolution/recap of an established person/place/building/documented difference/limitation; no abstract criterion/insight/perspective payoff required.",
+        "Do not paste Narrative payoff/takeaway/promise wording into communicationGoal.",
       ],
     },
   },
@@ -103,16 +111,17 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
     inputs: {
-      required: ["instagram.carouselStructure", "editorialNarrative.storySequence"],
-      optional: ["canonical.factualBoundary"],
+      required: [
+        "instagram.carouselStructure",
+        "editorialNarrative.storySequence",
+        "canonical.factualBoundary",
+      ],
     },
     output: { artifactId: INSTAGRAM_CARD_COPY_CONTRACT },
     docs: {
       notes: [
-        "OWNS: headline/body wording; consumer-facing phrasing; local contextual explanation; natural Korean surface realization; card-level lexical de-jargon; card-level progression wording; mobile density compression (context kept, verbal redundancy removed).",
-        "MUST NOT OWN: cardId/order/count, beat reassignment, factual invention, new evidence, visual role/orchestration, CTA strategy, Presentation/Layout, Narrative/Carousel structure.",
-        "READS planner fields (narrativePromise / beat.message / communicationGoal) as semantic intent, not lexical authority — preserve meaning, rewrite into natural consumer Korean.",
-        "Upstream planner wording is semantic instruction, not phrasing to preserve.",
+        ...CARD_COPY_SEMANTIC_REGISTRY_NOTES,
+        "Surface compression must preserve Canonical geographic scope — do not infer geographic buckets from mixed named examples Canonical did not state; Canonical-supported regional labels remain allowed.",
       ],
     },
   },
@@ -134,10 +143,24 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
     inputs: {
-      required: ["instagram.cardCopy"],
-      optional: ["canonical.factualBoundary", "editorialNarrative.storySequence"],
+      required: [
+        "instagram.cardCopy",
+        "instagram.carouselStructure",
+        "editorialNarrative.storySequence",
+        "canonical.factualBoundary",
+      ],
     },
     output: { artifactId: INSTAGRAM_CAPTION_CONTRACT },
+    docs: {
+      notes: [
+        "OWNS: caption opening/body/optional CTA/hashtags/altText only — separate from card copy.",
+        "REQUIRED production inputs: Card Copy + Carousel plan + Narrative (promise/takeaway) + Canonical limitations/boundary (pipeline INPUT_JSON).",
+        "Upstream Narrative / Carousel goals / Card Copy are semantic-context references, not lexical sources — rewrite abstract planner language into natural consumer Korean.",
+        "MUST NOT: re-copy cards verbatim; redesign carousel; new visuals; facts beyond Canonical; abstract reflective lesson/criterion soft-question CTAs forced from takeaway.",
+        "Hashtags: concrete destination/people/architecture/culture/topic; avoid abstract meta tags (perspective/insight/awareness/viewpoint).",
+        "Opening: complete standalone reason to expand within roughly first 125 characters. Hard caption max remains 2200 (validate).",
+      ],
+    },
   },
   {
     profileId: "instagram-visual-role-architect",
@@ -244,7 +267,7 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
   },
-  // Channel copy — metadata registration (behavior migration later)
+  // Channel copy — Threads specialist (Narrative → conversational body)
   {
     profileId: "threads-copy-writer",
     authority: {
@@ -258,11 +281,21 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
     inputs: {
-      required: ["editorialNarrative.storySequence"],
-      optional: ["canonical.factualBoundary"],
+      required: [
+        "editorialNarrative.storySequence",
+        "canonical.factualBoundary",
+      ],
     },
     output: { artifactId: THREADS_COPY_CONTRACT },
-    docs: { notes: ["Phase 3A metadata only — channel copy behavior unchanged."] },
+    docs: {
+      notes: [
+        "OWNS: Threads body wording + beat selection/compression + endingIntent (observation|soft_question|thought|none).",
+        "REQUIRED inputs: Editorial Narrative Plan (sequence) + Approved Canonical (factual boundary) — pipeline fail-closed without both.",
+        "Narrative is semantic guidance, not a lexical source; rewrite into natural conversational Korean.",
+        "MUST NOT: invent facts/arc; forced CTA; abstract closing lesson/comparison-criterion synthesis from engagementIntentAdvisory.",
+        "Length: preferred 180–420 Korean chars; hard max 500. Typically 2–4 short paragraphs.",
+      ],
+    },
   },
   {
     profileId: "naver-blog-structure-planner",
@@ -273,11 +306,20 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       mustNotOwn: ["naverBlog.copy", "instagram.visualSemantics"],
     },
     inputs: {
-      required: ["editorialNarrative.storySequence"],
-      optional: ["canonical.factualBoundary"],
+      required: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
+      optional: [],
     },
     output: { artifactId: NAVER_BLOG_STRUCTURE_PLAN_CONTRACT },
-    docs: { notes: ["Phase 3A metadata only."] },
+    docs: {
+      notes: [
+        "OWNS: Blog section order, purpose, heading, openingIntent/conclusionIntent/ctaIntent, FAQ plan intent.",
+        "REQUIRED inputs: Editorial Narrative Plan (sequence) + Approved Canonical (factual boundary) — pipeline fail-closed without both.",
+        "Headings = concrete structural labels (place/people/architecture/record/contrast/limitation/question), not editorial synthesis.",
+        "openingIntent/conclusionIntent = short concrete semantic planning, not final reader-facing prose.",
+        "Closing may be concrete resolution/recap (documented difference, person/place/building, limitation, open question).",
+        "Narrative promise/takeaway/beat.message are semantic sources, not wording templates for structure fields.",
+      ],
+    },
   },
   {
     profileId: "naver-blog-copy-writer",
@@ -288,11 +330,24 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       mustNotOwn: ["naverBlog.structure", "instagram.visualSemantics"],
     },
     inputs: {
-      required: ["naverBlog.structure"],
-      optional: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
+      required: [
+        "naverBlog.structure",
+        "editorialNarrative.storySequence",
+        "canonical.factualBoundary",
+      ],
+      optional: [],
     },
     output: { artifactId: NAVER_BLOG_COPY_CONTRACT },
-    docs: { notes: ["Phase 3D: lifecycle wired; Structure order authority preserved."] },
+    docs: {
+      notes: [
+        "OWNS: final Blog Markdown surface Korean (title/body/section prose) within Structure order.",
+        "REQUIRED inputs: Structure Plan + Editorial Narrative Plan + Approved Canonical — pipeline fail-closed without Canonical/Narrative upstream.",
+        "Structure headings = subject/order labels to preserve; openingIntent/conclusionIntent = semantic planning guidance, not wording templates.",
+        "Narrative promise/takeaway/beat.message = semantic progression only — rewrite into natural Korean; do not paste.",
+        "Concrete closing valid: observation / documented difference / limitation / open question — no manufactured perspective/awareness/insight/criterion payoff.",
+        "MUST NOT: invent facts; redesign Structure order/sections; forced sales CTA; unsupported geographic categories (남부 프레임).",
+      ],
+    },
   },
   {
     profileId: "naver-band-copy-writer",
@@ -308,13 +363,18 @@ export const MARKETING_AGENT_SEMANTIC_REGISTRY: readonly MarketingAgentSemanticC
       ],
     },
     inputs: {
-      required: ["editorialNarrative.storySequence"],
-      optional: ["canonical.factualBoundary"],
+      required: ["editorialNarrative.storySequence", "canonical.factualBoundary"],
+      optional: [],
     },
     output: { artifactId: NAVER_BAND_COPY_CONTRACT },
     docs: {
       notes: [
-        "Phase 3D: lifecycle wired. OWNS channel-native wording; MUST NOT alter Canonical facts/Narrative meaning; no forced CTA.",
+        "OWNS: Band-native surface Korean (title/body) within short mobile community format.",
+        "REQUIRED inputs: Editorial Narrative Plan + Approved Canonical — pipeline fail-closed without both.",
+        "Narrative = semantic progression (promise/takeaway/beat.message), not wording templates.",
+        "Concrete observation closing is valid: documented difference, person/place/building, or limitation.",
+        "No mandatory perspective expansion / diversity lesson / insight / 'good starting point' takeaway synthesis.",
+        "MUST NOT: invent facts; forced comment/save/sales CTA; collapse mixed-region frames into 남부/중부 buckets.",
       ],
     },
   },

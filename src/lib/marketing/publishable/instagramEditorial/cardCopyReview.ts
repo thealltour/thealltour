@@ -62,16 +62,6 @@ export type InstagramCardCopyReviewCard = {
 
 export type InstagramCardCopyReviewStatus = "pending" | "approved";
 
-/**
- * Operator accepted that the visuals planned for the generated copy still fit this exact edited
- * copy, so VRA/SVP/handoff/uploads stay usable without re-planning.
- */
-export type InstagramCardCopyVisualCarryOver = {
-  effectiveFingerprint: string;
-  acceptedAt: string;
-  acceptedBy: string | null;
-};
-
 export type InstagramCardCopyReview = {
   contract: typeof INSTAGRAM_CARD_COPY_REVIEW_CONTRACT;
   candidateId: string;
@@ -83,8 +73,6 @@ export type InstagramCardCopyReview = {
   approvedEffectiveFingerprint: string | null;
   approvedAt: string | null;
   approvedBy: string | null;
-  /** Absent on reviews written before carry-over existed. */
-  visualCarryOver?: InstagramCardCopyVisualCarryOver | null;
   updatedAt: string;
   updatedBy: string | null;
   cards: InstagramCardCopyReviewCard[];
@@ -104,8 +92,7 @@ export type InstagramCardCopyReviewErrorCode =
   | "base_changed"
   | "unknown_card"
   | "headline_required"
-  | "field_too_long"
-  | "visual_carry_over_unavailable";
+  | "field_too_long";
 
 export class InstagramCardCopyReviewError extends Error {
   constructor(
@@ -164,7 +151,6 @@ export function buildInstagramCardCopyReview(input: {
     approvedEffectiveFingerprint: null,
     approvedAt: null,
     approvedBy: null,
-    visualCarryOver: null,
     updatedAt: input.nowIso,
     updatedBy: input.updatedBy,
     cards: input.cardCopy.cards.map((item) => ({
@@ -299,7 +285,6 @@ export function updateInstagramCardCopyReviewDrafts(input: {
     approvedEffectiveFingerprint: null,
     approvedAt: null,
     approvedBy: null,
-    visualCarryOver: null,
     updatedAt: input.nowIso,
     updatedBy: input.updatedBy,
   };
@@ -310,8 +295,6 @@ export function approveInstagramCardCopyReview(input: {
   base: InstagramCardCopy;
   approvedBy: string | null;
   nowIso: string;
-  /** Record the operator's decision to keep the visuals planned for the generated copy. */
-  keepExistingVisuals?: boolean;
 }): InstagramCardCopyReview {
   if (!reviewAppliesTo(input.base, input.review)) {
     throw new InstagramCardCopyReviewError(
@@ -319,36 +302,17 @@ export function approveInstagramCardCopyReview(input: {
       "생성된 카드 문구가 바뀌었습니다. 새 AI 초안으로 다시 검토하세요.",
     );
   }
-  const effectiveFingerprint = buildInstagramCardCopyContentFingerprint(
-    applyInstagramCardCopyReview(input.base, input.review),
-  );
   return {
     ...input.review,
     status: "approved",
-    approvedEffectiveFingerprint: effectiveFingerprint,
+    approvedEffectiveFingerprint: buildInstagramCardCopyContentFingerprint(
+      applyInstagramCardCopyReview(input.base, input.review),
+    ),
     approvedAt: input.nowIso,
     approvedBy: input.approvedBy,
-    visualCarryOver:
-      input.keepExistingVisuals && hasInstagramCardHumanEdits(input.review)
-        ? { effectiveFingerprint, acceptedAt: input.nowIso, acceptedBy: input.approvedBy }
-        : null,
     updatedAt: input.nowIso,
     updatedBy: input.approvedBy,
   };
-}
-
-/** Carry-over only counts for the exact copy that was approved with it. */
-export function hasActiveInstagramVisualCarryOver(gate: {
-  state: InstagramCardCopyReviewGateState;
-  effectiveFingerprint: string | null;
-  review: InstagramCardCopyReview | null;
-}): boolean {
-  const carryOver = gate.review?.visualCarryOver;
-  return (
-    gate.state === "approved" &&
-    Boolean(carryOver) &&
-    carryOver!.effectiveFingerprint === gate.effectiveFingerprint
-  );
 }
 
 /**

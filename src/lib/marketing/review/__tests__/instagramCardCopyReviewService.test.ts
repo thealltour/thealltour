@@ -125,30 +125,6 @@ describe("HumanMarketingReviewService — Instagram card copy review", () => {
     expect(approved.gateState).toBe("approved");
   });
 
-  it("refuses carry-over approval without edits or without a VRA planned for the generated copy", async () => {
-    await expect(
-      service.approveInstagramCardCopyReview({
-        candidateId: CANDIDATE_ID,
-        reviewedBy: "ysh",
-        keepExistingVisuals: true,
-      }),
-    ).rejects.toMatchObject({ code: "visual_carry_over_unavailable" });
-
-    await service.saveInstagramCardCopyReview({
-      candidateId: CANDIDATE_ID,
-      cards: [{ cardId: "c1", headline: "사람 표지" }],
-      reviewedBy: "ysh",
-    });
-    await expect(
-      service.approveInstagramCardCopyReview({
-        candidateId: CANDIDATE_ID,
-        reviewedBy: "ysh",
-        keepExistingVisuals: true,
-      }),
-    ).rejects.toMatchObject({ code: "visual_carry_over_unavailable" });
-    expect(resolveInstagramCardCopyReviewGate(packageRoot).state).toBe("pending");
-  });
-
   it("refuses to drop edits made on an older generated copy until reset", async () => {
     await service.saveInstagramCardCopyReview({
       candidateId: CANDIDATE_ID,

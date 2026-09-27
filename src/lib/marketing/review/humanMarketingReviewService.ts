@@ -49,7 +49,6 @@ import {
   type InstagramCardCopyReview,
 } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import {
-  assertInstagramVisualCarryOverAvailable,
   buildInstagramCardCopyReviewView,
   defaultInstagramCardCopyPackageRoot,
   freshInstagramCardCopyReviewForReset,
@@ -540,7 +539,6 @@ export class HumanMarketingReviewService {
   async approveInstagramCardCopyReview(input: {
     candidateId: string;
     reviewedBy: string | null;
-    keepExistingVisuals?: boolean;
   }): Promise<InstagramCardCopyReviewView> {
     const target = await this.loadEditableCardCopyReviewTarget(input.candidateId, input.reviewedBy);
     const { base, current } = resolveMutableInstagramCardCopyReview({
@@ -550,9 +548,6 @@ export class HumanMarketingReviewService {
       updatedBy: input.reviewedBy,
       nowIso: target.nowIso,
     });
-    if (input.keepExistingVisuals) {
-      assertInstagramVisualCarryOverAvailable({ packageRoot: target.packageRoot, review: current });
-    }
     return this.commitInstagramCardCopyReview({
       ...target,
       cardCopyReview: approveInstagramCardCopyReview({
@@ -560,7 +555,6 @@ export class HumanMarketingReviewService {
         base,
         approvedBy: input.reviewedBy,
         nowIso: target.nowIso,
-        keepExistingVisuals: input.keepExistingVisuals,
       }),
     });
   }

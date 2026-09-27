@@ -50,11 +50,7 @@ export async function POST(request: Request, context: RouteContext) {
             reviewedBy,
           })
         : parsed.data.action === "approve"
-          ? await service.approveInstagramCardCopyReview({
-              candidateId,
-              reviewedBy,
-              keepExistingVisuals: parsed.data.keepExistingVisuals ?? false,
-            })
+          ? await service.approveInstagramCardCopyReview({ candidateId, reviewedBy })
           : await service.resetInstagramCardCopyReview({ candidateId, reviewedBy });
     return Response.json(view, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

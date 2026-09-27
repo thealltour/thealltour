@@ -22,10 +22,6 @@ import type { InstagramCardCopy } from "@/lib/marketing/publishable/instagramEdi
 import { buildInstagramCardCopyContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import { readInstagramCarouselPlanFromPackage } from "@/lib/marketing/publishable/instagramEditorial/persist";
 import {
-  isInstagramVisualRolePlanForGeneratedCardCopy,
-  resolveInstagramVisualCarryOverForPackage,
-} from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
-import {
   emptyChannelReviewEntry,
   type ChannelReviewEntry,
 } from "@/lib/marketing/review/channelReviews";
@@ -40,8 +36,6 @@ export type InstagramCardCopyReviewView = {
   persisted: boolean;
   /** Stored human edits were made on a previous generated copy (reset required). */
   staleHumanEdits: boolean;
-  /** Keep visuals planned for the generated copy instead of re-planning SVP after text edits. */
-  visualCarryOver: { available: boolean; active: boolean };
   limits: typeof INSTAGRAM_CARD_COPY_FIELD_LIMITS;
 };
 
@@ -96,7 +90,6 @@ export function buildInstagramCardCopyReviewView(input: {
       review: null,
       persisted: false,
       staleHumanEdits: false,
-      visualCarryOver: { available: false, active: false },
       limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
     };
   }
@@ -116,7 +109,6 @@ export function buildInstagramCardCopyReviewView(input: {
         }),
     persisted: matches,
     staleHumanEdits: !matches && hasInstagramCardHumanEdits(stored),
-    visualCarryOver: resolveInstagramVisualCarryOverForPackage(input.packageRoot),
     limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
   };
 }
@@ -150,24 +142,6 @@ export function resolveMutableInstagramCardCopyReview(input: {
     base: gate.base,
     current: freshReview({ ...input, base: gate.base }),
   };
-}
-
-export function assertInstagramVisualCarryOverAvailable(input: {
-  packageRoot: string;
-  review: InstagramCardCopyReview;
-}): void {
-  if (!hasInstagramCardHumanEdits(input.review)) {
-    throw new InstagramCardCopyReviewError(
-      "visual_carry_over_unavailable",
-      "수정한 카드 문구가 없습니다. 일반 승인으로 진행하세요.",
-    );
-  }
-  if (!isInstagramVisualRolePlanForGeneratedCardCopy(input.packageRoot)) {
-    throw new InstagramCardCopyReviewError(
-      "visual_carry_over_unavailable",
-      "현재 비주얼 계획이 AI 초안 기준이 아니어서 기존 비주얼을 유지할 수 없습니다. Shared Visual Plan을 다시 생성하세요.",
-    );
-  }
 }
 
 export function freshInstagramCardCopyReviewForReset(input: {

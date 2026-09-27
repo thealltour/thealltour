@@ -134,8 +134,9 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
         <div>
           <h2 className="text-base font-semibold">Instagram 카드 문구 검토</h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            카드별 문구를 확인·수정한 뒤 승인해야 Shared Visual Plan 생성과 카드뉴스 렌더가 진행됩니다. 캡션
-            승인과는 별개이며, 원본 생성 문구는 그대로 보존됩니다.
+            카드별 문구를 확인·수정한 뒤 승인해야 Shared Visual Plan 생성과 카드뉴스 렌더가 진행됩니다. 문구만
+            고친 경우 이미지 재생성 없이 기존 업로드 이미지로 렌더합니다. 캡션 승인과는 별개이며, 원본 생성 문구는
+            그대로 보존됩니다.
           </p>
         </div>
         <span
@@ -235,27 +236,12 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
           onClick={() =>
             void post(
               { action: "approve" },
-              "카드 문구를 승인했습니다. 문구가 바뀌었다면 Shared Visual Plan을 다시 생성하세요.",
+              "카드 문구를 승인했습니다. 기존 업로드 이미지로 바로 카드뉴스를 다시 렌더할 수 있습니다.",
             )
           }
         >
           카드 문구 승인
         </AdminButton>
-        {view.visualCarryOver.available && !view.visualCarryOver.active ? (
-          <AdminButton
-            type="button"
-            variant="secondary"
-            disabled={!editable || dirty}
-            onClick={() =>
-              void post(
-                { action: "approve", keepExistingVisuals: true },
-                "카드 문구를 승인하고 기존 비주얼을 유지했습니다. Shared Visual Plan 재생성 없이 렌더할 수 있습니다.",
-              )
-            }
-          >
-            문구만 수정 — 기존 비주얼 유지하고 승인
-          </AdminButton>
-        ) : null}
         <AdminButton
           type="button"
           variant="secondary"
@@ -265,17 +251,6 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
           AI 초안으로 초기화
         </AdminButton>
       </div>
-      {view.visualCarryOver.available && !view.visualCarryOver.active ? (
-        <p className="text-xs text-[var(--text-secondary)]">
-          「기존 비주얼 유지하고 승인」은 AI 초안 기준으로 계획·업로드된 이미지를 수정한 문구에 그대로 씁니다. 문구와
-          이미지가 의미상 맞는지는 직접 확인하세요. 문구를 다시 저장하면 이 선택은 풀립니다.
-        </p>
-      ) : null}
-      {view.visualCarryOver.active ? (
-        <p className="text-xs text-[var(--text-secondary)]">
-          기존 비주얼 유지 중: AI 초안 기준 비주얼 계획과 업로드 이미지를 이 문구에 그대로 사용합니다.
-        </p>
-      ) : null}
       {dirty ? (
         <p className="text-xs text-[var(--text-secondary)]">저장하지 않은 수정이 있습니다. 저장 후 승인하세요.</p>
       ) : null}

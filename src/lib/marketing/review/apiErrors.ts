@@ -15,10 +15,7 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   }
   if (error instanceof InstagramCardCopyReviewError) {
     const conflict =
-      error.code === "base_changed" ||
-      error.code === "review_missing" ||
-      error.code === "card_copy_missing" ||
-      error.code === "visual_carry_over_unavailable";
+      error.code === "base_changed" || error.code === "review_missing" || error.code === "card_copy_missing";
     return NextResponse.json(
       { message: error.messageKo, code: error.code },
       { status: conflict ? 409 : 422 },

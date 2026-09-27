@@ -44,10 +44,7 @@ import {
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
 import { INSTAGRAM_VISUAL_ROLE_PLAN_RELATIVE_PATH } from "@/lib/marketing/publishable/instagramVisualRole/paths";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
-import {
-  resolveInstagramVisualCarryOverForPackage,
-  resolveInstagramVisualRoleLifecycleForPackage,
-} from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
+import { resolveInstagramVisualRoleLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 
 const T0 = "2026-09-27T00:00:00.000Z";
 const T1 = "2026-09-27T01:00:00.000Z";
@@ -360,63 +357,16 @@ describe("Instagram card copy review — package gates", () => {
       review: approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T1 }),
     });
     writeVraFor(packageRoot, base);
-    expect((await render(false)).skipReason).toBe("shared_visual_plan_stale");
+    expect(resolveInstagramVisualRoleLifecycleForPackage(packageRoot)).toBe("stale");
 
-    const rendered = await render(true);
-    expect(rendered.status).toBe("rendered");
+    // Text edits must not force SVP / handoff regeneration before a re-render.
+    const rendered = await render(false);
+    expect(rendered).toMatchObject({ status: "rendered", visualPlanStale: false });
+    expect((await render(true)).status).toBe("rendered");
     const brief = resolveInstagramCardnewsRenderBrief(
       createCardNewsVerificationBrief(),
       overlayEffectiveInstagramCardCopyForPackage(bundle(), packageRoot),
     );
     expect(brief.formats.cardnews.cards[2]).toMatchObject({ headline: "사람이 고친 근거", body: "사람 본문" });
   }, 60_000);
-
-  it("keeps the generated-copy visuals usable only for the exact copy approved with carry-over", async () => {
-    const { assetRoot, packageRoot } = seedPackage();
-    const base = cardCopy();
-    writeVraFor(packageRoot, base);
-    const edited = edit(freshReview(base), base);
-    persistInstagramCardCopyReview({ packageRoot, review: edited });
-    expect(resolveInstagramVisualCarryOverForPackage(packageRoot)).toEqual({ available: true, active: false });
-
-    const carried = approveInstagramCardCopyReview({
-      review: edited,
-      base,
-      approvedBy: "ysh",
-      nowIso: T1,
-      keepExistingVisuals: true,
-    });
-    expect(carried.visualCarryOver).toMatchObject({
-      effectiveFingerprint: carried.approvedEffectiveFingerprint,
-      acceptedBy: "ysh",
-    });
-    persistInstagramCardCopyReview({ packageRoot, review: carried });
-    expect(resolveInstagramVisualCarryOverForPackage(packageRoot)).toEqual({ available: true, active: true });
-    expect(resolveInstagramVisualRoleLifecycleForPackage(packageRoot)).toBe("fresh");
-
-    const rendered = await renderInstagramCardnewsForPackage({
-      packageRoot,
-      assetRoot,
-      aspectRatios: ["4:5"],
-      dryRun: true,
-      now: new Date(T1),
-    });
-    expect(rendered.status).toBe("rendered");
-
-    const reEdited = edit(carried, base, "다시 고친 근거");
-    expect(reEdited.visualCarryOver).toBeNull();
-    persistInstagramCardCopyReview({
-      packageRoot,
-      review: approveInstagramCardCopyReview({ review: reEdited, base, approvedBy: "ysh", nowIso: T1 }),
-    });
-    expect(resolveInstagramVisualRoleLifecycleForPackage(packageRoot)).toBe("stale");
-  }, 60_000);
-
-  it("offers no carry-over when VRA was not planned for the generated copy", () => {
-    const { packageRoot } = seedPackage();
-    const base = cardCopy();
-    writeVraFor(packageRoot, cardCopy({ c1: "다른 원본" }));
-    persistInstagramCardCopyReview({ packageRoot, review: edit(freshReview(base), base) });
-    expect(resolveInstagramVisualCarryOverForPackage(packageRoot)).toEqual({ available: false, active: false });
-  });
 });

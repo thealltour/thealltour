@@ -45,7 +45,7 @@ export const instagramCardCopyReviewActionSchema = z.discriminatedUnion("action"
       .min(1)
       .max(12),
   }),
-  z.object({ action: z.literal("approve"), keepExistingVisuals: z.boolean().optional() }),
+  z.object({ action: z.literal("approve") }),
   z.object({ action: z.literal("reset") }),
 ]);
 

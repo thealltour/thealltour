@@ -70,10 +70,14 @@ export type RenderInstagramCardnewsResult = {
     | InstagramCardnewsSkipReason
     | "package_incomplete"
     | "cardnews_not_in_brief"
-    | "card_copy_review_required"
-    | "shared_visual_plan_stale";
+    | "card_copy_review_required";
   /** Present when the Instagram card copy human review gate blocked the render. */
   cardCopyReviewState?: InstagramCardCopyReviewGateState;
+  /**
+   * Uploaded visuals were planned for an earlier carousel / card copy. Rendering still proceeds
+   * (text edits must not force SVP/handoff regeneration); the operator decides whether to re-plan.
+   */
+  visualPlanStale?: boolean;
   candidateId: string | null;
   packageRoot: string;
   aspectRatios: CardNewsAspectRatio[];
@@ -133,19 +137,8 @@ export async function renderInstagramCardnewsForPackage(input: {
       ...base,
     };
   }
-  // Visuals were planned for the copy VRA saw; after a card copy edit they must be re-planned.
-  if (
-    !input.graphicOnly &&
-    cardCopyGate.state === "approved" &&
-    resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale"
-  ) {
-    return {
-      status: "skipped",
-      skipReason: "shared_visual_plan_stale",
-      candidateId: bundle.candidateId,
-      ...base,
-    };
-  }
+  const visualPlanStale =
+    !input.graphicOnly && resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale";
 
   // Prefer cardPlan / slideHeadlines over whatever copy sits on disk media-brief.
   const brief = resolveInstagramCardnewsRenderBrief(
@@ -232,6 +225,7 @@ export async function renderInstagramCardnewsForPackage(input: {
     aspectRatios,
     cardCount: brief.formats.cardnews.cards.length,
     renders,
+    visualPlanStale: visualPlanStale && visualMap.injected,
     sharedVisualInjection: {
       injected: visualMap.injected,
       stale: visualMap.stale,

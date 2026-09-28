@@ -42,6 +42,8 @@ export type WrapTextResult = {
   lines: string[];
   /** True when at least one Latin/Viet/Hangul token was split at character level. */
   characterFallback: boolean;
+  /** True when a transliteration pair (`Mẫu Sơn(머우선)`) was wider than a line and broke inside. */
+  protectedPhraseSplit: boolean;
 };
 
 type Token = { text: string; breakable: boolean };
@@ -78,6 +80,153 @@ function isLatinOrVietToken(text: string): boolean {
 
 function isHangulToken(text: string): boolean {
   return [...text].every((ch) => HANGUL.test(ch));
+}
+
+/** Marks that must not open a line — they ride on the preceding token. */
+const LINE_START_FORBIDDEN = /^[)\]},.!?:;%’”」』…]/u;
+/** Opening marks that must not close a line — they ride on the following token. */
+const LINE_END_FORBIDDEN = /[([{‘“「『]$/u;
+
+const LATIN_PHRASE = `[${LATIN_LETTER_CLASS}]+(?:['’][${LATIN_LETTER_CLASS}]+)*(?:[ \\u00A0][${LATIN_LETTER_CLASS}]+(?:['’][${LATIN_LETTER_CLASS}]+)*){0,3}`;
+/**
+ * Transliteration pairs wrapped as one unit while they fit a line: `Mẫu Sơn(머우선)`,
+ * `Dao(자오)족`, `nhà trình tường(냐 찐 뜨엉)`, `랑선(Lạng Sơn)`. A Hangul run glued after the
+ * closing paren (족, 에서 …) is the same eojeol.
+ */
+const PROTECTED_PHRASE = new RegExp(
+  `(?<![${LATIN_LETTER_CLASS}\\uAC00-\\uD7A3])(?:${LATIN_PHRASE}|[\\uAC00-\\uD7A3]+) ?\\((?=[^()\\n]*[${LATIN_LETTER_CLASS}\\uAC00-\\uD7A3])[^()\\n]{1,24}\\)[\\uAC00-\\uD7A3]*`,
+  "gu",
+);
+
+/** A Hangul run written flush after these is its particle/suffix (`)에서`, `Dao족`, `3일`). */
+const HANGUL_SUFFIX_HOST = new RegExp(`[)\\]}’”」』0-9${LATIN_LETTER_CLASS}]$`, "u");
+
+type WrapUnit = {
+  text: string;
+  space: boolean;
+  /** "glue": members that must share a line; "phrase": [original, gloss] halves. */
+  kind: "token" | "glue" | "phrase";
+  /** Replayed in order when the unit alone is wider than a line. */
+  children: WrapUnit[];
+};
+
+function glueUnits(atoms: WrapUnit[], hangulSuffix = true): WrapUnit[] {
+  const out: WrapUnit[] = [];
+  for (const atom of atoms) {
+    const prev = out.at(-1);
+    const glued =
+      prev !== undefined &&
+      !prev.space &&
+      !atom.space &&
+      (LINE_START_FORBIDDEN.test(atom.text) ||
+        LINE_END_FORBIDDEN.test(prev.text) ||
+        (hangulSuffix && HANGUL_SUFFIX_HOST.test(prev.text) && HANGUL.test(atom.text[0] ?? "")));
+    if (!glued) {
+      out.push(atom);
+      continue;
+    }
+    out[out.length - 1] = {
+      text: prev.text + atom.text,
+      space: false,
+      kind: "glue",
+      children: prev.kind === "glue" ? [...prev.children, atom] : [prev, atom],
+    };
+  }
+  return out;
+}
+
+function tokenUnits(text: string): WrapUnit[] {
+  return tokenizeForWrap(text).map((token) => ({
+    text: token.text,
+    space: /^\s+$/u.test(token.text),
+    kind: "token" as const,
+    children: [],
+  }));
+}
+
+/**
+ * Members wrapped separately when a unit is wider than a line. Phrase halves and nested runs
+ * open up first and are re-glued, so `(따이)족,` stays together; a plain token group first
+ * drops only its Hangul-suffix glue (`(자오)|족과`), then replays its raw tokens.
+ */
+function fallbackUnits(unit: WrapUnit): WrapUnit[] {
+  if (unit.kind !== "glue") return unit.children;
+  if (unit.children.every((child) => child.kind === "token")) {
+    const punctuationOnly = glueUnits(unit.children, false);
+    return punctuationOnly.length > 1 ? punctuationOnly : unit.children;
+  }
+  const opened = glueUnits(
+    unit.children.flatMap((child) => (child.kind === "token" ? [child] : child.children)),
+  );
+  return opened.length > 1 ? opened : unit.children;
+}
+
+function containsPhrase(unit: WrapUnit): boolean {
+  return unit.kind === "phrase" || unit.children.some(containsPhrase);
+}
+
+function runUnit(text: string): WrapUnit {
+  const children = glueUnits(tokenUnits(text));
+  return children.length === 1 ? children[0]! : { text, space: false, kind: "glue", children };
+}
+
+/**
+ * Group wrap tokens into units that must share a line. Only line-break positions change;
+ * the concatenated unit text is always the original paragraph.
+ */
+function buildWrapUnits(paragraph: string): WrapUnit[] {
+  const atoms: WrapUnit[] = [];
+  let cursor = 0;
+  for (const match of paragraph.matchAll(PROTECTED_PHRASE)) {
+    atoms.push(...tokenUnits(paragraph.slice(cursor, match.index)));
+    const paren = match[0].indexOf("(");
+    atoms.push({
+      text: match[0],
+      space: false,
+      kind: "phrase",
+      children: [runUnit(match[0].slice(0, paren)), runUnit(match[0].slice(paren))],
+    });
+    cursor = match.index + match[0].length;
+  }
+  atoms.push(...tokenUnits(paragraph.slice(cursor)));
+  return glueUnits(atoms);
+}
+
+/** A last headline line this short (visible glyphs) reads as a dangling fragment. */
+const DANGLING_TAIL_MAX_GLYPHS = 2;
+
+/**
+ * Pull the previous line's last unit down onto a dangling last line. Never changes the line
+ * count, only re-joins across a whitespace break, and never leaves the previous line narrower
+ * than the new last line.
+ */
+function balanceDanglingTail(input: {
+  lines: string[];
+  spaceBreaks: boolean[];
+  paragraphStart: number;
+  fontSize: number;
+  wrapWidth: number;
+}): void {
+  const { lines, spaceBreaks } = input;
+  const last = lines.length - 1;
+  if (last - input.paragraphStart < 1 || !spaceBreaks[last - 1]) return;
+  const tail = lines[last]!;
+  if ([...tail.replace(/\s+/gu, "")].length > DANGLING_TAIL_MAX_GLYPHS) return;
+  const units = buildWrapUnits(lines[last - 1]!);
+  const moved = units.at(-1);
+  const gap = units.at(-2);
+  if (!moved || moved.space || !gap?.space) return;
+  const head = units
+    .slice(0, -2)
+    .map((unit) => unit.text)
+    .join("")
+    .replace(/\s+$/u, "");
+  const nextTail = `${moved.text} ${tail}`;
+  const nextTailWidth = measureTextWidth(nextTail, input.fontSize);
+  if (!head || nextTailWidth > input.wrapWidth) return;
+  if (measureTextWidth(head, input.fontSize) < nextTailWidth) return;
+  lines[last - 1] = head;
+  lines[last] = nextTail;
 }
 
 /**
@@ -145,26 +294,41 @@ export function splitOverlongToken(
 
 /**
  * Word-aware wrap: whitespace → punctuation → Hangul syllable → character fallback.
+ * Closing marks stay with the preceding token, opening marks with the following one, and
+ * transliteration pairs stay whole while they fit a line.
  */
-export function wrapTextDetailed(text: string, fontSize: number, maxWidth: number): WrapTextResult {
+export function wrapTextDetailed(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  options: { balanceDanglingTail?: boolean } = {},
+): WrapTextResult {
   const paragraphs = text.replaceAll("\r\n", "\n").split("\n");
   const lines: string[] = [];
+  /** Per line: broke at whitespace, so the next line may be re-joined with a space. */
+  const spaceBreaks: boolean[] = [];
   let characterFallback = false;
+  let protectedPhraseSplit = false;
   const wrapWidth = maxWidth * 0.98;
+
+  const pushLine = (line: string, spaceBreak: boolean) => {
+    lines.push(line);
+    spaceBreaks.push(spaceBreak);
+  };
 
   for (const paragraph of paragraphs) {
     if (paragraph.length === 0) {
-      lines.push("");
+      pushLine("", false);
       continue;
     }
-    const tokens = tokenizeForWrap(paragraph);
+    const paragraphStart = lines.length;
     let current = "";
     let currentWidth = 0;
 
-    const flush = () => {
+    const flush = (spaceBreak: boolean) => {
       const trimmed = current.replace(/\s+$/u, "");
       if (trimmed.length > 0 || current.length > 0) {
-        lines.push(trimmed);
+        pushLine(trimmed, spaceBreak || trimmed.length < current.length);
       }
       current = "";
       currentWidth = 0;
@@ -184,20 +348,41 @@ export function wrapTextDetailed(text: string, fontSize: number, maxWidth: numbe
       const head = m[1]!;
       const pulled = m[2]!.trimStart();
       if (!pulled) return "";
-      lines.push(head.replace(/\s+$/u, ""));
+      pushLine(head.replace(/\s+$/u, ""), true);
       current = "";
       currentWidth = 0;
       return pulled;
     };
 
-    const pushPiece = (piece: string) => {
+    const pushPiece = (piece: string, unit?: WrapUnit) => {
       const w = measureTextWidth(piece, fontSize);
+      const members = unit && w > wrapWidth ? fallbackUnits(unit) : [];
+      if (unit && members.length > 0) {
+        protectedPhraseSplit = protectedPhraseSplit || containsPhrase(unit);
+        // A unit wider than a whole line cannot stay together — wrap its members instead.
+        for (const member of members) {
+          if (member.space) pushToken(member.text);
+          else pushPiece(member.text, member);
+        }
+        return;
+      }
+      if (currentWidth > 0 && currentWidth + w > wrapWidth && LINE_START_FORBIDDEN.test(piece)) {
+        // Only reached when the word before the mark fills a line alone: carry its last Hangul
+        // syllable down (same break the syllable fallback allows) instead of opening with the mark.
+        const carried = /(?<=[\uAC00-\uD7A3])[\uAC00-\uD7A3]$/u.exec(current)?.[0];
+        if (carried) {
+          current = current.slice(0, -carried.length);
+          flush(false);
+          current = carried;
+          currentWidth = measureTextWidth(carried, fontSize);
+        }
+      }
       if (currentWidth > 0 && currentWidth + w > wrapWidth) {
         let prefix = "";
         if (isLatinOrVietToken(piece)) {
           prefix = pullTrailingLatinPhrase();
         }
-        if (!prefix) flush();
+        if (!prefix) flush(false);
         if (prefix) {
           const combined = `${prefix} ${piece}`;
           const cw = measureTextWidth(combined, fontSize);
@@ -207,7 +392,7 @@ export function wrapTextDetailed(text: string, fontSize: number, maxWidth: numbe
             return;
           }
           // Prefix alone on its line; piece continues.
-          lines.push(prefix);
+          pushLine(prefix, true);
           current = "";
           currentWidth = 0;
         }
@@ -215,37 +400,44 @@ export function wrapTextDetailed(text: string, fontSize: number, maxWidth: numbe
       if (w > wrapWidth) {
         const split = splitOverlongToken(piece, fontSize, wrapWidth);
         characterFallback = characterFallback || split.characterFallback;
-        for (const part of split.parts) {
-          if (currentWidth > 0) flush();
-          lines.push(part);
-        }
-        current = "";
-        currentWidth = 0;
+        if (currentWidth > 0) flush(false);
+        for (const part of split.parts.slice(0, -1)) pushLine(part, false);
+        // The last part stays open so a following closing mark can still attach to it.
+        current = split.parts.at(-1) ?? "";
+        currentWidth = measureTextWidth(current, fontSize);
         return;
       }
       current += piece;
       currentWidth += w;
     };
 
-    for (const token of tokens) {
-      if (/^\s+$/u.test(token.text)) {
+    const pushToken = (token: string) => {
+      if (/^\s+$/u.test(token)) {
         // Prefer breaking at whitespace: if space doesn't fit, flush before it.
-        const w = measureTextWidth(token.text, fontSize);
+        const w = measureTextWidth(token, fontSize);
         if (currentWidth > 0 && currentWidth + w > wrapWidth) {
-          flush();
-          continue; // drop leading space on new line
+          flush(true);
+          return; // drop leading space on new line
         }
-        if (currentWidth === 0) continue;
-        current += token.text;
+        if (currentWidth === 0) return;
+        current += token;
         currentWidth += w;
-        continue;
+        return;
       }
-      pushPiece(token.text);
+      pushPiece(token);
+    };
+
+    for (const unit of buildWrapUnits(paragraph)) {
+      if (unit.space) pushToken(unit.text);
+      else pushPiece(unit.text, unit);
     }
-    if (current.length > 0) flush();
+    if (current.length > 0) flush(false);
+    if (options.balanceDanglingTail) {
+      balanceDanglingTail({ lines, spaceBreaks, paragraphStart, fontSize, wrapWidth });
+    }
   }
 
-  return { lines: lines.length > 0 ? lines : [""], characterFallback };
+  return { lines: lines.length > 0 ? lines : [""], characterFallback, protectedPhraseSplit };
 }
 
 /** Back-compat: lines only. */
@@ -293,13 +485,18 @@ export function fitText(input: {
     input.field === "body" ? CARDNEWS_SAFE.minBodyPx : CARDNEWS_SAFE.minHeadlinePx;
   const effectiveMin = Math.max(input.minFontSize, safeMin);
   const startSize = Math.max(input.preferredFontSize, effectiveMin);
+  const headline = input.field === "headline";
+  /** Largest headline fit that had to break inside a transliteration pair. */
+  let phraseSplitFit: FittedText | null = null;
 
   for (let fontSize = startSize; fontSize >= effectiveMin; fontSize -= 1) {
     const lineHeight = lineHeightFor(fontSize, input.field);
-    const wrapped = wrapTextDetailed(source, fontSize, input.maxWidth);
+    const wrapped = wrapTextDetailed(source, fontSize, input.maxWidth, {
+      balanceDanglingTail: headline,
+    });
     const maxLines = Math.min(input.maxLines, Math.max(1, Math.floor(input.maxHeight / lineHeight)));
     if (wrapped.lines.length <= maxLines && wrapped.lines.length * lineHeight <= input.maxHeight) {
-      return {
+      const fitted: FittedText = {
         fontSize,
         lines: wrapped.lines,
         lineHeight,
@@ -308,8 +505,14 @@ export function fitText(input: {
         fontShrunk: fontSize < input.preferredFontSize,
         characterFallback: wrapped.characterFallback,
       };
+      // Headlines shrink further to keep a transliteration pair whole; body keeps its size.
+      if (!headline || !wrapped.protectedPhraseSplit) return fitted;
+      phraseSplitFit ??= fitted;
+      if (fontSize === effectiveMin) return phraseSplitFit;
+      continue;
     }
     if (fontSize === effectiveMin) {
+      if (phraseSplitFit) return phraseSplitFit;
       if (input.overflow === "ellipsis") {
         const clipped = wrapped.lines.slice(0, maxLines);
         if (clipped.length === 0) {

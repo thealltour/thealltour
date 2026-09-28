@@ -248,6 +248,8 @@ export type PublishableChannelContent = {
   marketingValue?: import("@/lib/marketing/value/contracts").MarketingValueAssessment | null;
   /** Shortform only — spoken segments for ShortVideoBrief. */
   narrationSegments?: PublishableNarrationSegment[];
+  /** Shortform only — AI narration captured before the first human segment edit. */
+  aiNarrationSegments?: PublishableNarrationSegment[];
   /** Naver Blog structured fields (optional). */
   blogMeta?: PublishableBlogMeta;
   /** Approved Canonical Marketing Asset provenance (additive). */

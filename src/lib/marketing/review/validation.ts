@@ -51,6 +51,20 @@ export const instagramCardCopyReviewActionSchema = z.discriminatedUnion("action"
   z.object({ action: z.literal("reset") }),
 ]);
 
+/** Text-only; segment set/order is fixed by the package. Length rules live in the service (Korean errors). */
+export const shortformNarrationActionSchema = z.object({
+  action: z.literal("save"),
+  segments: z
+    .array(
+      z.object({
+        segmentId: z.string().min(1).max(64),
+        text: z.string().max(4_000),
+      }),
+    )
+    .min(1)
+    .max(16),
+});
+
 export const setChannelReviewStatusSchema = z.object({
   channel: channelReviewChannelSchema,
   status: z.enum(["approved", "skipped", "needs_review"]),

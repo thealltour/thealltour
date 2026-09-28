@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { HumanReviewTransitionError, HumanReviewPolicyError } from "@/lib/marketing/review/transitions";
 import { HumanReviewEligibilityError } from "@/lib/marketing/review/bootstrap/humanReviewEligibilityError";
 import { InstagramCardCopyReviewError } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
+import { ShortformNarrationEditError } from "@/lib/marketing/review/shortformNarrationReview";
 
 export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (error instanceof HumanReviewTransitionError) {
@@ -16,6 +17,13 @@ export function humanReviewErrorResponse(error: unknown): NextResponse {
   if (error instanceof InstagramCardCopyReviewError) {
     const conflict =
       error.code === "base_changed" || error.code === "review_missing" || error.code === "card_copy_missing";
+    return NextResponse.json(
+      { message: error.messageKo, code: error.code },
+      { status: conflict ? 409 : 422 },
+    );
+  }
+  if (error instanceof ShortformNarrationEditError) {
+    const conflict = error.code === "segments_mismatch" || error.code === "bundle_missing";
     return NextResponse.json(
       { message: error.messageKo, code: error.code },
       { status: conflict ? 409 : 422 },

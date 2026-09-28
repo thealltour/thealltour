@@ -12,6 +12,7 @@ import {
 } from "@/lib/marketing/review/channelCopyLimits";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 import { CopyToClipboardButton } from "@/components/admin/marketing-review/CopyToClipboardButton";
+import { MarketingReviewShortformNarrationEditor } from "@/components/admin/marketing-review/MarketingReviewShortformNarrationEditor";
 
 function CharCountBadge({ count }: { count: CharCount }) {
   return (
@@ -442,12 +443,16 @@ export function MarketingReviewChannelTabs({
           {active.channel === "shortform" ? (
             <div className="space-y-2 text-sm">
               <p className="text-[var(--text-secondary)]">
-                Shortform 내레이션/렌더 상태는 아래 Shortform 패널에서 소스 PICK·렌더·미리보기를 확인하세요.
-                이 탭에서는 승인만 가능하며 READY 게이트가 적용됩니다. 재생성 UI는 노출하지 않습니다.
+                내레이션은 세그먼트별로 수정할 수 있고, 저장하면 모든 장면 PICK이 끝난 경우 자동으로 다시
+                렌더합니다. 소스 PICK·렌더·미리보기는 아래 Shortform 패널에서 확인하세요. 승인에는 현재 내레이션
+                기준 READY 게이트가 적용됩니다.
               </p>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[var(--surface-muted)] p-3 text-xs">
-                {sanitizeTextForDisplay(active.body, 4000)}
-              </pre>
+              <MarketingReviewShortformNarrationEditor
+                candidateId={context.identity.candidateId}
+                canEdit={canEdit && !busy}
+                fallbackBody={active.body}
+                onSaved={onReload}
+              />
             </div>
           ) : (
             <label className="block text-sm">

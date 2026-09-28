@@ -45,6 +45,11 @@ export type ShortformVideoRenderInputSnapshot = {
   selectionHash: string;
   scenePicks: ShortformVideoRenderScenePickSnapshot[];
   renderProfile: typeof SHORTFORM_VIDEO_RENDER_PROFILE_V1;
+  /**
+   * Fingerprint of the MediaBrief narration segments this job renders. Absent on jobs
+   * enqueued before narration editing existed.
+   */
+  narrationSha256?: string | null;
 };
 
 export type ShortformVideoRenderJob = {

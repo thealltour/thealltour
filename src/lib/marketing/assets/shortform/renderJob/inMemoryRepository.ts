@@ -119,9 +119,11 @@ export function buildShortformVideoRenderInputSnapshot(input: {
   resolutionRelativePath?: string | null;
   scenePicks: ShortformVideoRenderInputSnapshot["scenePicks"];
   renderProfile?: typeof SHORTFORM_VIDEO_RENDER_PROFILE_V1;
+  narrationSha256?: string | null;
 }): ShortformVideoRenderInputSnapshot {
   const selectionHash = buildShortformVideoRenderSelectionHash(input.scenePicks);
   return {
+    ...(input.narrationSha256 ? { narrationSha256: input.narrationSha256.toLowerCase() } : {}),
     briefContract: input.briefContract,
     briefSha256: input.briefSha256.toLowerCase(),
     briefRelativePath: input.briefRelativePath ?? SHORT_VIDEO_BRIEF_RELATIVE_PATH,
@@ -151,6 +153,7 @@ export function buildQueuedShortformVideoRenderJob(input: {
     briefSha256: input.snapshot.briefSha256,
     selectionHash: input.snapshot.selectionHash,
     renderProfile: input.snapshot.renderProfile,
+    narrationSha256: input.snapshot.narrationSha256,
   });
   const jobId = createShortformVideoRenderJobId(logicalRunKey);
   return normalizeShortformVideoRenderJob({
@@ -196,6 +199,7 @@ export async function enqueueShortformVideoRenderJob(input: {
   scenePicks: ShortformVideoRenderInputSnapshot["scenePicks"];
   resolutionContract?: string | null;
   resolutionSha256?: string | null;
+  narrationSha256?: string | null;
   maxAttempts?: number;
   now?: Date;
 }): Promise<{ job: ShortformVideoRenderJob; created: boolean }> {
@@ -207,6 +211,7 @@ export async function enqueueShortformVideoRenderJob(input: {
     resolutionContract: input.resolutionContract,
     resolutionSha256: input.resolutionSha256,
     scenePicks: input.scenePicks,
+    narrationSha256: input.narrationSha256,
   });
 
   const queued = buildQueuedShortformVideoRenderJob({

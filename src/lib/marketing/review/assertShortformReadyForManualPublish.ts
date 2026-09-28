@@ -23,6 +23,12 @@ export async function assertShortformReadyForManualPublish(input: {
   const evaluation = await evaluateShortformRenderReady(input);
   if (!evaluation.shortformIntended) return;
 
+  if (!evaluation.job && evaluation.staleJob) {
+    throw new HumanReviewPolicyError(
+      "숏폼 내레이션이 수정되어 현재 영상은 다른 내레이션 기준입니다. 현재 내레이션으로 렌더가 READY가 된 뒤 승인할 수 있습니다.",
+    );
+  }
+
   if (!evaluation.job) {
     throw new HumanReviewPolicyError(
       "숏폼 후보 승인에는 READY RenderJob이 필요합니다. 장면 소스 PICK 후 렌더 완료를 기다리세요.",

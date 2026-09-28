@@ -56,6 +56,14 @@ import {
   withInstagramCardCopyReview,
   type InstagramCardCopyReviewView,
 } from "@/lib/marketing/review/instagramCardCopyReview";
+import {
+  applyShortformNarrationEdit,
+  buildShortformNarrationPackageView,
+  summarizeShortformRender,
+  type ShortformNarrationRenderSummary,
+  type ShortformNarrationSaveResult,
+  type ShortformNarrationView,
+} from "@/lib/marketing/review/shortformNarrationReview";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 
 export type HumanMarketingReviewServiceDeps = {
@@ -576,6 +584,165 @@ export class HumanMarketingReviewService {
         nowIso: target.nowIso,
       }),
     });
+  }
+
+  private async shortformRenderDeps() {
+    const catalog =
+      this.deps.shortformCatalog ??
+      (await (
+        await import("@/lib/marketing/assets/sourceCatalog/createSourceCatalogRepository")
+      ).createMarketingMediaSourceCatalogRepository({}));
+    const jobRepository =
+      this.deps.shortformJobRepository ??
+      (await (
+        await import("@/lib/marketing/assets/shortform/renderJob/createRepository")
+      ).createShortformVideoRenderJobRepository({}));
+    return { catalog, jobRepository };
+  }
+
+  private async evaluateShortformRenderSummary(
+    candidate: CompletedMarketingCandidate,
+  ): Promise<ShortformNarrationRenderSummary | null> {
+    try {
+      const { evaluateShortformRenderReady } = await import("@/lib/marketing/assets/shortform/renderReady");
+      const evaluation = await evaluateShortformRenderReady({
+        candidateId: candidate.candidateId,
+        candidate,
+        ...(await this.shortformRenderDeps()),
+        repository: this.deps.candidateRepo,
+        now: this.now(),
+      });
+      return evaluation.shortformIntended ? summarizeShortformRender(evaluation) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getShortformNarration(candidateId: string): Promise<ShortformNarrationView> {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    const packageView = buildShortformNarrationPackageView(
+      (this.deps.resolvePackageRoot ?? defaultInstagramCardCopyPackageRoot)(candidate),
+    );
+    const review = await this.deps.reviewRepo.findByCandidateId(candidateId);
+    const blockedReason = isCandidateDiagnosticsOnly(candidate.status)
+      ? "진단 전용 후보는 편집할 수 없습니다."
+      : review?.status === "rejected" || review?.status === "manually_published"
+        ? "반려되었거나 게시 완료된 리뷰는 편집할 수 없습니다."
+        : !packageView.applicable
+          ? "편집할 숏폼 내레이션이 없습니다."
+          : null;
+    return {
+      ...packageView,
+      candidateId,
+      editable: blockedReason === null,
+      blockedReason,
+      render: packageView.applicable ? await this.evaluateShortformRenderSummary(candidate) : null,
+    };
+  }
+
+  /**
+   * Text-only segment edit. Package first (media-brief is the render input), then DB humanDraft,
+   * then cancel QUEUED jobs for older narration and enqueue a render when every scene is picked.
+   */
+  async saveShortformNarration(input: {
+    candidateId: string;
+    segments: Array<{ segmentId: string; text: string }>;
+    reviewedBy: string | null;
+  }): Promise<ShortformNarrationSaveResult> {
+    const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(input.candidateId);
+    if (!candidate) throw new Error("candidate_not_found");
+    if (isCandidateDiagnosticsOnly(candidate.status)) throw new Error("diagnostics_only_candidate");
+    const review = await this.loadMutableReview(input.candidateId, input.reviewedBy);
+    if (review.status === "rejected" || review.status === "manually_published") {
+      throw new Error("review_not_editable");
+    }
+    const nextStatus = review.status === "pending" ? "editing" : review.status;
+    assertAllowedTransition(review.status, nextStatus);
+
+    const packageRoot = (this.deps.resolvePackageRoot ?? defaultInstagramCardCopyPackageRoot)(candidate);
+    const edit = applyShortformNarrationEdit({
+      packageRoot,
+      candidate,
+      segments: input.segments,
+      now: this.now(),
+    });
+
+    const existingEntry =
+      review.channelReviews?.shortform ?? emptyChannelReviewEntry("shortform", { title: null, body: edit.body });
+    if (edit.changed || existingEntry.humanDraft?.body !== edit.body) {
+      const nowIso = this.now().toISOString();
+      const { toMarketingValueCompact } = await import("@/lib/marketing/value/contracts");
+      const entry = {
+        ...existingEntry,
+        humanDraft: { title: null, body: edit.body },
+        status:
+          existingEntry.status === "approved" ||
+          existingEntry.status === "skipped" ||
+          existingEntry.status === "draft"
+            ? ("needs_review" as const)
+            : existingEntry.status,
+        lastEditedAt: nowIso,
+        marketingValue: edit.marketingValue
+          ? toMarketingValueCompact(edit.marketingValue)
+          : existingEntry.marketingValue,
+      };
+      await this.deps.reviewRepo.update({
+        ...review,
+        status: nextStatus,
+        channelReviews: { ...(review.channelReviews ?? {}), shortform: entry },
+        reviewedBy: input.reviewedBy ?? review.reviewedBy,
+        updatedAt: nowIso,
+      });
+    }
+
+    let rerender: ShortformNarrationSaveResult["rerender"];
+    let render: ShortformNarrationRenderSummary | null = null;
+    try {
+      const deps = await this.shortformRenderDeps();
+      for (const job of await deps.jobRepository.listForCandidate(input.candidateId)) {
+        if (job.status === "QUEUED" && job.inputSnapshot.narrationSha256 !== edit.narrationSha256) {
+          await deps.jobRepository.cancel({ logicalRunKey: job.logicalRunKey, now: this.now() });
+        }
+      }
+      const { maybeEnqueueShortformRenderAfterPick } = await import(
+        "@/lib/marketing/assets/shortform/renderReady"
+      );
+      const enqueue = await maybeEnqueueShortformRenderAfterPick({
+        candidateId: input.candidateId,
+        candidate,
+        ...deps,
+        repository: this.deps.candidateRepo,
+        now: this.now(),
+      });
+      rerender = {
+        enqueued: enqueue.enqueued,
+        created: enqueue.created,
+        skippedReason: enqueue.enqueued ? null : (enqueue.skippedReason ?? null),
+      };
+      if (enqueue.evaluation.shortformIntended) {
+        render = summarizeShortformRender(enqueue.evaluation, enqueue.job ?? enqueue.evaluation.job);
+      }
+    } catch (error) {
+      rerender = {
+        enqueued: false,
+        created: false,
+        skippedReason: `render_queue_unavailable:${error instanceof Error ? error.message : "unknown"}`.slice(
+          0,
+          200,
+        ),
+      };
+    }
+
+    return {
+      ...buildShortformNarrationPackageView(packageRoot),
+      candidateId: input.candidateId,
+      editable: true,
+      blockedReason: null,
+      render,
+      changed: edit.changed,
+      rerender,
+    };
   }
 
   /**

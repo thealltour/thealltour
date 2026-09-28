@@ -1,18 +1,11 @@
 import "server-only";
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 
-import {
-  MARKETING_ASSET_MANIFEST_CONTRACT,
-  type MarketingAssetArtifact,
-  type MarketingAssetManifest,
-} from "@/lib/marketing/assets/contracts";
-import { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
-import { sha256Buffer, stableJsonBytes } from "@/lib/marketing/assets/hashing";
-import { parseMarketingAssetManifest } from "@/lib/marketing/assets/parse";
+import { sha256Buffer } from "@/lib/marketing/assets/hashing";
+import { upsertPackageManifestArtifact } from "@/lib/marketing/assets/manifestUpsert";
 import { resolvePackageArtifactPath } from "@/lib/marketing/assets/paths";
-import { writePackageArtifact } from "@/lib/marketing/assets/writeArtifact";
+import { overwritePackageArtifact } from "@/lib/marketing/assets/writeArtifact";
 import { ShortformProductionError } from "@/lib/marketing/assets/shortform/production/errors";
 import {
   SHORTFORM_FINAL_ARTIFACT_KIND,
@@ -21,51 +14,11 @@ import {
   SHORTFORM_FINAL_RELATIVE_PATH,
 } from "@/lib/marketing/assets/shortform/production/paths";
 
-function integrityDigest(artifacts: MarketingAssetArtifact[]): string {
-  const lines = [...artifacts]
-    .map((artifact) => `${artifact.relativePath}:${artifact.sha256}`)
-    .sort((a, b) => a.localeCompare(b));
-  return sha256Buffer(lines.join("\n"));
-}
-
-function readExistingManifest(packageRoot: string): MarketingAssetManifest | null {
-  const manifestPath = join(packageRoot, "manifest.json");
-  if (!existsSync(manifestPath)) return null;
-  try {
-    return parseMarketingAssetManifest(JSON.parse(readFileSync(manifestPath, "utf8")) as unknown);
-  } catch {
-    return null;
-  }
-}
-
-function upsertManifestArtifact(input: {
-  packageRoot: string;
-  artifact: MarketingAssetArtifact;
-  createdAt: string;
-}): void {
-  const existing = readExistingManifest(input.packageRoot);
-  if (!existing) return; // package may be partial in tests; durable file + sha256 still required
-
-  const byPath = new Map(existing.artifacts.map((a) => [a.relativePath, a]));
-  byPath.set(input.artifact.relativePath, input.artifact);
-  const merged = [...byPath.values()].sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  const next = parseMarketingAssetManifest({
-    ...existing,
-    contract: MARKETING_ASSET_MANIFEST_CONTRACT,
-    updatedAt: input.createdAt,
-    artifacts: merged,
-    integrity: {
-      algorithm: "sha256",
-      artifactCount: merged.length,
-      digest: integrityDigest(merged),
-    },
-  });
-  atomicWriteFile(join(input.packageRoot, "manifest.json"), stableJsonBytes(next));
-}
-
 /**
  * Persist workspace final into Candidate Package (durable) before READY.
  * Never marks READY itself — returns package-relative path for worker markReady.
+ * Replaces an earlier final: re-renders (edited narration, new picks) share one path, and the
+ * approval gate decides which READY job is current via its input fingerprints.
  */
 export function persistShortformFinalArtifact(input: {
   packageRoot: string;
@@ -88,7 +41,7 @@ export function persistShortformFinalArtifact(input: {
     throw new ShortformProductionError("workspace final empty", "PERSIST_EMPTY");
   }
   const createdAt = input.createdAt ?? new Date().toISOString();
-  const written = writePackageArtifact({
+  const written = overwritePackageArtifact({
     packageRoot: input.packageRoot,
     createdAt,
     planned: {
@@ -113,13 +66,12 @@ export function persistShortformFinalArtifact(input: {
     throw new ShortformProductionError("durable sha256 mismatch", "PERSIST_VERIFY_FAILED");
   }
 
-  const hadManifest = readExistingManifest(input.packageRoot) != null;
-  upsertManifestArtifact({
+  // Package may be partial in tests; durable file + sha256 are still required.
+  const manifestUpdated = upsertPackageManifestArtifact({
     packageRoot: input.packageRoot,
     artifact: written.artifact,
     createdAt,
   });
-  const manifestUpdated = hadManifest;
 
   return {
     relativePath: SHORTFORM_FINAL_RELATIVE_PATH,

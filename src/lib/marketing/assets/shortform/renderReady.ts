@@ -24,6 +24,8 @@ import {
   type ShortformSourceResolutionPlan,
 } from "@/lib/marketing/assets/shortform/resolver/contracts";
 import { SHORTFORM_SOURCE_RESOLUTION_RELATIVE_PATH } from "@/lib/marketing/assets/shortform/resolver/paths";
+import { buildShortformNarrationFingerprint } from "@/lib/marketing/assets/shortform/renderJob/logicalRunKey";
+import { MEDIA_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/video/paths";
 import {
   type ShortformVideoRenderJob,
   type ShortformVideoRenderScenePickSnapshot,
@@ -67,6 +69,10 @@ export type ShortformRenderReadyEvaluation = {
   finalArtifactExists: boolean;
   finalRelativePath: typeof SHORTFORM_FINAL_RELATIVE_PATH;
   packageRoot: string | null;
+  /** Fingerprint of the MediaBrief narration currently on disk (null when unreadable). */
+  narrationSha256?: string | null;
+  /** Latest job rendered from different narration text, when no job matches the current one. */
+  staleJob?: ShortformVideoRenderJob | null;
 };
 
 export type MaybeEnqueueAfterPickResult = {
@@ -300,7 +306,7 @@ function mapJobToUiStatus(job: ShortformVideoRenderJob | null): ShortformRenderU
   }
 }
 
-function selectPrimaryJob(jobs: ShortformVideoRenderJob[]): ShortformVideoRenderJob | null {
+function rankJobs(jobs: ShortformVideoRenderJob[]): ShortformVideoRenderJob | null {
   if (jobs.length === 0) return null;
   const rank: Record<string, number> = {
     RUNNING: 0,
@@ -315,6 +321,75 @@ function selectPrimaryJob(jobs: ShortformVideoRenderJob[]): ShortformVideoRender
     if (ra !== rb) return ra - rb;
     return b.updatedAt.localeCompare(a.updatedAt);
   })[0]!;
+}
+
+/**
+ * Jobs rendered from the current narration text. Jobs without a narration fingerprint predate
+ * narration editing and count as current until the candidate gets its first fingerprinted job.
+ */
+export function jobsMatchingNarration(
+  jobs: ShortformVideoRenderJob[],
+  narrationSha256: string | null | undefined,
+): ShortformVideoRenderJob[] {
+  if (!narrationSha256) return jobs;
+  const fingerprinted = jobs.some((job) => Boolean(job.inputSnapshot?.narrationSha256));
+  if (!fingerprinted) return jobs;
+  return jobs.filter((job) => job.inputSnapshot?.narrationSha256 === narrationSha256);
+}
+
+export function selectPrimaryJob(
+  jobs: ShortformVideoRenderJob[],
+  narrationSha256?: string | null,
+): { job: ShortformVideoRenderJob | null; staleJob: ShortformVideoRenderJob | null } {
+  const current = jobsMatchingNarration(jobs, narrationSha256);
+  const job = rankJobs(current);
+  if (job && !finalOverwrittenByOtherNarration(job, jobs, current)) return { job, staleJob: null };
+  return { job: null, staleJob: job ?? rankJobs(jobs) };
+}
+
+function completionTime(job: ShortformVideoRenderJob): string {
+  return job.completedAt ?? job.updatedAt;
+}
+
+/** All renders share one final path, so a later READY for other narration replaced this job's video. */
+function finalOverwrittenByOtherNarration(
+  job: ShortformVideoRenderJob,
+  jobs: ShortformVideoRenderJob[],
+  current: ShortformVideoRenderJob[],
+): boolean {
+  if (job.status !== "READY") return false;
+  return jobs.some(
+    (other) =>
+      other.status === "READY" &&
+      !current.includes(other) &&
+      completionTime(other).localeCompare(completionTime(job)) > 0,
+  );
+}
+
+/** Fingerprint of `formats.shortform.narrationSegments` in a parsed media-brief.json. */
+export function narrationFingerprintFromMediaBriefJson(json: unknown): string | null {
+  const segments = (json as { formats?: { shortform?: { narrationSegments?: unknown } } } | null)
+    ?.formats?.shortform?.narrationSegments;
+  if (!Array.isArray(segments) || segments.length === 0) return null;
+  const normalized: { segmentId: string; narrationText: string; subtitleText: string }[] = [];
+  for (const segment of segments) {
+    const s = segment as Record<string, unknown>;
+    if (typeof s.segmentId !== "string" || typeof s.narrationText !== "string") return null;
+    normalized.push({
+      segmentId: s.segmentId,
+      narrationText: s.narrationText,
+      subtitleText: typeof s.subtitleText === "string" ? s.subtitleText : "",
+    });
+  }
+  return buildShortformNarrationFingerprint(normalized);
+}
+
+async function readCurrentNarrationSha256(
+  candidateId: string,
+  repository?: DailyMarketingRunRepository,
+): Promise<string | null> {
+  const file = await readPackageJson(candidateId, MEDIA_BRIEF_RELATIVE_PATH, repository);
+  return file.ok ? narrationFingerprintFromMediaBriefJson(file.json) : null;
 }
 
 export function finalArtifactExistsOnDisk(input: {
@@ -411,7 +486,8 @@ export async function evaluateShortformRenderReady(input: {
 
   const validation = validateShortformRenderEnqueueInput({ scenes });
   const jobs = await jobRepo.listForCandidate(input.candidateId);
-  const job = selectPrimaryJob(jobs);
+  const narrationSha256 = await readCurrentNarrationSha256(input.candidateId, input.repository);
+  const { job, staleJob } = selectPrimaryJob(jobs, narrationSha256);
   const finalArtifactExists = finalArtifactExistsOnDisk({ packageRoot, job });
 
   if (!validation.ok) {
@@ -428,6 +504,8 @@ export async function evaluateShortformRenderReady(input: {
       finalArtifactExists,
       finalRelativePath: SHORTFORM_FINAL_RELATIVE_PATH,
       packageRoot,
+      narrationSha256,
+      staleJob,
     };
   }
 
@@ -437,7 +515,11 @@ export async function evaluateShortformRenderReady(input: {
     shortformIntended: true,
     renderReady: true,
     uiStatus: job ? uiStatus : "not_render_ready",
-    reason: job ? `job_${job.status.toLowerCase()}` : "render_ready_no_job",
+    reason: job
+      ? `job_${job.status.toLowerCase()}`
+      : staleJob
+        ? "narration_changed_requires_render"
+        : "render_ready_no_job",
     issues: [],
     requiredSceneCount: brief.scenes.length,
     pickedSceneCount,
@@ -446,6 +528,8 @@ export async function evaluateShortformRenderReady(input: {
     finalArtifactExists,
     finalRelativePath: SHORTFORM_FINAL_RELATIVE_PATH,
     packageRoot,
+    narrationSha256,
+    staleJob,
     // scenePicks retained via closure for enqueue helper — callers rebuild
   };
 }
@@ -574,6 +658,7 @@ export async function maybeEnqueueShortformRenderAfterPick(input: {
     scenePicks,
     resolutionContract,
     resolutionSha256,
+    narrationSha256: evaluation.narrationSha256 ?? null,
     now: input.now,
   });
 
@@ -591,6 +676,22 @@ export async function maybeEnqueueShortformRenderAfterPick(input: {
       created: false,
       job: result.job,
       skippedReason: "failed_requires_requeue",
+    };
+  }
+
+  // Same key already spent (cancelled, or READY whose video a later render replaced): it will not
+  // render again, so report it instead of pretending a render is on the way.
+  const spent =
+    !result.created &&
+    (result.job.status === "CANCELLED" ||
+      (!evaluation.job && evaluation.staleJob?.logicalRunKey === result.job.logicalRunKey));
+  if (spent) {
+    return {
+      evaluation,
+      enqueued: false,
+      created: false,
+      job: evaluation.job,
+      skippedReason: "render_key_spent_requires_input_change",
     };
   }
 

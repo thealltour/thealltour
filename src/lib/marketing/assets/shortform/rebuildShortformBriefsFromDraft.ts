@@ -12,6 +12,7 @@ import { buildMediaBriefFromCandidate } from "@/lib/marketing/assets/buildMediaB
 import { loadCompletedMarketingCandidateForAssets } from "@/lib/marketing/assets/candidateAssetPackageService";
 import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
 import { stableJsonBytes } from "@/lib/marketing/assets/hashing";
+import { upsertPackageManifestArtifact } from "@/lib/marketing/assets/manifestUpsert";
 import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
 import { MEDIA_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/video/paths";
 import { overwritePackageArtifact } from "@/lib/marketing/assets/writeArtifact";
@@ -197,7 +198,7 @@ export async function rebuildShortformBriefsFromDraft(input: {
       return { ok: false, reason: "brief_not_applicable" };
     }
 
-    overwritePackageArtifact({
+    const writtenBrief = overwritePackageArtifact({
       packageRoot,
       planned: {
         relativePath: MEDIA_BRIEF_RELATIVE_PATH,
@@ -207,6 +208,12 @@ export async function rebuildShortformBriefsFromDraft(input: {
         mediaType: "application/json",
       },
       createdAt: nowIso,
+    });
+    upsertPackageManifestArtifact({
+      packageRoot,
+      artifact: writtenBrief.artifact,
+      createdAt: nowIso,
+      mediaBrief,
     });
 
     const shortVideoBrief = buildShortVideoBrief({

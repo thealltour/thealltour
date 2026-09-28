@@ -13,6 +13,7 @@ import {
   buildInstagramCardCopyReview,
   hasInstagramCardHumanEdits,
   INSTAGRAM_CARD_COPY_FIELD_LIMITS,
+  INSTAGRAM_COVER_TITLE_MAX_LENGTH,
   InstagramCardCopyReviewError,
   resolveInstagramCardCopyReviewGate,
   type InstagramCardCopyReview,
@@ -37,6 +38,7 @@ export type InstagramCardCopyReviewView = {
   /** Stored human edits were made on a previous generated copy (reset required). */
   staleHumanEdits: boolean;
   limits: typeof INSTAGRAM_CARD_COPY_FIELD_LIMITS;
+  coverTitleMaxLength: number;
 };
 
 export function defaultInstagramCardCopyPackageRoot(candidate: CompletedMarketingCandidate): string {
@@ -91,6 +93,7 @@ export function buildInstagramCardCopyReviewView(input: {
       persisted: false,
       staleHumanEdits: false,
       limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
+      coverTitleMaxLength: INSTAGRAM_COVER_TITLE_MAX_LENGTH,
     };
   }
   const stored = storedReview(input.review) ?? gate.review;
@@ -110,6 +113,7 @@ export function buildInstagramCardCopyReviewView(input: {
     persisted: matches,
     staleHumanEdits: !matches && hasInstagramCardHumanEdits(stored),
     limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
+    coverTitleMaxLength: INSTAGRAM_COVER_TITLE_MAX_LENGTH,
   };
 }
 

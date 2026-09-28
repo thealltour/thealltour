@@ -106,6 +106,25 @@ export function buildInstagramCardCopyContentFingerprint(
   );
 }
 
+/**
+ * Card copy review approval target. Deliberately separate from the card copy fingerprint, which
+ * VRA/SVP freshness also reads: the thumbnail title must re-open approval without staling visuals.
+ * Without a cover title it equals the card copy fingerprint so existing approvals stay valid.
+ */
+export function buildInstagramCardCopyReviewApprovalFingerprint(input: {
+  cardCopyFingerprint: string;
+  instagramCoverTitleKo: string | null;
+}): string {
+  if (!input.instagramCoverTitleKo) return input.cardCopyFingerprint;
+  return sha256Hex(
+    stableStringify({
+      kind: "instagram-card-copy-review-approval-v1",
+      cardCopyFingerprint: input.cardCopyFingerprint,
+      instagramCoverTitleKo: input.instagramCoverTitleKo,
+    }),
+  );
+}
+
 export function buildInstagramCaptionContentFingerprint(
   caption: Pick<
     InstagramCaption,

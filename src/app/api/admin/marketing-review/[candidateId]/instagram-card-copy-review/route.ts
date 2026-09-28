@@ -47,6 +47,7 @@ export async function POST(request: Request, context: RouteContext) {
         ? await service.saveInstagramCardCopyReview({
             candidateId,
             cards: parsed.data.cards,
+            instagramCoverTitleKo: parsed.data.instagramCoverTitleKo,
             reviewedBy,
           })
         : parsed.data.action === "approve"

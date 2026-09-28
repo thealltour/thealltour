@@ -27,7 +27,10 @@ import type {
   InstagramCarouselPlan,
   InstagramCarouselRole,
 } from "@/lib/marketing/publishable/instagramEditorial/contracts";
-import { buildInstagramCardCopyContentFingerprint } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
+import {
+  buildInstagramCardCopyContentFingerprint,
+  buildInstagramCardCopyReviewApprovalFingerprint,
+} from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import {
   readInstagramCardCopyFromPackage,
   readInstagramCarouselPlanFromPackage,
@@ -44,6 +47,9 @@ export const INSTAGRAM_CARD_COPY_FIELD_LIMITS = {
   body: 400,
   microcopy: 120,
 } as const;
+
+/** Review-level thumbnail title (1:1 first card only); not a card field. */
+export const INSTAGRAM_COVER_TITLE_MAX_LENGTH = 80;
 
 export type InstagramCardCopyFields = {
   kicker: string | null;
@@ -76,6 +82,11 @@ export type InstagramCardCopyReview = {
   updatedAt: string;
   updatedBy: string | null;
   cards: InstagramCardCopyReviewCard[];
+  /**
+   * Operator-only title for the 1:1 Instagram thumbnail variant of the first card. Absent on
+   * reviews written before the field existed; null/absent means no thumbnail variant.
+   */
+  instagramCoverTitleKo?: string | null;
 };
 
 export type InstagramCardCopyReviewGateState =
@@ -127,8 +138,26 @@ function sameFields(a: InstagramCardCopyFields, b: InstagramCardCopyFields): boo
   );
 }
 
-export function hasInstagramCardHumanEdits(review: InstagramCardCopyReview | null | undefined): boolean {
+function hasInstagramCardDraftEdits(review: InstagramCardCopyReview | null | undefined): boolean {
   return Boolean(review?.cards.some((card) => card.humanDraft !== null));
+}
+
+export function resolveInstagramCoverTitleKo(
+  review: Pick<InstagramCardCopyReview, "instagramCoverTitleKo"> | null | undefined,
+): string | null {
+  return normalizeOptional(review?.instagramCoverTitleKo);
+}
+
+/** Card text edits or a thumbnail title — either one is operator work a rebase must not drop. */
+export function hasInstagramCardHumanEdits(review: InstagramCardCopyReview | null | undefined): boolean {
+  return hasInstagramCardDraftEdits(review) || resolveInstagramCoverTitleKo(review) !== null;
+}
+
+function approvalFingerprint(base: InstagramCardCopy, review: InstagramCardCopyReview): string {
+  return buildInstagramCardCopyReviewApprovalFingerprint({
+    cardCopyFingerprint: buildInstagramCardCopyContentFingerprint(applyInstagramCardCopyReview(base, review)),
+    instagramCoverTitleKo: resolveInstagramCoverTitleKo(review),
+  });
 }
 
 export function buildInstagramCardCopyReview(input: {
@@ -160,6 +189,7 @@ export function buildInstagramCardCopyReview(input: {
       aiDraft: fieldsFromItem(item),
       humanDraft: null,
     })),
+    instagramCoverTitleKo: null,
   };
 }
 
@@ -177,7 +207,7 @@ export function applyInstagramCardCopyReview(
   base: InstagramCardCopy,
   review: InstagramCardCopyReview | null | undefined,
 ): InstagramCardCopy {
-  if (!review || !reviewAppliesTo(base, review) || !hasInstagramCardHumanEdits(review)) return base;
+  if (!review || !reviewAppliesTo(base, review) || !hasInstagramCardDraftEdits(review)) return base;
   const humanById = new Map(review.cards.map((card) => [card.cardId, card.humanDraft]));
   return {
     ...base,
@@ -210,9 +240,7 @@ export function resolveInstagramCardCopyReviewGateState(
   if (review.baseCardCopyFingerprint !== baseFingerprint) {
     return { state: "base_changed", baseFingerprint, effectiveFingerprint: baseFingerprint };
   }
-  const effectiveFingerprint = buildInstagramCardCopyContentFingerprint(
-    applyInstagramCardCopyReview(base, review),
-  );
+  const effectiveFingerprint = approvalFingerprint(base, review);
   if (review.status !== "approved") return { state: "pending", baseFingerprint, effectiveFingerprint };
   if (review.approvedEffectiveFingerprint !== effectiveFingerprint) {
     return { state: "approved_stale", baseFingerprint, effectiveFingerprint };
@@ -245,6 +273,8 @@ export function updateInstagramCardCopyReviewDrafts(input: {
   review: InstagramCardCopyReview;
   base: InstagramCardCopy;
   edits: InstagramCardCopyEdit[];
+  /** undefined keeps the stored title; null or blank clears it. */
+  instagramCoverTitleKo?: string | null;
   updatedBy: string | null;
   nowIso: string;
 }): InstagramCardCopyReview {
@@ -278,9 +308,20 @@ export function updateInstagramCardCopyReviewDrafts(input: {
     assertLength(card.cardId, "microcopy", fields.microcopy);
     return { ...card, humanDraft: sameFields(fields, card.aiDraft) ? null : fields };
   });
+  const instagramCoverTitleKo =
+    input.instagramCoverTitleKo === undefined
+      ? resolveInstagramCoverTitleKo(input.review)
+      : normalizeOptional(input.instagramCoverTitleKo);
+  if (instagramCoverTitleKo && instagramCoverTitleKo.length > INSTAGRAM_COVER_TITLE_MAX_LENGTH) {
+    throw new InstagramCardCopyReviewError(
+      "field_too_long",
+      `썸네일 제목 ${instagramCoverTitleKo.length}자 > ${INSTAGRAM_COVER_TITLE_MAX_LENGTH}자`,
+    );
+  }
   return {
     ...input.review,
     cards,
+    instagramCoverTitleKo,
     status: "pending",
     approvedEffectiveFingerprint: null,
     approvedAt: null,
@@ -305,9 +346,7 @@ export function approveInstagramCardCopyReview(input: {
   return {
     ...input.review,
     status: "approved",
-    approvedEffectiveFingerprint: buildInstagramCardCopyContentFingerprint(
-      applyInstagramCardCopyReview(input.base, input.review),
-    ),
+    approvedEffectiveFingerprint: approvalFingerprint(input.base, input.review),
     approvedAt: input.nowIso,
     approvedBy: input.approvedBy,
     updatedAt: input.nowIso,

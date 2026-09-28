@@ -18,7 +18,9 @@ import {
   applyInstagramCardCopyReview,
   approveInstagramCardCopyReview,
   buildInstagramCardCopyReview,
+  hasInstagramCardHumanEdits,
   InstagramCardCopyReviewError,
+  resolveInstagramCoverTitleKo,
   overlayEffectiveInstagramCardCopyForPackage,
   overlayInstagramCardCopyOnBundle,
   persistInstagramCardCopyReview,
@@ -45,6 +47,12 @@ import {
 import { INSTAGRAM_VISUAL_ROLE_PLAN_RELATIVE_PATH } from "@/lib/marketing/publishable/instagramVisualRole/paths";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { resolveInstagramVisualRoleLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
+import {
+  buildInstagramCardCopyReviewView,
+  freshInstagramCardCopyReviewForReset,
+  resolveMutableInstagramCardCopyReview,
+} from "@/lib/marketing/review/instagramCardCopyReview";
+import type { HumanMarketingReview } from "@/lib/marketing/review/types";
 
 const T0 = "2026-09-27T00:00:00.000Z";
 const T1 = "2026-09-27T01:00:00.000Z";
@@ -205,6 +213,164 @@ describe("Instagram card copy review — gate state", () => {
     };
     expect(resolveInstagramCardCopyReviewGateState(base, tampered).state).toBe("approved_stale");
   });
+});
+
+function withCoverTitle(
+  review: InstagramCardCopyReview,
+  base: InstagramCardCopy,
+  instagramCoverTitleKo: string | null | undefined,
+) {
+  return updateInstagramCardCopyReviewDrafts({
+    review,
+    base,
+    edits: [],
+    instagramCoverTitleKo,
+    updatedBy: "ysh",
+    nowIso: T1,
+  });
+}
+
+/** Reviews persisted before the thumbnail title existed have no key at all. */
+function legacy(review: InstagramCardCopyReview): InstagramCardCopyReview {
+  const copy = { ...review };
+  delete copy.instagramCoverTitleKo;
+  return copy;
+}
+
+describe("Instagram card copy review — thumbnail title", () => {
+  it("accepts legacy reviews without the field and keeps their approval hash", () => {
+    const base = cardCopy();
+    const edited = legacy(edit(freshReview(base), base));
+    expect(resolveInstagramCoverTitleKo(edited)).toBeNull();
+
+    const approved = legacy(approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T1 }));
+    expect(approved.approvedEffectiveFingerprint).toBe(
+      buildInstagramCardCopyContentFingerprint(applyInstagramCardCopyReview(base, edited)),
+    );
+    expect(resolveInstagramCardCopyReviewGateState(base, approved).state).toBe("approved");
+    expect(withCoverTitle(edited, base, undefined).instagramCoverTitleKo).toBeNull();
+    expect(hasInstagramCardHumanEdits(legacy(freshReview(base)))).toBe(false);
+  });
+
+  it("starts null on new and reset reviews", () => {
+    expect(freshReview().instagramCoverTitleKo).toBeNull();
+    const { packageRoot } = seedPackage();
+    expect(
+      freshInstagramCardCopyReviewForReset({ candidateId: CANDIDATE_ID, packageRoot, updatedBy: "ysh", nowIso: T1 })
+        .instagramCoverTitleKo,
+    ).toBeNull();
+  });
+
+  it("saves trimmed, keeps on omission, clears on null or blank, and rejects over-length", () => {
+    const base = cardCopy();
+    const approved = approveInstagramCardCopyReview({ review: freshReview(base), base, approvedBy: "ysh", nowIso: T1 });
+    const saved = withCoverTitle(approved, base, "  제주 가을 억새 명소  ");
+    expect(saved.instagramCoverTitleKo).toBe("제주 가을 억새 명소");
+    expect(saved.status).toBe("pending");
+    expect(saved.approvedEffectiveFingerprint).toBeNull();
+
+    expect(withCoverTitle(saved, base, undefined).instagramCoverTitleKo).toBe("제주 가을 억새 명소");
+    expect(edit(saved, base).instagramCoverTitleKo).toBe("제주 가을 억새 명소");
+    expect(withCoverTitle(saved, base, "   ").instagramCoverTitleKo).toBeNull();
+    expect(withCoverTitle(saved, base, null).instagramCoverTitleKo).toBeNull();
+
+    try {
+      withCoverTitle(saved, base, "가".repeat(81));
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(InstagramCardCopyReviewError);
+      expect((error as InstagramCardCopyReviewError).code).toBe("field_too_long");
+    }
+    expect(withCoverTitle(saved, base, "가".repeat(80)).instagramCoverTitleKo).toHaveLength(80);
+  });
+
+  it("re-opens approval when only the thumbnail title changes", () => {
+    const base = cardCopy();
+    const titled = withCoverTitle(freshReview(base), base, "썸네일 제목");
+    const approved = approveInstagramCardCopyReview({ review: titled, base, approvedBy: "ysh", nowIso: T1 });
+    expect(resolveInstagramCardCopyReviewGateState(base, approved).state).toBe("approved");
+    expect(approved.approvedEffectiveFingerprint).not.toBe(buildInstagramCardCopyContentFingerprint(base));
+
+    expect(resolveInstagramCardCopyReviewGateState(base, { ...approved, instagramCoverTitleKo: "다른 제목" }).state).toBe(
+      "approved_stale",
+    );
+    expect(resolveInstagramCardCopyReviewGateState(base, { ...approved, instagramCoverTitleKo: null }).state).toBe(
+      "approved_stale",
+    );
+    expect(resolveInstagramCardCopyReviewGateState(base, withCoverTitle(approved, base, "다른 제목")).state).toBe(
+      "pending",
+    );
+  });
+
+  it("counts a thumbnail title alone as a human edit for rebase protection", () => {
+    const { packageRoot } = seedPackage();
+    const oldBase = cardCopy();
+    const titled = withCoverTitle(freshReview(oldBase), oldBase, "썸네일 제목");
+    expect(hasInstagramCardHumanEdits(titled)).toBe(true);
+    expect(applyInstagramCardCopyReview(oldBase, titled)).toBe(oldBase);
+
+    persistInstagramCardCopy({ packageRoot, copy: cardCopy({ c1: "재생성된 표지" }), createdAt: T1 });
+    const review = { channelReviews: { instagram: { cardCopyReview: titled } } } as unknown as HumanMarketingReview;
+    expect(
+      buildInstagramCardCopyReviewView({ candidateId: CANDIDATE_ID, packageRoot, review, nowIso: T1 }).staleHumanEdits,
+    ).toBe(true);
+    expect(() =>
+      resolveMutableInstagramCardCopyReview({ candidateId: CANDIDATE_ID, packageRoot, review, updatedBy: "ysh", nowIso: T1 }),
+    ).toThrow(InstagramCardCopyReviewError);
+  });
+
+  it("does not stale VRA when only the thumbnail title is approved", () => {
+    const { packageRoot } = seedPackage();
+    const base = cardCopy();
+    writeVraFor(packageRoot, base);
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: approveInstagramCardCopyReview({
+        review: withCoverTitle(freshReview(base), base, "썸네일 제목"),
+        base,
+        approvedBy: "ysh",
+        nowIso: T1,
+      }),
+    });
+    expect(resolveInstagramCardCopyReviewGate(packageRoot).state).toBe("approved");
+    expect(resolveInstagramVisualRoleLifecycleForPackage(packageRoot)).toBe("fresh");
+    expect(buildInstagramCardCopyContentFingerprint(resolveEffectiveInstagramCardCopy(packageRoot)!)).toBe(
+      buildInstagramCardCopyContentFingerprint(base),
+    );
+    const original = bundle();
+    expect(overlayEffectiveInstagramCardCopyForPackage(original, packageRoot)).toBe(original);
+  });
+
+  it("passes the approved title to the 1:1 render only", async () => {
+    const { assetRoot, packageRoot } = seedPackage();
+    const base = cardCopy();
+    const approve = (title: string | null) =>
+      persistInstagramCardCopyReview({
+        packageRoot,
+        review: approveInstagramCardCopyReview({
+          review: withCoverTitle(freshReview(base), base, title),
+          base,
+          approvedBy: "ysh",
+          nowIso: T1,
+        }),
+      });
+    const render = () =>
+      renderInstagramCardnewsForPackage({ packageRoot, assetRoot, dryRun: true, graphicOnly: true, now: new Date(T1) });
+    const thumbnailPaths = (result: Awaited<ReturnType<typeof render>>) =>
+      result.renders.flatMap((r) => r.plannedRelativePaths.filter((p) => p.includes("instagram_thumbnail")));
+
+    approve("썸네일 제목");
+    const titled = await render();
+    expect(titled.aspectRatios).toEqual(["4:5", "1:1"]);
+    expect(thumbnailPaths(titled)).toEqual(["cardnews/1x1/card-01-instagram_thumbnail.png"]);
+    expect(titled.renders[0]!.render!.variants).toBeUndefined();
+    expect(titled.renders[1]!.render!.variants).toHaveLength(1);
+
+    approve(null);
+    const untitled = await render();
+    expect(thumbnailPaths(untitled)).toEqual([]);
+    expect(untitled.renders.every((r) => r.render!.variants === undefined)).toBe(true);
+  }, 60_000);
 });
 
 function instagramSlot(): PublishableChannelContent {

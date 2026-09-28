@@ -32,6 +32,7 @@ import {
 import {
   overlayEffectiveInstagramCardCopyForPackage,
   resolveInstagramCardCopyReviewGate,
+  resolveInstagramCoverTitleKo,
   type InstagramCardCopyReviewGateState,
 } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
@@ -198,6 +199,9 @@ export async function renderInstagramCardnewsForPackage(input: {
     );
   }
 
+  // Approved gate ⇒ this is the reviewed title; a cleared title makes the 1:1 render drop the variant.
+  const instagramThumbnailTitle = resolveInstagramCoverTitleKo(cardCopyGate.review);
+
   const renders: RenderCardNewsPackageResult[] = [];
   for (const aspectRatio of aspectRatios) {
     renders.push(
@@ -213,6 +217,7 @@ export async function renderInstagramCardnewsForPackage(input: {
         visuals: visualMap.visuals,
         allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
         editorialRolesByCardId,
+        instagramThumbnailTitle: aspectRatio === "1:1" ? instagramThumbnailTitle : null,
         now: input.now,
       }),
     );

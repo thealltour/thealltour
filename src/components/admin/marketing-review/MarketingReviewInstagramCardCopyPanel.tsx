@@ -51,6 +51,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
   const { candidateId, canEdit } = props;
   const [view, setView] = useState<InstagramCardCopyReviewView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftFields>>({});
+  const [coverTitleDraft, setCoverTitleDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
         (next.review?.cards ?? []).map((card) => [card.cardId, toDraft(card.humanDraft ?? card.aiDraft)]),
       ),
     );
+    setCoverTitleDraft(next.review?.instagramCoverTitleKo ?? "");
   }, []);
 
   const endpoint = `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/instagram-card-copy-review`;
@@ -95,9 +97,12 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
       ) as Record<string, DraftFields>,
     [view],
   );
-  const dirty = Object.entries(drafts).some(
+  const cardsDirty = Object.entries(drafts).some(
     ([cardId, draft]) => savedDrafts[cardId] && !sameDraft(draft, savedDrafts[cardId]),
   );
+  const savedCoverTitle = view?.review?.instagramCoverTitleKo ?? "";
+  const coverTitleDirty = coverTitleDraft.trim() !== savedCoverTitle.trim();
+  const dirty = cardsDirty || coverTitleDirty;
 
   async function post(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -154,6 +159,25 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
           생성된 카드 문구가 바뀌어 이전 수정본을 적용할 수 없습니다. 「AI 초안으로 초기화」 후 다시 검토하세요.
         </p>
       ) : null}
+
+      <label className="block space-y-1 rounded-lg border border-[var(--border)] p-3 text-sm">
+        <span className="flex justify-between text-[var(--text-secondary)]">
+          <span className="font-medium text-[var(--text-primary)]">Instagram 카드뉴스 썸네일 제목</span>
+          <span className={coverTitleDraft.trim().length > view.coverTitleMaxLength ? adminToneText.danger : undefined}>
+            {coverTitleDraft.trim().length}/{view.coverTitleMaxLength}
+          </span>
+        </span>
+        <span className="block text-xs text-[var(--text-secondary)]">
+          1:1 카드뉴스 첫 장의 썸네일 전용 제목입니다. 카드 헤드라인·본문과 별개이며, 비워두면 썸네일 이미지를 따로
+          만들지 않습니다.
+        </span>
+        <input
+          value={coverTitleDraft}
+          disabled={!editable}
+          onChange={(e) => setCoverTitleDraft(e.target.value)}
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+        />
+      </label>
 
       <ol className="space-y-4">
         {view.review.cards.map((card, index) => {
@@ -223,6 +247,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
               {
                 action: "save",
                 cards: Object.entries(drafts).map(([cardId, draft]) => ({ cardId, ...draft })),
+                instagramCoverTitleKo: coverTitleDraft.trim() || null,
               },
               "카드 문구를 저장했습니다. 승인 전까지 렌더와 Shared Visual Plan 생성은 막혀 있습니다.",
             )

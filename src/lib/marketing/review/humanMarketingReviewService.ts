@@ -509,10 +509,11 @@ export class HumanMarketingReviewService {
     });
   }
 
-  /** Card-level text edits only; any save returns the card copy review to pending. */
+  /** Card text + thumbnail title edits; any save returns the card copy review to pending. */
   async saveInstagramCardCopyReview(input: {
     candidateId: string;
     cards: InstagramCardCopyEdit[];
+    instagramCoverTitleKo?: string | null;
     reviewedBy: string | null;
   }): Promise<InstagramCardCopyReviewView> {
     const target = await this.loadEditableCardCopyReviewTarget(input.candidateId, input.reviewedBy);
@@ -529,6 +530,7 @@ export class HumanMarketingReviewService {
         review: current,
         base,
         edits: input.cards,
+        instagramCoverTitleKo: input.instagramCoverTitleKo,
         updatedBy: input.reviewedBy,
         nowIso: target.nowIso,
       }),

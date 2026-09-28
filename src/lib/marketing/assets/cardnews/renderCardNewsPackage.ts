@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import { jsonContainsForbiddenBotLeak, stripForbiddenBotData } from "@/lib/marketing/bot/sanitize";
@@ -15,6 +15,12 @@ import {
   type CardNewsAspectRatio,
   type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
+import {
+  buildInstagramThumbnailSpec,
+  buildInstagramThumbnailSvg,
+  INSTAGRAM_THUMBNAIL_VARIANT,
+  type CardNewsRenderVariant,
+} from "@/lib/marketing/assets/cardnews/instagramThumbnail";
 import { encodeLocalVisualDataUri, rasterizeCardNewsSvg } from "@/lib/marketing/assets/cardnews/raster";
 import {
   buildCardNewsSvgFromSpec,
@@ -44,6 +50,7 @@ import {
   MARKETING_ASSET_HUMAN_EDITED_DIRECTORY,
   MARKETING_ASSET_PUBLISHED_DIRECTORY,
   ensurePackageLayout,
+  resolvePackageArtifactPath,
   resolvePackageDirectory,
   resolvePackageRelativePath,
 } from "@/lib/marketing/assets/paths";
@@ -74,6 +81,21 @@ export type CardNewsRenderCardMeta = {
   presentationTemplate?: string | null;
 };
 
+/** Extra renders of a card; kept out of `cards` so card counts keep their meaning. */
+export type CardNewsRenderVariantMeta = {
+  cardIndex: number;
+  variant: CardNewsRenderVariant;
+  sourceBriefCardId: string;
+  relativePath: string;
+  width: number;
+  height: number;
+  mediaType: typeof CARDNEWS_MEDIA_TYPE;
+  sha256: string;
+  byteSize: number;
+  visualAssetId: string | null;
+  titleFontSize: number;
+};
+
 export type CardNewsRenderDocument = {
   contract: typeof CARDNEWS_RENDER_CONTRACT;
   rendererVersion: typeof CARDNEWS_RENDERER_VERSION;
@@ -88,6 +110,8 @@ export type CardNewsRenderDocument = {
   cards: CardNewsRenderCardMeta[];
   /** PR2 — presentation plan fingerprint when present. */
   presentationPlanFingerprint?: string | null;
+  /** Omitted (not empty) when no variant was rendered, so existing render.json bytes stay put. */
+  variants?: CardNewsRenderVariantMeta[];
 };
 
 export type RenderCardNewsPackageInput = {
@@ -119,6 +143,11 @@ export type RenderCardNewsPackageInput = {
    * Prefer the on-disk brief so manifest stays aligned with the artifact.
    */
   manifestMediaBrief?: MediaBrief;
+  /**
+   * Operator thumbnail title. Only a 1:1 render with a title adds the first card's
+   * `instagram_thumbnail` variant; a 1:1 render without one removes a previously rendered variant.
+   */
+  instagramThumbnailTitle?: string | null;
   now?: Date;
 };
 
@@ -163,6 +192,14 @@ function cardnewsDirectory(geometry: CardNewsGeometry): string {
 
 function cardRelativePath(index: number, geometry: CardNewsGeometry): string {
   return `${cardnewsDirectory(geometry)}/card-${String(index).padStart(2, "0")}.png`;
+}
+
+function cardVariantRelativePath(
+  index: number,
+  geometry: CardNewsGeometry,
+  variant: CardNewsRenderVariant,
+): string {
+  return `${cardnewsDirectory(geometry)}/card-${String(index).padStart(2, "0")}-${variant}.png`;
 }
 
 function evidenceCatalog(brief: MediaBrief): Map<string, AssignmentEvidenceRef> {
@@ -412,6 +449,25 @@ export async function renderCardNewsPackage(
     }
   }
 
+  const thumbnailTitle =
+    geometry.aspectRatio === "1:1" ? input.instagramThumbnailTitle?.trim() || null : null;
+  const firstSpec = specs[0];
+  const thumbnailSpec =
+    thumbnailTitle && firstSpec
+      ? buildInstagramThumbnailSpec({
+          cardId: firstSpec.cardId,
+          title: thumbnailTitle,
+          visualDataUri: firstSpec.visualDataUri,
+          preserveAspectRatio: firstSpec.layout.preserveAspectRatio,
+          geometry,
+        })
+      : null;
+  const thumbnailPng =
+    thumbnailSpec && !input.dryRun
+      ? await rasterizeCardNewsSvg(buildInstagramThumbnailSvg(thumbnailSpec, geometry), geometry)
+      : null;
+  const thumbnailRelativePath = cardVariantRelativePath(1, geometry, INSTAGRAM_THUMBNAIL_VARIANT);
+
   const planned: PlannedPackageArtifact[] = [];
   if (input.persistMediaBrief !== false) {
     planned.push({
@@ -453,6 +509,37 @@ export async function renderCardNewsPackage(
     };
   });
 
+  const variantMetas: CardNewsRenderVariantMeta[] = [];
+  if (thumbnailSpec && firstSpec) {
+    if (thumbnailPng) {
+      planned.push({
+        relativePath: thumbnailRelativePath,
+        content: thumbnailPng,
+        kind: "cardnews",
+        origin: "cardnews_render",
+        mediaType: CARDNEWS_MEDIA_TYPE,
+      });
+    }
+    variantMetas.push({
+      cardIndex: firstSpec.index,
+      variant: INSTAGRAM_THUMBNAIL_VARIANT,
+      sourceBriefCardId: firstSpec.cardId,
+      relativePath: thumbnailRelativePath,
+      width: geometry.width,
+      height: geometry.height,
+      mediaType: CARDNEWS_MEDIA_TYPE,
+      sha256: thumbnailPng ? sha256Buffer(thumbnailPng) : "0".repeat(64),
+      byteSize: thumbnailPng?.byteLength ?? 0,
+      visualAssetId: visualIds[0] ?? null,
+      titleFontSize: thumbnailSpec.title.fontSize,
+    });
+  }
+  // A thumbnail from an earlier render whose title was since cleared must not outlive it.
+  const staleVariantPaths =
+    geometry.aspectRatio === "1:1" && !variantMetas.some((item) => item.relativePath === thumbnailRelativePath)
+      ? [thumbnailRelativePath]
+      : [];
+
   const render: CardNewsRenderDocument = {
     contract: CARDNEWS_RENDER_CONTRACT,
     rendererVersion: CARDNEWS_RENDERER_VERSION,
@@ -466,6 +553,7 @@ export async function renderCardNewsPackage(
     graphicOnly,
     cards: cardMetas,
     presentationPlanFingerprint: buildCardPresentationContentFingerprint(presentationPlan),
+    ...(variantMetas.length > 0 ? { variants: variantMetas } : {}),
   };
   assertClean(render);
 
@@ -493,6 +581,7 @@ export async function renderCardNewsPackage(
       reused: false,
       plannedRelativePaths: [
         ...cardMetas.map((item) => item.relativePath),
+        ...variantMetas.map((item) => item.relativePath),
         `${cardnewsDirectory(geometry)}/render.json`,
         "manifest.json",
       ],
@@ -525,7 +614,14 @@ export async function renderCardNewsPackage(
     written.push(writePackageArtifact({ packageRoot, planned: item, createdAt }).artifact);
   }
 
-  const merged = mergeArtifacts(existingManifest?.artifacts ?? [], written);
+  for (const relativePath of staleVariantPaths) {
+    const absolute = resolvePackageArtifactPath({ packageRoot, relativePath });
+    if (existsSync(absolute)) unlinkSync(absolute);
+  }
+  const merged = mergeArtifacts(
+    (existingManifest?.artifacts ?? []).filter((item) => !staleVariantPaths.includes(item.relativePath)),
+    written,
+  );
   const createdAt = existingManifest?.createdAt ?? timestamp;
   const manifestBrief =
     input.persistMediaBrief === false

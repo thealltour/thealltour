@@ -44,6 +44,8 @@ export const instagramCardCopyReviewActionSchema = z.discriminatedUnion("action"
       )
       .min(1)
       .max(12),
+    /** Omitted keeps the stored thumbnail title; null or blank clears it. */
+    instagramCoverTitleKo: z.string().max(400).nullable().optional(),
   }),
   z.object({ action: z.literal("approve") }),
   z.object({ action: z.literal("reset") }),

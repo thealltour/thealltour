@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 
 import type { AgendaTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/contracts";
 import type { ExternalStoryCandidate } from "@/lib/marketing/editorialDirector/contracts";
+import { isDiscoveryLikeArchetype } from "@/lib/marketing/publishable/editorialArchetype";
 import {
   STORY_CONTENT_POINT_CONTRACT,
   STORY_MECHANISMS,
@@ -26,7 +27,11 @@ function mechanismsFromArchetype(archetype: string | null): StoryMechanism[] {
   if (/who_is|family|parent|couple|identity/.test(a)) out.push("identity_signal");
   if (/cost|avoid|mistake|overpriced/.test(a)) out.push("loss_avoidance");
   if (/curiosity|gap|alternative/.test(a)) out.push("curiosity_gap");
-  if (out.length === 0) out.push("curiosity_gap", "decision_relief");
+  if (out.length === 0) {
+    // Discovery-like Stories carry no decision; the legacy fallback would inject decision_relief.
+    if (isDiscoveryLikeArchetype(archetype)) out.push("curiosity_gap");
+    else out.push("curiosity_gap", "decision_relief");
+  }
   return [...new Set(out)].filter((m) =>
     (STORY_MECHANISMS as readonly string[]).includes(m),
   ) as StoryMechanism[];
@@ -57,17 +62,6 @@ export function normalizeExternalStoryToPoint(
   candidate: ExternalStoryCandidate,
   agendaId: string,
 ): StoryContentPoint {
-  const whyExtra = [
-    candidate.audienceProblemKo ? `문제: ${candidate.audienceProblemKo}` : null,
-    candidate.decisionAtStakeKo ? `선택: ${candidate.decisionAtStakeKo}` : null,
-    candidate.whyKoreanTravelerCaresKo
-      ? `한국 여행자: ${candidate.whyKoreanTravelerCaresKo}`
-      : null,
-    candidate.stakes.length ? `스테이크: ${candidate.stakes.join(", ")}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return {
     contract: STORY_CONTENT_POINT_CONTRACT,
     pointId: stableExternalStoryPointId({
@@ -76,9 +70,7 @@ export function normalizeExternalStoryToPoint(
     }),
     storyQuestion: candidate.storyQuestionKo,
     storyClaim: candidate.storyClaimKo,
-    whyInteresting: whyExtra
-      ? `${candidate.whyInterestingKo} (${whyExtra})`
-      : candidate.whyInterestingKo,
+    whyInteresting: candidate.whyInterestingKo,
     audienceTension: candidate.audienceTensionKo,
     curiosityGap: candidate.curiosityGapKo,
     readerPayoff: candidate.readerPayoffKo,
@@ -89,12 +81,17 @@ export function normalizeExternalStoryToPoint(
         : candidate.researchQuestionsKo.slice(0, 3),
     researchQuestions: candidate.researchQuestionsKo,
     genericRisk: candidate.riskKo,
-    genericRiskMitigation: candidate.channelReasonKo,
+    genericRiskMitigation: null,
     channelPotential: channelPotentialFromRecommended(candidate),
     nonGoals: candidate.nonGoalsKo,
     editorialArchetype: candidate.editorialArchetype?.trim()
       ? candidate.editorialArchetype.trim()
       : null,
+    audienceProblem: candidate.audienceProblemKo,
+    decisionAtStake: candidate.decisionAtStakeKo,
+    stakes: [...candidate.stakes],
+    whyKoreanTravelerCares: candidate.whyKoreanTravelerCaresKo,
+    channelReason: candidate.channelReasonKo,
     agendaFitNotes: [
       candidate.storyTitleKo ? `title:${candidate.storyTitleKo}` : null,
       candidate.editorialArchetype ? `archetype:${candidate.editorialArchetype}` : null,

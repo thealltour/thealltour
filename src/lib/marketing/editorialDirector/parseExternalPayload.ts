@@ -73,6 +73,7 @@ function parseChannelPotential(raw: unknown): ExternalChannelPotentialScores {
     naverBand: scoreOrNull(o.naverBand ?? o.naver_band),
     kakaoChannel: scoreOrNull(o.kakaoChannel ?? o.kakao_channel),
     shortform: scoreOrNull(o.shortform),
+    instagram: scoreOrNull(o.instagram),
   };
 }
 

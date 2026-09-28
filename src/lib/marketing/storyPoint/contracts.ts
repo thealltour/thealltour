@@ -63,6 +63,16 @@ export type StoryContentPoint = {
    * Nullable for legacy StoryPoints; do not invent when absent.
    */
   editorialArchetype?: string | null;
+  /**
+   * Structured Story context from external Editorial Director imports.
+   * Optional: legacy / internal-miner StoryPoints omit these. Never folded into whyInteresting.
+   */
+  audienceProblem?: string | null;
+  decisionAtStake?: string | null;
+  stakes?: string[];
+  whyKoreanTravelerCares?: string | null;
+  /** Advisory channel rationale from the importer — not a risk mitigation. */
+  channelReason?: string | null;
 };
 
 export type StoryPointGateScores = {

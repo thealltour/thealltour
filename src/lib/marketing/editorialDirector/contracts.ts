@@ -37,6 +37,7 @@ export type ExternalChannelPotentialScores = {
   naverBand: number | null;
   kakaoChannel: number | null;
   shortform: number | null;
+  instagram: number | null;
 };
 
 export type ExternalAgendaEvaluation = {

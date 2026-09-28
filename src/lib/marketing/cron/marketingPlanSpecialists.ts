@@ -30,6 +30,7 @@ import {
 } from "@/lib/marketing/content/proposition/storyLock";
 import type { EvidenceBackedStoryBrief } from "@/lib/marketing/storyPoint/contracts";
 import { resolveStoryEditorialArchetype } from "@/lib/marketing/canonicalAsset/revisions";
+import { projectStoryPointForPrompt } from "@/lib/marketing/storyPoint/promptProjection";
 
 /**
  * Default Hermes oneshot timeout for Marketing Cron specialist profiles.
@@ -464,6 +465,13 @@ function formatStoryLockBrief(payload: ContentDraftRequest): string | null {
 }
 
 
+function contentDraftPayloadJson(payload: ContentDraftRequest): string {
+  const story = payload.authoritativeStoryPoint;
+  return JSON.stringify(
+    story ? { ...payload, authoritativeStoryPoint: projectStoryPointForPrompt(story) } : payload,
+  );
+}
+
 export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
   const supplied = collectSuppliedEvidenceRefs(payload);
   const acrb = payload.audienceContentResearchBrief;
@@ -519,7 +527,7 @@ export function buildContentDraftPrompt(payload: ContentDraftRequest): string {
     formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
-    JSON.stringify(payload),
+    contentDraftPayloadJson(payload),
     CONTENT_DRAFT_SHAPE,
   ]
     .filter(Boolean)
@@ -544,7 +552,7 @@ export function buildContentDraftFormatRepairPrompt(
     formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
-    JSON.stringify(payload),
+    contentDraftPayloadJson(payload),
     CONTENT_DRAFT_SHAPE,
   ]
     .filter(Boolean)
@@ -571,7 +579,7 @@ export function buildContentDraftGroundingRepairPrompt(
     formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
-    JSON.stringify(payload),
+    contentDraftPayloadJson(payload),
     CONTENT_DRAFT_SHAPE,
   ]
     .filter(Boolean)
@@ -602,7 +610,7 @@ export function buildContentDraftSchemaRepairPrompt(
     formatAvailableEvidenceSection(supplied),
     PROPOSITION_RULES,
     GROUNDING_RULES,
-    JSON.stringify(payload),
+    contentDraftPayloadJson(payload),
     CONTENT_DRAFT_SHAPE,
   ]
     .filter(Boolean)
@@ -640,7 +648,7 @@ export function buildContentDraftTopicIdentityRepairPrompt(
     formatEvidencePackSection(payload.evidencePack),
     formatAvailableEvidenceSection(supplied),
     GROUNDING_RULES,
-    JSON.stringify(payload),
+    contentDraftPayloadJson(payload),
     CONTENT_DRAFT_SHAPE,
   ]
     .filter(Boolean)

@@ -75,6 +75,12 @@ export type StoryContentPoint = {
   channelReason?: string | null;
 };
 
+/** Reader decision handed to LLM stages — decision/practical Stories only. */
+export type StoryDecisionContext = {
+  decisionAtStake: string | null;
+  stakes: string[];
+};
+
 export type StoryPointGateScores = {
   interestingness: number;
   specificity: number;

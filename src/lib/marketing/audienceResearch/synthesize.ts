@@ -21,6 +21,7 @@ import {
 import { deriveAgendaTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/deriveTopicIdentity";
 import { summarizeTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/contracts";
 import { guardAnglesAgainstTopicIdentity } from "@/lib/marketing/audienceResearch/topicIdentity/guardAngles";
+import { resolveStoryDecisionContext } from "@/lib/marketing/canonicalAsset/revisions";
 
 export type AcrbLlmInvoke = (prompt: string) => Promise<string> | string;
 
@@ -31,6 +32,7 @@ export function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
   const storyPoint = gathered.storyPoint ?? null;
   const storyPointHash = gathered.storyPointHash ?? null;
   const storyTargeted = Boolean(storyPoint);
+  const decisionContext = storyPoint ? resolveStoryDecisionContext(storyPoint) : null;
 
   const roleLines = storyTargeted
     ? [
@@ -50,6 +52,12 @@ export function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
         "If evidence only supports a narrower claim, propose a supportedClaimBoundary that preserves the SAME Story core (same destination/product/topic).",
         "Do NOT replace REFUTED or INSUFFICIENT_EVIDENCE with a different angle or generic travel advice — report limitations instead.",
         "contentAngles must be researchSupportedFraming derived from the StoryPoint — not a creative replacement thesis.",
+        ...(decisionContext
+          ? [
+              "AUTHORITATIVE_STORY_POINT.decisionContext is the reader decision this decision/practical Story is about.",
+              "Research which evidence bears on decisionAtStake and each of the stakes; do not widen the decision or add new stakes.",
+            ]
+          : []),
       ]
     : [
         "JSON only. You are Audience & Content Research (RA-1), a research/strategy staff role — NOT a social-copy writer.",
@@ -116,6 +124,7 @@ export function buildSynthesisPrompt(gathered: AcrbGatheredInputs): string {
             researchQuestions: storyPoint.researchQuestions,
             mechanisms: storyPoint.mechanisms,
             nonGoals: storyPoint.nonGoals,
+            ...(decisionContext ? { decisionContext } : {}),
             storyPointHash,
             storyPointGatePass: Boolean(gathered.storyPointGatePass),
           }

@@ -97,6 +97,8 @@ export type CanonicalAssetWriterInput = {
   readerPayoff: string;
   /** Exact upstream Story archetype; null for legacy / unknown. Never invent. */
   editorialArchetype: string | null;
+  /** Present only for decision/practical Stories that carry a genuine decision. */
+  decisionContext?: import("@/lib/marketing/storyPoint/contracts").StoryDecisionContext;
   storySupportVerdict: string;
   supportedClaimBoundary: string | null;
   evidenceBriefRef: string | null;

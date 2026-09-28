@@ -1,9 +1,13 @@
 import { createHash } from "node:crypto";
 
 import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
-import type { EvidenceBackedStoryBrief } from "@/lib/marketing/storyPoint/contracts";
-import type { StoryContentPoint } from "@/lib/marketing/storyPoint/contracts";
+import type {
+  EvidenceBackedStoryBrief,
+  StoryContentPoint,
+  StoryDecisionContext,
+} from "@/lib/marketing/storyPoint/contracts";
 import type { CanonicalAssetWriterInput } from "@/lib/marketing/canonicalAsset/contracts";
+import { isAsWDecisionPracticalArchetype } from "@/lib/marketing/canonicalAsset/prompt";
 
 function norm(text: string | null | undefined): string {
   return (text ?? "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -23,6 +27,24 @@ export function resolveStoryEditorialArchetype(
   const match = notes.match(/(?:^|\|\s*)archetype:([^\s|]+)/i);
   const fromNotes = match?.[1]?.trim();
   return fromNotes || null;
+}
+
+/**
+ * Structured decision context for LLM stages — decision/practical Stories only.
+ * Discovery-like / unknown archetypes get null so no decision frame is handed downstream.
+ * Never derived from audienceTension.
+ */
+export function resolveStoryDecisionContext(
+  storyPoint: Pick<
+    StoryContentPoint,
+    "editorialArchetype" | "agendaFitNotes" | "decisionAtStake" | "stakes"
+  >,
+): StoryDecisionContext | null {
+  if (!isAsWDecisionPracticalArchetype(resolveStoryEditorialArchetype(storyPoint))) return null;
+  const decisionAtStake = storyPoint.decisionAtStake?.trim() || null;
+  const stakes = (storyPoint.stakes ?? []).map((s) => s.trim()).filter(Boolean);
+  if (!decisionAtStake && stakes.length === 0) return null;
+  return { decisionAtStake, stakes };
 }
 
 export function computeCanonicalAssetSourceRevision(input: {
@@ -89,6 +111,7 @@ export function buildCanonicalAssetWriterInput(input: {
     input.evidenceBrief?.supportedClaimBoundary ??
     input.proposition.supportedClaimBoundaryUsed ??
     null;
+  const decisionContext = resolveStoryDecisionContext(input.storyPoint);
   return {
     agendaId: input.agendaId,
     storyPointId: input.storyPoint.pointId,
@@ -100,6 +123,7 @@ export function buildCanonicalAssetWriterInput(input: {
     curiosityGap: input.storyPoint.curiosityGap,
     readerPayoff: input.storyPoint.readerPayoff,
     editorialArchetype: resolveStoryEditorialArchetype(input.storyPoint),
+    ...(decisionContext ? { decisionContext } : {}),
     storySupportVerdict:
       input.evidenceBrief?.storySupportVerdict ??
       input.proposition.storySupportVerdict ??

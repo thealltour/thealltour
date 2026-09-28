@@ -52,6 +52,7 @@ export {
   computeCanonicalAssetSourceRevision,
   computeEvidenceRevision,
   computePropositionRevision,
+  resolveStoryDecisionContext,
   resolveStoryEditorialArchetype,
 } from "@/lib/marketing/canonicalAsset/revisions";
 export { parseDurableCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/parseCanonicalMarketingAsset";
@@ -67,6 +68,7 @@ export {
 } from "@/lib/marketing/canonicalAsset/prompt";
 export {
   CANONICAL_NATURAL_KOREAN_SURFACE_CONTRACT_EN,
+  CANONICAL_LIMITATION_PLACEMENT_EN,
   CANONICAL_SURFACE_LANGUAGE_NOTES_KO,
   CANONICAL_LEGACY_HEDGE_SEED_SHOWING_CLUE,
   CANONICAL_PREFERRED_PARTIAL_HEDGES,

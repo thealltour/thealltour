@@ -68,10 +68,11 @@ function mergeParsed(
   validationIssues: string[],
   status: CanonicalMarketingAsset["status"],
 ): CanonicalMarketingAsset {
+  // The evidence layer owns the boundary; the Writer's echoed value is never authoritative.
   const boundary =
-    parsed.supportedClaimBoundaryKo ??
     writerInput.supportedClaimBoundary ??
-    writerInput.proposition.supportedClaimBoundaryUsed;
+    writerInput.proposition.supportedClaimBoundaryUsed ??
+    null;
   const forbidden = [
     ...new Set([
       ...parsed.forbiddenClaimsKo,

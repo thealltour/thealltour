@@ -91,6 +91,21 @@ export const CANONICAL_SURFACE_LANGUAGE_NOTES_KO = [
   "자연스러운 문장으로 바꾼다고 해서 주장 강도를 키우지 마세요. supportedClaimBoundaryKo·forbiddenClaimsKo·limitationsKo를 지키세요.",
 ] as const;
 
+/**
+ * Where limitations go in Canonical prose (ASW generation).
+ * Editorial instruction only — no deterministic rewriting of limitation text.
+ */
+export const CANONICAL_LIMITATION_PLACEMENT_EN = [
+  "LIMITATION PLACEMENT (qualifications, not conclusions):",
+  "- limitationsKo / unresolvedQuestions qualify specific claims. State each qualification near the claim it qualifies",
+  "  (same or adjacent sentence), not as a separate summary of what is unknown.",
+  "- Do not automatically repeat unresolved points in titleKo, openingHookKo, the closing paragraph of bodyKo,",
+  "  keyTakeawaysKo, or decisionGuidanceKo. Close on what the evidence does support.",
+  "- Exception: when a limitation is itself the central finding, or it changes whether a reader action is possible,",
+  "  give it prominent treatment wherever it belongs.",
+  "- Do not hide uncertainty: every material limitation still appears at least once, next to the relevant claim.",
+].join("\n");
+
 /** Evidence-discipline hedge lines for ASW (replaces legacy 단서 seed). */
 export const CANONICAL_PARTIAL_SUPPORT_HEDGE_LINES_EN = [
   "When support is PARTIAL, prefer bounded language such as:",

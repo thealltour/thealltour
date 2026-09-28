@@ -31,7 +31,9 @@ export async function POST(request: Request) {
       businessDateKst: parsed.data.businessDateKst,
       rawJson: parsed.data.rawJson,
       dryRun: parsed.data.dryRun,
+      mode: parsed.data.mode,
     });
+    const replaced = parsed.data.mode === "replace";
     const selectedTodayCount =
       result.slate?.candidates.filter((c) => c.state === "SELECTED_TODAY").length ?? 0;
     return Response.json({
@@ -44,7 +46,9 @@ export async function POST(request: Request) {
       executedProduction: false,
       message: result.dryRun
         ? `검증 OK — ${result.preview.storyCountAccepted}개 Story 미리보기`
-        : `외부 Story ${result.preview.storyCountAccepted}개를 가져왔습니다. 아직 연구/제작은 시작하지 않았습니다.`,
+        : replaced
+          ? `기존 Story 후보 ${result.preview.existingCandidateCount}개를 지우고 외부 Story ${result.preview.storyCountAccepted}개로 교체했습니다. 아직 연구/제작은 시작하지 않았습니다.`
+          : `외부 Story ${result.preview.storyCountAccepted}개를 가져왔습니다. 아직 연구/제작은 시작하지 않았습니다.`,
     });
   } catch (error) {
     return agendaSlateErrorResponse(error);

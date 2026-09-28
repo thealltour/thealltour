@@ -50,4 +50,18 @@ export const agendaSlateImportExternalStorySchema = z.object({
     .optional(),
   rawJson: z.string().min(2).max(200_000),
   dryRun: z.boolean().optional(),
+  mode: z.enum(["merge", "replace"]).optional(),
 });
+
+export const agendaSlateClearStoryCandidatesSchema = z
+  .object({
+    businessDateKst: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    slateItemId: z.string().min(1).max(80).optional(),
+    all: z.literal(true).optional(),
+  })
+  .refine((value) => Boolean(value.slateItemId?.trim()) !== Boolean(value.all), {
+    message: "exactly one of slateItemId or all required",
+  });

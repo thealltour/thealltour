@@ -191,6 +191,44 @@ function extractPassStoryCandidates(
   return out;
 }
 
+/** Distinct Story candidate ids across the primary and *Full sets (internal + external). */
+function countStoryCandidates(request: MarketingProductionRequest | null | undefined): number {
+  const ids = new Set<string>();
+  for (const raw of [request?.metadata?.storyPointCandidateSet, request?.metadata?.storyPointCandidateSetFull]) {
+    const candidates = (raw as { candidates?: Array<{ pointId?: unknown }> } | null | undefined)?.candidates;
+    if (!Array.isArray(candidates)) continue;
+    for (const c of candidates) if (typeof c.pointId === "string") ids.add(c.pointId);
+  }
+  return ids.size;
+}
+
+function storyResetBlocked(request: MarketingProductionRequest): boolean {
+  return (
+    Boolean(request.completedCandidateId) ||
+    Boolean(request.metadata?.canonicalMarketingAsset) ||
+    request.status === "QUEUED" ||
+    request.status === "RUNNING"
+  );
+}
+
+/** Agendas that already hold Stories or are in production stay out of the ChatGPT copy by default. */
+function includeInExportByDefault(request: MarketingProductionRequest | null | undefined): boolean {
+  if (!request) return true;
+  return !storyResetBlocked(request) && countStoryCandidates(request) === 0;
+}
+
+function defaultExportSelection(
+  slate: DailyAgendaSlate | null,
+  requests: MarketingProductionRequest[],
+): Set<string> {
+  const bySlateItem = new Map(requests.map((r) => [r.slateItemId, r]));
+  return new Set(
+    (slate?.candidates ?? [])
+      .filter((c) => includeInExportByDefault(bySlateItem.get(c.slateItemId)))
+      .map((c) => c.slateItemId),
+  );
+}
+
 function formatTs(value: string | null | undefined): string {
   if (!value) return "—";
   const d = new Date(value);
@@ -371,9 +409,22 @@ function CandidateCard(props: {
   onRetryProduction?: () => void;
   onSelectStory?: (storyPointId: string) => void;
   onImportExternalStory?: () => void;
+  exportIncluded: boolean;
+  onToggleExport: (included: boolean) => void;
+  onClearStories?: () => void;
 }) {
-  const { item, productionRequest, busy, onAction, onRetryProduction, onSelectStory, onImportExternalStory } =
-    props;
+  const {
+    item,
+    productionRequest,
+    busy,
+    onAction,
+    onRetryProduction,
+    onSelectStory,
+    onImportExternalStory,
+    exportIncluded,
+    onToggleExport,
+    onClearStories,
+  } = props;
   const ed = item.editorial;
   const pr = productionRequest;
   const outcome =
@@ -401,6 +452,8 @@ function CandidateCard(props: {
       : typeof humanSelectionMeta?.lastResearchRejectReason === "string"
         ? humanSelectionMeta.lastResearchRejectReason
         : null;
+  const storyCandidateCount = countStoryCandidates(pr);
+  const canClearStories = Boolean(pr && !storyResetBlocked(pr) && storyCandidateCount > 0);
 
   return (
     <div
@@ -434,6 +487,18 @@ function CandidateCard(props: {
         <div className="text-right text-xs text-[var(--text-secondary)]">
           <div>연구 점수 {item.score != null ? item.score.toFixed(2) : "—"}</div>
           <div className="mt-0.5">출처 {sourceLabel(item)}</div>
+          <label className="mt-1.5 inline-flex min-h-9 cursor-pointer items-center gap-1.5 text-[var(--text-primary)] sm:min-h-0">
+            <input
+              type="checkbox"
+              checked={exportIncluded}
+              onChange={(e) => onToggleExport(e.target.checked)}
+              className="h-4 w-4"
+            />
+            ChatGPT 복사 포함
+          </label>
+          {storyCandidateCount > 0 ? (
+            <div className="mt-0.5">Story 후보 {storyCandidateCount}개 보유</div>
+          ) : null}
         </div>
       </div>
 
@@ -503,16 +568,28 @@ function CandidateCard(props: {
                     ? "Story는 이미 선택됨 — 공통 원문 단계는 아직 아닙니다. 제작을 재개하세요."
                     : "Story 후보 — 연구/콘텐츠 전에 하나를 선택하세요."}
                 </p>
-                {onImportExternalStory ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onImportExternalStory()}
-                    className="min-h-11 rounded-lg border border-violet-700/40 bg-violet-700/10 px-3 py-2 text-sm font-medium text-violet-950 disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-                  >
-                    외부 Story 가져오기
-                  </button>
-                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {onImportExternalStory ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onImportExternalStory()}
+                      className="min-h-11 rounded-lg border border-violet-700/40 bg-violet-700/10 px-3 py-2 text-sm font-medium text-violet-950 disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+                    >
+                      외부 Story 가져오기
+                    </button>
+                  ) : null}
+                  {onClearStories && canClearStories ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => onClearStories()}
+                      className="min-h-11 rounded-lg border border-[var(--danger)]/40 px-3 py-2 text-sm font-medium text-[var(--danger)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+                    >
+                      Story 후보 전체 삭제
+                    </button>
+                  ) : null}
+                </div>
               </div>
               {activeHumanSelectionId && onSelectStory ? (
                 <div className="rounded border border-[var(--primary)]/40 bg-[var(--primary-soft)] px-3 py-2 text-[var(--primary)]">
@@ -753,7 +830,10 @@ export function AgendaSlatePanel({
     storyTitles: string[];
     rejectedCount: number;
     selectedAgendaReasonKo: string | null;
+    existingCandidateCount?: number;
   } | null>(null);
+  const [importReplace, setImportReplace] = useState(false);
+  const [exportSelection, setExportSelection] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setSelectedDate(initialBusinessDateKst ?? null);
@@ -833,8 +913,10 @@ export function AgendaSlatePanel({
     [pathname, router],
   );
 
+  // Background polling must not overwrite the human's copy selection; only full loads
+  // (date switch, 새로고침) and Story wipes/imports recompute the default.
   const load = useCallback(
-    async (options: { silent?: boolean; date?: string | null } = {}) => {
+    async (options: { silent?: boolean; date?: string | null; resetSelection?: boolean } = {}) => {
       if (!options.silent) {
         setLoading(true);
         setMessage(null);
@@ -858,6 +940,9 @@ export function AgendaSlatePanel({
           return;
         }
         applySlatePayload(data);
+        if (options.resetSelection ?? !options.silent) {
+          setExportSelection(defaultExportSelection(data.slate, data.productionRequests ?? []));
+        }
       } catch {
         if (!options.silent) setMessage("슬레이트 로드 실패");
       } finally {
@@ -1016,14 +1101,32 @@ export function AgendaSlatePanel({
     }
   }
 
+  const exportSelectedIds = useMemo(
+    () => (slate?.candidates ?? []).map((c) => c.slateItemId).filter((id) => exportSelection.has(id)),
+    [slate, exportSelection],
+  );
+
+  function toggleExport(slateItemId: string, included: boolean) {
+    setExportSelection((prev) => {
+      const next = new Set(prev);
+      if (included) next.add(slateItemId);
+      else next.delete(slateItemId);
+      return next;
+    });
+  }
+
   async function copyChatGptSlate() {
+    if (exportSelectedIds.length === 0) {
+      setMessage("ChatGPT에 복사할 아젠다를 하나 이상 체크하세요.");
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const res = await fetch("/api/admin/marketing-review/agenda-slate/export-chatgpt", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...dateBody }),
+        body: JSON.stringify({ ...dateBody, slateItemIds: exportSelectedIds }),
       });
       const data = (await res.json()) as {
         message?: string;
@@ -1035,7 +1138,7 @@ export function AgendaSlatePanel({
         return;
       }
       await navigator.clipboard.writeText(data.text);
-      setMessage(`복사 완료 — 오늘 Slate ${data.agendaCount ?? 0}건이 포함되었습니다.`);
+      setMessage(`복사 완료 — ${data.message ?? `Slate ${data.agendaCount ?? 0}건이 포함되었습니다.`}`);
     } catch {
       setMessage("클립보드 복사 실패");
     } finally {
@@ -1062,6 +1165,7 @@ export function AgendaSlatePanel({
           storyTitles: string[];
           rejectedCount: number;
           selectedAgendaReasonKo: string | null;
+          existingCandidateCount?: number;
         };
       };
       if (!res.ok || !data.preview) {
@@ -1078,13 +1182,27 @@ export function AgendaSlatePanel({
   }
 
   async function commitExternalImport() {
+    if (importReplace) {
+      const existing = importPreview?.existingCandidateCount;
+      const ok = window.confirm(
+        existing != null
+          ? `이 아젠다의 기존 Story 후보 ${existing}개(내부·외부 모두)와 이전 Story 선택을 지우고 새 Story로 교체할까요?`
+          : "이 아젠다의 기존 Story 후보(내부·외부 모두)와 이전 Story 선택을 지우고 새 Story로 교체할까요?",
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const res = await fetch("/api/admin/marketing-review/agenda-slate/import-external-story", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rawJson: importRaw, dryRun: false, ...dateBody }),
+        body: JSON.stringify({
+          rawJson: importRaw,
+          dryRun: false,
+          mode: importReplace ? "replace" : "merge",
+          ...dateBody,
+        }),
       });
       const data = (await res.json()) as {
         message?: string;
@@ -1105,13 +1223,57 @@ export function AgendaSlatePanel({
       setImportOpen(false);
       setImportRaw("");
       setImportPreview(null);
+      setImportReplace(false);
       setMessage(
         data.message ??
           `외부 Story ${data.preview?.storyCountAccepted ?? 0}개를 가져왔습니다. 자동 선택은 하지 않았습니다.`,
       );
-      await load({ silent: true });
+      await load({ silent: true, resetSelection: true });
     } catch {
       setMessage("가져오기 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearStoryCandidates(target: { slateItemId: string } | { all: true }) {
+    let confirmText: string;
+    if ("slateItemId" in target) {
+      const count = countStoryCandidates(requestBySlateItemId.get(target.slateItemId));
+      confirmText = `이 아젠다의 Story 후보 ${count}개(내부·외부 모두)를 삭제할까요? 이전 Story 선택과 연구 거부 기록도 초기화됩니다.`;
+    } else {
+      const resettable = productionRequests.filter(
+        (r) => !storyResetBlocked(r) && countStoryCandidates(r) > 0,
+      );
+      if (resettable.length === 0) {
+        setMessage("지울 Story 후보가 있는 아젠다가 없습니다.");
+        return;
+      }
+      const total = resettable.reduce((sum, r) => sum + countStoryCandidates(r), 0);
+      confirmText = `아젠다 ${resettable.length}건의 Story 후보 ${total}개(내부·외부 모두)를 모두 삭제할까요? 제작 중이거나 공통 원문 단계까지 간 아젠다는 건너뜁니다.`;
+    }
+    if (!window.confirm(confirmText)) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/marketing-review/agenda-slate/clear-story-candidates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...target, ...dateBody }),
+      });
+      const data = (await res.json()) as {
+        message?: string;
+        skipped?: Array<{ slateItemId: string; reason: string }>;
+      };
+      if (!res.ok) {
+        setMessage(data.message ?? "Story 후보 삭제 실패");
+        return;
+      }
+      const skippedDetail = (data.skipped ?? []).map((s) => s.reason).join(" / ");
+      setMessage(`${data.message ?? "Story 후보를 지웠습니다."}${skippedDetail ? ` (${skippedDetail})` : ""}`);
+      await load({ silent: true, resetSelection: true });
+    } catch {
+      setMessage("Story 후보 삭제 실패");
     } finally {
       setBusy(false);
     }
@@ -1184,11 +1346,11 @@ export function AgendaSlatePanel({
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <button
               type="button"
-              disabled={busy || !slate || (slate.candidates.length ?? 0) < 1}
+              disabled={busy || !slate || exportSelectedIds.length < 1}
               onClick={() => void copyChatGptSlate()}
               className="min-h-11 w-full rounded-lg border border-violet-700/40 bg-violet-700/10 px-3 py-2 text-sm font-medium text-violet-950 disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
             >
-              ChatGPT용 전체 Slate 복사
+              ChatGPT용 Slate 복사 (선택 {exportSelectedIds.length}건)
             </button>
             <button
               type="button"
@@ -1196,6 +1358,7 @@ export function AgendaSlatePanel({
               onClick={() => {
                 setImportOpen(true);
                 setImportPreview(null);
+                setImportReplace(false);
               }}
               className="min-h-11 w-full rounded-lg border border-violet-700/40 px-3 py-2 text-sm text-violet-950 disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
             >
@@ -1219,6 +1382,35 @@ export function AgendaSlatePanel({
             </button>
           </div>
         </div>
+        {slate && slate.candidates.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+            <span>ChatGPT 복사 대상 {exportSelectedIds.length}/{slate.candidates.length}</span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setExportSelection(new Set(slate.candidates.map((c) => c.slateItemId)))}
+              className="min-h-9 text-[var(--primary)] underline underline-offset-2 disabled:opacity-50 sm:min-h-0"
+            >
+              전체 선택
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setExportSelection(defaultExportSelection(slate, productionRequests))}
+              className="min-h-9 text-[var(--primary)] underline underline-offset-2 disabled:opacity-50 sm:min-h-0"
+            >
+              새 아젠다만
+            </button>
+            <button
+              type="button"
+              disabled={busy || productionRequests.length === 0}
+              onClick={() => void clearStoryCandidates({ all: true })}
+              className="min-h-9 text-[var(--danger)] underline underline-offset-2 disabled:opacity-50 sm:min-h-0"
+            >
+              Story 후보 일괄 초기화
+            </button>
+          </div>
+        ) : null}
         {isHistorical ? (
           <p className="text-[11px] text-[var(--warning)]">
             과거 날짜 모드입니다. 선택/제작 요청은 해당 날짜 슬레이트와 대기열을 변경합니다.
@@ -1283,6 +1475,11 @@ export function AgendaSlatePanel({
                 {importPreview.rejectedCount > 0
                   ? ` · 거부 ${importPreview.rejectedCount}개`
                   : ""}
+                {importPreview.existingCandidateCount
+                  ? importReplace
+                    ? ` · 교체 시 기존 후보 ${importPreview.existingCandidateCount}개 삭제`
+                    : ` · 기존 후보 ${importPreview.existingCandidateCount}개에 추가`
+                  : ""}
               </p>
               <ul className="mt-1 list-disc pl-4">
                 {importPreview.storyTitles.map((t) => (
@@ -1291,6 +1488,21 @@ export function AgendaSlatePanel({
               </ul>
             </div>
           ) : null}
+          <label className="mt-3 flex min-h-9 cursor-pointer items-start gap-2 text-xs text-[var(--text-primary)] sm:min-h-0">
+            <input
+              type="checkbox"
+              checked={importReplace}
+              onChange={(e) => setImportReplace(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              기존 Story 후보를 모두 교체
+              <span className="block text-[11px] text-[var(--text-secondary)]">
+                이 아젠다에 있던 내부·외부 Story 후보와 이전 Story 선택을 지우고, 이번 JSON의 Story만
+                남깁니다. 새 Story가 모두 검증에 실패하면 아무것도 지우지 않습니다.
+              </span>
+            </span>
+          </label>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -1343,7 +1555,11 @@ export function AgendaSlatePanel({
               onImportExternalStory={() => {
                 setImportOpen(true);
                 setImportPreview(null);
+                setImportReplace(false);
               }}
+              exportIncluded={exportSelection.has(item.slateItemId)}
+              onToggleExport={(included) => toggleExport(item.slateItemId, included)}
+              onClearStories={() => void clearStoryCandidates({ slateItemId: item.slateItemId })}
             />
           ))}
         </>

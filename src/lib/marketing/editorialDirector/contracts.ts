@@ -120,3 +120,13 @@ export type ExternalEditorialImportRecord = {
   selectedAgendaReasonKo: string | null;
   agendaEvaluation: ExternalAgendaEvaluation[];
 };
+
+export type StoryCandidateResetReason = "manual_clear" | "bulk_clear" | "replace_import";
+
+/** Audit entry appended to the same log when a human wipes Story candidates. */
+export type StoryCandidateResetRecord = {
+  kind: "reset";
+  at: string;
+  reason: StoryCandidateResetReason;
+  removedPointIds: string[];
+};

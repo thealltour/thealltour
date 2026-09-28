@@ -1,6 +1,7 @@
 /**
  * Import external Editorial Director payload into production request Story candidate set.
- * Additive: never deletes internal Story Miner candidates.
+ * mode "merge" (default) is additive and never deletes internal Story Miner candidates;
+ * mode "replace" wipes every existing Story candidate for the agenda first.
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -38,6 +39,12 @@ import {
 } from "@/lib/marketing/storyPoint/contracts";
 import { createStoryPointHash, createStoryPointInputRevision } from "@/lib/marketing/storyPoint/hash";
 import { parseDurableStoryPointCandidateSet } from "@/lib/marketing/storyPoint/persistence";
+import {
+  assertStoryCandidatesResettable,
+  resetStoryCandidateMetadata,
+} from "@/lib/marketing/editorialDirector/resetStoryCandidates";
+
+export type ExternalStoryImportMode = "merge" | "replace";
 
 function mapEvidenceRefs(item: AgendaSlateCandidate): AssignmentEvidenceRef[] {
   const nowIso = new Date().toISOString();
@@ -242,9 +249,11 @@ export async function importExternalEditorialDirector(input: {
   provider?: string;
   now?: Date;
   productId?: string | null;
+  mode?: ExternalStoryImportMode;
 }): Promise<ImportExternalEditorialResult> {
   const now = input.now ?? new Date();
   const nowIso = now.toISOString();
+  const replace = input.mode === "replace";
   const provider = input.provider ?? EXTERNAL_STORY_PROVIDER_CHATGPT_MANUAL;
   const agendaId = input.payload.selectedAgenda.agendaId?.trim();
   if (!agendaId) {
@@ -304,6 +313,7 @@ export async function importExternalEditorialDirector(input: {
       { code: "PRODUCTION_BUSY", status: 409 },
     );
   }
+  if (existing && replace) assertStoryCandidatesResettable(existing);
 
   let createdRequest = false;
   if (!existing) {
@@ -332,10 +342,14 @@ export async function importExternalEditorialDirector(input: {
       .slice(0, 400),
   });
 
+  // Replace only commits after the new Stories pass the gate below, so a rejected
+  // payload never leaves the agenda with its candidates wiped.
+  const baseMetadata = replace
+    ? resetStoryCandidateMetadata(existing.metadata ?? {}, { nowIso, reason: "replace_import" }).metadata
+    : (existing.metadata ?? {});
+
   const priorSet =
-    parseDurableStoryPointCandidateSet(
-      existing.metadata?.[PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY],
-    ) ??
+    parseDurableStoryPointCandidateSet(baseMetadata[PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY]) ??
     emptyCandidateSet({
       agendaId: selectedAgenda.id,
       assignmentId: assignment.assignmentId,
@@ -380,7 +394,7 @@ export async function importExternalEditorialDirector(input: {
     .slice(0, 16)}`;
 
   const provenanceMap: Record<string, ExternalStoryProvenance> = {
-    ...((existing.metadata?.[PRODUCTION_REQUEST_EXTERNAL_STORY_PROVENANCE_KEY] as
+    ...((baseMetadata[PRODUCTION_REQUEST_EXTERNAL_STORY_PROVENANCE_KEY] as
       | Record<string, ExternalStoryProvenance>
       | undefined) ?? {}),
   };
@@ -413,10 +427,8 @@ export async function importExternalEditorialDirector(input: {
     agendaEvaluation: input.payload.agendaEvaluation,
   };
 
-  const priorImports = Array.isArray(
-    existing.metadata?.[PRODUCTION_REQUEST_EXTERNAL_EDITORIAL_IMPORTS_KEY],
-  )
-    ? (existing.metadata[PRODUCTION_REQUEST_EXTERNAL_EDITORIAL_IMPORTS_KEY] as unknown[])
+  const priorImports = Array.isArray(baseMetadata[PRODUCTION_REQUEST_EXTERNAL_EDITORIAL_IMPORTS_KEY])
+    ? (baseMetadata[PRODUCTION_REQUEST_EXTERNAL_EDITORIAL_IMPORTS_KEY] as unknown[])
     : [];
 
   const updated: MarketingProductionRequest = {
@@ -433,7 +445,7 @@ export async function importExternalEditorialDirector(input: {
     workerId: null,
     updatedAt: nowIso,
     metadata: {
-      ...existing.metadata,
+      ...baseMetadata,
       productionOutcome: PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
       [PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY]: merged.next,
       [PRODUCTION_REQUEST_STORY_POINT_SAVED_AT_KEY]: nowIso,
@@ -441,7 +453,7 @@ export async function importExternalEditorialDirector(input: {
       [PRODUCTION_REQUEST_EXTERNAL_EDITORIAL_IMPORTS_KEY]: [...priorImports, importRecord].slice(-12),
       // Do not auto-select; clear stale human selection only when revision unchanged
       // and no active selection — keep previous selection if still valid for revision.
-      ...(existing.metadata?.[PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY]
+      ...(baseMetadata[PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY]
         ? {}
         : { [PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY]: null }),
     },

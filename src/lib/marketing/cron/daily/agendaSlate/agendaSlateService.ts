@@ -24,6 +24,7 @@ import {
   buildQueuedProductionRequest,
   createMarketingProductionRequestRepository,
 } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
+import type { ExternalStoryImportMode } from "@/lib/marketing/editorialDirector/importExternalStories";
 
 export class AgendaSlateServiceError extends Error {
   constructor(
@@ -77,6 +78,8 @@ export type AgendaSlateService = {
   }>;
   buildChatGptSlateExport(input?: {
     businessDateKst?: string;
+    /** Export only these slate items; omit for the full slate. */
+    slateItemIds?: string[];
   }): Promise<{
     text: string;
     agendaCount: number;
@@ -86,6 +89,8 @@ export type AgendaSlateService = {
     businessDateKst?: string;
     rawJson: string;
     dryRun?: boolean;
+    /** "replace" wipes every existing Story candidate for the agenda first. */
+    mode?: ExternalStoryImportMode;
   }): Promise<{
     slate: DailyAgendaSlate | null;
     request: MarketingProductionRequest | null;
@@ -97,8 +102,20 @@ export type AgendaSlateService = {
       storyTitles: string[];
       rejectedCount: number;
       selectedAgendaReasonKo: string | null;
+      /** Story candidates currently stored for the agenda (removed on replace). */
+      existingCandidateCount: number;
     };
     validationErrors?: string[];
+  }>;
+  /** Wipe Story candidates for one slate item, or every resettable item of the day. */
+  clearStoryCandidates(input: {
+    businessDateKst?: string;
+    slateItemId?: string;
+    all?: boolean;
+  }): Promise<{
+    slate: DailyAgendaSlate | null;
+    cleared: Array<{ slateItemId: string; removedCount: number }>;
+    skipped: Array<{ slateItemId: string; reason: string }>;
   }>;
 };
 
@@ -494,6 +511,7 @@ export async function createAgendaSlateService(deps: {
 
   async function buildChatGptSlateExport(input: {
     businessDateKst?: string;
+    slateItemIds?: string[];
   } = {}): Promise<{
     text: string;
     agendaCount: number;
@@ -510,14 +528,99 @@ export async function createAgendaSlateService(deps: {
     if (slate.candidates.length < 1) {
       throw new AgendaSlateServiceError("slate has no agendas", "SLATE_EMPTY", 400);
     }
-    const built = buildEditorialDirectorClipboardText(slate, now);
+    let slateItemIds: string[] | undefined;
+    if (input.slateItemIds) {
+      slateItemIds = [...new Set(input.slateItemIds.map((id) => id.trim()).filter(Boolean))];
+      if (slateItemIds.length === 0) {
+        throw new AgendaSlateServiceError(
+          "복사할 아젠다를 하나 이상 고르세요",
+          "SLATE_SELECTION_EMPTY",
+          400,
+        );
+      }
+      const known = new Set(slate.candidates.map((c) => c.slateItemId));
+      const unknown = slateItemIds.filter((id) => !known.has(id));
+      if (unknown.length > 0) {
+        throw new AgendaSlateServiceError(
+          `오늘 Slate에 없는 아젠다입니다: ${unknown.join(", ")}`,
+          "UNKNOWN_AGENDA",
+          400,
+        );
+      }
+    }
+    const built = buildEditorialDirectorClipboardText(slate, now, { slateItemIds });
     return { text: built.text, agendaCount: built.agendaCount, slate };
+  }
+
+  async function findRequestForSlateItem(
+    date: string,
+    slateItemId: string,
+  ): Promise<MarketingProductionRequest | null> {
+    const rows = await productionRequestRepo.listByBusinessDate(date);
+    return rows.find((r) => r.slateItemId === slateItemId) ?? null;
+  }
+
+  async function clearStoryCandidates(input: {
+    businessDateKst?: string;
+    slateItemId?: string;
+    all?: boolean;
+  }): Promise<{
+    slate: DailyAgendaSlate | null;
+    cleared: Array<{ slateItemId: string; removedCount: number }>;
+    skipped: Array<{ slateItemId: string; reason: string }>;
+  }> {
+    const { resetStoryCandidatesOnRequest, storyCandidateResetBlock } = await import(
+      "@/lib/marketing/editorialDirector/resetStoryCandidates"
+    );
+    const date = input.businessDateKst ?? formatKstBusinessDate(now);
+    const slateItemId = input.slateItemId?.trim() || null;
+    if (!slateItemId && !input.all) {
+      throw new AgendaSlateServiceError("slateItemId or all required", "INVALID_PAYLOAD", 400);
+    }
+    const nowIso = now.toISOString();
+    const cleared: Array<{ slateItemId: string; removedCount: number }> = [];
+    const skipped: Array<{ slateItemId: string; reason: string }> = [];
+
+    if (slateItemId) {
+      const request = await findRequestForSlateItem(date, slateItemId);
+      if (!request) {
+        throw new AgendaSlateServiceError(
+          "이 아젠다에는 지울 Story 후보가 없습니다",
+          "PRODUCTION_REQUEST_NOT_FOUND",
+          404,
+        );
+      }
+      const block = storyCandidateResetBlock(request);
+      if (block) throw new AgendaSlateServiceError(block.messageKo, block.code, 409);
+      const reset = resetStoryCandidatesOnRequest(request, { nowIso, reason: "manual_clear" });
+      await productionRequestRepo.update(reset.request);
+      cleared.push({ slateItemId, removedCount: reset.removedPointIds.length });
+    } else {
+      const slate = await getTodaySlate(date);
+      const onSlate = new Set(slate?.candidates.map((c) => c.slateItemId) ?? []);
+      const rows = await productionRequestRepo.listByBusinessDate(date);
+      for (const request of rows) {
+        if (!onSlate.has(request.slateItemId)) continue;
+        const block = storyCandidateResetBlock(request);
+        if (block) {
+          skipped.push({ slateItemId: request.slateItemId, reason: block.messageKo });
+          continue;
+        }
+        const reset = resetStoryCandidatesOnRequest(request, { nowIso, reason: "bulk_clear" });
+        await productionRequestRepo.update(reset.request);
+        cleared.push({ slateItemId: request.slateItemId, removedCount: reset.removedPointIds.length });
+      }
+    }
+
+    const slate = await reconcileTerminalSelections(date);
+    return { slate, cleared, skipped };
   }
 
   async function importExternalEditorialStories(input: {
     businessDateKst?: string;
     rawJson: string;
     dryRun?: boolean;
+    mode?: ExternalStoryImportMode;
   }): Promise<{
     slate: DailyAgendaSlate | null;
     request: MarketingProductionRequest | null;
@@ -529,6 +632,7 @@ export async function createAgendaSlateService(deps: {
       storyTitles: string[];
       rejectedCount: number;
       selectedAgendaReasonKo: string | null;
+      existingCandidateCount: number;
     };
   }> {
     const { parseExternalEditorialDirectorPayload } = await import(
@@ -566,6 +670,12 @@ export async function createAgendaSlateService(deps: {
         400,
       );
     }
+
+    const { listStoryCandidatePointIds } = await import(
+      "@/lib/marketing/editorialDirector/resetStoryCandidates"
+    );
+    const existingRequest = await findRequestForSlateItem(date, slateItem.slateItemId);
+    const existingCandidateCount = listStoryCandidatePointIds(existingRequest?.metadata).length;
 
     if (input.dryRun) {
       // Lightweight preview without persistence — reuse import path identity checks via normalize.
@@ -605,6 +715,7 @@ export async function createAgendaSlateService(deps: {
           ),
           rejectedCount: gated.length - accepted.length,
           selectedAgendaReasonKo: parsed.payload.selectedAgenda.reasonKo,
+          existingCandidateCount,
         },
       };
     }
@@ -615,6 +726,7 @@ export async function createAgendaSlateService(deps: {
         payload: parsed.payload,
         productionRequestRepo,
         now,
+        mode: input.mode,
       });
       const nextSlate = await reconcileTerminalSelections(date);
       return {
@@ -624,6 +736,7 @@ export async function createAgendaSlateService(deps: {
         preview: {
           ...result.preview,
           selectedAgendaReasonKo: parsed.payload.selectedAgenda.reasonKo,
+          existingCandidateCount,
         },
       };
     } catch (error) {
@@ -651,5 +764,6 @@ export async function createAgendaSlateService(deps: {
     selectStoryAndResumeProduction,
     buildChatGptSlateExport,
     importExternalEditorialStories,
+    clearStoryCandidates,
   };
 }

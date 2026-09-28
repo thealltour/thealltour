@@ -75,25 +75,41 @@ export type AgendaSlateEditorialExportPayload = {
   businessDateKst: string;
   slateId: string;
   exportedAt: string;
+  /** "subset" when a human picked specific agendas to hand to ChatGPT. */
+  selection: "all" | "subset";
   agendaCount: number;
   agendas: ReturnType<typeof exportAgendaItem>[];
   notesKo: string[];
 };
 
+export type AgendaSlateExportOptions = {
+  /** Export only these slate items (slate order kept). Omit for the full slate. */
+  slateItemIds?: readonly string[];
+};
+
 export function buildAgendaSlateEditorialExportPayload(
   slate: DailyAgendaSlate,
   now: Date = new Date(),
+  options: AgendaSlateExportOptions = {},
 ): AgendaSlateEditorialExportPayload {
-  const agendas = slate.candidates.map(exportAgendaItem);
+  const wanted = options.slateItemIds ? new Set(options.slateItemIds) : null;
+  const items = wanted
+    ? slate.candidates.filter((c) => wanted.has(c.slateItemId))
+    : slate.candidates;
+  const agendas = items.map(exportAgendaItem);
+  const subset = wanted !== null && agendas.length < slate.candidates.length;
   return {
     contract: AGENDA_SLATE_EXPORT_PAYLOAD_CONTRACT,
     businessDateKst: slate.businessDateKst,
     slateId: slate.slateId,
     exportedAt: now.toISOString(),
+    selection: subset ? "subset" : "all",
     agendaCount: agendas.length,
     agendas,
     notesKo: [
-      "모든 오늘 Slate 후보가 포함되어 있습니다. 사전 선택이 필요하지 않습니다.",
+      subset
+        ? `사람이 고른 Slate 후보 ${agendas.length}건만 포함되어 있습니다. 이 목록 안에서만 고르세요.`
+        : "모든 오늘 Slate 후보가 포함되어 있습니다. 사전 선택이 필요하지 않습니다.",
       "값이 없으면 null입니다. 임의로 점수를 채우지 마세요.",
       "agendaId는 가져오기 시 식별자로 사용됩니다(slateItemId).",
     ],
@@ -103,8 +119,9 @@ export function buildAgendaSlateEditorialExportPayload(
 export function buildEditorialDirectorClipboardText(
   slate: DailyAgendaSlate,
   now: Date = new Date(),
+  options: AgendaSlateExportOptions = {},
 ): { text: string; agendaCount: number; payload: AgendaSlateEditorialExportPayload } {
-  const payload = buildAgendaSlateEditorialExportPayload(slate, now);
+  const payload = buildAgendaSlateEditorialExportPayload(slate, now, options);
   // Clipboard is slate JSON only — paste Editorial Director instructions separately if needed.
   const text = JSON.stringify(payload, null, 2);
   return { text, agendaCount: payload.agendaCount, payload };

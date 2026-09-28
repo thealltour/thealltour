@@ -588,6 +588,8 @@ export class HumanMarketingReviewService {
     notes?: string | null;
     humanNotes?: string | null;
     reviewedBy: string | null;
+    /** Approve even when Marketing Value is weak; recorded on the channel entry. */
+    marketingValueOverride?: boolean;
   }): Promise<HumanMarketingReview> {
     const candidate = await this.deps.candidateRepo.findCandidateByCandidateId(input.candidateId);
     if (!candidate) throw new Error("candidate_not_found");
@@ -595,6 +597,7 @@ export class HumanMarketingReviewService {
       throw new Error("diagnostics_only_candidate");
     }
 
+    let overriddenValue: { verdict: string | null; score: number | null } | null = null;
     if (input.status === "approved") {
       if (candidate.status === "blocked" || candidate.governanceDecision?.decision === "BLOCK") {
         throw new Error("governance_block_prevents_channel_approval");
@@ -603,7 +606,7 @@ export class HumanMarketingReviewService {
       const { approvalBlockedReasonForChannel } = await import(
         "@/lib/marketing/publishable/publishableSuccess"
       );
-      const { isMarketingValueApprovable } = await import("@/lib/marketing/value/contracts");
+      const { marketingValueApprovalBlock } = await import("@/lib/marketing/value/contracts");
       const { resolveMarketingAssetRoot } = await import("@/lib/marketing/assets/config");
       const { resolvePackageDirectory } = await import("@/lib/marketing/assets/paths");
       const { ensurePublishableContentSync } = await import(
@@ -652,27 +655,18 @@ export class HumanMarketingReviewService {
           }
         }
         const assessment = slot?.marketingValue ?? channelEntry?.marketingValue ?? null;
-        const override =
+        const noteOverride =
           /marketing_value_override|value_override/i.test(channelEntry?.notes ?? "") ||
           /marketing_value_override|value_override/i.test(input.notes ?? "");
-        if (assessment) {
-          const ok = isMarketingValueApprovable(assessment as never, {
-            allowNeedsImprovementOverride: override,
-          });
-          if (!ok) {
-            if (assessment.stale) {
-              throw new Error("regeneration_required:marketing_value_stale");
-            }
-            if (assessment.verdict === "reject" || assessment.hardFail) {
-              throw new Error("regeneration_required:marketing_value_reject");
-            }
-            if (assessment.verdict === "needs_improvement") {
-              throw new Error(
-                "regeneration_required:marketing_value_needs_improvement — edit content or set notes=marketing_value_override",
-              );
-            }
-            throw new Error("regeneration_required:marketing_value");
-          }
+        const valueBlock = marketingValueApprovalBlock(assessment, {
+          allowNeedsImprovementOverride: noteOverride,
+        });
+        if (valueBlock) {
+          if (!input.marketingValueOverride) throw new Error(valueBlock);
+          overriddenValue = {
+            verdict: assessment?.verdict ?? null,
+            score: typeof assessment?.overallScore === "number" ? assessment.overallScore : null,
+          };
         }
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("regeneration_required")) {
@@ -710,6 +704,9 @@ export class HumanMarketingReviewService {
       notes: input.notes ?? existing.notes,
       approvedAt: input.status === "approved" ? nowIso : existing.approvedAt,
       skippedAt: input.status === "skipped" ? nowIso : existing.skippedAt,
+      marketingValueOverride: overriddenValue
+        ? { at: nowIso, by: input.reviewedBy, ...overriddenValue }
+        : null,
     };
 
     const channelReviews = {

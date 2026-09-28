@@ -101,3 +101,20 @@ export function isMarketingValueApprovable(
   }
   return false;
 }
+
+/** Channel-approval error for a weak assessment, or null when approvable. */
+export function marketingValueApprovalBlock(
+  assessment: Pick<MarketingValueAssessment, "verdict" | "stale" | "hardFail"> | null | undefined,
+  options?: { allowNeedsImprovementOverride?: boolean },
+): string | null {
+  if (!assessment) return null;
+  if (isMarketingValueApprovable(assessment, options)) return null;
+  if (assessment.stale) return "regeneration_required:marketing_value_stale";
+  if (assessment.verdict === "reject" || assessment.hardFail) {
+    return "regeneration_required:marketing_value_reject";
+  }
+  if (assessment.verdict === "needs_improvement") {
+    return "regeneration_required:marketing_value_needs_improvement — edit content or set notes=marketing_value_override";
+  }
+  return "regeneration_required:marketing_value";
+}

@@ -6,6 +6,7 @@ export {
   clampScore,
   verdictFromScore,
   isMarketingValueApprovable,
+  marketingValueApprovalBlock,
   toMarketingValueCompact,
   type MarketingValueAssessment,
   type MarketingValueBundle,

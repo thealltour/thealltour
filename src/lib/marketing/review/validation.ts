@@ -54,6 +54,8 @@ export const setChannelReviewStatusSchema = z.object({
   status: z.enum(["approved", "skipped", "needs_review"]),
   notes: z.string().max(4_000).nullable().optional(),
   humanNotes: z.string().max(4_000).nullable().optional(),
+  /** Human accepts a weak Marketing Value (e.g. copy finished outside the pipeline). */
+  marketingValueOverride: z.boolean().optional(),
 });
 
 /**
@@ -65,6 +67,7 @@ export const setChannelReviewStatusBatchSchema = z.object({
   status: z.enum(["approved", "skipped", "needs_review"]),
   notes: z.string().max(4_000).nullable().optional(),
   humanNotes: z.string().max(4_000).nullable().optional(),
+  marketingValueOverride: z.boolean().optional(),
 });
 
 export const deferHumanReviewSchema = z.object({

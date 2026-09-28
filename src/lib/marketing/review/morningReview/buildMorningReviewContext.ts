@@ -444,6 +444,7 @@ export function buildMorningMarketingReviewContext(input: {
               hardFail: mv.hardFail,
             }
           : null,
+        marketingValueOverride: entry.marketingValueOverride ?? null,
       };
     },
   );

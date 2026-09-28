@@ -8,6 +8,7 @@ import type { ContentProposition } from "@/lib/marketing/content/proposition/con
 import {
   MARKETING_VALUE_ASSESSMENT_CONTRACT,
   isMarketingValueApprovable,
+  marketingValueApprovalBlock,
   parseMarketingValueAssessment,
   evaluateMarketingValue,
 } from "@/lib/marketing/value";
@@ -312,6 +313,24 @@ describe("MQ-5 approval policy", () => {
     });
     expect(isMarketingValueApprovable(good)).toBe(true);
     expect(isMarketingValueApprovable({ ...good, stale: true })).toBe(false);
+  });
+
+  it("names the channel-approval block for each weak verdict", () => {
+    const base = { verdict: "publishable" as const, stale: false, hardFail: false };
+    expect(marketingValueApprovalBlock(null)).toBeNull();
+    expect(marketingValueApprovalBlock(base)).toBeNull();
+    expect(marketingValueApprovalBlock({ ...base, stale: true })).toBe(
+      "regeneration_required:marketing_value_stale",
+    );
+    expect(marketingValueApprovalBlock({ ...base, verdict: "reject" })).toBe(
+      "regeneration_required:marketing_value_reject",
+    );
+    expect(marketingValueApprovalBlock({ ...base, hardFail: true })).toBe(
+      "regeneration_required:marketing_value_reject",
+    );
+    const needs = { ...base, verdict: "needs_improvement" as const };
+    expect(marketingValueApprovalBlock(needs)).toMatch(/^regeneration_required:marketing_value_needs_improvement/);
+    expect(marketingValueApprovalBlock(needs, { allowNeedsImprovementOverride: true })).toBeNull();
   });
 });
 

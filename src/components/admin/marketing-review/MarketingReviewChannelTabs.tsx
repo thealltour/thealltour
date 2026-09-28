@@ -99,6 +99,23 @@ export function MarketingReviewChannelTabs({
 
   async function setStatus(status: "approved" | "skipped" | "needs_review") {
     if (!active) return;
+    const valueWeak =
+      status === "approved" &&
+      Boolean(
+        active.marketingValue &&
+          (active.marketingValue.verdict === "needs_improvement" ||
+            active.marketingValue.verdict === "reject" ||
+            active.marketingValue.hardFail ||
+            active.marketingValue.stale),
+      );
+    if (
+      valueWeak &&
+      !window.confirm(
+        `${active.label}의 Marketing Value가 기준에 못 미칩니다(${active.marketingValue?.verdict} ${active.marketingValue?.overallScore}). 사람 판단으로 승인할까요?`,
+      )
+    ) {
+      return;
+    }
     onBusy(true);
     onMessage(null);
     try {
@@ -107,7 +124,11 @@ export function MarketingReviewChannelTabs({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channel: active.channel, status }),
+          body: JSON.stringify({
+            channel: active.channel,
+            status,
+            ...(valueWeak ? { marketingValueOverride: true } : {}),
+          }),
         },
       );
       const data = await res.json().catch(() => ({}));
@@ -336,6 +357,10 @@ export function MarketingReviewChannelTabs({
               <p className="text-sm text-amber-950">
                 Body 품질이 게시 기준에 못 미칩니다. Channel Editor에 Marketing Value 피드백을 넘겨
                 Body만 재생성할 수 있습니다.
+              </p>
+              <p className="text-xs text-amber-900">
+                외부에서 다듬은 본문이라면 재생성 없이 아래 「채널 승인」으로 사람 판단 승인을 할 수
+                있습니다.
               </p>
               <button
                 type="button"

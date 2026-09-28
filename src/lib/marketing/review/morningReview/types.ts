@@ -158,6 +158,8 @@ export type MorningChannelReviewView = {
     stale?: boolean;
     hardFail?: boolean;
   } | null;
+  /** Approved by a human despite a weak Marketing Value. */
+  marketingValueOverride?: import("@/lib/marketing/review/channelReviews").ChannelReviewEntry["marketingValueOverride"];
 };
 
 export type MorningResearchSummary = {

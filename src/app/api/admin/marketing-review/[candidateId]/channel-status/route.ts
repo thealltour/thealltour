@@ -51,6 +51,7 @@ export async function POST(request: Request, context: RouteContext) {
         notes: single.data.notes,
         humanNotes: single.data.humanNotes,
         reviewedBy,
+        marketingValueOverride: single.data.marketingValueOverride,
       });
       return Response.json({ review });
     }
@@ -66,6 +67,7 @@ export async function POST(request: Request, context: RouteContext) {
           notes: payload.notes,
           humanNotes: payload.humanNotes,
           reviewedBy,
+          marketingValueOverride: payload.marketingValueOverride,
         });
         results.push({ channel, ok: true });
       } catch (error) {

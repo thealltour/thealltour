@@ -36,7 +36,12 @@ export type ChannelChecklistRow = {
   valueScore: number | null;
   assetRequirement: ChannelAssetRequirement;
   approvable: boolean;
+  /** Hard stop the operator cannot approve past. */
   approvalBlockedReason: string | null;
+  /** Weak Marketing Value; approvable only with an explicit human override. */
+  valueWarning: string | null;
+  /** Already approved by a human despite a weak Marketing Value. */
+  valueOverridden: boolean;
   approved: boolean;
   skipped: boolean;
 };
@@ -44,8 +49,9 @@ export type ChannelChecklistRow = {
 export type ChannelDistributionChecklist = {
   rows: ChannelChecklistRow[];
   /**
-   * Channels a bulk approve should actually send: still undecided and passing
-   * every gate. A skipped channel is a deliberate decision, so re-approving it
+   * Channels a bulk approve should actually send: still undecided and past every
+   * hard gate. Rows with a `valueWarning` need `marketingValueOverride` on the
+   * request. A skipped channel is a deliberate decision, so re-approving it
    * stays a single-channel action in the tab.
    */
   bulkApprovableChannels: ReviewablePublishableChannel[];
@@ -53,6 +59,8 @@ export type ChannelDistributionChecklist = {
   approvedCount: number;
   skippedCount: number;
   blockedCount: number;
+  /** Undecided channels that need a Marketing Value override to approve. */
+  valueWarningCount: number;
   /** True when nothing is left to decide. */
   complete: boolean;
 };
@@ -72,7 +80,7 @@ function copyIssueFor(channel: MorningChannelReviewView, charCount: CharCount): 
 }
 
 /**
- * Mirrors `setChannelReviewStatus`'s approval gate. Kept intentionally
+ * Mirrors `setChannelReviewStatus`'s hard approval gate. Kept intentionally
  * conservative: the server stays authoritative, this only avoids doomed calls.
  */
 function approvalBlockedReasonFor(input: {
@@ -83,13 +91,6 @@ function approvalBlockedReasonFor(input: {
   if (input.candidateBlockedReason) return input.candidateBlockedReason;
   if (input.channel.awaitingGeneration) return "채널 생성 필요";
   if (!input.channel.body.trim()) return "본문 없음";
-  const value = input.channel.marketingValue;
-  if (value) {
-    if (value.hardFail) return "Marketing Value hardFail";
-    if (value.stale) return "Marketing Value stale — 재평가 필요";
-    if (value.verdict === "reject") return "Marketing Value reject";
-    if (value.verdict === "needs_improvement") return "Marketing Value needs_improvement";
-  }
   if (
     input.channel.validationWarnings.some((warning) =>
       /degraded:fallback|generation_failed|validation_failed|needs_regeneration/i.test(warning),
@@ -97,6 +98,17 @@ function approvalBlockedReasonFor(input: {
   ) {
     return "fallback/검증 실패 — 재생성 필요";
   }
+  return null;
+}
+
+/** The server's Marketing Value gate, which a human override may bypass. */
+function valueWarningFor(channel: MorningChannelReviewView): string | null {
+  const value = channel.marketingValue;
+  if (!value) return null;
+  if (value.hardFail) return "Marketing Value hardFail";
+  if (value.stale) return "Marketing Value stale — 재평가 필요";
+  if (value.verdict === "reject") return "Marketing Value reject";
+  if (value.verdict === "needs_improvement") return "Marketing Value needs_improvement";
   return null;
 }
 
@@ -143,6 +155,8 @@ export function buildChannelDistributionChecklist(
         channel.status !== "approved" &&
         channel.status !== "skipped",
       approvalBlockedReason,
+      valueWarning: valueWarningFor(channel),
+      valueOverridden: Boolean(channel.marketingValueOverride),
       approved: channel.status === "approved",
       skipped: channel.status === "skipped",
     };
@@ -158,6 +172,7 @@ export function buildChannelDistributionChecklist(
     skippedCount,
     blockedCount: rows.filter((row) => !row.approved && !row.skipped && row.approvalBlockedReason)
       .length,
+    valueWarningCount: rows.filter((row) => row.approvable && row.valueWarning).length,
     complete: rows.length > 0 && approvedCount + skippedCount === rows.length,
   };
 }

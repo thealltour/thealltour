@@ -50,6 +50,19 @@ export function MarketingReviewChannelChecklist({
 
   async function approveSelected() {
     if (chosen.length === 0) return;
+    const weakValueRows = checklist.rows.filter(
+      (row) => chosen.includes(row.channel) && row.valueWarning,
+    );
+    if (
+      weakValueRows.length > 0 &&
+      !window.confirm(
+        `Marketing Value가 기준에 못 미치는 채널 ${weakValueRows.length}개(${weakValueRows
+          .map((row) => row.label)
+          .join(", ")})를 사람 판단으로 승인합니다. 계속할까요?`,
+      )
+    ) {
+      return;
+    }
     onBusy(true);
     onMessage(null);
     try {
@@ -58,7 +71,11 @@ export function MarketingReviewChannelChecklist({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ channels: chosen, status: "approved" }),
+          body: JSON.stringify({
+            channels: chosen,
+            status: "approved",
+            ...(weakValueRows.length > 0 ? { marketingValueOverride: true } : {}),
+          }),
         },
       );
       const data = (await res.json().catch(() => ({}))) as {
@@ -92,6 +109,12 @@ export function MarketingReviewChannelChecklist({
           {checklist.skippedCount > 0 ? ` · skip ${checklist.skippedCount}` : ""}
           {checklist.blockedCount > 0 ? (
             <span className="text-amber-700"> · 차단 {checklist.blockedCount}</span>
+          ) : null}
+          {checklist.valueWarningCount > 0 ? (
+            <span className="text-amber-700">
+              {" "}
+              · Value 미달 {checklist.valueWarningCount} (사람 승인 가능)
+            </span>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -167,7 +190,7 @@ export function MarketingReviewChannelChecklist({
                           ? "text-emerald-700"
                           : row.skipped
                             ? "text-[var(--text-secondary)]"
-                            : row.approvalBlockedReason
+                            : row.approvalBlockedReason || row.valueWarning
                               ? "text-amber-700"
                               : ""
                       }
@@ -176,6 +199,13 @@ export function MarketingReviewChannelChecklist({
                     </span>
                     {row.approvalBlockedReason && !row.approved ? (
                       <div className="text-xs text-amber-700">{row.approvalBlockedReason}</div>
+                    ) : row.valueWarning && !row.approved && !row.skipped ? (
+                      <div className="text-xs text-amber-700">
+                        {row.valueWarning} · 사람 판단으로 승인 가능
+                      </div>
+                    ) : null}
+                    {row.approved && row.valueOverridden ? (
+                      <div className="text-xs text-[var(--text-secondary)]">Value 미달 · 사람 승인</div>
                     ) : null}
                   </td>
                   <td className="py-2 pr-3">

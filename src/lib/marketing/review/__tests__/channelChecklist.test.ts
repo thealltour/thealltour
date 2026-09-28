@@ -80,7 +80,7 @@ describe("channel distribution checklist", () => {
     );
   });
 
-  it("reports the specific blocker for weak value, fallback, and missing copy", () => {
+  it("reports the specific blocker for fallback and missing copy, and a warning for weak value", () => {
     const checklist = buildChannelDistributionChecklist(
       context({
         channels: [
@@ -102,11 +102,69 @@ describe("channel distribution checklist", () => {
         ],
       }),
     );
-    expect(checklist.rows[0]!.approvalBlockedReason).toContain("needs_improvement");
+    expect(checklist.rows[0]!.approvalBlockedReason).toBeNull();
+    expect(checklist.rows[0]!.valueWarning).toContain("needs_improvement");
+    expect(checklist.rows[0]!.approvable).toBe(true);
     expect(checklist.rows[1]!.approvalBlockedReason).toContain("재생성");
     expect(checklist.rows[2]!.approvalBlockedReason).toBe("채널 생성 필요");
     expect(checklist.rows[2]!.copyIssue).toBe("미생성");
-    expect(checklist.blockedCount).toBe(3);
+    expect(checklist.blockedCount).toBe(2);
+    expect(checklist.valueWarningCount).toBe(1);
+    expect(checklist.bulkApprovableChannels).toEqual(["threads"]);
+  });
+
+  it("lets weak-value channels into bulk approve but keeps governance BLOCK authoritative", () => {
+    const weak = {
+      verdict: "reject",
+      overallScore: 41,
+      reasons: [],
+      improvementHints: [],
+    };
+    const open = buildChannelDistributionChecklist(
+      context({
+        channels: [
+          channel({ channel: "threads", marketingValue: weak }),
+          channel({ channel: "naver_band", marketingValue: { ...weak, verdict: "publishable", stale: true } }),
+        ],
+      }),
+    );
+    expect(open.bulkApprovableChannels).toEqual(["threads", "naver_band"]);
+    expect(open.rows.map((row) => row.valueWarning)).toEqual([
+      "Marketing Value reject",
+      "Marketing Value stale — 재평가 필요",
+    ]);
+
+    const blocked = buildChannelDistributionChecklist(
+      context({
+        channels: [channel({ channel: "threads", marketingValue: weak })],
+        governanceDecision: "BLOCK",
+        blockKind: "governance_block",
+      }),
+    );
+    expect(blocked.bulkApprovableChannels).toEqual([]);
+    expect(blocked.valueWarningCount).toBe(0);
+  });
+
+  it("marks channels a human approved past a weak value", () => {
+    const checklist = buildChannelDistributionChecklist(
+      context({
+        channels: [
+          channel({
+            channel: "threads",
+            status: "approved",
+            statusLabel: "approved",
+            marketingValueOverride: {
+              at: "2026-09-28T11:00:00.000Z",
+              by: "admin",
+              verdict: "needs_improvement",
+              score: 59,
+            },
+          }),
+        ],
+      }),
+    );
+    expect(checklist.rows[0]!.valueOverridden).toBe(true);
+    expect(checklist.valueWarningCount).toBe(0);
   });
 
   it("flags an over-limit body without blocking approval on length alone", () => {

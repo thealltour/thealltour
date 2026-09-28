@@ -455,6 +455,45 @@ function CandidateCard(props: {
   const storyCandidateCount = countStoryCandidates(pr);
   const canClearStories = Boolean(pr && !storyResetBlocked(pr) && storyCandidateCount > 0);
 
+  const actionRow = (
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <button
+        type="button"
+        disabled={busy || item.state === "SELECTED_TODAY"}
+        onClick={() => onAction("select_today")}
+        className="min-h-11 rounded-lg border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-2 text-sm font-medium text-[var(--success)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+      >
+        오늘 제작
+      </button>
+      <button
+        type="button"
+        disabled={busy || item.state === "DEFERRED"}
+        onClick={() => onAction("defer")}
+        className="min-h-11 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm font-medium text-[var(--warning)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+      >
+        내일
+      </button>
+      <button
+        type="button"
+        disabled={busy || item.state === "REJECTED"}
+        onClick={() => onAction("reject")}
+        className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+      >
+        제외
+      </button>
+      {item.state !== "AVAILABLE" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAction("reset_available")}
+          className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+        >
+          대기로
+        </button>
+      ) : null}
+    </div>
+  );
+
   return (
     <div
       className={cn(
@@ -476,6 +515,16 @@ function CandidateCard(props: {
             <span className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)]">
               {stateLabel(item.state)}
             </span>
+            {item.state === "SELECTED_TODAY" ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onAction("reset_available")}
+                className="min-h-9 rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 sm:min-h-0"
+              >
+                선택 해제
+              </button>
+            ) : null}
             {awaitingStory ? (
               <span className="rounded border border-violet-500/40 bg-violet-500/10 px-1.5 py-0.5 text-[11px] font-medium text-violet-950">
                 Story 선택 필요
@@ -722,6 +771,7 @@ function CandidateCard(props: {
               <p className="mt-1">—</p>
             )}
           </div>
+          <div className="mt-3">{actionRow}</div>
         </details>
       ) : (
         <>
@@ -761,42 +811,7 @@ function CandidateCard(props: {
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <button
-          type="button"
-          disabled={busy || item.state === "SELECTED_TODAY"}
-          onClick={() => onAction("select_today")}
-          className="min-h-11 rounded-lg border border-[var(--success)]/40 bg-[var(--success-bg)] px-3 py-2 text-sm font-medium text-[var(--success)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-        >
-          오늘 제작
-        </button>
-        <button
-          type="button"
-          disabled={busy || item.state === "DEFERRED"}
-          onClick={() => onAction("defer")}
-          className="min-h-11 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm font-medium text-[var(--warning)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-        >
-          내일
-        </button>
-        <button
-          type="button"
-          disabled={busy || item.state === "REJECTED"}
-          onClick={() => onAction("reject")}
-          className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-        >
-          제외
-        </button>
-        {item.state !== "AVAILABLE" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onAction("reset_available")}
-            className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
-          >
-            대기로
-          </button>
-        ) : null}
-      </div>
+      {actionRow}
         </>
       )}
     </div>
@@ -992,6 +1007,38 @@ export function AgendaSlatePanel({
       setSelectedTodayCount(data.selectedTodayCount ?? 0);
     } catch {
       setMessage("액션 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function releaseAllSelected() {
+    if (
+      !window.confirm(
+        `오늘 제작 선택 ${selectedTodayCount}건을 모두 해제할까요? Story 후보와 이미 대기열·실행 중인 제작은 그대로 남습니다.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/marketing-review/agenda-slate/release-selection", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...dateBody }),
+      });
+      const data = (await res.json()) as SlateActionResponse;
+      if (!res.ok) {
+        setMessage(data.message ?? "선택 해제 실패");
+        return;
+      }
+      setSlate(data.slate);
+      setSelectedTodayCount(data.selectedTodayCount ?? 0);
+      setMessage(data.message ?? "선택을 해제했습니다.");
+      await load({ silent: true });
+    } catch {
+      setMessage("선택 해제 실패");
     } finally {
       setBusy(false);
     }
@@ -1371,6 +1418,14 @@ export function AgendaSlatePanel({
               className="min-h-11 w-full rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
             >
               선택한 {selectedTodayCount}개 제작 요청
+            </button>
+            <button
+              type="button"
+              disabled={busy || selectedTodayCount < 1}
+              onClick={() => void releaseAllSelected()}
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-secondary)] disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
+            >
+              선택 전체 해제
             </button>
             <button
               type="button"

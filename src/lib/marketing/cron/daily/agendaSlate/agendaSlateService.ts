@@ -3,8 +3,10 @@ import {
   applyAgendaSlateAction,
   AgendaSlateActionError,
   listSelectedToday,
+  readSelectionReleasedSlateItemIds,
   reconcileSelectedTodayWithTerminalRequests,
   restoreSelectedTodayForAwaitingStory,
+  withSelectionReleaseRecord,
 } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateActions";
 import type {
   AgendaSlateAction,
@@ -55,6 +57,11 @@ export type AgendaSlateService = {
     slate: DailyAgendaSlate;
     requests: MarketingProductionRequest[];
     createdCount: number;
+  }>;
+  /** Unselect every SELECTED_TODAY item; queued/running productions keep running. */
+  releaseAllSelected(input?: { businessDateKst?: string }): Promise<{
+    slate: DailyAgendaSlate;
+    releasedCount: number;
   }>;
   /** Drop SELECTED_TODAY for items whose production request is COMPLETED/FAILED. */
   reconcileTerminalSelections(businessDateKst?: string): Promise<DailyAgendaSlate | null>;
@@ -197,13 +204,23 @@ export async function createAgendaSlateService(deps: {
       throw new AgendaSlateServiceError("slate not found", "SLATE_NOT_FOUND", 404);
     }
     try {
-      const next = applyAgendaSlateAction({
+      const applied = applyAgendaSlateAction({
         slate,
         slateItemId: input.slateItemId,
         action: input.action,
         expectedBusinessDateKst: date,
         now,
       });
+      const id = input.slateItemId.trim();
+      const wasSelected = slate.candidates.find((c) => c.slateItemId === id)?.state === "SELECTED_TODAY";
+      const isSelected = applied.candidates.find((c) => c.slateItemId === id)?.state === "SELECTED_TODAY";
+      const next =
+        input.action === "select_today"
+          ? withSelectionReleaseRecord(applied, { reselected: [id] })
+          : wasSelected && !isSelected
+            ? withSelectionReleaseRecord(applied, { released: [id] })
+            : applied;
+      if (next === slate) return slate;
       return slateRepo.updateSlate(next);
     } catch (error) {
       if (error instanceof AgendaSlateActionError) {
@@ -276,6 +293,31 @@ export async function createAgendaSlateService(deps: {
     return { slate, requests, createdCount };
   }
 
+  async function releaseAllSelected(input: { businessDateKst?: string } = {}): Promise<{
+    slate: DailyAgendaSlate;
+    releasedCount: number;
+  }> {
+    const date = input.businessDateKst ?? formatKstBusinessDate(now);
+    const slate = await getTodaySlate(date);
+    if (!slate) {
+      throw new AgendaSlateServiceError("slate not found", "SLATE_NOT_FOUND", 404);
+    }
+    const selectedIds = listSelectedToday(slate).map((c) => c.slateItemId);
+    if (selectedIds.length === 0) return { slate, releasedCount: 0 };
+    let next = slate;
+    for (const slateItemId of selectedIds) {
+      next = applyAgendaSlateAction({
+        slate: next,
+        slateItemId,
+        action: "reset_available",
+        expectedBusinessDateKst: date,
+        now,
+      });
+    }
+    next = withSelectionReleaseRecord(next, { released: selectedIds });
+    return { slate: await slateRepo.updateSlate(next), releasedCount: selectedIds.length };
+  }
+
   async function reconcileTerminalSelections(
     businessDateKst?: string,
   ): Promise<DailyAgendaSlate | null> {
@@ -321,6 +363,7 @@ export async function createAgendaSlateService(deps: {
       const restored = restoreSelectedTodayForAwaitingStory({
         slate: next,
         awaitingStorySlateItemIds,
+        skipSlateItemIds: readSelectionReleasedSlateItemIds(next),
         expectedBusinessDateKst: date,
         now,
       });
@@ -759,6 +802,7 @@ export async function createAgendaSlateService(deps: {
     listRecentDaySummaries,
     applyAction,
     requestProductionForSelected,
+    releaseAllSelected,
     reconcileTerminalSelections,
     retryFailedProduction,
     selectStoryAndResumeProduction,

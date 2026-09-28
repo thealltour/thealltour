@@ -167,6 +167,36 @@ export function reconcileSelectedTodayWithTerminalRequests(input: {
   return { slate: next, releasedCount };
 }
 
+/** Slate items a human explicitly unselected; auto-restore must leave them alone. */
+export const SELECTION_RELEASED_METADATA_KEY = "selectionReleasedSlateItemIds";
+
+export function readSelectionReleasedSlateItemIds(slate: DailyAgendaSlate): Set<string> {
+  const raw = slate.metadata?.[SELECTION_RELEASED_METADATA_KEY];
+  return new Set(Array.isArray(raw) ? raw.filter((v): v is string => typeof v === "string") : []);
+}
+
+export function withSelectionReleaseRecord(
+  slate: DailyAgendaSlate,
+  change: { released?: readonly string[]; reselected?: readonly string[] },
+): DailyAgendaSlate {
+  const ids = readSelectionReleasedSlateItemIds(slate);
+  let changed = false;
+  for (const id of change.released ?? []) {
+    if (!ids.has(id)) {
+      ids.add(id);
+      changed = true;
+    }
+  }
+  for (const id of change.reselected ?? []) {
+    if (ids.delete(id)) changed = true;
+  }
+  if (!changed) return slate;
+  return {
+    ...slate,
+    metadata: { ...(slate.metadata ?? {}), [SELECTION_RELEASED_METADATA_KEY]: [...ids] },
+  };
+}
+
 /**
  * Re-select items that are AVAILABLE but still awaiting human Story selection,
  * so the card does not look like a plain idle "대기" row.
@@ -174,6 +204,7 @@ export function reconcileSelectedTodayWithTerminalRequests(input: {
 export function restoreSelectedTodayForAwaitingStory(input: {
   slate: DailyAgendaSlate;
   awaitingStorySlateItemIds: ReadonlySet<string>;
+  skipSlateItemIds?: ReadonlySet<string>;
   expectedBusinessDateKst?: string;
   now?: Date;
 }): { slate: DailyAgendaSlate; restoredCount: number } {
@@ -182,6 +213,7 @@ export function restoreSelectedTodayForAwaitingStory(input: {
   for (const candidate of input.slate.candidates) {
     if (candidate.state !== "AVAILABLE") continue;
     if (!input.awaitingStorySlateItemIds.has(candidate.slateItemId)) continue;
+    if (input.skipSlateItemIds?.has(candidate.slateItemId)) continue;
     try {
       next = applyAgendaSlateAction({
         slate: next,

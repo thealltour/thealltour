@@ -53,6 +53,13 @@ export const agendaSlateImportExternalStorySchema = z.object({
   mode: z.enum(["merge", "replace"]).optional(),
 });
 
+export const agendaSlateReleaseSelectionSchema = z.object({
+  businessDateKst: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
 export const agendaSlateClearStoryCandidatesSchema = z
   .object({
     businessDateKst: z

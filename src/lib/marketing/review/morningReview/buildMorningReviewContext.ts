@@ -51,6 +51,7 @@ import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/p
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import { buildKeyEvidenceKo } from "@/lib/marketing/canonicalAsset/chatGptAssetTransfer";
 import { resolveCanonicalAssetDomainContext } from "@/lib/marketing/canonicalAsset/resolveCanonicalAssetDomainContext";
+import { resolveCanonicalHandoffStoryContext } from "@/lib/marketing/canonicalAsset/chatGptHandoffContext";
 
 function canonicalAssetStatusLabelKo(status: string | null | undefined): string {
   switch (status) {
@@ -93,8 +94,8 @@ function buildCanonicalAssetView(input: {
     proposition?.angle?.trim() ||
     null;
   const audienceProblemKo = proposition?.audienceProblem?.trim() || null;
-  const decisionAtStakeKo =
-    proposition?.audienceTension?.trim() || story?.audienceTension?.trim() || null;
+  const { editorialArchetype, audienceTensionKo, decisionAtStakeKo, stakesKo } =
+    resolveCanonicalHandoffStoryContext({ story, proposition, asset });
   const readerPayoffKo =
     story?.readerPayoff?.trim() || proposition?.readerGain?.trim() || null;
   const contentPromiseKo = proposition?.contentPromise?.trim() || null;
@@ -115,9 +116,12 @@ function buildCanonicalAssetView(input: {
       sourceRevision: null,
       humanEdited: false,
       storyTitle,
+      editorialArchetype,
       storyQuestionKo: story?.storyQuestion?.trim() || null,
       audienceProblemKo,
+      audienceTensionKo,
       decisionAtStakeKo,
+      stakesKo,
       readerPayoffKo,
       storySupportVerdict: proposition?.storySupportVerdict ?? null,
       supportedClaimBoundaryKo: proposition?.supportedClaimBoundaryUsed ?? null,
@@ -162,9 +166,12 @@ function buildCanonicalAssetView(input: {
     sourceRevision: asset.sourceRevision,
     humanEdited: asset.humanEdited,
     storyTitle,
+    editorialArchetype,
     storyQuestionKo: story?.storyQuestion?.trim() || null,
     audienceProblemKo,
+    audienceTensionKo,
     decisionAtStakeKo,
+    stakesKo,
     readerPayoffKo,
     storySupportVerdict: asset.storySupportVerdict,
     supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,

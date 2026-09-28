@@ -146,10 +146,13 @@ export function MarketingReviewCanonicalAssetPanel({
           decisionGuidanceKo,
         },
         contextReadOnly: {
+          editorialArchetype: asset.editorialArchetype ?? null,
           storyTitleKo: asset.storyTitle,
           storyQuestionKo: asset.storyQuestionKo,
           audienceProblemKo: asset.audienceProblemKo,
+          audienceTensionKo: asset.audienceTensionKo ?? null,
           decisionAtStakeKo: asset.decisionAtStakeKo,
+          stakesKo: asset.stakesKo ?? [],
           readerPayoffKo: asset.readerPayoffKo,
           storySupportVerdict: asset.storySupportVerdict,
           supportedClaimBoundaryKo: asset.supportedClaimBoundaryKo,

@@ -92,6 +92,18 @@ export const CANONICAL_SURFACE_LANGUAGE_NOTES_KO = [
 ] as const;
 
 /**
+ * ChatGPT/Astra canonical edit parity with the ASW editorial rules
+ * (limitation placement, keyTakeawaysKo, decisionGuidanceKo, CTA boundary).
+ */
+export const CANONICAL_EDITORIAL_SEMANTICS_NOTES_KO = [
+  "limitationsKo와 미확인 내용은 주장을 한정하는 조건이지 기본 결론이 아닙니다. 가능하면 그 한계가 걸리는 주장 바로 옆(같은 문장이나 인접 문장)에 두세요.",
+  "같은 미확인 내용을 titleKo·openingHookKo·본문 마지막 단락·keyTakeawaysKo·decisionGuidanceKo에 자동으로 반복하지 마세요. 한계 자체가 핵심 발견이거나 독자가 행동할 수 있는지를 바꾸는 경우에만 눈에 띄게 다루세요. 불확실성을 숨기지는 마세요.",
+  "keyTakeawaysKo는 contextReadOnly.editorialArchetype에 맞추세요. discovery 계열(discovery·hidden_detail·contrast·alternative·cultural_curiosity·experience_fit)은 확인된 사실·구체적 차이·유용한 구분을 담고, 범위를 밝힌 한계는 꼭 필요할 때만 넣으세요. decision/practical 계열은 판단 기준·조건·trade-off·확인할 점을 담으세요.",
+  "decisionGuidanceKo는 필수지만, discovery 계열에서는 절제된 편집 마무리로 충분합니다. 필드 이름을 채우려고 행동·예약·구매·방문·비교·추천·확인 과제를 지어내지 마세요. decision/practical 계열은 근거가 뒷받침할 때 더 분명한 판단 안내를 써도 됩니다.",
+  "팔로우·저장·댓글·구독·이웃 추가·채널 추가·업데이트 약속 같은 채널용 CTA를 만들지 마세요. 채널 CTA는 이후 채널 편집 단계에서 붙입니다. 예약·구매·상담 같은 상업적 행동은 명시적으로 뒷받침된 상업 의도가 있을 때만 쓰세요.",
+] as const;
+
+/**
  * Where limitations go in Canonical prose (ASW generation).
  * Editorial instruction only — no deterministic rewriting of limitation text.
  */

@@ -12,7 +12,10 @@ import {
   validateCanonicalMarketingAsset,
   type CanonicalAssetValidationIssue,
 } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
-import { CANONICAL_SURFACE_LANGUAGE_NOTES_KO } from "@/lib/marketing/canonicalAsset/surfaceLanguageContract";
+import {
+  CANONICAL_EDITORIAL_SEMANTICS_NOTES_KO,
+  CANONICAL_SURFACE_LANGUAGE_NOTES_KO,
+} from "@/lib/marketing/canonicalAsset/surfaceLanguageContract";
 import type { ContentProposition } from "@/lib/marketing/content/proposition/contracts";
 import type {
   EvidenceBackedStoryBrief,
@@ -34,10 +37,17 @@ export type CanonicalAssetChatGptEditable = {
 };
 
 export type CanonicalAssetChatGptContextReadOnly = {
+  /** Archetype the Canonical Writer resolved for this Story; optional for legacy callers. */
+  editorialArchetype?: string | null;
   storyTitleKo: string | null;
   storyQuestionKo: string | null;
   audienceProblemKo: string | null;
+  /** Story audience tension under its own label — never presented as a decision. */
+  audienceTensionKo?: string | null;
+  /** Genuine reader decision (decision/practical Stories only); null otherwise. */
   decisionAtStakeKo: string | null;
+  /** Genuine decision stakes (decision/practical Stories only). */
+  stakesKo?: string[];
   readerPayoffKo: string | null;
   storySupportVerdict: string | null;
   supportedClaimBoundaryKo: string | null;
@@ -102,7 +112,8 @@ const DEFAULT_NOTES_KO = [
   "keyEvidenceKo 안의 검증된 근거를 우선 활용하세요.",
   ...CANONICAL_SURFACE_LANGUAGE_NOTES_KO,
   "관광청·보도자료 문체보다 사람이 실제로 쓴 자연스러운 한국어 마케팅 원문으로 다듬으세요.",
-  "Story의 핵심 질문과 decisionAtStake를 바꾸지 마세요.",
+  "Story의 핵심 질문·editorialArchetype·decisionAtStakeKo를 바꾸지 마세요. decisionAtStakeKo가 null이면 audienceTensionKo를 결정 문제로 바꿔 쓰지 말고 결정 구도를 새로 만들지 마세요.",
+  ...CANONICAL_EDITORIAL_SEMANTICS_NOTES_KO,
 ];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -251,10 +262,13 @@ export function buildCanonicalAssetChatGptExportPayload(
       decisionGuidanceKo: input.editable.decisionGuidanceKo,
     },
     contextReadOnly: {
+      editorialArchetype: input.contextReadOnly.editorialArchetype ?? null,
       storyTitleKo: input.contextReadOnly.storyTitleKo,
       storyQuestionKo: input.contextReadOnly.storyQuestionKo,
       audienceProblemKo: input.contextReadOnly.audienceProblemKo,
+      audienceTensionKo: input.contextReadOnly.audienceTensionKo ?? null,
       decisionAtStakeKo: input.contextReadOnly.decisionAtStakeKo,
+      stakesKo: [...(input.contextReadOnly.stakesKo ?? [])],
       readerPayoffKo: input.contextReadOnly.readerPayoffKo,
       storySupportVerdict: input.contextReadOnly.storySupportVerdict,
       supportedClaimBoundaryKo: input.contextReadOnly.supportedClaimBoundaryKo,
@@ -391,7 +405,8 @@ export function parseCanonicalAssetChatGptImport(input: {
     bodyKo: editable.bodyKo,
     keyTakeawaysKo: editable.keyTakeawaysKo,
     decisionGuidanceKo: editable.decisionGuidanceKo,
-    // limitationsKo / forbiddenClaimsKo / approval / provenance are read-only — never applied.
+    // contextReadOnly (archetype, decision context, limitations, forbidden claims, evidence),
+    // identity, approval and provenance are read-only — never applied.
   };
 
   return {

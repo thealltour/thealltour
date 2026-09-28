@@ -188,9 +188,13 @@ export type MorningCanonicalAssetView = {
   sourceRevision: string | null;
   humanEdited: boolean;
   storyTitle: string | null;
+  editorialArchetype: string | null;
   storyQuestionKo: string | null;
   audienceProblemKo: string | null;
+  audienceTensionKo: string | null;
+  /** Genuine decision context only (decision/practical archetypes); never audienceTension. */
   decisionAtStakeKo: string | null;
+  stakesKo: string[];
   readerPayoffKo: string | null;
   storySupportVerdict: string | null;
   supportedClaimBoundaryKo: string | null;

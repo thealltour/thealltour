@@ -194,12 +194,13 @@ function cardRelativePath(index: number, geometry: CardNewsGeometry): string {
   return `${cardnewsDirectory(geometry)}/card-${String(index).padStart(2, "0")}.png`;
 }
 
-function cardVariantRelativePath(
-  index: number,
-  geometry: CardNewsGeometry,
-  variant: CardNewsRenderVariant,
-): string {
-  return `${cardnewsDirectory(geometry)}/card-${String(index).padStart(2, "0")}-${variant}.png`;
+function instagramThumbnailRelativePath(geometry: CardNewsGeometry): string {
+  return `${cardnewsDirectory(geometry)}/card-00.png`;
+}
+
+/** Earlier renders named the thumbnail after its variant; re-renders remove that file. */
+function legacyVariantRelativePath(geometry: CardNewsGeometry, variant: CardNewsRenderVariant): string {
+  return `${cardnewsDirectory(geometry)}/card-01-${variant}.png`;
 }
 
 function evidenceCatalog(brief: MediaBrief): Map<string, AssignmentEvidenceRef> {
@@ -466,7 +467,7 @@ export async function renderCardNewsPackage(
     thumbnailSpec && !input.dryRun
       ? await rasterizeCardNewsSvg(buildInstagramThumbnailSvg(thumbnailSpec, geometry), geometry)
       : null;
-  const thumbnailRelativePath = cardVariantRelativePath(1, geometry, INSTAGRAM_THUMBNAIL_VARIANT);
+  const thumbnailRelativePath = instagramThumbnailRelativePath(geometry);
 
   const planned: PlannedPackageArtifact[] = [];
   if (input.persistMediaBrief !== false) {
@@ -536,8 +537,13 @@ export async function renderCardNewsPackage(
   }
   // A thumbnail from an earlier render whose title was since cleared must not outlive it.
   const staleVariantPaths =
-    geometry.aspectRatio === "1:1" && !variantMetas.some((item) => item.relativePath === thumbnailRelativePath)
-      ? [thumbnailRelativePath]
+    geometry.aspectRatio === "1:1"
+      ? [
+          legacyVariantRelativePath(geometry, INSTAGRAM_THUMBNAIL_VARIANT),
+          ...(variantMetas.some((item) => item.relativePath === thumbnailRelativePath)
+            ? []
+            : [thumbnailRelativePath]),
+        ]
       : [];
 
   const render: CardNewsRenderDocument = {

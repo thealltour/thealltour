@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -18,7 +18,8 @@ import {
 } from "@/lib/marketing/assets/cardnews/renderCardNewsPackage";
 import { measureTextWidth } from "@/lib/marketing/assets/cardnews/textLayout";
 
-const THUMB = "cardnews/1x1/card-01-instagram_thumbnail.png";
+const THUMB = "cardnews/1x1/card-00.png";
+const LEGACY_THUMB = "cardnews/1x1/card-01-instagram_thumbnail.png";
 const NOW = new Date("2026-09-28T00:00:00.000Z");
 const tempDirs: string[] = [];
 
@@ -177,16 +178,28 @@ describe("Instagram thumbnail variant — renderCardNewsPackage", () => {
     expect(fileSha(pkg, "cardnews/1x1/card-01.png")).toBe(plainCards[0]!.sha256);
   }, 240_000);
 
+  it("removes a thumbnail left under the old variant file name", async () => {
+    const seed = await seedRoot();
+    const plain = await renderWith(seed, "1:1", null);
+    const legacyAbsolute = join(plain.packageRoot, LEGACY_THUMB);
+    writeFileSync(legacyAbsolute, readFileSync(join(plain.packageRoot, "cardnews/1x1/card-01.png")));
+
+    await renderWith(seed, "1:1", "제주 가을 억새 명소");
+    expect(existsSync(legacyAbsolute)).toBe(false);
+    expect(existsSync(join(plain.packageRoot, THUMB))).toBe(true);
+    expect(manifestPaths(plain.packageRoot)).not.toContain(LEGACY_THUMB);
+  }, 240_000);
+
   it("ignores the title on 4:5 renders", async () => {
     const seed = await seedRoot();
     const plain = await renderWith(seed, "4:5", null);
     const plainRenderJson = readRenderJson(plain.packageRoot, "cardnews").bytes;
 
     const titled = await renderWith(seed, "4:5", "제주 가을 억새 명소");
-    expect(titled.plannedRelativePaths.some((p) => p.includes("instagram_thumbnail"))).toBe(false);
+    expect(titled.plannedRelativePaths.some((p) => p.endsWith("card-00.png"))).toBe(false);
     expect(titled.render!.variants).toBeUndefined();
     expect(titled.render!.cards).toEqual(plain.render!.cards);
     expect(readRenderJson(titled.packageRoot, "cardnews").bytes).toBe(plainRenderJson);
-    expect(manifestPaths(titled.packageRoot).some((p) => p.includes("instagram_thumbnail"))).toBe(false);
+    expect(manifestPaths(titled.packageRoot).some((p) => p.endsWith("card-00.png"))).toBe(false);
   }, 240_000);
 });

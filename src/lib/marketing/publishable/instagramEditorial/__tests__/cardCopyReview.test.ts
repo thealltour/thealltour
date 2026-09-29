@@ -371,12 +371,12 @@ describe("Instagram card copy review — thumbnail title", () => {
     const render = () =>
       renderInstagramCardnewsForPackage({ packageRoot, assetRoot, dryRun: true, graphicOnly: true, now: new Date(T1) });
     const thumbnailPaths = (result: Awaited<ReturnType<typeof render>>) =>
-      result.renders.flatMap((r) => r.plannedRelativePaths.filter((p) => p.includes("instagram_thumbnail")));
+      result.renders.flatMap((r) => r.plannedRelativePaths.filter((p) => p.endsWith("card-00.png")));
 
     approve("썸네일 제목");
     const titled = await render();
     expect(titled.aspectRatios).toEqual(["4:5", "1:1"]);
-    expect(thumbnailPaths(titled)).toEqual(["cardnews/1x1/card-01-instagram_thumbnail.png"]);
+    expect(thumbnailPaths(titled)).toEqual(["cardnews/1x1/card-00.png"]);
     expect(titled.renders[0]!.render!.variants).toBeUndefined();
     expect(titled.renders[1]!.render!.variants).toHaveLength(1);
 

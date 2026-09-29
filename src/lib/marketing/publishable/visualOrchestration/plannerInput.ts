@@ -4,10 +4,13 @@
  * Instagram Visual Role Plan (when present) is stronger Instagram semantic authority
  * than legacy visualHints — SVP still owns final master orchestration.
  * Presence = channel content exists (body or cardPlan) — not Worker visual hints.
+ * Approved Instagram card copy review (when passed) is the top authority for Instagram card text
+ * and replaces bundle cardPlan copy, which a caption edit can drop.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
+import type { ApprovedInstagramCardCopy } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import type { InstagramVisualRolePlan } from "@/lib/marketing/publishable/instagramVisualRole/contracts";
 import {
   buildSourceChannelSnapshot,
@@ -31,11 +34,20 @@ const VISUAL_ROLE_PLAN_AUTHORITY_NOTE =
   "You still own final master count, grouping, usages, generatedVisualNeeded, visualMode, " +
   "and master visualIntent. Prefer explaining overrides in strategySummary.";
 
+const APPROVED_CARD_COPY_AUTHORITY_NOTE =
+  "channels.instagram.content.cards is the human-approved Instagram card copy review — the top " +
+  "authority for what each card says. Every Instagram master visualIntent must depict and support " +
+  "its card's approved headline/body. When instagramVisualRolePlan.concreteVisualIntent conflicts " +
+  "with the approved copy, follow the copy and record a decisionTrace override (field: other). " +
+  "humanEdited=true cards were rewritten by a human; older AI text for them is outdated.";
+
 export function buildSharedVisualPlannerInput(input: {
   approvedAsset: CanonicalMarketingAsset;
   bundle: PublishableContentBundle;
   /** Prefer Visual Role Plan over legacy publishable visual.* hints for Instagram. */
   instagramVisualRolePlan?: InstagramVisualRolePlan | null;
+  /** Operator-approved card copy review; outranks every other Instagram card text source. */
+  approvedInstagramCardCopy?: ApprovedInstagramCardCopy | null;
 }): {
   task: "shared_visual_plan";
   authority: Record<string, string>;
@@ -49,6 +61,8 @@ export function buildSharedVisualPlannerInput(input: {
   const bundle = input.bundle;
   const channels: Record<string, unknown> = {};
   const visualRolePlan = input.instagramVisualRolePlan ?? null;
+  const approvedCardCopy =
+    input.approvedInstagramCardCopy?.cards.length && bundle.instagram ? input.approvedInstagramCardCopy : null;
 
   if (isChannelPresentForVisualPlanning(bundle.threads)) {
     const mediaPlan = bundle.threads.mediaPlan ?? null;
@@ -79,19 +93,35 @@ export function buildSharedVisualPlannerInput(input: {
     };
   }
 
-  if (isChannelPresentForVisualPlanning(bundle.instagram)) {
+  if (approvedCardCopy || isChannelPresentForVisualPlanning(bundle.instagram)) {
     const cards = bundle.instagram!.instagramMeta?.cardPlan ?? [];
     channels.instagram = {
-      content: {
-        caption: clip(bundle.instagram!.body, 800),
-        cards: cards.map((c) => ({
-          cardId: c.cardId,
-          role: c.role,
-          headline: clip(c.headline, 200),
-          body: clip(c.body, 400),
-          cardVisualIntent: c.visualIntent ?? null,
-        })),
-      },
+      content: approvedCardCopy
+        ? {
+            caption: clip(bundle.instagram!.body, 800),
+            cardTextSource: "approved_card_copy_review",
+            coverTitleKo: approvedCardCopy.coverTitleKo,
+            cards: approvedCardCopy.cards.map((c) => ({
+              cardId: c.cardId,
+              role: c.role,
+              communicationGoal: c.communicationGoal,
+              kicker: c.kicker,
+              headline: c.headline,
+              body: c.body,
+              microcopy: c.microcopy,
+              humanEdited: c.humanEdited,
+            })),
+          }
+        : {
+            caption: clip(bundle.instagram!.body, 800),
+            cards: cards.map((c) => ({
+              cardId: c.cardId,
+              role: c.role,
+              headline: clip(c.headline, 200),
+              body: clip(c.body, 400),
+              cardVisualIntent: c.visualIntent ?? null,
+            })),
+          },
       visualHints: {
         cards: cards.map((c) => ({
           cardId: c.cardId,
@@ -189,6 +219,8 @@ export function buildSharedVisualPlannerInput(input: {
       instagramVisualSemantics: visualRolePlan
         ? "instagram_visual_role_plan"
         : "legacy_visual_hints_or_content",
+      instagramCardText: approvedCardCopy ? "approved_card_copy_review" : "channel_content",
+      ...(approvedCardCopy ? { approvedCardCopyNote: APPROVED_CARD_COPY_AUTHORITY_NOTE } : {}),
       channelVisualMetadata: "advisory_hint_only",
       evidenceAuthority: "approved_canonical",
       visualHintsNote: VISUAL_HINTS_AUTHORITY_NOTE,
@@ -246,13 +278,21 @@ export function formatSharedVisualPlannerPrompt(
   options?: { repair?: string | null },
 ): string {
   const hasVra = Boolean(plannerInput.instagramVisualRolePlan);
+  const hasApprovedCardCopy = plannerInput.authority.instagramCardText === "approved_card_copy_review";
   const lines = [
     "TASK: Orchestrate the smallest *sufficient* Shared Visual Plan (SVP v2).",
     "You own master count, grouping/reuse, final generatedVisualNeeded, visualMode, usages.",
     "You do NOT redesign Instagram visual meanings — that is Visual Role Architect.",
     "",
     "AUTHORITY:",
-    "- Instagram semantics precedence: instagramVisualRolePlan > content > legacy visualHints.",
+    ...(hasApprovedCardCopy
+      ? [
+          "- TOP PRIORITY — Instagram card text: channels.instagram.content.cards is the human-approved card copy review. Each Instagram master visualIntent MUST depict and support its card's approved headline/body; never contradict, replace, or ignore it.",
+          "- If instagramVisualRolePlan.concreteVisualIntent conflicts with the approved card copy, follow the approved copy and add a decisionTrace override (field: other) explaining it.",
+          "- humanEdited=true cards were rewritten by a human; any older AI wording for them is outdated.",
+          "- Instagram semantics precedence: approved card copy (what each card says) > instagramVisualRolePlan (visual role/density/mode) > legacy visualHints.",
+        ]
+      : ["- Instagram semantics precedence: instagramVisualRolePlan > content > legacy visualHints."]),
     "- When VRA is present, cover EVERY VRA cardId with exactly one Instagram usage.",
     "- Multiple Instagram cards MAY share one master when subjects/roles align.",
     "- Threads slot 0 ↔ Instagram hero_cover is a reuse candidate — not automatic.",

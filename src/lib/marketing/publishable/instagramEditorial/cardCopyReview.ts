@@ -10,6 +10,7 @@
 import type {
   PublishableContentBundle,
   PublishableInstagramCardPlan,
+  PublishableInstagramMeta,
 } from "@/lib/marketing/publishable/contracts";
 import {
   readPackageJson,
@@ -19,6 +20,7 @@ import {
 import type { ChannelGenerationSource } from "@/lib/marketing/publishable/channelSources/contracts";
 import {
   assembleInstagramCardPlanFromEditorial,
+  assembleInstagramMetaFromEditorial,
   deriveLegacySlideHeadlines,
 } from "@/lib/marketing/publishable/instagramEditorial/assemblePublishable";
 import type {
@@ -32,6 +34,7 @@ import {
   buildInstagramCardCopyReviewApprovalFingerprint,
 } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import {
+  readInstagramCaptionFromPackage,
   readInstagramCardCopyFromPackage,
   readInstagramCarouselPlanFromPackage,
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
@@ -441,16 +444,88 @@ export function resolveInstagramCardCopyReviewGate(packageRoot: string): {
   return { ...resolveInstagramCardCopyReviewGateState(base, review), base, review };
 }
 
+export type ApprovedInstagramCardCopyCard = {
+  cardId: string;
+  role: InstagramCarouselRole | null;
+  communicationGoal: string | null;
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  microcopy: string | null;
+  humanEdited: boolean;
+};
+
+export type ApprovedInstagramCardCopy = {
+  coverTitleKo: string | null;
+  cards: ApprovedInstagramCardCopyCard[];
+};
+
+/**
+ * The operator-approved card copy (saved human edits over the generated copy). Null unless the
+ * review gate is `approved` — pending / stale edits are never treated as approved text.
+ */
+export function resolveApprovedInstagramCardCopy(packageRoot: string): ApprovedInstagramCardCopy | null {
+  const gate = resolveInstagramCardCopyReviewGate(packageRoot);
+  if (gate.state !== "approved" || !gate.base || !gate.review) return null;
+  const effective = applyInstagramCardCopyReview(gate.base, gate.review);
+  const planById = new Map(
+    (readInstagramCarouselPlanFromPackage(packageRoot)?.cards ?? []).map((card) => [card.cardId, card]),
+  );
+  const humanEditedIds = new Set(
+    gate.review.cards.filter((card) => card.humanDraft !== null).map((card) => card.cardId),
+  );
+  return {
+    coverTitleKo: resolveInstagramCoverTitleKo(gate.review),
+    cards: effective.cards.map((item) => {
+      const plan = planById.get(item.cardId);
+      const fields = fieldsFromItem(item);
+      return {
+        cardId: item.cardId,
+        role: plan?.role ?? null,
+        communicationGoal: plan?.communicationGoal ?? null,
+        ...fields,
+        humanEdited: humanEditedIds.has(item.cardId),
+      };
+    }),
+  };
+}
+
+/**
+ * InstagramMeta (cardPlan / slideHeadlines) rebuilt from the generated editorial sidecars, using
+ * the generated card copy — review edits are layered on by the overlay, not baked in here.
+ */
+export function rebuildInstagramMetaFromEditorialPackage(
+  packageRoot: string,
+): PublishableInstagramMeta | null {
+  const carousel = readInstagramCarouselPlanFromPackage(packageRoot);
+  const cardCopy = readInstagramCardCopyFromPackage(packageRoot);
+  const caption = readInstagramCaptionFromPackage(packageRoot);
+  if (!carousel?.cards?.length || !cardCopy?.cards?.length || !caption) return null;
+  return assembleInstagramMetaFromEditorial({ caption, carousel, cardCopy });
+}
+
+/** Slots saved by an older human caption edit lost instagramMeta; restore it in memory. */
+function withRestoredInstagramMeta(
+  bundle: PublishableContentBundle,
+  packageRoot: string,
+): PublishableContentBundle {
+  if (!bundle.instagram || bundle.instagram.instagramMeta) return bundle;
+  const instagramMeta = rebuildInstagramMetaFromEditorialPackage(packageRoot);
+  if (!instagramMeta) return bundle;
+  return { ...bundle, instagram: { ...bundle.instagram, instagramMeta } };
+}
+
 export function overlayEffectiveInstagramCardCopyForPackage(
   bundle: PublishableContentBundle,
   packageRoot: string,
 ): PublishableContentBundle {
+  const restored = withRestoredInstagramMeta(bundle, packageRoot);
   const base = readInstagramCardCopyFromPackage(packageRoot);
-  if (!base) return bundle;
+  if (!base) return restored;
   const effective = applyInstagramCardCopyReview(base, readInstagramCardCopyReviewFromPackage(packageRoot));
-  if (effective === base) return bundle;
+  if (effective === base) return restored;
   return overlayInstagramCardCopyOnBundle({
-    bundle,
+    bundle: restored,
     carousel: readInstagramCarouselPlanFromPackage(packageRoot),
     effective,
   });

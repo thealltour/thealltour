@@ -16,6 +16,7 @@ import {
   type PublishableChannel,
   type PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
+import { rebuildInstagramMetaFromEditorialPackage } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { validatePublishableText } from "@/lib/marketing/publishable/validate";
 import {
@@ -128,6 +129,12 @@ export function persistChannelHumanEditToPackage(input: {
       needsRegeneration: !validation.ok,
       narrationSegments: prev && "narrationSegments" in prev ? prev.narrationSegments : undefined,
       blogMeta: prev && "blogMeta" in prev ? prev.blogMeta : undefined,
+      // A caption edit must not drop the card plan — cardnews render and the SVP read it.
+      instagramMeta:
+        pubChannel === "instagram"
+          ? (prev?.instagramMeta ?? rebuildInstagramMetaFromEditorialPackage(packageRoot) ?? undefined)
+          : undefined,
+      mediaPlan: pubChannel === "threads" ? prev?.mediaPlan : undefined,
       // MQ-5: cheap deterministic re-evaluation on human save (no LLM).
       marketingValue: null as import("@/lib/marketing/value/contracts").MarketingValueAssessment | null,
     };

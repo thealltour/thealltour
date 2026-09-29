@@ -10,7 +10,10 @@
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import type { PublishableContentBundle } from "@/lib/marketing/publishable/contracts";
 import { resolveInstagramNarrativeForVisualPlanning } from "@/lib/marketing/publishable/channelSources/visualNarrative";
-import { overlayEffectiveInstagramCardCopyForPackage } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
+import {
+  overlayEffectiveInstagramCardCopyForPackage,
+  resolveApprovedInstagramCardCopy,
+} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { buildInstagramVisualRoleContentFingerprint } from "@/lib/marketing/publishable/instagramVisualRole/fingerprint";
 import {
   ensureInstagramVisualRolePlan,
@@ -161,6 +164,7 @@ export async function generateSharedVisualPlanWithLlm(input: {
     approvedAsset: input.approvedCanonicalAsset,
     bundle: overlayEffectiveInstagramCardCopyForPackage(input.bundle, input.packageRoot),
     instagramVisualRolePlan: visualRolePlan,
+    approvedInstagramCardCopy: resolveApprovedInstagramCardCopy(input.packageRoot),
   });
   const vraFp = visualRolePlan
     ? buildInstagramVisualRoleContentFingerprint(visualRolePlan)

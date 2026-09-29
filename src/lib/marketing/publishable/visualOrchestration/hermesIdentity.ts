@@ -47,16 +47,22 @@ Astra = generation brief enrichment
 
 ### Instagram semantics precedence
 
-1. \`instagramVisualRolePlan\` (when present)
+0. **Human-approved card copy review** (\`channels.instagram.content.cardTextSource = approved_card_copy_review\`) —
+   the top authority for what each card says. Every Instagram master \`visualIntent\` must depict and
+   support its card's approved headline/body.
+1. \`instagramVisualRolePlan\` (when present) — visual role / density / mode per card
 2. channel content (caption / card headline-body)
 3. legacy \`visualHints\` / publishable \`visual.*\` (advisory compatibility only)
 
 When VRA is present and conflicts with legacy hints → **VRA wins**.
+When VRA \`concreteVisualIntent\` conflicts with the approved card copy → **the approved copy wins**
+(record a \`decisionTrace\` override with field \`other\`).
 
 ## You receive
 
 - approved Canonical story
 - channel adaptations currently generated
+- Human-approved Instagram card copy review when present
 - Instagram Visual Role Plan when present
 - channel visualHints (ADVISORY ONLY)
 

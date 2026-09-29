@@ -123,7 +123,8 @@ export async function renderInstagramCardnewsForPackage(input: {
     };
   }
 
-  const skip = resolveInstagramCardnewsSkip(bundle);
+  const copyBundle = overlayEffectiveInstagramCardCopyForPackage(bundle, input.packageRoot);
+  const skip = resolveInstagramCardnewsSkip(copyBundle);
   if (skip) {
     return { status: "skipped", skipReason: skip, candidateId: bundle.candidateId, ...base };
   }
@@ -142,10 +143,7 @@ export async function renderInstagramCardnewsForPackage(input: {
     !input.graphicOnly && resolveInstagramVisualRoleLifecycleForPackage(input.packageRoot) === "stale";
 
   // Prefer cardPlan / slideHeadlines over whatever copy sits on disk media-brief.
-  const brief = resolveInstagramCardnewsRenderBrief(
-    diskBrief,
-    overlayEffectiveInstagramCardCopyForPackage(bundle, input.packageRoot),
-  );
+  const brief = resolveInstagramCardnewsRenderBrief(diskBrief, copyBundle);
   if (!brief.formats.cardnews.enabled || brief.formats.cardnews.cards.length === 0) {
     return {
       status: "skipped",

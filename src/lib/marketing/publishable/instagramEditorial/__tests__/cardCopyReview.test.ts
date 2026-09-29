@@ -1,12 +1,16 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCardNewsVerificationBrief } from "@/lib/marketing/assets/cardnews/fixture";
 import { renderInstagramCardnewsForPackage } from "@/lib/marketing/assets/cardnews/instagramCardnews";
-import { resolveInstagramCardnewsRenderBrief } from "@/lib/marketing/assets/cardnews/instagramCards";
+import {
+  resolveInstagramCardnewsRenderBrief,
+  resolveInstagramCardnewsSkip,
+} from "@/lib/marketing/assets/cardnews/instagramCards";
+import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
 import { stableJsonBytes } from "@/lib/marketing/assets/hashing";
 import {
   PUBLISHABLE_CHANNEL_CONTENT_CONTRACT,
@@ -24,6 +28,7 @@ import {
   overlayEffectiveInstagramCardCopyForPackage,
   overlayInstagramCardCopyOnBundle,
   persistInstagramCardCopyReview,
+  resolveApprovedInstagramCardCopy,
   resolveEffectiveInstagramCardCopy,
   resolveInstagramCardCopyReviewGate,
   resolveInstagramCardCopyReviewGateState,
@@ -31,8 +36,10 @@ import {
   type InstagramCardCopyReview,
 } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import {
+  INSTAGRAM_CAPTION_CONTRACT,
   INSTAGRAM_CARD_COPY_CONTRACT,
   INSTAGRAM_CAROUSEL_PLAN_CONTRACT,
+  type InstagramCaption,
   type InstagramCardCopy,
   type InstagramCarouselPlan,
 } from "@/lib/marketing/publishable/instagramEditorial/contracts";
@@ -41,12 +48,19 @@ import {
   buildInstagramCarouselContentFingerprint,
 } from "@/lib/marketing/publishable/instagramEditorial/fingerprint";
 import {
+  persistInstagramCaption,
   persistInstagramCardCopy,
   persistInstagramCarouselPlan,
 } from "@/lib/marketing/publishable/instagramEditorial/persist";
 import { INSTAGRAM_VISUAL_ROLE_PLAN_RELATIVE_PATH } from "@/lib/marketing/publishable/instagramVisualRole/paths";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
+import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
 import { resolveInstagramVisualRoleLifecycleForPackage } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
+import {
+  buildSharedVisualPlannerInput,
+  formatSharedVisualPlannerPrompt,
+} from "@/lib/marketing/publishable/visualOrchestration/plannerInput";
+import { persistChannelHumanEditToPackage } from "@/lib/marketing/review/persistChannelHumanEdit";
 import {
   buildInstagramCardCopyReviewView,
   freshInstagramCardCopyReviewForReset,
@@ -494,6 +508,76 @@ describe("Instagram card copy review — package gates", () => {
     expect(resolveInstagramVisualRoleLifecycleForPackage(packageRoot)).toBe("fresh");
   });
 
+  it("exposes card copy to visual planning only once the saved edits are approved", () => {
+    const { packageRoot } = seedPackage();
+    const base = cardCopy();
+    expect(resolveApprovedInstagramCardCopy(packageRoot)).toBeNull();
+
+    const edited = edit(freshReview(base), base);
+    persistInstagramCardCopyReview({ packageRoot, review: edited });
+    expect(resolveApprovedInstagramCardCopy(packageRoot)).toBeNull();
+
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: {
+        ...approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T1 }),
+        instagramCoverTitleKo: null,
+      },
+    });
+    const approved = resolveApprovedInstagramCardCopy(packageRoot)!;
+    expect(approved.cards.map((c) => c.cardId)).toEqual([...CARD_IDS]);
+    expect(approved.cards[2]).toMatchObject({
+      role: "evidence_detail",
+      communicationGoal: "근거",
+      headline: "사람이 고친 근거",
+      body: "사람 본문",
+      humanEdited: true,
+    });
+    expect(approved.cards[0]).toMatchObject({ headline: "AI 헤드라인 1", humanEdited: false });
+
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: {
+        ...approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T1 }),
+        cards: edit(edited, base, "승인 뒤 다시 고침").cards,
+      },
+    });
+    expect(resolveInstagramCardCopyReviewGate(packageRoot).state).toBe("approved_stale");
+    expect(resolveApprovedInstagramCardCopy(packageRoot)).toBeNull();
+  });
+
+  it("makes approved card copy the top Instagram authority in the Shared Visual Planner input", () => {
+    const { packageRoot } = seedPackage();
+    const base = cardCopy();
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: approveInstagramCardCopyReview({ review: edit(freshReview(base), base), base, approvedBy: "ysh", nowIso: T1 }),
+    });
+    const captionOnly = bundle();
+    captionOnly.instagram = { ...captionOnly.instagram!, status: "human_edited", instagramMeta: undefined };
+    const approvedAsset = { assetId: "cma_1", version: 2, titleKo: "제목", bodyKo: "본문" } as unknown as CanonicalMarketingAsset;
+
+    const input = buildSharedVisualPlannerInput({
+      approvedAsset,
+      bundle: captionOnly,
+      approvedInstagramCardCopy: resolveApprovedInstagramCardCopy(packageRoot),
+    });
+    expect(input.authority.instagramCardText).toBe("approved_card_copy_review");
+    const ig = input.channels.instagram as {
+      content: { cardTextSource: string; cards: Array<{ cardId: string; headline: string; humanEdited: boolean }> };
+    };
+    expect(ig.content.cardTextSource).toBe("approved_card_copy_review");
+    expect(ig.content.cards).toHaveLength(4);
+    expect(ig.content.cards[2]).toMatchObject({ cardId: "c3", headline: "사람이 고친 근거", humanEdited: true });
+    const prompt = formatSharedVisualPlannerPrompt(input);
+    expect(prompt).toMatch(/TOP PRIORITY — Instagram card text/);
+    expect(prompt).toMatch(/approved card copy \(what each card says\) > instagramVisualRolePlan/);
+
+    const legacy = buildSharedVisualPlannerInput({ approvedAsset, bundle: bundle() });
+    expect(legacy.authority.instagramCardText).toBe("channel_content");
+    expect(formatSharedVisualPlannerPrompt(legacy)).not.toMatch(/TOP PRIORITY/);
+  });
+
   it("blocks render until card copy is approved, then renders the effective copy", async () => {
     const { assetRoot, packageRoot } = seedPackage();
     const render = (graphicOnly: boolean) =>
@@ -535,4 +619,84 @@ describe("Instagram card copy review — package gates", () => {
     );
     expect(brief.formats.cardnews.cards[2]).toMatchObject({ headline: "사람이 고친 근거", body: "사람 본문" });
   }, 60_000);
+});
+
+function caption(): InstagramCaption {
+  return {
+    contract: INSTAGRAM_CAPTION_CONTRACT,
+    assetId: "cma_1",
+    assetVersion: 2,
+    opening: "캡션 첫 줄",
+    body: "캡션 본문",
+    cta: null,
+    hashtags: ["#태그"],
+    altText: "alt",
+    sourceCardCopyFingerprint: buildInstagramCardCopyContentFingerprint(cardCopy()),
+    provenance: provenance("card_copy_fp"),
+  } as InstagramCaption;
+}
+
+function approveEdited(packageRoot: string) {
+  const base = cardCopy();
+  persistInstagramCardCopyReview({
+    packageRoot,
+    review: approveInstagramCardCopyReview({ review: edit(freshReview(base), base), base, approvedBy: "ysh", nowIso: T1 }),
+  });
+}
+
+describe("Instagram card copy review — caption-edited slot", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("renders a slot that lost instagramMeta by rebuilding the card plan from the editorial sidecars", async () => {
+    const { assetRoot, packageRoot } = seedPackage();
+    persistInstagramCaption({ packageRoot, caption: caption(), createdAt: T0 });
+    const lost = bundle();
+    lost.instagram = { ...lost.instagram!, status: "human_edited", instagramMeta: undefined };
+    writeFileSync(join(packageRoot, PUBLISHABLE_CONTENT_RELATIVE_PATH), JSON.stringify(lost), "utf8");
+    approveEdited(packageRoot);
+
+    expect(resolveInstagramCardnewsSkip(lost)).toBe("slide_headlines_missing");
+    const restored = overlayEffectiveInstagramCardCopyForPackage(lost, packageRoot);
+    expect(resolveInstagramCardnewsSkip(restored)).toBeNull();
+    expect(restored.instagram!.body).toBe(lost.instagram!.body);
+    expect(restored.instagram!.instagramMeta!.cardPlan![2]).toMatchObject({ cardId: "c3", headline: "사람이 고친 근거" });
+
+    const rendered = await renderInstagramCardnewsForPackage({
+      packageRoot,
+      assetRoot,
+      aspectRatios: ["4:5"],
+      dryRun: true,
+      graphicOnly: true,
+      now: new Date(T1),
+    });
+    expect(rendered).toMatchObject({ status: "rendered", cardCount: 4 });
+  }, 60_000);
+
+  it("keeps the card plan when a human saves the Instagram caption", () => {
+    const { assetRoot, packageRoot } = seedPackage();
+    vi.stubEnv("MARKETING_ASSET_ROOT", assetRoot);
+    const candidate = {
+      candidateId: CANDIDATE_ID,
+      businessDateKst: "2026-09-27",
+      contentAssignment: { commercialIntent: "informational", facts: [] },
+      contentPlan: null,
+    } as unknown as CompletedMarketingCandidate;
+
+    const result = persistChannelHumanEditToPackage({
+      candidate,
+      channel: "instagram",
+      title: null,
+      body: "사람이 고친 캡션\n\n#태그",
+      now: new Date(T1),
+    });
+    expect(result.ok).toBe(true);
+    const saved = JSON.parse(
+      readFileSync(join(packageRoot, PUBLISHABLE_CONTENT_RELATIVE_PATH), "utf8"),
+    ) as PublishableContentBundle;
+    expect(saved.instagram).toMatchObject({ status: "human_edited", body: "사람이 고친 캡션\n\n#태그" });
+    expect(saved.instagram!.instagramMeta).toEqual(instagramSlot().instagramMeta);
+    expect(saved.instagram!.instagramMeta!.cardPlan).toHaveLength(4);
+  });
 });

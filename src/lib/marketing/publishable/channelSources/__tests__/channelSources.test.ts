@@ -1467,17 +1467,22 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     expect(writer).not.toHaveBeenCalled();
 
     const vraInvoke = vi.fn<VisualRoleArchitectInvoke>(async () => JSON.stringify(VRA_LLM));
+    const svpInvoke = vi.fn<(prompt: string) => Promise<string>>(async () => JSON.stringify(SVP_LLM));
     const regenerated = await generateSharedVisualPlanWithLlm({
       packageRoot,
       bundle: readBundle(),
       approvedCanonicalAsset: asset(),
-      invoke: async () => JSON.stringify(SVP_LLM),
+      invoke: svpInvoke,
       invokeVisualRoleArchitect: vraInvoke,
       hermesHome,
       now: RESTORE_AT,
     });
     expect(regenerated.ok).toBe(true);
     expect(vraInvoke.mock.calls[0]![0].text).toContain("사람이 고친 표지 문구");
+    const svpPrompt = svpInvoke.mock.calls[0]![0];
+    expect(svpPrompt).toContain("TOP PRIORITY — Instagram card text");
+    expect(svpPrompt).toContain('"cardTextSource": "approved_card_copy_review"');
+    expect(svpPrompt).toContain("사람이 고친 표지 문구");
     expect(readInstagramCardCopyFromPackage(packageRoot)).toEqual(base);
     expect(
       resolveSharedVisualPlanLifecycleForPackage({

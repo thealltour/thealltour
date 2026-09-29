@@ -2,13 +2,68 @@
  * Build ChatGPT-pasteable export from a full DailyAgendaSlate (all items).
  */
 
-import type { DailyAgendaSlate, AgendaSlateCandidate } from "@/lib/marketing/cron/daily/agendaSlate/types";
+import type {
+  DailyAgendaSlate,
+  AgendaSlateCandidate,
+  AgendaSlateEvidenceSummary,
+} from "@/lib/marketing/cron/daily/agendaSlate/types";
+import { normalizeSourceArticleIdentity } from "@/lib/marketing/cron/daily/researchIdentityCooldown";
 import {
   AGENDA_SLATE_EXPORT_PAYLOAD_CONTRACT,
 } from "@/lib/marketing/editorialDirector/contracts";
 
+export type AgendaExportFieldAuthority =
+  | "source"
+  | "mixed"
+  | "heuristic"
+  | "scoring"
+  | "mm_inference";
+
+/**
+ * Provenance of each agenda field for the external Story Miner.
+ * Identifiers and always-null placeholders are intentionally omitted.
+ */
+export const AGENDA_EXPORT_FIELD_AUTHORITY = {
+  titleKo: "source",
+  summaryKo: "mixed",
+  topicIdentity: "heuristic",
+  originDestination: "heuristic",
+  sourceSignals: "source",
+  sourceType: "source",
+  existingEvidenceSnippets: "source",
+  canonicalArticleIds: "source",
+  "sourceFreshness.freshnessScore": "scoring",
+  "sourceFreshness.freshnessWhyNow": "mm_inference",
+  researchability: "scoring",
+  currentResearchScore: "scoring",
+  researchSnapshot: "scoring",
+  scoreReasons: "scoring",
+  riskFlags: "scoring",
+  matchedProductIds: "heuristic",
+  koreanTravelerRelevance: "mm_inference",
+  businessTheAllTourRelevance: "mm_inference",
+  practicalTravelValue: "mm_inference",
+  contentPotential: "mm_inference",
+  mmRationale: "mm_inference",
+} as const satisfies Record<string, AgendaExportFieldAuthority>;
+
+/** Research evidence accumulates one row per re-collection of the same article; export it once. */
+function dedupeEvidenceByArticle(
+  rows: readonly AgendaSlateEvidenceSummary[],
+): AgendaSlateEvidenceSummary[] {
+  const seen = new Set<string>();
+  const out: AgendaSlateEvidenceSummary[] = [];
+  rows.forEach((row, index) => {
+    const key = normalizeSourceArticleIdentity(row) ?? `index:${index}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(row);
+  });
+  return out;
+}
+
 function exportAgendaItem(item: AgendaSlateCandidate) {
-  const evidence = item.evidenceSummary.map((e) => ({
+  const evidence = dedupeEvidenceByArticle(item.evidenceSummary).map((e) => ({
     evidenceId: e.evidenceId,
     sourceId: e.sourceId,
     sourceName: e.sourceName,
@@ -57,12 +112,10 @@ function exportAgendaItem(item: AgendaSlateCandidate) {
     contentPotential: item.editorial.contentPotential,
     recentContentOverlap: null as string | null,
     trendMetaSignal: null as string | null,
-    existingEvidenceSnippets: evidence
-      .map((e) => e.excerpt)
-      .filter((x): x is string => Boolean(x)),
+    existingEvidenceSnippets: [
+      ...new Set(evidence.map((e) => e.excerpt?.trim()).filter((x): x is string => Boolean(x))),
+    ],
     mmRationale: item.rationale,
-    recommendedChannel: item.recommendedChannel,
-    recommendedFormats: item.recommendedFormats,
     channelPotential: null as Record<string, unknown> | null,
     matchedProductIds: item.matchedProductIds,
     riskFlags: item.riskFlags,
@@ -79,6 +132,7 @@ export type AgendaSlateEditorialExportPayload = {
   selection: "all" | "subset";
   agendaCount: number;
   agendas: ReturnType<typeof exportAgendaItem>[];
+  fieldAuthority: typeof AGENDA_EXPORT_FIELD_AUTHORITY;
   notesKo: string[];
 };
 
@@ -106,12 +160,14 @@ export function buildAgendaSlateEditorialExportPayload(
     selection: subset ? "subset" : "all",
     agendaCount: agendas.length,
     agendas,
+    fieldAuthority: AGENDA_EXPORT_FIELD_AUTHORITY,
     notesKo: [
       subset
         ? `사람이 고른 Slate 후보 ${agendas.length}건만 포함되어 있습니다. 이 목록 안에서만 고르세요.`
         : "모든 오늘 Slate 후보가 포함되어 있습니다. 사전 선택이 필요하지 않습니다.",
       "값이 없으면 null입니다. 임의로 점수를 채우지 마세요.",
       "agendaId는 가져오기 시 식별자로 사용됩니다(slateItemId).",
+      "fieldAuthority가 mm_inference 또는 scoring인 필드는 Story의 사실 근거가 아니라 참고 신호입니다. 사실 판단은 fieldAuthority가 source인 필드(sourceSignals 등)를 우선하세요.",
     ],
   };
 }

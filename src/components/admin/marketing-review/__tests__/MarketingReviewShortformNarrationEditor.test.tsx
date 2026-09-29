@@ -17,6 +17,7 @@ function view(overrides: Partial<ShortformNarrationView> = {}): ShortformNarrati
   return {
     candidateId: "cmc_ui",
     applicable: true,
+    target: "media_brief",
     humanEdited: false,
     maxLength: 2000,
     editable: true,
@@ -101,14 +102,54 @@ describe("MarketingReviewShortformNarrationEditor", () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to the read-only body when the package has no narration", async () => {
+  it("falls back to the read-only body with the reason when the package has no narration", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => view({ applicable: false, segments: [] }) }) as Response),
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () =>
+              view({
+                applicable: false,
+                target: null,
+                editable: false,
+                blockedReason: "편집할 숏폼 내레이션이 없습니다.",
+                segments: [],
+              }),
+          }) as Response,
+      ),
     );
     render(<MarketingReviewShortformNarrationEditor candidateId="cmc_ui" canEdit fallbackBody="기존 본문" />);
     await waitFor(() => expect(screen.getByText("기존 본문")).toBeTruthy());
+    expect(screen.getByText("편집할 숏폼 내레이션이 없습니다.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "내레이션 저장" })).toBeNull();
+  });
+
+  it("edits text-only segments when the candidate has no render and says so", async () => {
+    const textOnly = view({ target: "publishable_slot", render: null });
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return {
+          ok: true,
+          json: async () =>
+            saveResult({
+              ...textOnly,
+              rerender: { enqueued: false, created: false, skippedReason: "text_only_no_render" },
+            }),
+        } as Response;
+      }
+      return { ok: true, json: async () => textOnly } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MarketingReviewShortformNarrationEditor candidateId="cmc_ui" canEdit fallbackBody="" />);
+
+    const first = (await screen.findByLabelText("내레이션 1")) as HTMLTextAreaElement;
+    expect(first.disabled).toBe(false);
+    expect(screen.getByText(/숏폼 영상 제작\(렌더\) 대상이 아니어서/)).toBeTruthy();
+    fireEvent.change(first, { target: { value: "사람 문장" } });
+    fireEvent.click(screen.getByRole("button", { name: "내레이션 저장" }));
+    await waitFor(() => expect(screen.getByText("저장했습니다 · 영상 렌더 대상이 아니라 문안만 저장했습니다")).toBeTruthy());
   });
 
   it("disables editing when blocked and warns about stale renders", async () => {

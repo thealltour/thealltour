@@ -27,7 +27,7 @@ import { createInMemoryMarketingMediaSourceCatalogRepository } from "@/lib/marke
 import { createLocalMarketingAssetTransport } from "@/lib/marketing/assets/transport/localTransport";
 import { MEDIA_BRIEF_RELATIVE_PATH } from "@/lib/marketing/assets/video/paths";
 import { createInMemoryDailyMarketingRunRepository } from "@/lib/marketing/cron/daily/repository/createDailyMarketingRunRepository";
-import { readPublishableBundle } from "@/lib/marketing/publishable/channelSources/packageIo";
+import { readPublishableBundle, writePublishableBundle } from "@/lib/marketing/publishable/channelSources/packageIo";
 import { assertShortformReadyForManualPublish } from "@/lib/marketing/review/assertShortformReadyForManualPublish";
 import { humanEditedRelativePath } from "@/lib/marketing/review/channelReviews";
 import { HumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
@@ -390,5 +390,95 @@ describe("shortform narration segment edit", () => {
       }),
     ).resolves.toMatchObject({ artifactKind: "media-brief" });
     expect(existsSync(join(packageRoot, "manifest.json"))).toBe(true);
+  });
+});
+
+describe("shortform narration edit without render narration (not shortform-committed)", () => {
+  async function setupSlotOnly(candidateId: string) {
+    const packageRoot = mkdtempSync(join(tmpdir(), "sf-narration-slot-"));
+    tempDirs.push(packageRoot);
+    const candidateRepo = createInMemoryDailyMarketingRunRepository();
+    const candidate = buildTestCandidate({ candidateId, businessDateKst: "2026-09-19" });
+    await candidateRepo.saveCandidate(candidate);
+    const bundle = buildTestLlmPublishableBundle(candidate);
+    const segment = (segmentId: string, text: string, purpose: string) => ({
+      segmentId,
+      narrationText: text,
+      subtitleText: text,
+      purpose,
+      visualIntent: "골목 장면",
+      evidenceRefs: [],
+    });
+    writePublishableBundle(
+      packageRoot,
+      {
+        ...bundle,
+        shortform: {
+          ...bundle.shortform,
+          body: "첫 문장.\n\n둘째 문장.",
+          provenance: { ...bundle.shortform.provenance, generationSource: "external_editorial" },
+          narrationSegments: [segment("narr-01", "첫 문장.", "hook"), segment("narr-02", "둘째 문장.", "body")],
+        },
+      },
+      NOW.toISOString(),
+    );
+    const reviewRepo = createInMemoryHumanMarketingReviewRepository();
+    await reviewRepo.save({
+      reviewId: `rev_${candidateId}`,
+      candidateId,
+      status: "editing",
+      currentDraft: { title: null, body: "draft", channel: "threads" },
+      channelReviews: {},
+      updatedAt: NOW.toISOString(),
+    } as unknown as HumanMarketingReview);
+    const jobRepo = createInMemoryShortformVideoRenderJobRepository();
+    let clock = NOW.getTime();
+    const service = new HumanMarketingReviewService({
+      candidateRepo,
+      reviewRepo,
+      now: () => new Date((clock += 1000)),
+      resolvePackageRoot: () => packageRoot,
+      shortformCatalog: createInMemoryMarketingMediaSourceCatalogRepository(),
+      shortformJobRepository: jobRepo,
+    });
+    return { candidate, packageRoot, reviewRepo, jobRepo, service };
+  }
+
+  it("edits the publishable slot segments only, with no media-brief write and no render", async () => {
+    const { candidate, packageRoot, reviewRepo, jobRepo, service } = await setupSlotOnly("cmc_narr_slot");
+    const view = await service.getShortformNarration(candidate.candidateId);
+    expect(view).toMatchObject({ applicable: true, editable: true, target: "publishable_slot", render: null });
+    expect(view.segments.map((s) => s.text)).toEqual(["첫 문장.", "둘째 문장."]);
+
+    const result = await service.saveShortformNarration({
+      candidateId: candidate.candidateId,
+      segments: editedPayload(view, "사람이 고친 첫 문장."),
+      reviewedBy: "tester",
+    });
+    expect(result.rerender).toEqual({ enqueued: false, created: false, skippedReason: "text_only_no_render" });
+    expect(result.segments[0]).toMatchObject({ text: "사람이 고친 첫 문장.", aiText: "첫 문장.", edited: true });
+
+    const slot = readPublishableBundle(packageRoot)!.shortform;
+    expect(slot.status).toBe("human_edited");
+    expect(slot.body).toBe("사람이 고친 첫 문장.\n\n둘째 문장.");
+    expect(slot.aiNarrationSegments?.[0]?.narrationText).toBe("첫 문장.");
+    expect(existsSync(join(packageRoot, MEDIA_BRIEF_RELATIVE_PATH))).toBe(false);
+    expect(await jobRepo.listForCandidate(candidate.candidateId)).toHaveLength(0);
+
+    const review = await reviewRepo.findByCandidateId(candidate.candidateId);
+    expect(review?.channelReviews?.shortform?.humanDraft?.body).toBe("사람이 고친 첫 문장.\n\n둘째 문장.");
+  });
+
+  it("reports why editing is unavailable when neither media-brief nor the slot has segments", async () => {
+    const { candidate, packageRoot, service } = await setupSlotOnly("cmc_narr_none");
+    const bundle = readPublishableBundle(packageRoot)!;
+    writePublishableBundle(
+      packageRoot,
+      { ...bundle, shortform: { ...bundle.shortform, narrationSegments: [] } },
+      NOW.toISOString(),
+    );
+    const view = await service.getShortformNarration(candidate.candidateId);
+    expect(view).toMatchObject({ applicable: false, target: null, editable: false });
+    expect(view.blockedReason).toContain("편집할 숏폼 내레이션이 없습니다");
   });
 });

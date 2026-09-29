@@ -30,6 +30,7 @@ const RENDER_LABELS: Record<ShortformNarrationRenderSummary["uiStatus"], string>
 export function shortformNarrationSaveMessage(result: ShortformNarrationSaveResult): string {
   const saved = result.changed ? "저장했습니다" : "변경 사항 없이 저장했습니다";
   const { rerender, render } = result;
+  if (result.target === "publishable_slot") return `${saved} · 영상 렌더 대상이 아니라 문안만 저장했습니다`;
   if (rerender.enqueued) {
     return rerender.created ? `${saved} · 재렌더를 요청했습니다` : `${saved} · 현재 내레이션 기준 렌더가 이미 있습니다`;
   }
@@ -142,10 +143,11 @@ export function MarketingReviewShortformNarrationEditor(props: {
 
   if (loading && !view) return fallback;
   if (!view?.applicable) {
+    const reason = message ?? view?.blockedReason ?? null;
     return (
       <div className="space-y-2">
         {fallback}
-        {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+        {reason ? <p className="text-sm text-[var(--text-secondary)]">{reason}</p> : null}
       </div>
     );
   }
@@ -169,6 +171,11 @@ export function MarketingReviewShortformNarrationEditor(props: {
           </span>
         ) : null}
       </div>
+      {view.target === "publishable_slot" ? (
+        <p className="text-xs text-[var(--text-secondary)]">
+          이 후보는 숏폼 영상 제작(렌더) 대상이 아니어서 수정한 문안만 저장됩니다.
+        </p>
+      ) : null}
       {view.render?.narrationStale ? (
         <p className={cn("text-xs", adminToneText.warning)}>
           현재 영상은 이전 내레이션 기준입니다. 현재 문구로 렌더가 READY가 되어야 승인할 수 있습니다.

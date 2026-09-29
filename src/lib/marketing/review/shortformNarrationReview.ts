@@ -3,6 +3,8 @@
  * media-brief `formats.shortform.narrationSegments` is what the Mini-PC render reads, so edits go
  * there (plus manifest sha so transport integrity holds). The publishable bundle slot is marked
  * `human_edited` so draft rebuilds / "다시 검색" keep the edited segments.
+ * Packages without render narration (not shortform-committed) edit the publishable slot segments
+ * only; media-brief is left alone so no render input appears for a package that never planned one.
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -73,8 +75,12 @@ export type ShortformNarrationSegmentView = {
   edited: boolean;
 };
 
+/** `media_brief`: edits reach the render input. `publishable_slot`: text only, no render. */
+export type ShortformNarrationTarget = "media_brief" | "publishable_slot";
+
 export type ShortformNarrationPackageView = {
   applicable: boolean;
+  target: ShortformNarrationTarget | null;
   segments: ShortformNarrationSegmentView[];
   humanEdited: boolean;
   maxLength: number;
@@ -144,13 +150,36 @@ function narrationSegments(mediaBrief: MediaBrief | null): ShortformNarrationSeg
   return mediaBrief?.formats.shortform.narrationSegments ?? [];
 }
 
+function fromPublishableSegment(segment: PublishableNarrationSegment): ShortformNarrationSegment {
+  return {
+    segmentId: segment.segmentId,
+    narrationText: segment.narrationText,
+    subtitleText: segment.subtitleText,
+    purpose: segment.purpose,
+    visualIntent: segment.visualIntent,
+    evidenceRefs: segment.evidenceRefs.slice(0, 8),
+  };
+}
+
+function resolveEditableNarration(
+  mediaBrief: MediaBrief | null,
+  slot: PublishableChannelContent | null,
+): { target: ShortformNarrationTarget | null; segments: ShortformNarrationSegment[] } {
+  const briefSegments = narrationSegments(mediaBrief);
+  if (briefSegments.length > 0) return { target: "media_brief", segments: briefSegments };
+  const slotSegments = (slot?.narrationSegments ?? []).map(fromPublishableSegment);
+  if (slotSegments.length > 0) return { target: "publishable_slot", segments: slotSegments };
+  return { target: null, segments: [] };
+}
+
 export function buildShortformNarrationPackageView(packageRoot: string): ShortformNarrationPackageView {
-  const segments = narrationSegments(readMediaBrief(packageRoot));
   const slot = readPublishableBundle(packageRoot)?.shortform ?? null;
+  const { target, segments } = resolveEditableNarration(readMediaBrief(packageRoot), slot);
   const aiById = new Map((slot?.aiNarrationSegments ?? []).map((s) => [s.segmentId, s.narrationText]));
   const scenes = sceneIdsBySegment(packageRoot);
   return {
     applicable: segments.length > 0,
+    target,
     humanEdited: slot?.status === "human_edited",
     maxLength: SHORTFORM_NARRATION_MAX_LENGTH,
     segments: segments.map((segment) => {
@@ -204,6 +233,7 @@ function toPublishableSegment(segment: ShortformNarrationSegment): PublishableNa
 }
 
 export type ShortformNarrationEditResult = {
+  target: ShortformNarrationTarget;
   body: string;
   narrationSha256: string;
   changed: boolean;
@@ -212,7 +242,7 @@ export type ShortformNarrationEditResult = {
 
 /**
  * Text-only edit: the segment set (ids, order, count) is fixed; subtitle mirrors narration.
- * Writes publishable bundle → marketing value → media-brief (+manifest) → human-edited export.
+ * Writes publishable bundle → marketing value → media-brief (+manifest, render target only) → human-edited export.
  */
 export function applyShortformNarrationEdit(input: {
   packageRoot: string;
@@ -222,11 +252,11 @@ export function applyShortformNarrationEdit(input: {
 }): ShortformNarrationEditResult {
   const { packageRoot } = input;
   const mediaBrief = readMediaBrief(packageRoot);
-  const current = narrationSegments(mediaBrief);
-  if (!mediaBrief || current.length === 0) {
+  const bundle = readPublishableBundle(packageRoot);
+  const { target, segments: current } = resolveEditableNarration(mediaBrief, bundle?.shortform ?? null);
+  if (!target || current.length === 0) {
     throw new ShortformNarrationEditError("not_applicable", "편집할 숏폼 내레이션이 없습니다.");
   }
-  const bundle = readPublishableBundle(packageRoot);
   if (!bundle) {
     throw new ShortformNarrationEditError("bundle_missing", "게시용 콘텐츠 번들이 없어 내레이션을 저장할 수 없습니다.");
   }
@@ -309,36 +339,39 @@ export function applyShortformNarrationEdit(input: {
     createdAt: nowIso,
   });
 
-  const nextMediaBrief = parseMediaBrief({
-    ...mediaBrief,
-    formats: {
-      ...mediaBrief.formats,
-      shortform: { ...mediaBrief.formats.shortform, narrationSegments: nextSegments },
-    },
-  });
-  const writtenBrief = overwritePackageArtifact({
-    packageRoot,
-    planned: {
-      relativePath: MEDIA_BRIEF_RELATIVE_PATH,
-      content: stableJsonBytes(nextMediaBrief),
-      kind: "media_brief",
-      origin: "media_brief",
-      mediaType: "application/json",
-    },
-    createdAt: nowIso,
-  });
-  upsertPackageManifestArtifact({
-    packageRoot,
-    artifact: writtenBrief.artifact,
-    createdAt: nowIso,
-    mediaBrief: nextMediaBrief,
-  });
+  if (target === "media_brief" && mediaBrief) {
+    const nextMediaBrief = parseMediaBrief({
+      ...mediaBrief,
+      formats: {
+        ...mediaBrief.formats,
+        shortform: { ...mediaBrief.formats.shortform, narrationSegments: nextSegments },
+      },
+    });
+    const writtenBrief = overwritePackageArtifact({
+      packageRoot,
+      planned: {
+        relativePath: MEDIA_BRIEF_RELATIVE_PATH,
+        content: stableJsonBytes(nextMediaBrief),
+        kind: "media_brief",
+        origin: "media_brief",
+        mediaType: "application/json",
+      },
+      createdAt: nowIso,
+    });
+    upsertPackageManifestArtifact({
+      packageRoot,
+      artifact: writtenBrief.artifact,
+      createdAt: nowIso,
+      mediaBrief: nextMediaBrief,
+    });
+  }
 
   const exportPath = join(packageRoot, humanEditedRelativePath("shortform"));
   mkdirSync(dirname(exportPath), { recursive: true });
   writeFileSync(exportPath, `${body}\n`, "utf8");
 
   return {
+    target,
     body,
     narrationSha256: buildShortformNarrationFingerprint(nextSegments),
     changed,

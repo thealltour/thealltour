@@ -637,13 +637,14 @@ export class HumanMarketingReviewService {
       candidateId,
       editable: blockedReason === null,
       blockedReason,
-      render: packageView.applicable ? await this.evaluateShortformRenderSummary(candidate) : null,
+      render: packageView.target === "media_brief" ? await this.evaluateShortformRenderSummary(candidate) : null,
     };
   }
 
   /**
    * Text-only segment edit. Package first (media-brief is the render input), then DB humanDraft,
    * then cancel QUEUED jobs for older narration and enqueue a render when every scene is picked.
+   * Packages without render narration skip the render step entirely.
    */
   async saveShortformNarration(input: {
     candidateId: string;
@@ -696,43 +697,13 @@ export class HumanMarketingReviewService {
       });
     }
 
-    let rerender: ShortformNarrationSaveResult["rerender"];
-    let render: ShortformNarrationRenderSummary | null = null;
-    try {
-      const deps = await this.shortformRenderDeps();
-      for (const job of await deps.jobRepository.listForCandidate(input.candidateId)) {
-        if (job.status === "QUEUED" && job.inputSnapshot.narrationSha256 !== edit.narrationSha256) {
-          await deps.jobRepository.cancel({ logicalRunKey: job.logicalRunKey, now: this.now() });
-        }
-      }
-      const { maybeEnqueueShortformRenderAfterPick } = await import(
-        "@/lib/marketing/assets/shortform/renderReady"
-      );
-      const enqueue = await maybeEnqueueShortformRenderAfterPick({
-        candidateId: input.candidateId,
-        candidate,
-        ...deps,
-        repository: this.deps.candidateRepo,
-        now: this.now(),
-      });
-      rerender = {
-        enqueued: enqueue.enqueued,
-        created: enqueue.created,
-        skippedReason: enqueue.enqueued ? null : (enqueue.skippedReason ?? null),
-      };
-      if (enqueue.evaluation.shortformIntended) {
-        render = summarizeShortformRender(enqueue.evaluation, enqueue.job ?? enqueue.evaluation.job);
-      }
-    } catch (error) {
-      rerender = {
-        enqueued: false,
-        created: false,
-        skippedReason: `render_queue_unavailable:${error instanceof Error ? error.message : "unknown"}`.slice(
-          0,
-          200,
-        ),
-      };
-    }
+    const { rerender, render } =
+      edit.target === "media_brief"
+        ? await this.requeueShortformRenderAfterNarrationEdit(candidate, edit.narrationSha256)
+        : {
+            rerender: { enqueued: false, created: false, skippedReason: "text_only_no_render" },
+            render: null,
+          };
 
     return {
       ...buildShortformNarrationPackageView(packageRoot),
@@ -743,6 +714,52 @@ export class HumanMarketingReviewService {
       changed: edit.changed,
       rerender,
     };
+  }
+
+  private async requeueShortformRenderAfterNarrationEdit(
+    candidate: CompletedMarketingCandidate,
+    narrationSha256: string,
+  ): Promise<{ rerender: ShortformNarrationSaveResult["rerender"]; render: ShortformNarrationRenderSummary | null }> {
+    try {
+      const deps = await this.shortformRenderDeps();
+      for (const job of await deps.jobRepository.listForCandidate(candidate.candidateId)) {
+        if (job.status === "QUEUED" && job.inputSnapshot.narrationSha256 !== narrationSha256) {
+          await deps.jobRepository.cancel({ logicalRunKey: job.logicalRunKey, now: this.now() });
+        }
+      }
+      const { maybeEnqueueShortformRenderAfterPick } = await import(
+        "@/lib/marketing/assets/shortform/renderReady"
+      );
+      const enqueue = await maybeEnqueueShortformRenderAfterPick({
+        candidateId: candidate.candidateId,
+        candidate,
+        ...deps,
+        repository: this.deps.candidateRepo,
+        now: this.now(),
+      });
+      return {
+        rerender: {
+          enqueued: enqueue.enqueued,
+          created: enqueue.created,
+          skippedReason: enqueue.enqueued ? null : (enqueue.skippedReason ?? null),
+        },
+        render: enqueue.evaluation.shortformIntended
+          ? summarizeShortformRender(enqueue.evaluation, enqueue.job ?? enqueue.evaluation.job)
+          : null,
+      };
+    } catch (error) {
+      return {
+        rerender: {
+          enqueued: false,
+          created: false,
+          skippedReason: `render_queue_unavailable:${error instanceof Error ? error.message : "unknown"}`.slice(
+            0,
+            200,
+          ),
+        },
+        render: null,
+      };
+    }
   }
 
   /**

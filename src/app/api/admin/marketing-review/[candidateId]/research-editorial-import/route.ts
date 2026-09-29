@@ -2,6 +2,7 @@ import { requireAdminPermission } from "@/lib/apiAuth";
 import { z } from "zod";
 import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 import { humanReviewErrorResponse } from "@/lib/marketing/review/apiErrors";
+import { readExternalResearchSummary } from "@/lib/marketing/canonicalAsset/applyExternalResearchConflicts";
 import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
 import { resolveCandidatePackageRoot } from "@/lib/marketing/editorialDirector/researchHandoff/loadResearchHandoffSource";
 import {
@@ -68,16 +69,21 @@ export async function POST(request: Request, context: RouteContext) {
     const selectable = Object.entries(candidate.channelReadiness)
       .filter(([, r]) => r.materializable)
       .map(([channel]) => channel);
+    const research = readExternalResearchSummary(candidate.result, approvedCanonical);
+    const researchBlocked = research?.status === "blocked";
     return Response.json({
       importId: candidate.importId,
       candidateRef: result.candidateRef,
       importedAt: candidate.importedAt,
       warnings: candidate.warnings,
       channelReadiness: candidate.channelReadiness,
+      researchStatus: research?.status ?? null,
       message:
         selectable.length > 0
           ? `외부 편집 결과를 저장했습니다. 선택 가능한 채널: ${selectable.join(", ")}`
-          : "외부 편집 결과를 저장했지만 선택 가능한 채널이 없습니다.",
+          : researchBlocked
+            ? "ChatGPT가 승인본 범위 충돌로 연구를 보류해 채널 결과가 없습니다. 아래 연구 결과에서 충돌을 검토하세요."
+            : "외부 편집 결과를 저장했지만 선택 가능한 채널이 없습니다.",
     });
   } catch (error) {
     if (error instanceof ExternalEditorialCandidateExistsError) {

@@ -78,6 +78,20 @@ export type CanonicalMarketingAsset = {
 
   /** Prior approved channel bundle revisions keyed by sourceAssetVersion (optional). */
   downstreamChannelSourceVersions?: number[];
+
+  /** Last draft built from External Editorial research canonicalConflicts (optional). */
+  researchRevision?: CanonicalAssetResearchRevision | null;
+};
+
+export type CanonicalAssetResearchRevision = {
+  importId: string;
+  fromVersion: number;
+  appliedConflictIndexes: number[];
+  removedForbiddenClaims: string[];
+  removedItems: Array<{ field: string; text: string }>;
+  addedEvidenceIds: string[];
+  appliedAt: string;
+  appliedBy: string | null;
 };
 
 export const PRODUCTION_OUTCOME_AWAITING_ASSET_APPROVAL = "awaiting_asset_approval" as const;

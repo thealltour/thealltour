@@ -9,6 +9,10 @@ import type {
   ExternalEditorialChannelReadiness,
 } from "@/lib/marketing/publishable/channelSources/contracts";
 import type { PublishableChannel } from "@/lib/marketing/publishable/contracts";
+import type {
+  ExternalResearchConflictView,
+  ExternalResearchSummary,
+} from "@/lib/marketing/canonicalAsset/applyExternalResearchConflicts";
 
 type CandidateSummary = {
   importId: string;
@@ -17,7 +21,40 @@ type CandidateSummary = {
   canonicalVersion: number;
   warnings: string[];
   channelReadiness: Record<PublishableChannel, ExternalEditorialChannelReadiness>;
+  stale?: boolean;
+  research?: ExternalResearchSummary | null;
 };
+
+type CanonicalStatus = { version: number; status: string; approved: boolean };
+
+const CONFLICT_FIELD_LABEL: Record<string, string> = {
+  forbiddenClaimsKo: "금지 주장",
+  keyTakeawaysKo: "핵심 요점",
+  limitationsKo: "한계",
+  unresolvedQuestionsKo: "미해결 질문",
+};
+
+function conflictActionLabel(conflict: ExternalResearchConflictView): string {
+  switch (conflict.action) {
+    case "remove_forbidden":
+      return "금지 주장에서 해제";
+    case "remove_item":
+      return "항목 삭제";
+    case "not_found":
+      return "자동 반영 불가: 현재 승인본에서 같은 문구를 찾지 못했습니다";
+    default:
+      return "자동 반영 불가: 본문 필드는 공통 원문 편집에서 직접 수정하세요";
+  }
+}
+
+function isApplicableConflict(conflict: ExternalResearchConflictView): boolean {
+  return conflict.action === "remove_forbidden" || conflict.action === "remove_item";
+}
+
+function defaultConflictSelection(candidate: CandidateSummary | null): number[] {
+  if (!candidate || candidate.stale) return [];
+  return (candidate.research?.conflicts ?? []).filter(isApplicableConflict).map((c) => c.index);
+}
 
 type Props = {
   candidateId: string;
@@ -52,15 +89,22 @@ export function MarketingReviewExternalEditorialPanel({
   const [channels, setChannels] = useState<ChannelSourceView[]>([]);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [selectedImportId, setSelectedImportId] = useState<string>("");
+  const [canonical, setCanonical] = useState<CanonicalStatus | null>(null);
+  const [checkedConflicts, setCheckedConflicts] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/marketing-review/${candidateId}/channel-source-selection`);
       if (!res.ok) return;
-      const json = (await res.json()) as { channels: ChannelSourceView[]; candidates: CandidateSummary[] };
+      const json = (await res.json()) as {
+        channels: ChannelSourceView[];
+        candidates: CandidateSummary[];
+        canonical?: CanonicalStatus | null;
+      };
       setChannels(json.channels ?? []);
       setCandidates(json.candidates ?? []);
+      setCanonical(json.canonical ?? null);
       setSelectedImportId((prev) =>
         prev && json.candidates?.some((c) => c.importId === prev) ? prev : json.candidates?.[0]?.importId ?? "",
       );
@@ -74,6 +118,63 @@ export function MarketingReviewExternalEditorialPanel({
   }, [loadStatus]);
 
   const selectedCandidate = candidates.find((c) => c.importId === selectedImportId) ?? null;
+  const research = selectedCandidate?.research ?? null;
+  const researchBlocked = research?.status === "blocked";
+
+  useEffect(() => {
+    setCheckedConflicts(defaultConflictSelection(selectedCandidate));
+  }, [selectedCandidate]);
+
+  function toggleConflict(index: number) {
+    setCheckedConflicts((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index].sort((a, b) => a - b),
+    );
+  }
+
+  async function applyResearchConflicts() {
+    if (!selectedCandidate || checkedConflicts.length === 0 || !canonical) return;
+    const nextVersion = canonical.version + 1;
+    if (
+      !window.confirm(
+        `선택한 충돌 ${checkedConflicts.length}건을 반영해 승인본 v${nextVersion} 초안을 만듭니다.\n` +
+          "금지 주장·목록 항목·근거만 바뀌고 본문은 그대로입니다. 현재 승인은 해제됩니다. 계속할까요?",
+      )
+    ) {
+      return;
+    }
+    onBusy(true);
+    onMessage("");
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/admin/marketing-review/${candidateId}/canonical-asset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "apply_research_conflicts",
+          importId: selectedCandidate.importId,
+          conflictIndexes: checkedConflicts,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as ApiError & { asset?: { version?: number } };
+      if (!res.ok) {
+        setFeedback({ tone: "error", text: errorText(json, "승인본 초안을 만들지 못했습니다.") });
+        return;
+      }
+      const version = json.asset?.version ?? nextVersion;
+      setFeedback({
+        tone: "ok",
+        text:
+          `승인본 v${version} 초안을 만들었습니다.\n` +
+          "공통 원문에서 본문을 확인·수정한 뒤 수정본 승인 → Research Editorial용 JSON 다시 복사 → ChatGPT 재실행",
+      });
+      await loadStatus();
+      await onReload();
+    } catch {
+      setFeedback({ tone: "error", text: "승인본 초안을 만드는 중 오류가 발생했습니다." });
+    } finally {
+      onBusy(false);
+    }
+  }
 
   async function importResult() {
     onBusy(true);
@@ -193,10 +294,122 @@ export function MarketingReviewExternalEditorialPanel({
             {candidates.map((c) => (
               <option key={c.importId} value={c.importId}>
                 {c.importId} · {new Date(c.importedAt).toLocaleString("ko-KR")} · v{c.canonicalVersion}
+                {c.stale ? " (이전 승인본 기준)" : ""}
               </option>
             ))}
           </select>
         </label>
+      ) : null}
+
+      {researchBlocked ? (
+        <p className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs">
+          ChatGPT가 승인본 범위 충돌로 연구를 보류해 채널 결과가 없습니다. 아래 연구 결과에서 충돌을 검토하세요.
+        </p>
+      ) : null}
+
+      {research && (research.findings.length > 0 || research.conflicts.length > 0 || research.unresolved.length > 0) ? (
+        <section className="space-y-3 text-sm" aria-label="연구 결과">
+          <h3 className="font-semibold">연구 결과{research.status ? ` · ${research.status}` : ""}</h3>
+
+          {research.findings.length > 0 ? (
+            <ul className="space-y-2">
+              {research.findings.map((f) => (
+                <li key={f.findingId} className="text-xs">
+                  <span className="font-medium">{f.findingId}</span>
+                  {f.supportLevel ? ` · ${f.supportLevel}` : ""} — {f.claim}
+                  {f.sources.length > 0 ? (
+                    <span className="block text-[var(--text-secondary)]">
+                      {f.sources.map((s, i) => (
+                        <span key={`${f.findingId}-${i}`}>
+                          {i > 0 ? " / " : ""}
+                          {s.url ? (
+                            <a href={s.url} target="_blank" rel="noreferrer" className="underline">
+                              {s.publisher || s.title || s.url}
+                            </a>
+                          ) : (
+                            s.publisher || s.title
+                          )}
+                          {s.date ? ` (${s.date})` : ""}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {research.unresolved.length > 0 ? (
+            <div className="text-xs">
+              <span className="text-[var(--text-secondary)]">미해결</span>
+              <ul className="list-disc pl-5">
+                {research.unresolved.map((u, i) => (
+                  <li key={i}>{u}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {research.conflicts.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs text-[var(--text-secondary)]">
+                승인본과 충돌한 항목입니다. 체크한 항목만 새 초안에 반영되고, 본문은 공통 원문 편집에서 직접 고칩니다.
+              </p>
+              <ul className="space-y-2">
+                {research.conflicts.map((c) => {
+                  const applicable = isApplicableConflict(c) && !selectedCandidate?.stale;
+                  return (
+                    <li key={c.index} className="text-xs">
+                      <label className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={applicable && checkedConflicts.includes(c.index)}
+                          disabled={busy || !canEdit || !applicable}
+                          onChange={() => toggleConflict(c.index)}
+                          aria-label={`충돌 ${c.index + 1}`}
+                        />
+                        <span>
+                          <span className="font-medium">
+                            {CONFLICT_FIELD_LABEL[c.canonicalField] ?? c.canonicalField}
+                          </span>
+                          : {c.canonicalText}
+                          {c.findingIds.length > 0 ? ` (${c.findingIds.join(", ")})` : ""}
+                          {c.explanation ? (
+                            <span className="block text-[var(--text-secondary)]">{c.explanation}</span>
+                          ) : null}
+                          <span className="block text-[var(--text-secondary)]">{conflictActionLabel(c)}</span>
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              {selectedCandidate?.stale ? (
+                <p className="text-xs text-[var(--text-secondary)]">
+                  이 결과는 이전 승인본 기준이라 반영할 수 없습니다. 최신 승인본으로 ChatGPT를 다시 실행하세요.
+                </p>
+              ) : canonical && !canonical.approved ? (
+                <p className="text-xs text-[var(--text-secondary)]">
+                  현재 공통 원문(v{canonical.version})이 승인 상태가 아닙니다. 승인한 뒤에 반영할 수 있습니다.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  !canEdit ||
+                  !canonical?.approved ||
+                  Boolean(selectedCandidate?.stale) ||
+                  checkedConflicts.length === 0
+                }
+                onClick={() => void applyResearchConflicts()}
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
+              >
+                승인본 v{(canonical?.version ?? selectedCandidate?.canonicalVersion ?? 0) + 1} 초안 만들기
+              </button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {channels.length > 0 ? (
@@ -220,7 +433,7 @@ export function MarketingReviewExternalEditorialPanel({
                 {!view.selectionInSync ? (
                   <span className="text-xs text-[var(--danger,#b91c1c)]">선택 기록이 실제 채널 본문과 다릅니다</span>
                 ) : null}
-                {selectedCandidate && externalDisabledReason ? (
+                {selectedCandidate && externalDisabledReason && !researchBlocked ? (
                   <span className="basis-full text-xs text-[var(--danger,#b91c1c)]">
                     External 선택 불가: {externalDisabledReason}
                   </span>

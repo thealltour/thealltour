@@ -2,7 +2,12 @@ import { requireAdminPermission } from "@/lib/apiAuth";
 import { z } from "zod";
 import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 import { humanReviewErrorResponse } from "@/lib/marketing/review/apiErrors";
+import {
+  candidateMatchesCanonical,
+  readExternalResearchSummary,
+} from "@/lib/marketing/canonicalAsset/applyExternalResearchConflicts";
 import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
+import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import { resolveCandidatePackageRoot } from "@/lib/marketing/editorialDirector/researchHandoff/loadResearchHandoffSource";
 import {
   listChannelSourceViews,
@@ -41,8 +46,16 @@ export async function GET(_request: Request, context: RouteContext) {
     const { detail, packageRoot } = await loadContext(candidateId);
     if (!detail) return Response.json({ message: "후보를 찾을 수 없습니다." }, { status: 404 });
     if (!packageRoot) return Response.json({ channels: [], candidates: [] });
+    const canonical = resolveCanonicalMarketingAsset({ candidate: detail.candidate, packageRoot });
     return Response.json({
       channels: listChannelSourceViews(packageRoot, detail.review),
+      canonical: canonical
+        ? {
+            version: canonical.version,
+            status: canonical.status,
+            approved: isApprovedCanonicalAsset(canonical),
+          }
+        : null,
       candidates: listExternalEditorialCandidates(packageRoot).map((c) => ({
         importId: c.importId,
         importedAt: c.importedAt,
@@ -50,6 +63,8 @@ export async function GET(_request: Request, context: RouteContext) {
         canonicalVersion: c.canonicalVersion,
         warnings: c.warnings,
         channelReadiness: c.channelReadiness,
+        stale: canonical ? !candidateMatchesCanonical(c, canonical) : true,
+        research: readExternalResearchSummary(c.result, canonical),
       })),
     });
   } catch (error) {

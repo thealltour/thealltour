@@ -15,6 +15,7 @@ import {
   rejectCanonicalAsset,
   type CanonicalAssetEditFields,
 } from "@/lib/marketing/canonicalAsset/humanAssetApproval";
+import { buildCanonicalDraftFromResearch } from "@/lib/marketing/canonicalAsset/applyExternalResearchConflicts";
 import {
   attachCanonicalAssetToCandidate,
   persistCanonicalAssetToPackage,
@@ -37,6 +38,8 @@ import {
   listStaleChannels,
   markPublishableBundleStaleForAsset,
 } from "@/lib/marketing/publishable/approvedAsset";
+import { readExternalEditorialCandidate } from "@/lib/marketing/publishable/channelSources/externalCandidateStore";
+import { writeImmutablePackageJson } from "@/lib/marketing/publishable/channelSources/packageIo";
 import { buildChannelWorkspaceAfterCanonicalApprove } from "@/lib/marketing/publishable/channelWorkspace";
 import { ensurePublishableContent } from "@/lib/marketing/publishable/ensurePublishableContent";
 import { persistPublishableContentBundle } from "@/lib/marketing/publishable/persist";
@@ -157,11 +160,32 @@ export async function saveCanonicalAssetHumanEdit(input: {
     edits: input.edits,
     now: input.now,
   });
+  return persistEditedCanonicalAsset({
+    candidate: input.candidate,
+    runRepo: input.runRepo,
+    assetRoot,
+    packageRoot,
+    edited,
+    requireDomainValidation: Boolean(input.requireDomainValidation),
+    now: input.now,
+  });
+}
+
+async function persistEditedCanonicalAsset(input: {
+  candidate: CompletedMarketingCandidate;
+  runRepo: DailyMarketingRunRepository;
+  assetRoot: string;
+  packageRoot: string;
+  edited: CanonicalMarketingAsset;
+  requireDomainValidation: boolean;
+  now?: Date;
+}): Promise<{ candidate: CompletedMarketingCandidate; asset: CanonicalMarketingAsset }> {
+  const { edited, packageRoot, assetRoot } = input;
   assertAssetPassesDomainValidation({
     candidate: input.candidate,
     asset: edited,
     packageRoot: existsSync(packageRoot) ? packageRoot : null,
-    require: Boolean(input.requireDomainValidation),
+    require: input.requireDomainValidation,
   });
   persistCanonicalAssetToPackage({ packageRoot, asset: edited });
   const priorBundle = tryReadBundle(packageRoot);
@@ -191,6 +215,66 @@ export async function saveCanonicalAssetHumanEdit(input: {
     canonicalMarketingAsset: edited,
   });
   return { candidate: durableCandidate, asset: edited };
+}
+
+export const CANONICAL_HISTORY_DIRECTORY = "context/canonical-history";
+
+export function canonicalHistoryRelativePath(asset: CanonicalMarketingAsset, at: Date): string {
+  const stamp = at.toISOString().replace(/[:.]/g, "-");
+  return `${CANONICAL_HISTORY_DIRECTORY}/v${asset.version}-${stamp}.json`;
+}
+
+/**
+ * Build a v{n+1} human_edited draft from External Editorial research canonicalConflicts
+ * (safety/evidence fields only), snapshotting the approved version first.
+ */
+export async function applyExternalResearchToCanonicalAsset(input: {
+  candidate: CompletedMarketingCandidate;
+  runRepo: DailyMarketingRunRepository;
+  importId: string;
+  conflictIndexes: number[];
+  appliedBy: string | null;
+  now?: Date;
+}): Promise<{
+  candidate: CompletedMarketingCandidate;
+  asset: CanonicalMarketingAsset;
+  snapshotRef: string;
+}> {
+  const now = input.now ?? new Date();
+  const assetRoot = resolveMarketingAssetRoot({});
+  const packageRoot = resolvePackageDirectory({
+    assetRoot,
+    businessDateKst: input.candidate.businessDateKst,
+    candidateId: input.candidate.candidateId,
+  });
+  if (!existsSync(packageRoot)) throw new Error("package_missing");
+  const existing = resolveCanonicalMarketingAsset({ candidate: input.candidate, packageRoot });
+  if (!existing) throw new Error("canonical_asset_missing");
+  const external = readExternalEditorialCandidate(packageRoot, input.importId);
+  if (!external) throw new Error("external_candidate_missing");
+
+  const draft = buildCanonicalDraftFromResearch({
+    asset: existing,
+    candidate: external,
+    candidateId: input.candidate.candidateId,
+    conflictIndexes: input.conflictIndexes,
+    now,
+    appliedBy: input.appliedBy,
+  });
+
+  const snapshotRef = canonicalHistoryRelativePath(existing, now);
+  writeImmutablePackageJson(packageRoot, snapshotRef, existing, now.toISOString());
+
+  const saved = await persistEditedCanonicalAsset({
+    candidate: input.candidate,
+    runRepo: input.runRepo,
+    assetRoot,
+    packageRoot,
+    edited: draft,
+    requireDomainValidation: false,
+    now,
+  });
+  return { ...saved, snapshotRef };
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   CANONICAL_ASSET_STATUSES,
   CANONICAL_MARKETING_ASSET_CONTRACT,
   type CanonicalAssetEvidenceRef,
+  type CanonicalAssetResearchRevision,
   type CanonicalAssetStatus,
   type CanonicalMarketingAsset,
 } from "@/lib/marketing/canonicalAsset/contracts";
@@ -141,5 +142,34 @@ export function parseDurableCanonicalMarketingAsset(
     downstreamChannelSourceVersions: Array.isArray(row.downstreamChannelSourceVersions)
       ? row.downstreamChannelSourceVersions.filter((n): n is number => typeof n === "number")
       : undefined,
+    researchRevision: parseResearchRevision(row.researchRevision),
+  };
+}
+
+function parseResearchRevision(value: unknown): CanonicalAssetResearchRevision | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const importId = asString(row.importId);
+  const appliedAt = asString(row.appliedAt);
+  if (!importId || !appliedAt || typeof row.fromVersion !== "number") return null;
+  const numbers = (v: unknown) =>
+    Array.isArray(v) ? v.filter((n): n is number => typeof n === "number") : [];
+  return {
+    importId,
+    fromVersion: Math.floor(row.fromVersion),
+    appliedConflictIndexes: numbers(row.appliedConflictIndexes),
+    removedForbiddenClaims: asStringArray(row.removedForbiddenClaims, 24),
+    removedItems: Array.isArray(row.removedItems)
+      ? row.removedItems
+          .map((item) => {
+            const r = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+            return { field: asString(r.field), text: asString(r.text) };
+          })
+          .filter((item) => item.field && item.text)
+          .slice(0, 24)
+      : [],
+    addedEvidenceIds: asStringArray(row.addedEvidenceIds, 24),
+    appliedAt,
+    appliedBy: asString(row.appliedBy) || null,
   };
 }

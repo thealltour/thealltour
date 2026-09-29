@@ -99,11 +99,17 @@ export function materializeNaverBandCopy(input: {
   modelProfile?: string;
   generatedAt?: string;
   llm: unknown;
+  /** When set, copy-policy violations (length, CTA, generalization, reprint) are reported here instead of thrown. */
+  onPolicyViolation?: (code: string, message: string) => void;
 }): NaverBandCopyArtifact {
   const root = asRecord(input.llm);
   if (!root) {
     throw new NaverBandCopyMaterializeError("invalid_llm", "Band copy LLM output must be an object");
   }
+  const policy = (code: string, message: string) => {
+    if (input.onPolicyViolation) input.onPolicyViolation(code, message);
+    else throw new NaverBandCopyMaterializeError(code, message);
+  };
 
   const bodyRaw = requireNonEmptyString(root.body, "body");
   const body = stripEvidenceIdsFromText(bodyRaw);
@@ -111,28 +117,16 @@ export function materializeNaverBandCopy(input: {
     throw new NaverBandCopyMaterializeError("empty_body", "Band body empty after sanitize");
   }
   if (body.length > NAVER_BAND_COPY_SPECIALIST_MAX_CHARS) {
-    throw new NaverBandCopyMaterializeError(
-      "too_long",
-      `Band body ${body.length} exceeds specialist max ${NAVER_BAND_COPY_SPECIALIST_MAX_CHARS}`,
-    );
+    policy("too_long", `Band body ${body.length} exceeds specialist max ${NAVER_BAND_COPY_SPECIALIST_MAX_CHARS}`);
   }
   if (hasForcedNaverBandCta(body)) {
-    throw new NaverBandCopyMaterializeError(
-      "forced_cta",
-      "Band body contains forced engagement/CTA phrasing",
-    );
+    policy("forced_cta", "Band body contains forced engagement/CTA phrasing");
   }
   if (hasNaverBandUnsafeGeneralization(body)) {
-    throw new NaverBandCopyMaterializeError(
-      "unsafe_generalization",
-      "Band body contains unsupported geographic/cultural generalization",
-    );
+    policy("unsafe_generalization", "Band body contains unsupported geographic/cultural generalization");
   }
   if (looksLikeCanonicalReprint({ body, canonicalBodyKo: input.canonicalBodyKo })) {
-    throw new NaverBandCopyMaterializeError(
-      "canonical_reprint",
-      "Band body looks like a Canonical reprint — compress to 2–3 key points",
-    );
+    policy("canonical_reprint", "Band body looks like a Canonical reprint — compress to 2–3 key points");
   }
 
   const titleRaw = root.title;
@@ -141,13 +135,10 @@ export function materializeNaverBandCopy(input: {
       ? null
       : stripEvidenceIdsFromText(String(titleRaw));
   if (title && hasNaverBandUnsafeGeneralization(title)) {
-    throw new NaverBandCopyMaterializeError(
-      "unsafe_generalization",
-      "Band title contains unsupported generalization",
-    );
+    policy("unsafe_generalization", "Band title contains unsupported generalization");
   }
   if (title && hasForcedNaverBandCta(title)) {
-    throw new NaverBandCopyMaterializeError("forced_cta", "Band title contains forced CTA");
+    policy("forced_cta", "Band title contains forced CTA");
   }
 
   const validBeatIds = new Set(input.narrative.beats.map((b) => b.beatId));
@@ -200,10 +191,7 @@ export function materializeNaverBandCopy(input: {
       ? null
       : stripEvidenceIdsFromText(String(engagementRaw));
   if (engagementIntent && hasForcedNaverBandCta(engagementIntent)) {
-    throw new NaverBandCopyMaterializeError(
-      "forced_cta",
-      "engagementIntent contains forced CTA phrasing",
-    );
+    policy("forced_cta", "engagementIntent contains forced CTA phrasing");
   }
 
   const evidenceRefs = Array.isArray(root.evidenceRefs)

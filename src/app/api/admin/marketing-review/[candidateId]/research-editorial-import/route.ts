@@ -7,8 +7,10 @@ import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/p
 import { resolveCandidatePackageRoot } from "@/lib/marketing/editorialDirector/researchHandoff/loadResearchHandoffSource";
 import {
   ExternalEditorialCandidateExistsError,
+  applyExternalCandidateToAllChannels,
   importExternalEditorialResult,
 } from "@/lib/marketing/publishable/channelSources";
+import { channelLabel } from "@/lib/marketing/review/channelReviews";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +21,8 @@ const bodySchema = z.object({
 type RouteContext = { params: Promise<{ candidateId: string }> };
 
 /**
- * Import editorial-research-bundle-chatgpt-result-v1 as an immutable External Editorial candidate.
- * Does not touch publishable-content.json, sidecars, the shared narrative, or the review DB.
+ * Import editorial-research-bundle-chatgpt-result-v1 as an immutable External Editorial candidate,
+ * then apply every channel it carries (human drafts overwritten) so channel review shows it at once.
  */
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminPermission("settings.manage");
@@ -66,24 +68,51 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { candidate } = result;
-    const selectable = Object.entries(candidate.channelReadiness)
-      .filter(([, r]) => r.materializable)
-      .map(([channel]) => channel);
     const research = readExternalResearchSummary(candidate.result, approvedCanonical);
-    const researchBlocked = research?.status === "blocked";
+
+    const review =
+      detail.review ?? (await service.getOrCreateHumanReview(candidateId, auth.session.username ?? "admin"));
+    const applyResult = applyExternalCandidateToAllChannels({
+      packageRoot,
+      candidateId,
+      approvedCanonical,
+      importId: candidate.importId,
+      selectedBy: auth.session.username ?? null,
+      review,
+    });
+    let updatedReview = applyResult.review;
+    if (applyResult.reviewChanged) {
+      const { createHumanMarketingReviewRepository } = await import(
+        "@/lib/marketing/review/repository/createHumanMarketingReviewRepository"
+      );
+      const repo = await createHumanMarketingReviewRepository();
+      updatedReview = await repo.update(applyResult.review);
+    }
+
+    const appliedLabel = applyResult.applied.map((c) => channelLabel(c)).join(", ");
+    const failedLabel = applyResult.failed
+      .map((f) => `${channelLabel(f.channel)}(${[f.messageKo, ...f.details].join(" ")})`)
+      .join(", ");
+    const message =
+      applyResult.applied.length > 0
+        ? `외부 편집 결과를 가져와 ${appliedLabel} 채널에 바로 적용했습니다. 채널별 검토에서 확인하세요.${
+            failedLabel ? ` 적용 실패: ${failedLabel}` : ""
+          }`
+        : applyResult.failed.length > 0
+          ? `외부 편집 결과를 저장했지만 채널 적용에 실패했습니다: ${failedLabel}`
+          : "외부 편집 결과를 저장했지만 ChatGPT가 보낸 채널 결과가 없습니다. ChatGPT에서 채널 결과를 모두 작성하도록 다시 실행하세요.";
+
     return Response.json({
       importId: candidate.importId,
       candidateRef: result.candidateRef,
       importedAt: candidate.importedAt,
-      warnings: candidate.warnings,
+      warnings: [...candidate.warnings, ...applyResult.warnings],
       channelReadiness: candidate.channelReadiness,
       researchStatus: research?.status ?? null,
-      message:
-        selectable.length > 0
-          ? `외부 편집 결과를 저장했습니다. 선택 가능한 채널: ${selectable.join(", ")}`
-          : researchBlocked
-            ? "ChatGPT가 승인본 범위 충돌로 연구를 보류해 채널 결과가 없습니다. 아래 연구 결과에서 충돌을 검토하세요."
-            : "외부 편집 결과를 저장했지만 선택 가능한 채널이 없습니다.",
+      appliedChannels: applyResult.applied,
+      failedChannels: applyResult.failed,
+      review: updatedReview,
+      message,
     });
   } catch (error) {
     if (error instanceof ExternalEditorialCandidateExistsError) {

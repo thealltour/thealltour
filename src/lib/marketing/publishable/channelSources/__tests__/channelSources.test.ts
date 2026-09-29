@@ -46,6 +46,7 @@ import {
 } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT } from "@/lib/marketing/editorialDirector/researchHandoff/contracts";
 import {
+  applyExternalCandidateToAllChannels,
   CHANNEL_SOURCE_SELECTION_RELATIVE_PATH,
   EXTERNAL_EDITORIAL_MODEL_PROFILE,
   ExternalEditorialCandidateExistsError,
@@ -548,15 +549,19 @@ describe("External Editorial import — strict parser", () => {
     });
   });
 
+  it("rejects a result that belongs to another candidate", () => {
+    const out = doImport({ ...externalResult(), candidateId: "cand_other" });
+    expect(out).toMatchObject({ ok: false, code: "stale_identity" });
+    if (!out.ok) expect(out.details).toContain("candidateId");
+  });
+
   it.each([
     ["assetId", { assetId: "cma_other" }],
     ["canonicalVersion", { canonicalVersion: 2 }],
     ["sourceRevision", { sourceRevision: "rev_old" }],
-    ["candidateId", { candidateId: "cand_other" }],
-  ])("rejects stale %s", (field, patch) => {
-    const out = doImport({ ...externalResult(), ...patch });
-    expect(out).toMatchObject({ ok: false, code: "stale_identity" });
-    if (!out.ok) expect(out.details).toContain(field);
+  ])("imports a result built on another approved %s with a warning", (field, patch) => {
+    const c = importOk({ ...externalResult(), ...patch });
+    expect(c.warnings.some((w) => w.includes("다른 승인본 기준") && w.includes(field))).toBe(true);
   });
 
   it("rejects when the Canonical is not approved at the current version", () => {
@@ -584,23 +589,24 @@ describe("External Editorial import — strict parser", () => {
     expect(doImport(result)).toMatchObject({ ok: false, code: "duplicate_finding_id", details: ["F1"] });
   });
 
-  it("rejects unknown finding / evidence references", () => {
+  it("imports unknown finding / evidence references with a warning", () => {
     const result = externalResult();
     (result.threads as Record<string, unknown>).evidenceRefs = ["F9"];
-    const out = doImport(result);
-    expect(out).toMatchObject({ ok: false, code: "unknown_reference" });
-    if (!out.ok) expect(out.details[0]).toContain("threads.evidenceRefs: F9");
+    const c = importOk(result);
+    expect(c.warnings.some((w) => w.includes("알 수 없는") && w.includes("threads.evidenceRefs: F9"))).toBe(true);
+    expect(c.channelReadiness.threads.materializable).toBe(true);
   });
 
   it.each([
     ["weak + unusable", { supportLevel: "weak", usableForEditorial: false }],
     ["conflicting", { supportLevel: "conflicting", usableForEditorial: true }],
     ["verified but unusable", { supportLevel: "verified", usableForEditorial: false }],
-  ])("rejects surface use of a %s finding", (_label, patch) => {
+  ])("imports surface use of a %s finding with a warning", (_label, patch) => {
     const result = externalResult();
     const research = result.research as { findings: Array<Record<string, unknown>> };
     Object.assign(research.findings[0]!, patch);
-    expect(doImport(result)).toMatchObject({ ok: false, code: "unusable_finding_reference" });
+    const c = importOk(result);
+    expect(c.warnings.some((w) => w.includes("usableForEditorial=false"))).toBe(true);
   });
 
   it("allows qualified findings with a warning", () => {
@@ -608,10 +614,15 @@ describe("External Editorial import — strict parser", () => {
     expect(c.warnings.some((w) => w.includes("threads.evidenceRefs: F2") && w.includes("qualified"))).toBe(true);
   });
 
-  it("rejects artifacts when research.status is blocked", () => {
+  it("imports channel artifacts even when research.status is blocked", () => {
     const result = externalResult();
     (result.research as Record<string, unknown>).status = "blocked";
-    expect(doImport(result)).toMatchObject({ ok: false, code: "blocked_with_artifacts" });
+    const c = importOk(result);
+    expect(c.result.research).toMatchObject({ status: "blocked" });
+    expect(c.warnings.some((w) => w.includes("blocked이지만 채널 결과를 그대로"))).toBe(true);
+    for (const channel of ["threads", "instagram", "naver_blog", "naver_band", "kakao_channel", "shortform"] as const) {
+      expect(c.channelReadiness[channel], channel).toMatchObject({ present: true, materializable: true });
+    }
   });
 
   it("rejects findingIds that collide with Canonical evidence IDs", () => {
@@ -621,7 +632,7 @@ describe("External Editorial import — strict parser", () => {
     expect(doImport(result)).toMatchObject({ ok: false, code: "ambiguous_reference" });
   });
 
-  it("marks channels non-selectable instead of truncating (lossless)", () => {
+  it("clamps over-limit counts to the Hermes caps with warnings instead of blocking", () => {
     const result = externalResult();
     (result.naverBand as Record<string, unknown>).keyPoints = ["a", "b", "c", "d", "e"];
     ((result.instagram as Record<string, Record<string, unknown>>).caption).hashtags = Array.from(
@@ -642,12 +653,21 @@ describe("External Editorial import — strict parser", () => {
       "t6",
     ];
     const c = importOk(result);
-    expect(c.channelReadiness.naver_band.issues[0]).toContain("key_points_exceed_max");
-    expect(c.channelReadiness.instagram.issues[0]).toContain("hashtags_exceed_max");
-    expect(c.channelReadiness.shortform.issues[0]).toContain("segments_exceed_max");
-    expect(c.channelReadiness.naver_blog.issues[0]).toContain("title_candidates_exceed_max");
-    expect(c.channelReadiness.threads.materializable).toBe(true);
-    expect(c.channelReadiness.kakao_channel.materializable).toBe(true);
+    for (const channel of ["naver_band", "instagram", "shortform", "naver_blog", "threads", "kakao_channel"] as const) {
+      expect(c.channelReadiness[channel], channel).toMatchObject({ present: true, materializable: true });
+    }
+    for (const prefix of [
+      "naverBand.keyPoints 5개",
+      "instagram.caption.hashtags 13개",
+      "shortform.segments 9개",
+      "naverBlog.structure.titleCandidates 6개",
+    ]) {
+      expect(c.warnings.some((w) => w.startsWith(prefix)), prefix).toBe(true);
+    }
+    expect(c.result.naverBand).toMatchObject({ keyPoints: ["a", "b", "c", "d", "e"] });
+
+    expectOk(select("shortform", "external_editorial", { importId: c.importId }));
+    expect(readBundle().shortform.narrationSegments).toHaveLength(8);
   });
 
   it("keeps channels selectable exactly at the Hermes limits", () => {
@@ -675,22 +695,32 @@ describe("External Editorial import — strict parser", () => {
     }
   });
 
-  it("a channel-local validation failure marks only that channel non-selectable", () => {
+  it("content-policy and publishable validation failures are warnings, and the channel still applies", () => {
     const result = externalResult();
     const overLimit = "방콕 숙소는 등급보다 역까지의 거리를 먼저 봅니다. ".repeat(20);
     (result.threads as Record<string, unknown>).body = overLimit;
     (result.kakao as Record<string, unknown>).body = "짧은 안내";
     const c = importOk(result);
-    expect(c.channelReadiness.threads).toMatchObject({ present: true, materializable: false });
+    expect(c.channelReadiness.threads).toMatchObject({ present: true, materializable: true });
+    expect(c.channelReadiness.kakao_channel).toMatchObject({ present: true, materializable: true });
+    expect(c.warnings.some((w) => w.startsWith("threads 정책 경고:"))).toBe(true);
+    expect(c.warnings.some((w) => w.startsWith("kakao 검증 경고:"))).toBe(true);
+
+    const out = expectOk(select("threads", "external_editorial", { importId: c.importId }));
+    expect(out.warnings.some((w) => w.startsWith("threads 정책 경고:"))).toBe(true);
+    expect(readBundle().threads.body).toContain("방콕 숙소는 등급보다 역까지의 거리를 먼저 봅니다.");
+    expect(readBundle().threads.body).not.toBe("Hermes threads 본문");
+  });
+
+  it("still rejects a channel whose shape cannot be materialized", () => {
+    const result = externalResult();
+    (result.kakao as Record<string, unknown>).body = "";
+    const c = importOk(result);
     expect(c.channelReadiness.kakao_channel).toMatchObject({ present: true, materializable: false });
-    expect(c.channelReadiness.instagram.materializable).toBe(true);
-    expect(c.channelReadiness.naver_band.materializable).toBe(true);
-    expect(c.result.threads).toMatchObject({ body: overLimit });
-    expect(select("threads", "external_editorial", { importId: c.importId })).toMatchObject({
+    expect(select("kakao_channel", "external_editorial", { importId: c.importId })).toMatchObject({
       ok: false,
       code: "channel_not_materializable",
     });
-    expect(readBundle().threads.body).toBe("Hermes threads 본문");
   });
 
   it("rejects the whole import when a research finding is malformed", () => {
@@ -795,6 +825,61 @@ describe("Channel source selection", () => {
     expect(entry.status).toBe("needs_review");
     expect(entry.notes).toBe("메모");
     expect(ok.review.updatedAt).toBe(SWITCH_AT.toISOString());
+  });
+
+  function applyAll(importId: string, reviewIn: HumanMarketingReview = review()) {
+    return applyExternalCandidateToAllChannels({
+      packageRoot,
+      candidateId: CANDIDATE_ID,
+      approvedCanonical: asset(),
+      importId,
+      selectedBy: "ysh",
+      review: reviewIn,
+      now: SWITCH_AT,
+    });
+  }
+
+  it("applies every channel the candidate carries and overwrites human drafts", () => {
+    const c = importOk();
+    const withHuman = review();
+    withHuman.channelReviews!.threads!.humanDraft = { title: null, body: "사람이 고친 본문" };
+
+    const out = applyAll(c.importId, withHuman);
+    expect(out.failed).toEqual([]);
+    expect(out.applied).toEqual(["threads", "instagram", "naver_blog", "naver_band", "kakao_channel", "shortform"]);
+    expect(out.reviewChanged).toBe(true);
+    expect(out.review.channelReviews!.threads!.humanDraft).toBeNull();
+    expect(out.review.channelReviews!.threads!.aiDraft?.body).toBe((externalResult().threads as { body: string }).body);
+
+    const bundle = readBundle();
+    for (const channel of out.applied) {
+      expect(bundle[channel]?.provenance?.generationSource, channel).toBe("external_editorial");
+    }
+    const selection = readChannelSourceSelection(packageRoot)!;
+    for (const channel of out.applied) {
+      expect(selection.channels[channel]?.selectedSource, channel).toBe("external_editorial");
+    }
+  });
+
+  it("skips channels without an artifact and reports per-channel failures without stopping", () => {
+    const result = externalResult();
+    result.naverBlog = null;
+    (result.kakao as Record<string, unknown>).body = "";
+    const c = importOk(result);
+
+    const out = applyAll(c.importId);
+    expect(out.applied).toEqual(["threads", "instagram", "naver_band", "shortform"]);
+    expect(out.failed).toMatchObject([{ channel: "kakao_channel", code: "channel_not_materializable" }]);
+    expect(readBundle().naver_blog).toBeUndefined();
+    expect(readBundle().threads.provenance?.generationSource).toBe("external_editorial");
+  });
+
+  it("reports every channel as failed when the candidate file is missing", () => {
+    const out = applyAll("xe_0000000000000_deadbeef00");
+    expect(out.applied).toEqual([]);
+    expect(out.reviewChanged).toBe(false);
+    expect(out.failed.every((f) => f.code === "candidate_missing")).toBe(true);
+    expect(readBundle().threads.body).toBe("Hermes threads 본문");
   });
 
   it("treats Instagram card copy edits as a human draft and never carries them to the new source", () => {
@@ -927,9 +1012,9 @@ describe("Channel source selection", () => {
     expect(readBundle().naver_band).toBeUndefined();
   });
 
-  it("fails closed on stale candidates, missing snapshots, and missing channel artifacts", () => {
+  it("applies a candidate built on an older approved version with a warning", () => {
     const c = importOk();
-    const stale = selectChannelSource({
+    const drifted = selectChannelSource({
       packageRoot,
       candidateId: CANDIDATE_ID,
       approvedCanonical: asset({ version: 4, approvedVersion: 4 }),
@@ -941,8 +1026,14 @@ describe("Channel source selection", () => {
       review: review(),
       now: SWITCH_AT,
     });
-    expect(stale).toMatchObject({ ok: false, code: "stale_identity" });
+    expect(drifted.ok).toBe(true);
+    if (drifted.ok) {
+      expect(drifted.warnings.some((w) => w.includes("현재 승인본 v4 기준으로 적용"))).toBe(true);
+    }
+    expect(readBundle().threads.provenance?.generationSource).toBe("external_editorial");
+  });
 
+  it("fails closed on missing snapshots and missing channel artifacts", () => {
     const result = externalResult();
     result.kakao = null;
     const noKakao = importOk(result);

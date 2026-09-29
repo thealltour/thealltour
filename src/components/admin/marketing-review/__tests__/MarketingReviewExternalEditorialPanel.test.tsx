@@ -65,7 +65,7 @@ function candidate(importId: string, stale: boolean) {
 
 type FetchCall = { url: string; init?: RequestInit };
 
-function mockFetch(candidates: unknown[]) {
+function mockFetch(candidates: unknown[], postResponse: unknown = { ok: true, asset: { version: 3 } }) {
   const calls: FetchCall[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init });
@@ -76,7 +76,7 @@ function mockFetch(candidates: unknown[]) {
         canonical: { version: 2, status: "approved", approved: true },
       });
     }
-    return Response.json({ ok: true, asset: { version: 3 } });
+    return Response.json(postResponse);
   });
   vi.stubGlobal("fetch", fetchMock);
   return calls;
@@ -111,7 +111,7 @@ describe("MarketingReviewExternalEditorialPanel research conflicts", () => {
     mockFetch([candidate("xe_1790664679428_09c87ca6b0", false)]);
     renderPanel();
 
-    expect(await screen.findByText(/승인본 범위 충돌로 연구를 보류해/)).toBeTruthy();
+    expect(await screen.findByText(/연구를 보류하고 채널 결과를 보내지 않았습니다/)).toBeTruthy();
     expect(screen.queryByText(/External 선택 불가/)).toBeNull();
     expect(screen.getByRole("link", { name: "MICHELIN Guide" }).getAttribute("href")).toBe(
       "https://guide.michelin.com/x",
@@ -146,6 +146,28 @@ describe("MarketingReviewExternalEditorialPanel research conflicts", () => {
       conflictIndexes: [0, 1],
     });
     expect(await screen.findByText(/수정본 승인 → Research Editorial용 JSON 다시 복사 → ChatGPT 재실행/)).toBeTruthy();
+  });
+
+  it("reloads channel review after an import that applied channels and lists the warnings", async () => {
+    const calls = mockFetch([], {
+      importId: "xe_2",
+      message: "외부 편집 결과를 가져와 Threads 채널에 바로 적용했습니다. 채널별 검토에서 확인하세요.",
+      warnings: ["research.status가 blocked이지만 채널 결과를 그대로 가져옵니다."],
+      appliedChannels: ["threads"],
+      failedChannels: [],
+    });
+    const { onReload } = renderPanel();
+
+    fireEvent.change(await screen.findByPlaceholderText(/editorial-research-bundle-chatgpt-result-v1/), {
+      target: { value: '{"contract":"x"}' },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "외부 편집 결과 가져오기" }));
+
+    await waitFor(() => expect(onReload).toHaveBeenCalled());
+    expect(calls.find((c) => c.init?.method === "POST")?.url).toBe(
+      "/api/admin/marketing-review/cmc_1/research-editorial-import",
+    );
+    expect(await screen.findByText(/Threads 채널에 바로 적용했습니다[\s\S]*경고 1건/)).toBeTruthy();
   });
 
   it("labels stale candidates and disables the draft button", async () => {

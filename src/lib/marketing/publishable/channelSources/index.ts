@@ -27,8 +27,10 @@ export {
 } from "@/lib/marketing/publishable/channelSources/externalCandidateStore";
 export { importExternalEditorialResult } from "@/lib/marketing/publishable/channelSources/importExternalEditorial";
 export {
+  applyExternalCandidateToAllChannels,
   listChannelSourceViews,
   selectChannelSource,
+  type ApplyExternalCandidateResult,
   syncReviewChannelAiDraft,
   type SelectChannelSourceInput,
   type SelectChannelSourceResult,

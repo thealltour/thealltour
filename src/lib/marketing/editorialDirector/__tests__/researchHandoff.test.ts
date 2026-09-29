@@ -384,7 +384,13 @@ describe("editorial research handoff — outputContract", () => {
       expect(order.indexOf(key)).toBeGreaterThan(researchIdx);
     }
     expect(outputContract.rulesKo.join("\n")).toMatch(/research.*필수/);
-    expect(outputContract.rulesKo.join("\n")).toMatch(/blocked/);
+  });
+
+  it("always asks for every channel and does not let the Canonical gate channel writing", () => {
+    const rules = buildOk().outputContract.rulesKo.join("\n");
+    expect(rules).toMatch(/research\.status와 관계없이/);
+    expect(rules).not.toMatch(/null로 둡니다/);
+    expect(rules).not.toMatch(/forbiddenClaimsKo에 해당하는 주장은/);
   });
 
   it("defines research schema with status, questions, findings, sources, unresolved, conflicts", () => {

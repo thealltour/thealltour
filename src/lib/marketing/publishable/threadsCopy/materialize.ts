@@ -60,11 +60,17 @@ export function materializeThreadsCopy(input: {
   modelProfile?: string;
   generatedAt?: string;
   llm: unknown;
+  /** When set, copy-policy violations (length, CTA) are reported here instead of thrown. */
+  onPolicyViolation?: (code: string, message: string) => void;
 }): ThreadsCopyArtifact {
   const root = asRecord(input.llm);
   if (!root) {
     throw new ThreadsCopyMaterializeError("invalid_llm", "Threads copy LLM output must be an object");
   }
+  const policy = (code: string, message: string) => {
+    if (input.onPolicyViolation) input.onPolicyViolation(code, message);
+    else throw new ThreadsCopyMaterializeError(code, message);
+  };
 
   const bodyRaw = requireNonEmptyString(root.body, "body");
   const body = stripEvidenceIdsFromText(bodyRaw);
@@ -72,16 +78,10 @@ export function materializeThreadsCopy(input: {
     throw new ThreadsCopyMaterializeError("empty_body", "Threads body empty after sanitize");
   }
   if (body.length > THREADS_BODY_MAX_CHARS) {
-    throw new ThreadsCopyMaterializeError(
-      "too_long",
-      `Threads body ${body.length} exceeds ${THREADS_BODY_MAX_CHARS}`,
-    );
+    policy("too_long", `Threads body ${body.length} exceeds ${THREADS_BODY_MAX_CHARS}`);
   }
   if (hasForcedThreadsCta(body)) {
-    throw new ThreadsCopyMaterializeError(
-      "forced_cta",
-      "Threads body contains forced engagement/CTA phrasing",
-    );
+    policy("forced_cta", "Threads body contains forced engagement/CTA phrasing");
   }
 
   const validBeatIds = new Set(input.narrative.beats.map((b) => b.beatId));

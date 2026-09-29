@@ -200,15 +200,14 @@ export function selectChannelSource(input: SelectChannelSourceInput): SelectChan
     const importId = input.importId ?? "";
     const candidate = importId ? readExternalEditorialCandidate(input.packageRoot, importId) : null;
     if (!candidate) return fail(404, "candidate_missing", CHANNEL_SOURCE_MESSAGES_KO.candidateMissing);
-    const identityMismatch = [
-      candidate.candidateId !== input.candidateId ? "candidateId" : null,
+    if (candidate.candidateId !== input.candidateId) {
+      return fail(409, "stale_identity", CHANNEL_SOURCE_MESSAGES_KO.staleIdentity, ["candidateId"]);
+    }
+    const versionDrift = [
       candidate.assetId !== asset.assetId ? "assetId" : null,
       candidate.canonicalVersion !== asset.version ? "canonicalVersion" : null,
       candidate.sourceRevision !== asset.sourceRevision ? "sourceRevision" : null,
     ].filter((v): v is string => v !== null);
-    if (identityMismatch.length > 0) {
-      return fail(409, "stale_identity", CHANNEL_SOURCE_MESSAGES_KO.staleIdentity, identityMismatch);
-    }
     if (externalChannelArtifact(candidate.result, input.channel) === null) {
       return fail(422, "artifact_missing", CHANNEL_SOURCE_MESSAGES_KO.channelNotMaterializable, [
         `${input.channel} 결과 없음`,
@@ -294,7 +293,14 @@ export function selectChannelSource(input: SelectChannelSourceInput): SelectChan
         record: selection.channels[input.channel],
         slot: materialized.slot,
       }),
-      warnings: materialized.warnings,
+      warnings: [
+        ...(versionDrift.length > 0
+          ? [
+              `candidate는 승인본 v${candidate.canonicalVersion} 기준이지만 현재 승인본 v${asset.version} 기준으로 적용했습니다 (${versionDrift.join(", ")}).`,
+            ]
+          : []),
+        ...materialized.warnings,
+      ],
     };
   }
 
@@ -391,6 +397,82 @@ export function selectChannelSource(input: SelectChannelSourceInput): SelectChan
     }),
     warnings: [],
   };
+}
+
+const AUTO_APPLY_CHANNEL_ORDER: PublishableChannel[] = [
+  "threads",
+  "instagram",
+  "naver_blog",
+  "naver_band",
+  "kakao_channel",
+  "shortform",
+];
+
+export type ApplyExternalCandidateResult = {
+  review: HumanMarketingReview;
+  reviewChanged: boolean;
+  applied: PublishableChannel[];
+  failed: Array<{ channel: PublishableChannel; code: SelectChannelSourceErrorCode; messageKo: string; details: string[] }>;
+  warnings: string[];
+};
+
+/**
+ * Apply every channel an External candidate carries (human drafts are overwritten).
+ * Channels without an artifact keep their current source; per-channel failures are reported, not thrown.
+ */
+export function applyExternalCandidateToAllChannels(input: {
+  packageRoot: string;
+  candidateId: string;
+  approvedCanonical: CanonicalMarketingAsset | null;
+  importId: string;
+  selectedBy: string | null;
+  review: HumanMarketingReview;
+  now?: Date;
+}): ApplyExternalCandidateResult {
+  const candidate = readExternalEditorialCandidate(input.packageRoot, input.importId);
+  let review = input.review;
+  let reviewChanged = false;
+  const applied: PublishableChannel[] = [];
+  const failed: ApplyExternalCandidateResult["failed"] = [];
+  const warnings: string[] = [];
+  if (!candidate) {
+    return {
+      review,
+      reviewChanged,
+      applied,
+      failed: AUTO_APPLY_CHANNEL_ORDER.map((channel) => ({
+        channel,
+        code: "candidate_missing" as const,
+        messageKo: CHANNEL_SOURCE_MESSAGES_KO.candidateMissing,
+        details: [],
+      })),
+      warnings,
+    };
+  }
+  for (const channel of AUTO_APPLY_CHANNEL_ORDER) {
+    if (externalChannelArtifact(candidate.result, channel) === null) continue;
+    const result = selectChannelSource({
+      packageRoot: input.packageRoot,
+      candidateId: input.candidateId,
+      approvedCanonical: input.approvedCanonical,
+      channel,
+      source: "external_editorial",
+      importId: input.importId,
+      selectedBy: input.selectedBy,
+      allowOverwriteHuman: true,
+      review,
+      now: input.now,
+    });
+    if (!result.ok) {
+      failed.push({ channel, code: result.code, messageKo: result.messageKo, details: result.details });
+      continue;
+    }
+    applied.push(channel);
+    review = result.review;
+    reviewChanged = reviewChanged || result.reviewChanged;
+    warnings.push(...result.warnings.map((w) => `${channel}: ${w}`));
+  }
+  return { review, reviewChanged, applied, failed, warnings };
 }
 
 export function listChannelSourceViews(

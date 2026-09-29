@@ -1,7 +1,9 @@
 /**
  * Deterministic External Editorial → sidecar + publishable slot materializers.
  * Reuses the Hermes specialist materializers/validators; never invokes an LLM.
- * Anything the existing materializers would silently truncate is rejected instead (lossless).
+ * External results are accepted unconditionally: copy-policy / publishable-validation failures and
+ * count caps become warnings (validation stays on the slot for the channel review). Only a shape
+ * the sidecars cannot represent (missing fields, unknown beats, card mismatches) is rejected.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
@@ -132,13 +134,18 @@ function guard<T>(label: string, fn: () => T): T {
   }
 }
 
-function requireValid(label: string, validation: PublishableValidationResult): void {
+function noteValidation(label: string, validation: PublishableValidationResult, warnings: string[]): void {
   if (!validation.ok) {
-    throw new ExternalChannelMaterializeError(
-      "publishable_validation",
-      `${label}: ${validation.issues.map((i) => `${i.code}(${i.message})`).join(", ")}`,
+    warnings.push(
+      `${label} 검증 경고: ${validation.issues.map((i) => `${i.code}(${i.message})`).join(", ")}`,
     );
   }
+}
+
+function policyCollector(label: string, warnings: string[]) {
+  return (code: string, message: string) => {
+    warnings.push(`${label} 정책 경고: ${code}(${message})`);
+  };
 }
 
 function requireNarrative(ctx: ExternalMaterializeContext): EditorialNarrativePlan {
@@ -207,6 +214,7 @@ function buildSlot(
 }
 
 function materializeThreads(ctx: ExternalMaterializeContext, raw: unknown): ExternalChannelMaterialization {
+  const warnings: string[] = [];
   const narrative = requireNarrative(ctx);
   const copy = guard("threads", () =>
     materializeThreadsCopy({
@@ -217,10 +225,11 @@ function materializeThreads(ctx: ExternalMaterializeContext, raw: unknown): Exte
       modelProfile: EXTERNAL_EDITORIAL_MODEL_PROFILE,
       generatedAt: ctx.nowIso,
       llm: raw,
+      onPolicyViolation: policyCollector("threads", warnings),
     }),
   );
   const validation = validatePublishableText(copy.body, { channel: "threads" });
-  requireValid("threads", validation);
+  noteValidation("threads", validation, warnings);
   const slot = buildSlot(ctx, "threads", {
     title: null,
     body: copy.body,
@@ -228,7 +237,7 @@ function materializeThreads(ctx: ExternalMaterializeContext, raw: unknown): Exte
     evidenceRefs: copy.evidenceRefs,
   });
   slot.mediaPlan = null;
-  return { slot, sidecars: { [THREADS_COPY_RELATIVE_PATH]: copy }, warnings: [] };
+  return { slot, sidecars: { [THREADS_COPY_RELATIVE_PATH]: copy }, warnings };
 }
 
 function materializeInstagram(ctx: ExternalMaterializeContext, raw: unknown): ExternalChannelMaterialization {
@@ -239,16 +248,17 @@ function materializeInstagram(ctx: ExternalMaterializeContext, raw: unknown): Ex
       throw new ExternalChannelMaterializeError("missing_artifact", `instagram.${key}가 없습니다.`);
     }
   }
+  const warnings: string[] = [];
   const narrative = requireNarrative(ctx);
   const constraints = DEFAULT_INSTAGRAM_CHANNEL_CONSTRAINTS;
 
-  const captionRaw = asRecord(root.caption)!;
+  let captionRaw = asRecord(root.caption)!;
   const declared = Array.isArray(captionRaw.hashtags) ? captionRaw.hashtags : [];
   if (declared.length > constraints.hashtagMax) {
-    throw new ExternalChannelMaterializeError(
-      "hashtags_exceed_max",
-      `instagram.caption.hashtags ${declared.length}개 — 최대 ${constraints.hashtagMax}개`,
+    warnings.push(
+      `instagram.caption.hashtags ${declared.length}개 — 최대 ${constraints.hashtagMax}개까지만 적용했습니다.`,
     );
+    captionRaw = { ...captionRaw, hashtags: declared.slice(0, constraints.hashtagMax) };
   }
 
   const carousel = guard("instagram.carouselPlan", () =>
@@ -283,7 +293,7 @@ function materializeInstagram(ctx: ExternalMaterializeContext, raw: unknown): Ex
       modelProfile: EXTERNAL_EDITORIAL_MODEL_PROFILE,
       generatedAt: ctx.nowIso,
       hashtagMax: constraints.hashtagMax,
-      llm: root.caption,
+      llm: captionRaw,
     }),
   );
 
@@ -295,14 +305,11 @@ function materializeInstagram(ctx: ExternalMaterializeContext, raw: unknown): Ex
     [...extractInstagramHashtags(captionText), ...caption.hashtags].map((t) => t.toLowerCase()),
   );
   if (uniqueTags.size > INSTAGRAM_HASHTAG_MAX) {
-    throw new ExternalChannelMaterializeError(
-      "hashtags_exceed_max",
-      `본문+hashtags 고유 해시태그 ${uniqueTags.size}개 — 최대 ${INSTAGRAM_HASHTAG_MAX}개`,
-    );
+    warnings.push(`본문+hashtags 고유 해시태그 ${uniqueTags.size}개 — 최대 ${INSTAGRAM_HASHTAG_MAX}개를 넘습니다.`);
   }
   const merged = mergeInstagramHashtagsIntoBody(captionText, caption.hashtags);
   const validation = validatePublishableText(merged.body, { channel: "instagram" });
-  requireValid("instagram", validation);
+  noteValidation("instagram", validation, warnings);
 
   const slot = buildSlot(ctx, "instagram", {
     title: null,
@@ -318,7 +325,7 @@ function materializeInstagram(ctx: ExternalMaterializeContext, raw: unknown): Ex
       [INSTAGRAM_CARD_COPY_RELATIVE_PATH]: cardCopy,
       [INSTAGRAM_CAPTION_RELATIVE_PATH]: caption,
     },
-    warnings: [],
+    warnings,
   };
 }
 
@@ -330,14 +337,13 @@ function materializeNaverBlog(ctx: ExternalMaterializeContext, raw: unknown): Ex
   if (!structureRaw) throw new ExternalChannelMaterializeError("missing_artifact", "naverBlog.structure가 없습니다.");
   if (!copyRaw) throw new ExternalChannelMaterializeError("missing_artifact", "naverBlog.copy가 없습니다.");
 
+  const warnings: string[] = [];
   const titleCandidates = stringList(structureRaw.titleCandidates);
   if (titleCandidates.length > EXTERNAL_NAVER_BLOG_TITLE_CANDIDATES_MAX) {
-    throw new ExternalChannelMaterializeError(
-      "title_candidates_exceed_max",
-      `naverBlog.structure.titleCandidates ${titleCandidates.length}개 — 최대 ${EXTERNAL_NAVER_BLOG_TITLE_CANDIDATES_MAX}개`,
+    warnings.push(
+      `naverBlog.structure.titleCandidates ${titleCandidates.length}개 — 앞의 ${EXTERNAL_NAVER_BLOG_TITLE_CANDIDATES_MAX}개만 적용했습니다.`,
     );
   }
-  const warnings: string[] = [];
   const unsupportedFaq = (Array.isArray(structureRaw.faqPlan) ? structureRaw.faqPlan : []).filter(
     (item) => asRecord(item)?.answerability === "unsupported",
   ).length;
@@ -357,6 +363,7 @@ function materializeNaverBlog(ctx: ExternalMaterializeContext, raw: unknown): Ex
       modelProfile: EXTERNAL_EDITORIAL_MODEL_PROFILE,
       generatedAt: ctx.nowIso,
       llm: structureRaw,
+      onPolicyViolation: policyCollector("naverBlog.structure", warnings),
     }),
   );
   const copy = guard("naverBlog.copy", () =>
@@ -368,6 +375,7 @@ function materializeNaverBlog(ctx: ExternalMaterializeContext, raw: unknown): Ex
       modelProfile: EXTERNAL_EDITORIAL_MODEL_PROFILE,
       generatedAt: ctx.nowIso,
       llm: copyRaw,
+      onPolicyViolation: policyCollector("naverBlog.copy", warnings),
     }),
   );
   const blogMeta = assembleBlogMetaFromEditorial({ structure, copy });
@@ -377,7 +385,7 @@ function materializeNaverBlog(ctx: ExternalMaterializeContext, raw: unknown): Ex
     primaryTopic: blogMeta.primaryTopic,
     allowHeadings: true,
   });
-  requireValid("naverBlog", validation);
+  noteValidation("naverBlog", validation, warnings);
 
   const slot = buildSlot(ctx, "naver_blog", {
     title: copy.title,
@@ -399,11 +407,11 @@ function materializeNaverBlog(ctx: ExternalMaterializeContext, raw: unknown): Ex
 function materializeNaverBand(ctx: ExternalMaterializeContext, raw: unknown): ExternalChannelMaterialization {
   const root = asRecord(raw);
   if (!root) throw new ExternalChannelMaterializeError("invalid_artifact", "naverBand 객체가 아닙니다.");
+  const warnings: string[] = [];
   const keyPoints = stringList(root.keyPoints);
   if (keyPoints.length > EXTERNAL_NAVER_BAND_KEY_POINTS_MAX) {
-    throw new ExternalChannelMaterializeError(
-      "key_points_exceed_max",
-      `naverBand.keyPoints ${keyPoints.length}개 — 최대 ${EXTERNAL_NAVER_BAND_KEY_POINTS_MAX}개`,
+    warnings.push(
+      `naverBand.keyPoints ${keyPoints.length}개 — 앞의 ${EXTERNAL_NAVER_BAND_KEY_POINTS_MAX}개만 적용했습니다.`,
     );
   }
   const narrative = requireNarrative(ctx);
@@ -417,17 +425,18 @@ function materializeNaverBand(ctx: ExternalMaterializeContext, raw: unknown): Ex
       modelProfile: EXTERNAL_EDITORIAL_MODEL_PROFILE,
       generatedAt: ctx.nowIso,
       llm: root,
+      onPolicyViolation: policyCollector("naverBand", warnings),
     }),
   );
   const validation = validatePublishableText(copy.body, { channel: "naver_band" });
-  requireValid("naverBand", validation);
+  noteValidation("naverBand", validation, warnings);
   const slot = buildSlot(ctx, "naver_band", {
     title: copy.title,
     body: copy.body,
     validation,
     evidenceRefs: copy.evidenceRefs,
   });
-  return { slot, sidecars: { [NAVER_BAND_COPY_RELATIVE_PATH]: copy }, warnings: [] };
+  return { slot, sidecars: { [NAVER_BAND_COPY_RELATIVE_PATH]: copy }, warnings };
 }
 
 function materializeKakao(ctx: ExternalMaterializeContext, raw: unknown): ExternalChannelMaterialization {
@@ -442,12 +451,13 @@ function materializeKakao(ctx: ExternalMaterializeContext, raw: unknown): Extern
   const body = stripEvidenceIdsFromText(root.body);
   const title =
     typeof root.title === "string" && root.title.trim() ? stripEvidenceIdsFromText(root.title) : null;
+  const warnings: string[] = [];
   const validation = validatePublishableText(body, { channel: "kakao_channel" });
-  requireValid("kakao", validation);
+  noteValidation("kakao", validation, warnings);
   return {
     slot: buildSlot(ctx, "kakao_channel", { title, body, validation, evidenceRefs: [] }),
     sidecars: {},
-    warnings: [],
+    warnings,
   };
 }
 
@@ -460,13 +470,18 @@ function materializeShortform(ctx: ExternalMaterializeContext, raw: unknown): Ex
   if (!Array.isArray(root.segments) || root.segments.length < 1) {
     throw new ExternalChannelMaterializeError("segments_required", "shortform.segments가 1개 이상 필요합니다.");
   }
+  const warnings: string[] = [];
   if (root.segments.length > EXTERNAL_SHORTFORM_SEGMENTS_MAX) {
-    throw new ExternalChannelMaterializeError(
-      "segments_exceed_max",
-      `shortform.segments ${root.segments.length}개 — 최대 ${EXTERNAL_SHORTFORM_SEGMENTS_MAX}개`,
+    warnings.push(
+      `shortform.segments ${root.segments.length}개 — 앞의 ${EXTERNAL_SHORTFORM_SEGMENTS_MAX}개만 적용했습니다.`,
     );
   }
-  const segments: PublishableNarrationSegment[] = root.segments.map((item, index) => {
+  const clip = (value: string, max: number, at: string) => {
+    if (value.length <= max) return value;
+    warnings.push(`${at}: ${max}자를 넘어 잘랐습니다.`);
+    return value.slice(0, max);
+  };
+  const segments: PublishableNarrationSegment[] = root.segments.slice(0, EXTERNAL_SHORTFORM_SEGMENTS_MAX).map((item, index) => {
     const row = asRecord(item);
     const at = `shortform.segments[${index}]`;
     if (!row) throw new ExternalChannelMaterializeError("invalid_segment", `${at} 객체가 아닙니다.`);
@@ -481,28 +496,22 @@ function materializeShortform(ctx: ExternalMaterializeContext, raw: unknown): Ex
         `${at}: narrationText/purpose/visualIntent가 모두 필요합니다.`,
       );
     }
-    if (
-      narrationText.length > SHORTFORM_NARRATION_MAX_CHARS ||
-      purpose.length > SHORTFORM_PURPOSE_MAX_CHARS ||
-      visualIntent.length > SHORTFORM_VISUAL_INTENT_MAX_CHARS
-    ) {
-      throw new ExternalChannelMaterializeError("segment_too_long", `${at}: 필드 길이 초과`);
-    }
+    const narration = clip(narrationText, SHORTFORM_NARRATION_MAX_CHARS, `${at}.narrationText`);
     return {
       segmentId: `narr-${String(index + 1).padStart(2, "0")}`,
-      narrationText,
-      subtitleText: narrationText,
-      purpose,
-      visualIntent,
+      narrationText: narration,
+      subtitleText: narration,
+      purpose: clip(purpose, SHORTFORM_PURPOSE_MAX_CHARS, `${at}.purpose`),
+      visualIntent: clip(visualIntent, SHORTFORM_VISUAL_INTENT_MAX_CHARS, `${at}.visualIntent`),
       evidenceRefs: [],
     };
   });
   const body = stripEvidenceIdsFromText(root.body);
   const validation = validatePublishableText(body);
-  requireValid("shortform", validation);
+  noteValidation("shortform", validation, warnings);
   const slot = buildSlot(ctx, "shortform", { title: null, body, validation, evidenceRefs: [] });
   slot.narrationSegments = segments;
-  return { slot, sidecars: {}, warnings: [] };
+  return { slot, sidecars: {}, warnings };
 }
 
 export function materializeExternalChannel(

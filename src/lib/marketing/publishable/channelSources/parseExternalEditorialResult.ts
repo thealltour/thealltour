@@ -1,7 +1,8 @@
 /**
- * Strict parser for editorial-research-bundle-chatgpt-result-v1 (ChatGPT/Astra return).
- * Identity must match the currently approved Canonical; research integrity is enforced here.
- * Channel copy rules are enforced later by the deterministic materializers (per channel).
+ * Parser for editorial-research-bundle-chatgpt-result-v1 (ChatGPT/Astra return).
+ * Only structural problems reject the import (JSON shape, wrong candidate, malformed research).
+ * Blocked status, canonical version drift, and evidence-reference problems are warnings: the
+ * operator accepts External results unconditionally and reviews them per channel.
  */
 
 import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/contracts";
@@ -34,10 +35,7 @@ export type ExternalEditorialParseErrorCode =
   | "research_missing"
   | "research_invalid"
   | "duplicate_finding_id"
-  | "ambiguous_reference"
-  | "unknown_reference"
-  | "unusable_finding_reference"
-  | "blocked_with_artifacts";
+  | "ambiguous_reference";
 
 export type ParsedExternalEditorialResult = {
   result: Record<string, unknown>;
@@ -223,13 +221,18 @@ export function parseExternalEditorialResult(input: {
     return fail("canonical_not_approved", CHANNEL_SOURCE_MESSAGES_KO.canonicalNotApproved);
   }
 
-  const mismatches: string[] = [];
-  if (result.candidateId !== input.candidateId) mismatches.push("candidateId");
-  if (result.assetId !== asset.assetId) mismatches.push("assetId");
-  if (result.canonicalVersion !== asset.version) mismatches.push("canonicalVersion");
-  if (result.sourceRevision !== asset.sourceRevision) mismatches.push("sourceRevision");
-  if (mismatches.length > 0) {
-    return fail("stale_identity", CHANNEL_SOURCE_MESSAGES_KO.staleIdentity, mismatches);
+  if (result.candidateId !== input.candidateId) {
+    return fail("stale_identity", CHANNEL_SOURCE_MESSAGES_KO.staleIdentity, ["candidateId"]);
+  }
+  const warnings: string[] = [];
+  const versionMismatches: string[] = [];
+  if (result.assetId !== asset.assetId) versionMismatches.push("assetId");
+  if (result.canonicalVersion !== asset.version) versionMismatches.push("canonicalVersion");
+  if (result.sourceRevision !== asset.sourceRevision) versionMismatches.push("sourceRevision");
+  if (versionMismatches.length > 0) {
+    warnings.push(
+      `현재 승인본(v${asset.version})과 다른 승인본 기준 결과입니다 (${versionMismatches.join(", ")}). 현재 승인본 기준으로 적용합니다.`,
+    );
   }
 
   const allowedKeys = new Set<string>(EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER);
@@ -262,9 +265,11 @@ export function parseExternalEditorialResult(input: {
 
   if (researchStatus === "blocked") {
     const present = CHANNEL_ARTIFACT_KEYS.filter((k) => result[k] !== null && result[k] !== undefined);
-    if (present.length > 0) {
-      return fail("blocked_with_artifacts", CHANNEL_SOURCE_MESSAGES_KO.blockedWithArtifacts, present);
-    }
+    warnings.push(
+      present.length > 0
+        ? "research.status가 blocked이지만 채널 결과를 그대로 가져옵니다."
+        : "research.status가 blocked이고 채널 결과가 없습니다.",
+    );
   }
 
   const conflictProblems: string[] = [];
@@ -279,7 +284,6 @@ export function parseExternalEditorialResult(input: {
 
   const unknown: string[] = [...conflictProblems];
   const unusable: string[] = [];
-  const warnings: string[] = [];
   for (const use of collectRefs(result)) {
     const finding = findingById.get(use.ref);
     if (finding) {
@@ -294,12 +298,8 @@ export function parseExternalEditorialResult(input: {
     }
     if (!canonicalSet.has(use.ref)) unknown.push(`${use.location}: ${use.ref}`);
   }
-  if (unknown.length > 0) {
-    return fail("unknown_reference", CHANNEL_SOURCE_MESSAGES_KO.unknownReference, unknown.slice(0, 20));
-  }
-  if (unusable.length > 0) {
-    return fail("unusable_finding_reference", CHANNEL_SOURCE_MESSAGES_KO.unusableFinding, unusable.slice(0, 20));
-  }
+  for (const item of unknown.slice(0, 20)) warnings.push(`${CHANNEL_SOURCE_MESSAGES_KO.unknownReference} ${item}`);
+  for (const item of unusable.slice(0, 20)) warnings.push(`${CHANNEL_SOURCE_MESSAGES_KO.unusableFinding} ${item}`);
 
   return {
     ok: true,

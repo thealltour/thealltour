@@ -66,24 +66,24 @@ export function materializeNaverBlogStructurePlan(input: {
   modelProfile?: string;
   generatedAt?: string;
   llm: unknown;
+  /** When set, copy-policy violations are reported here instead of thrown. */
+  onPolicyViolation?: (code: string, message: string) => void;
 }): NaverBlogStructurePlan {
   const root = asRecord(input.llm);
   if (!root) {
     throw new NaverBlogEditorialMaterializeError("invalid_llm", "Structure LLM output must be an object");
   }
+  const policy = (code: string, message: string) => {
+    if (input.onPolicyViolation) input.onPolicyViolation(code, message);
+    else throw new NaverBlogEditorialMaterializeError(code, message);
+  };
 
   // Structure must not contain long article body.
   if (typeof root.bodyMarkdown === "string" && root.bodyMarkdown.trim().length > 400) {
-    throw new NaverBlogEditorialMaterializeError(
-      "structure_has_body",
-      "Structure Planner must not emit article bodyMarkdown",
-    );
+    policy("structure_has_body", "Structure Planner must not emit article bodyMarkdown");
   }
   if (typeof root.body === "string" && root.body.trim().length > 400) {
-    throw new NaverBlogEditorialMaterializeError(
-      "structure_has_body",
-      "Structure Planner must not emit article body",
-    );
+    policy("structure_has_body", "Structure Planner must not emit article body");
   }
 
   const selectedTitle = stripEvidenceIdsFromText(
@@ -211,13 +211,10 @@ export function materializeNaverBlogStructurePlan(input: {
     ...sectionPlan.map((s) => s.heading),
   ].join("\n");
   if (hasNaverBlogUnsafeGeneralization(blob)) {
-    throw new NaverBlogEditorialMaterializeError(
-      "unsafe_generalization",
-      "Structure plan contains unsupported geographic/cultural generalization",
-    );
+    policy("unsafe_generalization", "Structure plan contains unsupported geographic/cultural generalization");
   }
   if (ctaIntent && hasNaverBlogForcedCta(ctaIntent)) {
-    throw new NaverBlogEditorialMaterializeError("forced_cta", "Structure ctaIntent is forced sales CTA");
+    policy("forced_cta", "Structure ctaIntent is forced sales CTA");
   }
 
   return {
@@ -254,11 +251,17 @@ export function materializeNaverBlogCopy(input: {
   modelProfile?: string;
   generatedAt?: string;
   llm: unknown;
+  /** When set, copy-policy violations are reported here instead of thrown. */
+  onPolicyViolation?: (code: string, message: string) => void;
 }): NaverBlogCopy {
   const root = asRecord(input.llm);
   if (!root) {
     throw new NaverBlogEditorialMaterializeError("invalid_llm", "Copy LLM output must be an object");
   }
+  const policy = (code: string, message: string) => {
+    if (input.onPolicyViolation) input.onPolicyViolation(code, message);
+    else throw new NaverBlogEditorialMaterializeError(code, message);
+  };
 
   const title = stripEvidenceIdsFromText(
     requireNonEmptyString(root.title ?? root.selectedTitle ?? input.structure.selectedTitle, "title"),
@@ -319,10 +322,7 @@ export function materializeNaverBlogCopy(input: {
 
   // Only allow FAQ if structure planned supported questions (or empty).
   if (faq.length > 0 && input.structure.faqPlan.length === 0) {
-    throw new NaverBlogEditorialMaterializeError(
-      "faq_not_planned",
-      "Copy must not invent FAQ when structure faqPlan is empty",
-    );
+    policy("faq_not_planned", "Copy must not invent FAQ when structure faqPlan is empty");
   }
 
   const ctaRaw = root.cta;
@@ -339,16 +339,13 @@ export function materializeNaverBlogCopy(input: {
     "\n",
   );
   if (hasNaverBlogUnsafeGeneralization(safetyBlob)) {
-    throw new NaverBlogEditorialMaterializeError(
-      "unsafe_generalization",
-      "Copy contains unsupported geographic/cultural generalization",
-    );
+    policy("unsafe_generalization", "Copy contains unsupported geographic/cultural generalization");
   }
   if (cta && hasNaverBlogForcedCta(cta)) {
-    throw new NaverBlogEditorialMaterializeError("forced_cta", "Copy CTA is forced sales phrasing");
+    policy("forced_cta", "Copy CTA is forced sales phrasing");
   }
   if (hasNaverBlogForcedCta(bodyMarkdown)) {
-    throw new NaverBlogEditorialMaterializeError("forced_cta", "Copy body contains forced CTA phrasing");
+    policy("forced_cta", "Copy body contains forced CTA phrasing");
   }
 
   return {

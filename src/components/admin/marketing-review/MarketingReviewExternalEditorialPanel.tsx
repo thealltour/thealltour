@@ -119,7 +119,9 @@ export function MarketingReviewExternalEditorialPanel({
 
   const selectedCandidate = candidates.find((c) => c.importId === selectedImportId) ?? null;
   const research = selectedCandidate?.research ?? null;
-  const researchBlocked = research?.status === "blocked";
+  const candidateHasNoChannels =
+    selectedCandidate !== null && Object.values(selectedCandidate.channelReadiness).every((r) => !r.present);
+  const researchBlocked = research?.status === "blocked" && candidateHasNoChannels;
 
   useEffect(() => {
     setCheckedConflicts(defaultConflictSelection(selectedCandidate));
@@ -189,16 +191,20 @@ export function MarketingReviewExternalEditorialPanel({
       const json = (await res.json().catch(() => ({}))) as ApiError & {
         importId?: string;
         warnings?: string[];
+        appliedChannels?: string[];
       };
       if (!res.ok) {
         setFeedback({ tone: "error", text: errorText(json, "외부 편집 결과를 가져오지 못했습니다.") });
         return;
       }
-      const warnings = json.warnings?.length ? `\n경고:\n- ${json.warnings.slice(0, 5).join("\n- ")}` : "";
+      const warnings = json.warnings?.length
+        ? `\n경고 ${json.warnings.length}건:\n- ${json.warnings.slice(0, 8).join("\n- ")}`
+        : "";
       setFeedback({ tone: "ok", text: `${json.message ?? "저장했습니다."}${warnings}` });
       setRaw("");
       if (json.importId) setSelectedImportId(json.importId);
       await loadStatus();
+      if (json.appliedChannels?.length) await onReload();
     } catch {
       setFeedback({ tone: "error", text: "외부 편집 결과를 가져오는 중 오류가 발생했습니다." });
     } finally {
@@ -249,8 +255,9 @@ export function MarketingReviewExternalEditorialPanel({
     <AdminCard className="space-y-3 p-4">
       <h2 className="text-base font-semibold">외부 편집 결과 (Research Editorial)</h2>
       <p className="text-xs text-[var(--text-secondary)]">
-        ChatGPT가 돌려준 editorial-research-bundle-chatgpt-result-v1 JSON을 가져온 뒤, 채널마다 Hermes Auto와
-        External Editorial 중 하나를 고릅니다. 가져온 결과와 Hermes 결과는 모두 보존됩니다.
+        ChatGPT가 돌려준 editorial-research-bundle-chatgpt-result-v1 JSON을 가져오면 결과가 있는 모든 채널에 바로
+        적용됩니다(사람 수정본도 덮어씀). 채널마다 Hermes Auto로 되돌릴 수 있고, 가져온 결과와 Hermes 결과는 모두
+        보존됩니다.
       </p>
 
       <textarea
@@ -303,7 +310,8 @@ export function MarketingReviewExternalEditorialPanel({
 
       {researchBlocked ? (
         <p className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs">
-          ChatGPT가 승인본 범위 충돌로 연구를 보류해 채널 결과가 없습니다. 아래 연구 결과에서 충돌을 검토하세요.
+          ChatGPT가 연구를 보류하고 채널 결과를 보내지 않았습니다. Research Editorial용 JSON을 다시 복사해 ChatGPT를
+          재실행하면 채널 결과가 모두 작성됩니다.
         </p>
       ) : null}
 

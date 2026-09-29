@@ -741,9 +741,12 @@ function assertProposition(
   const acrb = payload.audienceContentResearchBrief;
   const story = payload.authoritativeStoryPoint ?? null;
   const evidenceBrief = resolveEvidenceBriefForLock(payload);
+  const humanResearchOverride = Boolean(acrb?.storyResearchHumanOverride);
 
   if (acrb?.storySupportVerdict) {
-    const gate = assertStoryVerdictAllowsContentStrategist(acrb.storySupportVerdict);
+    const gate = assertStoryVerdictAllowsContentStrategist(acrb.storySupportVerdict, {
+      humanOverride: humanResearchOverride,
+    });
     if (!gate.ok) {
       issues.push({
         code: "content_proposition_refuted_or_insufficient",
@@ -760,6 +763,7 @@ function assertProposition(
       storyPoint: story,
       evidenceBrief,
       topicIdentity: identity,
+      humanResearchOverride,
     });
     if (!lock.ok) {
       const healed = healPropositionTowardStory({
@@ -772,6 +776,7 @@ function assertProposition(
         storyPoint: story,
         evidenceBrief,
         topicIdentity: identity,
+        humanResearchOverride,
       });
       if (healedLock.ok && healed && output.contentPlan) {
         prop = healed;
@@ -1188,7 +1193,9 @@ export async function requestContentStrategistDraftWithFormatRetry(input: {
   
   const acrbGate = input.payload.audienceContentResearchBrief;
   if (acrbGate?.storySupportVerdict) {
-    const verdictGate = assertStoryVerdictAllowsContentStrategist(acrbGate.storySupportVerdict);
+    const verdictGate = assertStoryVerdictAllowsContentStrategist(acrbGate.storySupportVerdict, {
+      humanOverride: Boolean(acrbGate.storyResearchHumanOverride),
+    });
     if (!verdictGate.ok) {
       throw new ContentStrategistPropositionError(
         verdictGate.reason,

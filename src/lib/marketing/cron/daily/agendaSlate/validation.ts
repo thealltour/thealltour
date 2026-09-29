@@ -38,6 +38,7 @@ export const agendaSlateSelectStorySchema = z
     slateItemId: z.string().min(1).max(80).optional(),
     logicalRunKey: z.string().min(1).max(240).optional(),
     storyPointId: z.string().min(1).max(120),
+    overrideResearchRejection: z.boolean().optional(),
   })
   .refine((value) => Boolean(value.slateItemId?.trim() || value.logicalRunKey?.trim()), {
     message: "slateItemId or logicalRunKey required",

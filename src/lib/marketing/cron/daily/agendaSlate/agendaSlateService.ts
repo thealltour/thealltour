@@ -79,6 +79,8 @@ export type AgendaSlateService = {
     logicalRunKey?: string;
     businessDateKst?: string;
     storyPointId: string;
+    /** Produce a research-rejected Story anyway (human-confirmed). */
+    overrideResearchRejection?: boolean;
   }): Promise<{
     slate: DailyAgendaSlate | null;
     request: MarketingProductionRequest;
@@ -440,6 +442,7 @@ export async function createAgendaSlateService(deps: {
     logicalRunKey?: string;
     businessDateKst?: string;
     storyPointId: string;
+    overrideResearchRejection?: boolean;
   }): Promise<{
     slate: DailyAgendaSlate | null;
     request: MarketingProductionRequest;
@@ -447,6 +450,7 @@ export async function createAgendaSlateService(deps: {
     const {
       PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
       PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY,
+      PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY,
       buildHumanStorySelection,
       getPassCandidatesFromRequest,
       isAwaitingStorySelection,
@@ -511,9 +515,13 @@ export async function createAgendaSlateService(deps: {
       );
     }
     const previous = readHumanStorySelection(existing);
-    if (previous?.researchRejectedStoryPointIds?.includes(storyPointId)) {
+    const previouslyRejected = Boolean(
+      previous?.researchRejectedStoryPointIds?.includes(storyPointId),
+    );
+    const override = input.overrideResearchRejection === true;
+    if (previouslyRejected && !override) {
       throw new AgendaSlateServiceError(
-        "story already research-rejected; pick another PASS candidate",
+        "story already research-rejected; pick another PASS candidate or override the research verdict",
         "STORY_RESEARCH_REJECTED",
         400,
       );
@@ -524,6 +532,7 @@ export async function createAgendaSlateService(deps: {
       candidateSet,
       now,
       previous,
+      overrideResearchRejection: override && previouslyRejected,
     });
     const stamped = await productionRequestRepo.update({
       ...existing,
@@ -534,6 +543,16 @@ export async function createAgendaSlateService(deps: {
         productionOutcome: PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
         selectedStoryPointId: selection.selectedStoryPointId,
         selectedStoryPointHash: selection.selectedStoryPointHash,
+        ...(override && previouslyRejected
+          ? {
+              [PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY]: {
+                storyPointId,
+                previousRejectReason: previous?.lastResearchRejectReason ?? null,
+                overriddenAt: now.toISOString(),
+                overriddenBy: "human",
+              },
+            }
+          : {}),
       },
     });
 

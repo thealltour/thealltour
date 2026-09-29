@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       slateItemId: parsed.data.slateItemId,
       logicalRunKey: parsed.data.logicalRunKey,
       storyPointId: parsed.data.storyPointId,
+      overrideResearchRejection: parsed.data.overrideResearchRejection === true,
     });
     const selectedTodayCount =
       result.slate?.candidates.filter((c) => c.state === "SELECTED_TODAY").length ?? 0;

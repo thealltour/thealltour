@@ -323,6 +323,67 @@ describe("ED-3 ContentProposition Story lock", () => {
     expect(refuted.ok).toBe(false);
   });
 
+  it("human research override waives the verdict gate and evidence checks only", () => {
+    expect(
+      assertStoryVerdictAllowsContentStrategist("REFUTED", { humanOverride: true }).ok,
+    ).toBe(true);
+    expect(
+      assertStoryVerdictAllowsContentStrategist("INSUFFICIENT_EVIDENCE", { humanOverride: true }).ok,
+    ).toBe(true);
+
+    const insufficient = evidenceBrief({
+      storySupportVerdict: "INSUFFICIENT_EVIDENCE",
+      researchQuestionFindings: [],
+      usableFactIds: [],
+      contradictedClaims: ["부모님 동반 숙소 위치가 이동 편의를 좌우한다"],
+      limitations: ["no_external_evidence"],
+    });
+    const unsupported = baseProposition({
+      specificTakeaways: ["강변 호텔은 치안이 더 나쁘다"],
+      takeawayEvidenceRefs: null,
+      limitations: [],
+    });
+
+    const blocked = validateContentPropositionAgainstStory({
+      proposition: unsupported,
+      storyPoint: BANGKOK,
+      evidenceBrief: insufficient,
+      topicIdentity: bangkokIdentity(),
+    });
+    expect(blocked.ok).toBe(false);
+
+    const overridden = validateContentPropositionAgainstStory({
+      proposition: unsupported,
+      storyPoint: BANGKOK,
+      evidenceBrief: insufficient,
+      topicIdentity: bangkokIdentity(),
+      humanResearchOverride: true,
+    });
+    expect(overridden.issues.map((i) => i.code)).toEqual([]);
+    expect(overridden.ok).toBe(true);
+    expect(overridden.unsupportedTakeawayCount).toBe(1);
+  });
+
+  it("human research override still rejects Story drift", () => {
+    const drifted = validateContentPropositionAgainstStory({
+      proposition: baseProposition({
+        contentPromise: "MSC 크루즈와 다낭 여행을 비교한다",
+        angle: "MSC cruise vs Da Nang",
+        keyMessage: "크루즈 승선이 더 편하다",
+        specificTakeaways: ["MSC 벨리시마 승선 동선을 확인한다"],
+        takeawayEvidenceRefs: null,
+      }),
+      storyPoint: BANGKOK,
+      evidenceBrief: evidenceBrief({ storySupportVerdict: "REFUTED" }),
+      topicIdentity: bangkokIdentity(),
+      humanResearchOverride: true,
+    });
+    expect(drifted.ok).toBe(false);
+    expect(drifted.issues.some((i) => i.code === "content_proposition_refuted_or_insufficient")).toBe(
+      false,
+    );
+  });
+
   it("allows English StoryPoint + Korean paraphrase when entity anchors stay (Con Dao)", () => {
     const conDao: StoryContentPoint = {
       ...BANGKOK,

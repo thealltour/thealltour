@@ -408,6 +408,7 @@ function CandidateCard(props: {
   onAction: (action: AgendaSlateAction) => void;
   onRetryProduction?: () => void;
   onSelectStory?: (storyPointId: string) => void;
+  onOverrideResearch?: (storyPointId: string, rejectReason: string | null) => void;
   onImportExternalStory?: () => void;
   exportIncluded: boolean;
   onToggleExport: (included: boolean) => void;
@@ -420,6 +421,7 @@ function CandidateCard(props: {
     onAction,
     onRetryProduction,
     onSelectStory,
+    onOverrideResearch,
     onImportExternalStory,
     exportIncluded,
     onToggleExport,
@@ -452,6 +454,12 @@ function CandidateCard(props: {
       : typeof humanSelectionMeta?.lastResearchRejectReason === "string"
         ? humanSelectionMeta.lastResearchRejectReason
         : null;
+  const researchOverride = pr?.metadata?.storyResearchOverride as
+    | { storyPointId?: string | null; previousRejectReason?: string | null }
+    | null
+    | undefined;
+  const researchOverrideStoryPointId =
+    typeof researchOverride?.storyPointId === "string" ? researchOverride.storyPointId : null;
   const storyCandidateCount = countStoryCandidates(pr);
   const canClearStories = Boolean(pr && !storyResetBlocked(pr) && storyCandidateCount > 0);
 
@@ -597,6 +605,17 @@ function CandidateCard(props: {
               </div>
             ) : null}
           </dl>
+          {researchOverrideStoryPointId ? (
+            <p
+              data-testid="story-research-override-notice"
+              className="mt-2 rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1 text-[var(--warning)]"
+            >
+              사람 강행(연구 판정 무시): {researchOverrideStoryPointId}
+              {researchOverride?.previousRejectReason
+                ? ` · 연구 판정 ${researchOverride.previousRejectReason}`
+                : ""}
+            </p>
+          ) : null}
           {pr.status === "COMPLETED" && pr.completedCandidateId ? (
             <p className="mt-2">
               <Link
@@ -658,7 +677,8 @@ function CandidateCard(props: {
               ) : null}
               {rejectReason ? (
                 <p className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1.5 text-[var(--warning)]">
-                  이전 선택 Story 연구 거부: {rejectReason}. 다른 PASS 후보를 고르세요.
+                  이전 선택 Story 연구 거부: {rejectReason}. 다른 PASS 후보를 고르거나, 연구 결과를
+                  무시하고 제작할 수 있습니다.
                 </p>
               ) : null}
               {staleHumanSelectionId ? (
@@ -695,8 +715,14 @@ function CandidateCard(props: {
                       researchQuestions={c.researchQuestions}
                       researchRejected={c.researchRejected}
                       alreadySelected={c.pointId === activeHumanSelectionId}
+                      researchOverridden={c.pointId === researchOverrideStoryPointId}
                       busy={busy}
                       onSelectStory={onSelectStory}
+                      onOverrideResearch={
+                        onOverrideResearch
+                          ? (pointId) => onOverrideResearch(pointId, rejectReason)
+                          : undefined
+                      }
                     />
                   );
                 })
@@ -1114,14 +1140,33 @@ export function AgendaSlatePanel({
     }
   }
 
-  async function selectStory(slateItemId: string, storyPointId: string) {
+  async function selectStory(
+    slateItemId: string,
+    storyPointId: string,
+    override?: { rejectReason: string | null },
+  ) {
+    if (
+      override &&
+      !window.confirm(
+        `이 Story는 연구 단계에서 거부되었습니다${
+          override.rejectReason ? ` (${override.rejectReason})` : ""
+        }. 근거가 부족하거나 반박된 내용으로 콘텐츠가 만들어질 수 있습니다. 연구 결과를 무시하고 제작할까요?`,
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const res = await fetch("/api/admin/marketing-review/agenda-slate/select-story", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slateItemId, storyPointId, ...dateBody }),
+        body: JSON.stringify({
+          slateItemId,
+          storyPointId,
+          ...(override ? { overrideResearchRejection: true } : {}),
+          ...dateBody,
+        }),
       });
       const data = (await res.json()) as {
         message?: string;
@@ -1138,7 +1183,9 @@ export function AgendaSlatePanel({
         setSelectedTodayCount(data.selectedTodayCount);
       }
       setMessage(
-        "Story가 선택되었습니다. 제작이 Pi 대기열(QUEUED)에 재등록되어 타깃 연구부터 재개됩니다.",
+        override
+          ? "연구 판정을 무시하고 Story를 선택했습니다. 제작이 Pi 대기열(QUEUED)에 재등록되며, 연구가 거부해도 콘텐츠 단계로 진행합니다."
+          : "Story가 선택되었습니다. 제작이 Pi 대기열(QUEUED)에 재등록되어 타깃 연구부터 재개됩니다.",
       );
       await load({ silent: true });
     } catch {
@@ -1607,6 +1654,9 @@ export function AgendaSlatePanel({
               onAction={(action) => void runAction(item.slateItemId, action)}
               onRetryProduction={() => void retryFailedProduction(item.slateItemId)}
               onSelectStory={(storyPointId) => void selectStory(item.slateItemId, storyPointId)}
+              onOverrideResearch={(storyPointId, rejectReason) =>
+                void selectStory(item.slateItemId, storyPointId, { rejectReason })
+              }
               onImportExternalStory={() => {
                 setImportOpen(true);
                 setImportPreview(null);

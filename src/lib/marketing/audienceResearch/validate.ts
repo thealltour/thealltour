@@ -372,6 +372,7 @@ function normalizeStoryResearchOverlay(row: Record<string, unknown>): Pick<
   | "evidenceBackedStoryBrief"
   | "researchExecutionStatus"
   | "alternateUsed"
+  | "storyResearchHumanOverride"
 > {
   const storyPointRef = normalizeStoryPointRef(row.storyPointRef);
   const evidenceBrief = normalizeEvidenceBackedStoryBrief(row.evidenceBackedStoryBrief);
@@ -428,6 +429,27 @@ function normalizeStoryResearchOverlay(row: Record<string, unknown>): Pick<
     evidenceBackedStoryBrief: evidenceBrief,
     researchExecutionStatus,
     alternateUsed,
+    storyResearchHumanOverride: normalizeStoryResearchHumanOverride(row.storyResearchHumanOverride),
+  };
+}
+
+function normalizeStoryResearchHumanOverride(
+  raw: unknown,
+): AudienceContentResearchBrief["storyResearchHumanOverride"] {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const storyPointId = asString(o.storyPointId);
+  const overriddenAt = asString(o.overriddenAt);
+  if (!storyPointId || !overriddenAt) return null;
+  return {
+    storyPointId,
+    originalVerdict: isStorySupportVerdict(o.originalVerdict) ? o.originalVerdict : null,
+    originalResearchVerdict: (ACRB_VERDICTS as readonly string[]).includes(
+      String(o.originalResearchVerdict),
+    )
+      ? (o.originalResearchVerdict as AudienceContentResearchBrief["researchVerdict"])
+      : "SKIP",
+    overriddenAt,
   };
 }
 

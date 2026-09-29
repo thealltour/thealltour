@@ -209,6 +209,16 @@ export type AudienceContentResearchBrief = {
   researchExecutionStatus?: import("@/lib/marketing/storyPoint/contracts").ResearchExecutionStatus | null;
   /** ED-2 alternate StoryPoint fallback used for this ACRB (optional metadata). */
   alternateUsed?: boolean | null;
+  /**
+   * Human chose to produce this Story despite an ED-2 REFUTED / INSUFFICIENT verdict.
+   * storySupportVerdict keeps the real verdict; downstream gates waive evidence checks only.
+   */
+  storyResearchHumanOverride?: {
+    storyPointId: string;
+    originalVerdict: import("@/lib/marketing/storyPoint/contracts").StoryEvidenceSupportStatus | null;
+    originalResearchVerdict: AcrbResearchVerdict;
+    overriddenAt: string;
+  } | null;
 };
 
 /** Compact pointer for export-context / candidate metadata. */

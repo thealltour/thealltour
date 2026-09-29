@@ -2,6 +2,7 @@
  * Human Story Selection — editorial boundary after ED-1 Point Gate, before RA-1.
  */
 
+import type { AudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/contracts";
 import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import type {
   DurableStoryPointCandidateSet,
@@ -13,6 +14,14 @@ import { readStoryPointCandidateSetFromProductionRequest } from "@/lib/marketing
 
 export const PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION = "awaiting_story_selection" as const;
 export const PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY = "humanStorySelection" as const;
+export const PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY = "storyResearchOverride" as const;
+
+export type StoryResearchOverrideRecord = {
+  storyPointId: string;
+  previousRejectReason: string | null;
+  overriddenAt: string;
+  overriddenBy: "human";
+};
 
 export type HumanStorySelection = {
   /** Empty/null while awaiting (re)selection after research reject. */
@@ -24,7 +33,13 @@ export type HumanStorySelection = {
   /** Prior selections rejected by ED-2 (REFUTED / INSUFFICIENT). */
   researchRejectedStoryPointIds: string[];
   lastResearchRejectReason: string | null;
+  /** Rejected Stories a human chose to produce anyway, ignoring the ED-2 verdict. */
+  researchOverrideStoryPointIds: string[];
 };
+
+function readStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string") : [];
+}
 
 export function isAwaitingStorySelection(request: MarketingProductionRequest | null | undefined): boolean {
   return request?.metadata?.productionOutcome === PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION;
@@ -54,11 +69,46 @@ export function readHumanStorySelection(
     selectedAt: typeof o.selectedAt === "string" ? o.selectedAt : null,
     selectedBy: "human",
     candidateSetInputRevision: o.candidateSetInputRevision.trim(),
-    researchRejectedStoryPointIds: Array.isArray(o.researchRejectedStoryPointIds)
-      ? o.researchRejectedStoryPointIds.filter((x): x is string => typeof x === "string")
-      : [],
+    researchRejectedStoryPointIds: readStringList(o.researchRejectedStoryPointIds),
     lastResearchRejectReason:
       typeof o.lastResearchRejectReason === "string" ? o.lastResearchRejectReason : null,
+    researchOverrideStoryPointIds: readStringList(o.researchOverrideStoryPointIds),
+  };
+}
+
+export function selectionOverridesResearch(
+  selection: HumanStorySelection | null | undefined,
+  storyPointId: string | null | undefined,
+): boolean {
+  if (!selection || !storyPointId) return false;
+  return (selection.researchOverrideStoryPointIds ?? []).includes(storyPointId);
+}
+
+/**
+ * When ED-2 blocked a Story the human explicitly chose to produce anyway, return the
+ * brief CS should receive (PROCEED_WITH_CAUTION + override marker, real verdict kept).
+ * Returns null when production must stay blocked.
+ */
+export function applyHumanResearchOverrideToBrief(input: {
+  brief: AudienceContentResearchBrief;
+  storyResearchBlocked: boolean;
+  selectionActive: boolean;
+  selection: HumanStorySelection | null | undefined;
+  fallbackStoryPointId: string | null | undefined;
+  now: Date;
+}): AudienceContentResearchBrief | null {
+  if (!input.storyResearchBlocked || !input.selectionActive) return null;
+  const storyPointId = input.brief.storyPointRef?.storyPointId ?? input.fallbackStoryPointId ?? null;
+  if (!storyPointId || !selectionOverridesResearch(input.selection, storyPointId)) return null;
+  return {
+    ...input.brief,
+    researchVerdict: "PROCEED_WITH_CAUTION",
+    storyResearchHumanOverride: {
+      storyPointId,
+      originalVerdict: input.brief.storySupportVerdict ?? null,
+      originalResearchVerdict: input.brief.researchVerdict,
+      overriddenAt: input.now.toISOString(),
+    },
   };
 }
 
@@ -103,7 +153,7 @@ export function applyHumanSelectionToCandidateSet(input: {
     return null;
   }
   const rejected = new Set(input.selection.researchRejectedStoryPointIds ?? []);
-  if (rejected.has(hit.point.pointId)) {
+  if (rejected.has(hit.point.pointId) && !selectionOverridesResearch(input.selection, hit.point.pointId)) {
     return null;
   }
   const alternates = pass
@@ -128,15 +178,25 @@ export function buildHumanStorySelection(input: {
   candidateSet: DurableStoryPointCandidateSet;
   now?: Date;
   previous?: HumanStorySelection | null;
+  /** Human confirmed producing a research-rejected Story anyway. */
+  overrideResearchRejection?: boolean;
 }): HumanStorySelection {
+  const pointId = input.point.pointId;
+  const rejected = new Set(input.previous?.researchRejectedStoryPointIds ?? []);
+  const overrides = new Set(input.previous?.researchOverrideStoryPointIds ?? []);
+  if (input.overrideResearchRejection) {
+    rejected.delete(pointId);
+    overrides.add(pointId);
+  }
   return {
-    selectedStoryPointId: input.point.pointId,
+    selectedStoryPointId: pointId,
     selectedStoryPointHash: createStoryPointHash(input.point),
     selectedAt: (input.now ?? new Date()).toISOString(),
     selectedBy: "human",
     candidateSetInputRevision: input.candidateSet.inputRevision,
-    researchRejectedStoryPointIds: input.previous?.researchRejectedStoryPointIds ?? [],
+    researchRejectedStoryPointIds: [...rejected],
     lastResearchRejectReason: input.previous?.lastResearchRejectReason ?? null,
+    researchOverrideStoryPointIds: [...overrides],
   };
 }
 
@@ -156,6 +216,7 @@ export function markStoryResearchRejected(input: {
     candidateSetInputRevision: input.selection.candidateSetInputRevision,
     researchRejectedStoryPointIds: [...rejected],
     lastResearchRejectReason: input.reason.slice(0, 240),
+    researchOverrideStoryPointIds: input.selection.researchOverrideStoryPointIds ?? [],
   };
 }
 

@@ -922,6 +922,23 @@ export async function runDailyMarketingProductionPipeline(
             )
           : await runEnsure();
       audienceContentResearchBrief = acrbResult.brief;
+      const storyResearchBlocked =
+        storyResearchCanProceed === false && storyPointCandidateSet?.outcome === "pass";
+      const { applyHumanResearchOverrideToBrief } = await import(
+        "@/lib/marketing/storyPoint/humanStorySelection"
+      );
+      const overriddenBrief = applyHumanResearchOverrideToBrief({
+        brief: acrbResult.brief,
+        storyResearchBlocked,
+        selectionActive: humanStorySelectionActive,
+        selection: activeHumanStorySelection,
+        fallbackStoryPointId: storyPointCandidateSet?.primaryStoryPointId,
+        now,
+      });
+      const storyResearchHumanOverride = overriddenBrief !== null;
+      if (overriddenBrief) {
+        audienceContentResearchBrief = overriddenBrief;
+      }
       run = {
         ...run,
         metadata: {
@@ -958,15 +975,17 @@ export async function runDailyMarketingProductionPipeline(
                   storyResearchCanProceed,
                   storyResearchSkipReason,
                   externalSearchRequestCount: storyResearchExternalSearchCount,
+                  humanOverride: storyResearchHumanOverride,
                 },
               }
             : {}),
         },
       };
 
-      const storyResearchBlocked =
-        storyResearchCanProceed === false && storyPointCandidateSet?.outcome === "pass";
-      if (acrbResult.brief.researchVerdict === "SKIP" || storyResearchBlocked) {
+      if (
+        !storyResearchHumanOverride &&
+        (acrbResult.brief.researchVerdict === "SKIP" || storyResearchBlocked)
+      ) {
         // Human-selected Story REFUTED/INSUFFICIENT → return to selection (no auto-alternate).
         if (storyResearchBlocked && humanStorySelectionActive && activeHumanStorySelection) {
           const {

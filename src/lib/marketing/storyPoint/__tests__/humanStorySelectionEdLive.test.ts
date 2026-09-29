@@ -7,6 +7,13 @@ import {
   MARKETING_PRODUCTION_REQUEST_CONTRACT,
   type MarketingProductionRequest,
 } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
+import {
+  AUDIENCE_CONTENT_RESEARCH_BRIEF_CONTRACT,
+  type AudienceContentResearchBrief,
+} from "@/lib/marketing/audienceResearch/contracts";
+import { parseAudienceContentResearchBrief } from "@/lib/marketing/audienceResearch/validate";
+import { createAgendaSlateService } from "@/lib/marketing/cron/daily/agendaSlate/agendaSlateService";
+import { agendaSlateSelectStorySchema } from "@/lib/marketing/cron/daily/agendaSlate/validation";
 import { createInMemoryMarketingProductionRequestRepository } from "@/lib/marketing/cron/daily/repository/createMarketingProductionRequestRepository";
 import {
   PUBLISHABLE_CHANNELS,
@@ -21,14 +28,17 @@ import {
 } from "@/lib/marketing/storyPoint/contracts";
 import { createStoryPointHash } from "@/lib/marketing/storyPoint/hash";
 import {
+  applyHumanResearchOverrideToBrief,
   applyHumanSelectionToCandidateSet,
   buildHumanStorySelection,
   listPassStoryCandidates,
   markStoryResearchRejected,
   PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
   PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY,
+  PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY,
   readHumanStorySelection,
   selectionIsActive,
+  selectionOverridesResearch,
 } from "@/lib/marketing/storyPoint/humanStorySelection";
 import { PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY } from "@/lib/marketing/storyPoint/contracts";
 
@@ -217,6 +227,66 @@ describe("ED-LIVE human story selection", () => {
     ).toBeNull();
   });
 
+  it("human override lets a research-rejected Story become the authoritative primary again", () => {
+    const set = candidateSet([ninhStory(1), ninhStory(2), ninhStory(3)]);
+    const selection = buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set });
+    const rejected = markStoryResearchRejected({ selection, reason: "story_point_insufficient_evidence" });
+
+    const overridden = buildHumanStorySelection({
+      point: set.candidates[0]!,
+      candidateSet: set,
+      previous: rejected,
+      overrideResearchRejection: true,
+    });
+    expect(overridden.researchRejectedStoryPointIds).not.toContain("sp_ninh_1");
+    expect(overridden.researchOverrideStoryPointIds).toEqual(["sp_ninh_1"]);
+    expect(selectionOverridesResearch(overridden, "sp_ninh_1")).toBe(true);
+    expect(selectionOverridesResearch(overridden, "sp_ninh_2")).toBe(false);
+    expect(applyHumanSelectionToCandidateSet({ candidateSet: set, selection: overridden })?.primaryStoryPointId).toBe(
+      "sp_ninh_1",
+    );
+  });
+
+  it("without override a rejected Story stays blocked and the override list survives later rejects", () => {
+    const set = candidateSet([ninhStory(1), ninhStory(2)]);
+    const first = buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set });
+    const rejected = markStoryResearchRejected({ selection: first, reason: "REFUTED" });
+    const again = buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set, previous: rejected });
+    expect(applyHumanSelectionToCandidateSet({ candidateSet: set, selection: again })).toBeNull();
+    expect(selectionOverridesResearch(again, "sp_ninh_1")).toBe(false);
+
+    const overridden = buildHumanStorySelection({
+      point: set.candidates[0]!,
+      candidateSet: set,
+      previous: rejected,
+      overrideResearchRejection: true,
+    });
+    const next = buildHumanStorySelection({ point: set.candidates[1]!, candidateSet: set, previous: overridden });
+    const nextRejected = markStoryResearchRejected({ selection: next, reason: "REFUTED" });
+    expect(nextRejected.researchOverrideStoryPointIds).toEqual(["sp_ninh_1"]);
+    expect(nextRejected.researchRejectedStoryPointIds).toEqual(["sp_ninh_2"]);
+  });
+
+  it("reads legacy selections without researchOverrideStoryPointIds as no override", () => {
+    const request = baseRequest({
+      metadata: {
+        productionOutcome: PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
+        [PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY]: {
+          selectedStoryPointId: null,
+          selectedStoryPointHash: null,
+          selectedAt: null,
+          selectedBy: "human",
+          candidateSetInputRevision: "rev_ninh_v1",
+          researchRejectedStoryPointIds: ["sp_ninh_1"],
+          lastResearchRejectReason: "story_point_insufficient_evidence",
+        },
+      },
+    });
+    const read = readHumanStorySelection(request);
+    expect(read?.researchOverrideStoryPointIds).toEqual([]);
+    expect(read?.researchRejectedStoryPointIds).toEqual(["sp_ninh_1"]);
+  });
+
   it("requeues awaiting_story_selection after human pick without remine metadata wipe", async () => {
     const repo = createInMemoryMarketingProductionRequestRepository();
     const initial = baseRequest();
@@ -237,6 +307,170 @@ describe("ED-LIVE human story selection", () => {
     expect(requeued.metadata.productionOutcome).toBe("story_selection_resumed");
     expect(readHumanStorySelection(requeued)?.selectedStoryPointId).toBe("sp_ninh_2");
     expect(requeued.metadata[PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY]).toBeTruthy();
+  });
+});
+
+describe("pipeline research override decision", () => {
+  const set = candidateSet([ninhStory(1), ninhStory(2)]);
+  const skipBrief = {
+    contract: AUDIENCE_CONTENT_RESEARCH_BRIEF_CONTRACT,
+    id: "acrb_ninh_1",
+    logicalIdentity: "acrb_ninh_logical",
+    researchVerdict: "SKIP",
+    storySupportVerdict: "INSUFFICIENT_EVIDENCE",
+    storyPointRef: {
+      storyPointId: "sp_ninh_1",
+      storyPointHash: createStoryPointHash(set.candidates[0]!),
+      researchContractVersion: "test",
+    },
+  } as unknown as AudienceContentResearchBrief;
+  const now = new Date("2026-09-14T03:00:00.000Z");
+  const rejected = markStoryResearchRejected({
+    selection: buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set }),
+    reason: "story_point_insufficient_evidence",
+  });
+  const overridden = buildHumanStorySelection({
+    point: set.candidates[0]!,
+    candidateSet: set,
+    previous: rejected,
+    overrideResearchRejection: true,
+  });
+
+  it("overridden Story proceeds with caution and keeps the real verdict", () => {
+    const brief = applyHumanResearchOverrideToBrief({
+      brief: skipBrief,
+      storyResearchBlocked: true,
+      selectionActive: true,
+      selection: overridden,
+      fallbackStoryPointId: null,
+      now,
+    });
+    expect(brief?.researchVerdict).toBe("PROCEED_WITH_CAUTION");
+    expect(brief?.storySupportVerdict).toBe("INSUFFICIENT_EVIDENCE");
+    expect(brief?.storyResearchHumanOverride).toEqual({
+      storyPointId: "sp_ninh_1",
+      originalVerdict: "INSUFFICIENT_EVIDENCE",
+      originalResearchVerdict: "SKIP",
+      overriddenAt: now.toISOString(),
+    });
+  });
+
+  it("stays blocked without an override for this Story, without an active selection, or when not blocked", () => {
+    const plain = buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set });
+    const base = {
+      brief: skipBrief,
+      storyResearchBlocked: true,
+      selectionActive: true,
+      selection: overridden,
+      fallbackStoryPointId: null,
+      now,
+    };
+    expect(applyHumanResearchOverrideToBrief({ ...base, selection: plain })).toBeNull();
+    expect(applyHumanResearchOverrideToBrief({ ...base, selectionActive: false })).toBeNull();
+    expect(applyHumanResearchOverrideToBrief({ ...base, storyResearchBlocked: false })).toBeNull();
+    expect(
+      applyHumanResearchOverrideToBrief({
+        ...base,
+        brief: { ...skipBrief, storyPointRef: { ...skipBrief.storyPointRef!, storyPointId: "sp_ninh_2" } },
+      }),
+    ).toBeNull();
+  });
+
+  it("override marker survives the ACRB parser used for packages and request metadata", () => {
+    const brief = applyHumanResearchOverrideToBrief({
+      brief: skipBrief,
+      storyResearchBlocked: true,
+      selectionActive: true,
+      selection: overridden,
+      fallbackStoryPointId: null,
+      now,
+    });
+    const parsed = parseAudienceContentResearchBrief(JSON.parse(JSON.stringify(brief)));
+    expect(parsed?.storyResearchHumanOverride?.storyPointId).toBe("sp_ninh_1");
+    expect(parsed?.storyResearchHumanOverride?.originalVerdict).toBe("INSUFFICIENT_EVIDENCE");
+    expect(parseAudienceContentResearchBrief(skipBrief)?.storyResearchHumanOverride).toBeNull();
+  });
+
+  it("pipeline routes the blocked branch through the override decision", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const pipeline = await fs.readFile(
+      path.join(process.cwd(), "src/lib/marketing/cron/daily/runDailyMarketingProductionPipeline.ts"),
+      "utf8",
+    );
+    expect(pipeline).toMatch(/applyHumanResearchOverrideToBrief/);
+    expect(pipeline).toMatch(/!storyResearchHumanOverride &&/);
+  });
+});
+
+describe("select-story research override (service)", () => {
+  async function seedRejected() {
+    const productionRequestRepo = createInMemoryMarketingProductionRequestRepository();
+    const initial = baseRequest();
+    const set = initial.metadata[PRODUCTION_REQUEST_STORY_POINT_METADATA_KEY] as DurableStoryPointCandidateSet;
+    const rejected = markStoryResearchRejected({
+      selection: buildHumanStorySelection({ point: set.candidates[0]!, candidateSet: set }),
+      reason: "story_point_insufficient_evidence",
+    });
+    await productionRequestRepo.enqueue({
+      ...initial,
+      metadata: {
+        ...initial.metadata,
+        [PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY]: rejected,
+        lastStoryResearchRejectReason: rejected.lastResearchRejectReason,
+      },
+    });
+    const service = await createAgendaSlateService({
+      productionRequestRepo,
+      now: new Date("2026-09-14T03:00:00.000Z"),
+    });
+    return { productionRequestRepo, service, logicalRunKey: initial.logicalRunKey };
+  }
+
+  it("still refuses a rejected Story without the override flag", async () => {
+    const { service, logicalRunKey } = await seedRejected();
+    await expect(
+      service.selectStoryAndResumeProduction({ logicalRunKey, storyPointId: "sp_ninh_1" }),
+    ).rejects.toMatchObject({ code: "STORY_RESEARCH_REJECTED" });
+  });
+
+  it("override requeues the rejected Story and records who overrode which verdict", async () => {
+    const { service, logicalRunKey } = await seedRejected();
+    const { request } = await service.selectStoryAndResumeProduction({
+      logicalRunKey,
+      storyPointId: "sp_ninh_1",
+      overrideResearchRejection: true,
+    });
+    expect(request.status).toBe("QUEUED");
+    const selection = readHumanStorySelection(request);
+    expect(selection?.selectedStoryPointId).toBe("sp_ninh_1");
+    expect(selection?.researchOverrideStoryPointIds).toEqual(["sp_ninh_1"]);
+    expect(selection?.researchRejectedStoryPointIds).not.toContain("sp_ninh_1");
+    expect(request.metadata[PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY]).toMatchObject({
+      storyPointId: "sp_ninh_1",
+      previousRejectReason: "story_point_insufficient_evidence",
+      overriddenBy: "human",
+    });
+  });
+
+  it("override flag on a never-rejected Story is a normal selection", async () => {
+    const { service, logicalRunKey } = await seedRejected();
+    const { request } = await service.selectStoryAndResumeProduction({
+      logicalRunKey,
+      storyPointId: "sp_ninh_2",
+      overrideResearchRejection: true,
+    });
+    expect(readHumanStorySelection(request)?.researchOverrideStoryPointIds).toEqual([]);
+    expect(request.metadata[PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY]).toBeUndefined();
+  });
+
+  it("select-story schema accepts the optional override flag", () => {
+    const parsed = agendaSlateSelectStorySchema.safeParse({
+      slateItemId: "asc_aaaaaaaaaaaaaaaaaaaaaaaa",
+      storyPointId: "sp_ninh_1",
+      overrideResearchRejection: true,
+    });
+    expect(parsed.success).toBe(true);
   });
 });
 
@@ -318,6 +552,7 @@ describe("ED-LIVE live path wiring (static)", () => {
         candidateSetInputRevision: set.inputRevision,
         researchRejectedStoryPointIds: [],
         lastResearchRejectReason: null,
+        researchOverrideStoryPointIds: [],
       },
     });
     expect(noSelection).toBeNull();

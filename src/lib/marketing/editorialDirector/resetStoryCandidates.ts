@@ -22,6 +22,7 @@ import {
 import {
   PRODUCTION_OUTCOME_AWAITING_STORY_SELECTION,
   PRODUCTION_REQUEST_HUMAN_STORY_SELECTION_KEY,
+  PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY,
 } from "@/lib/marketing/storyPoint/humanStorySelection";
 import { parseDurableStoryPointCandidateSet } from "@/lib/marketing/storyPoint/persistence";
 
@@ -41,6 +42,7 @@ const STORY_METADATA_KEYS = [
   "selectedStoryPointId",
   "selectedStoryPointHash",
   "lastStoryResearchRejectReason",
+  PRODUCTION_REQUEST_STORY_RESEARCH_OVERRIDE_KEY,
   "storyResearch",
   "storyResearchSkipReason",
   "storyPointSkipReason",

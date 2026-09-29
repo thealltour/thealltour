@@ -20,8 +20,12 @@ export type StoryPassCandidateCardProps = {
   researchRejected: boolean;
   /** Human already stamped this point but pipeline has not advanced past Story gate. */
   alreadySelected?: boolean;
+  /** Human chose to produce this Story despite the research verdict. */
+  researchOverridden?: boolean;
   busy?: boolean;
   onSelectStory?: (pointId: string) => void;
+  /** Produce a research-rejected Story anyway (caller confirms with the user). */
+  onOverrideResearch?: (pointId: string) => void;
 };
 
 export function StoryPassCandidateCard({
@@ -38,8 +42,10 @@ export function StoryPassCandidateCard({
   researchQuestions,
   researchRejected,
   alreadySelected = false,
+  researchOverridden = false,
   busy = false,
   onSelectStory,
+  onOverrideResearch,
 }: StoryPassCandidateCardProps) {
   const archetypeLabel = formatStoryEditorialArchetypeLabel(editorialArchetype);
   const archetypeBadgeText = archetypeLabel ?? "아키타입 미지정";
@@ -78,6 +84,13 @@ export function StoryPassCandidateCard({
                 선택됨
               </AdminBadge>
             ) : null}
+            {researchOverridden ? (
+              <span data-testid="story-research-override-badge" className="inline-flex">
+                <AdminBadge variant="warning" showDot={false} className="px-2 py-0 text-[10px]">
+                  사람 강행(연구 판정 무시)
+                </AdminBadge>
+              </span>
+            ) : null}
             <span data-testid="story-archetype-badge" className="inline-flex max-w-full">
               <AdminBadge variant="neutral" showDot={false} className="max-w-full px-2 py-0 text-[10px]">
                 <span className="truncate" title={editorialArchetype ?? undefined}>
@@ -96,6 +109,17 @@ export function StoryPassCandidateCard({
             className="min-h-11 shrink-0 rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
           >
             {alreadySelected ? "이 Story로 재개" : "이 Story로 제작"}
+          </button>
+        ) : null}
+        {onOverrideResearch && researchRejected ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onOverrideResearch(pointId)}
+            data-testid="story-research-override-button"
+            className="min-h-11 shrink-0 rounded-lg border border-[var(--warning)] bg-white px-3 py-2 text-sm font-medium text-[var(--warning)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+          >
+            연구 결과 무시하고 제작
           </button>
         ) : null}
       </div>

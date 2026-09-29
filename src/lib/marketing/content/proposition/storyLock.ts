@@ -46,6 +46,11 @@ export type ContentPropositionStoryLockInput = {
   storyPoint: StoryContentPoint;
   evidenceBrief: EvidenceBackedStoryBrief;
   topicIdentity?: AgendaTopicIdentity | null;
+  /**
+   * Human produced a REFUTED / INSUFFICIENT Story anyway: waive the verdict gate and
+   * evidence-support checks; Story identity / alignment checks still apply.
+   */
+  humanResearchOverride?: boolean;
 };
 
 export type ContentPropositionStoryLockIssue = {
@@ -373,8 +378,9 @@ function issue(
 /** Fail closed before CS when story research is REFUTED / INSUFFICIENT_EVIDENCE. */
 export function assertStoryVerdictAllowsContentStrategist(
   verdict: StoryEvidenceSupportStatus | null | undefined,
+  opts?: { humanOverride?: boolean },
 ): { ok: true } | { ok: false; reason: string } {
-  if (!verdict) return { ok: true };
+  if (!verdict || opts?.humanOverride) return { ok: true };
   if (!storyEvidenceAllowsContentStrategy(verdict)) {
     return { ok: false, reason: "content_proposition_refuted_or_insufficient" };
   }
@@ -436,7 +442,10 @@ export function validateContentPropositionAgainstStory(
       evidenceBrief.supportedClaimBoundary?.trim(),
   );
 
-  const verdictGate = assertStoryVerdictAllowsContentStrategist(evidenceBrief.storySupportVerdict);
+  const humanOverride = input.humanResearchOverride === true;
+  const verdictGate = assertStoryVerdictAllowsContentStrategist(evidenceBrief.storySupportVerdict, {
+    humanOverride,
+  });
   if (!verdictGate.ok) {
     issues.push(
       issue(
@@ -609,6 +618,7 @@ export function validateContentPropositionAgainstStory(
       evidenceBackedTakeawayCount += 1;
     } else {
       unsupportedTakeawayCount += 1;
+      if (humanOverride) continue;
       issues.push(
         issue(
           "content_proposition_unsupported_takeaway",
@@ -617,6 +627,17 @@ export function validateContentPropositionAgainstStory(
         ),
       );
     }
+  }
+
+  if (humanOverride) {
+    return {
+      ok: issues.length === 0,
+      issues,
+      evidenceBackedTakeawayCount,
+      unsupportedTakeawayCount,
+      boundaryUsed,
+      driftReasons,
+    };
   }
 
   for (const contradicted of evidenceBrief.contradictedClaims) {

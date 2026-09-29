@@ -114,6 +114,42 @@ describe("StoryPassCandidateCard", () => {
     expect(onSelectStory).toHaveBeenCalledWith("sp_ext_1");
   });
 
+  it("research-rejected card offers override instead of the normal select button", () => {
+    const onSelectStory = vi.fn();
+    const onOverrideResearch = vi.fn();
+    render(
+      <StoryPassCandidateCard
+        {...base}
+        index={0}
+        researchRejected
+        onSelectStory={onSelectStory}
+        onOverrideResearch={onOverrideResearch}
+      />,
+    );
+
+    expect(screen.getByTestId("story-pass-candidate-card").textContent).toContain("연구 거부됨");
+    expect(screen.queryByRole("button", { name: "이 Story로 제작" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "연구 결과 무시하고 제작" }));
+    expect(onOverrideResearch).toHaveBeenCalledWith("sp_ext_1");
+    expect(onSelectStory).not.toHaveBeenCalled();
+  });
+
+  it("override button only appears on research-rejected cards; overridden cards show a badge", () => {
+    render(
+      <StoryPassCandidateCard
+        {...base}
+        index={0}
+        researchOverridden
+        onSelectStory={vi.fn()}
+        onOverrideResearch={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("story-research-override-button")).toBeNull();
+    expect(screen.getByTestId("story-research-override-badge").textContent).toContain(
+      "사람 강행(연구 판정 무시)",
+    );
+  });
+
   it("shows placeholder badge when archetype is missing", () => {
     render(<StoryPassCandidateCard {...base} index={3} editorialArchetype={null} />);
     expect(screen.getByTestId("story-archetype-badge").textContent).toContain("아키타입 미지정");

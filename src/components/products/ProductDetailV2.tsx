@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, type CSSProperties } from "react";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import Tag from "@/components/ui/Tag";
@@ -18,7 +18,6 @@ import { EMPTY_SELECTED_OPTIONS, isGroupSelectionMissing } from "@/lib/pricing/s
 import type { Product, ProductTrust, ProductOptions } from "@/types/product";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
-import { parseMetaTitleAsHashtags } from "@/lib/products/parseMetaTitleAsHashtags";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
 import { cn } from "@/lib/cn";
 import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
@@ -29,10 +28,8 @@ import {
   ProductDescriptionSection,
   shouldShowDescriptionSection,
 } from "@/components/products/ProductDescriptionSection";
-import { ProductAttractionInfoSection } from "@/components/products/venues/ProductAttractionInfoSection";
-import { ProductHotelInfoSection } from "@/components/products/venues/ProductHotelInfoSection";
 import { ProductVenuePhotosSection } from "@/components/products/venues/ProductVenuePhotosSection";
-import { hasVenueInfoItems } from "@/lib/admin/golfCourses";
+import { hasVenueImages } from "@/lib/admin/golfCourses";
 import { ProductPackageCatalogSection } from "@/components/products/ProductPackageCatalogSection";
 import { hasPackageCatalogContent } from "@/lib/admin/packageCatalog";
 import { formatAirlineLabel } from "@/lib/products/formatAirlineLabel";
@@ -44,9 +41,7 @@ import type { ProductGalleryImage } from "@/components/products/ProductImageGall
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { collectVenueGalleryImages, getPrimaryImageUrl } from "@/lib/products/images";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
-import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductPlannerCta } from "@/components/products/ProductPlannerCta";
-import { ProductHighlightsCard } from "@/components/products/ProductHighlightsCard";
 import ProductSummaryInfo from "@/components/products/ProductSummaryInfo";
 import { ProductCostSummary } from "@/components/products/ProductCostSummary";
 import { ProductGolfMemberBenefit } from "@/components/products/ProductGolfMemberBenefit";
@@ -56,7 +51,6 @@ import {
   parseDayContentToSections,
 } from "@/lib/products/itineraryPreviewLabel";
 import { ProductDayScheduleCard } from "@/components/products/ProductDayScheduleCard";
-import { parseThemeTokens } from "@/lib/productTaxonomies";
 import {
   DETAIL_UNIFIED_PRICE_NOTICE_LINES,
   getSeasonalPriceDisplayModel,
@@ -212,11 +206,7 @@ export default function ProductDetailV2({
     return items?.length ? items : null;
   }, [resolvedOverview]);
 
-  const overviewKeywords = useMemo(() => {
-    const tags = parseMetaTitleAsHashtags(product?.meta_title);
-    return { display: tags.slice(0, 5), overflow: Math.max(0, tags.length - 5) };
-  }, [product?.meta_title]);
-  const hasOverviewAside = overviewKeywords.display.length > 0 || Boolean(overviewThemeChart);
+  const hasOverviewAside = Boolean(overviewThemeChart);
 
   /** 오버뷰 카드에서는 항공 카드를 제외하고, 항공편은 오버뷰 내부 컴팩트 섹션으로 표시 */
   const overviewForCards = useMemo(() => {
@@ -304,7 +294,6 @@ export default function ProductDetailV2({
     [product, detailedSchedule],
   );
   const [activeTab, setActiveTab] = useState<MainTab>("schedule");
-  const [pendingPreviewDayIndex, setPendingPreviewDayIndex] = useState<number | null>(null);
   const [openAccordionIndex, setOpenAccordionIndex] = useState<number | null>(0);
   const isSoldOut = statusTag === "SOLD_OUT";
   const ctaLabelOptions = useMemo(
@@ -482,25 +471,6 @@ export default function ProductDetailV2({
     });
   }, [registerScrollToBooking, openBookingSheet]);
 
-  /** PR15-1 Step3: 일정 미리보기 Day 카드 클릭 → schedule 탭 + 해당 Day 전달 + 상세 일정 섹션으로 스크롤 (단일 Day 구조) */
-  const handlePreviewDayClick = useCallback((dayNumber: number) => {
-    setActiveTab("schedule");
-    setPendingPreviewDayIndex(dayNumber - 1);
-
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        document.getElementById("itinerary-section")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-
-        setTimeout(() => {
-          setPendingPreviewDayIndex(null);
-        }, 100);
-      }, 150);
-    });
-  }, []);
-
   const scheduleDays = useMemo(() => parseScheduleDays(detailedSchedule), [detailedSchedule]);
   const includedLines = useMemo(() => parseBulletLines(includedItems), [includedItems]);
   const excludedLines = useMemo(() => parseBulletLines(excludedItems), [excludedItems]);
@@ -547,23 +517,50 @@ export default function ProductDetailV2({
     return Boolean(d || dep || air || hot || style || minPeople);
   }, [product, duration, minDeparturePeople]);
 
-  /** PR22: 핵심 여행 요약 카드용. highlights → tags → themes 순, 최대 5개 */
-  const highlightsForCard = useMemo(() => {
-    if (!product) return [];
-    const fromHighlights = product.highlights?.length ? product.highlights : undefined;
-    const fromTags = product.tags?.length ? product.tags : undefined;
-    const fromThemes = product.theme ? parseThemeTokens(product.theme) : undefined;
-    const source = fromHighlights ?? fromTags ?? fromThemes ?? [];
-    return source.slice(0, 5);
-  }, [product?.highlights, product?.tags, product?.theme]);
-
   /** PR26: 호텔 안내 카드용 (overview_accommodation 우선, 없으면 meta_info/itinerary 패턴) */
   const hotelValue = useMemo(
     () => (product ? getHotelValue(product) : ""),
     [product],
   );
-  /** hotels_json이 있으면 전용 호텔 정보 섹션이 기존 호텔 안내 카드를 대신합니다. */
-  const hasHotelInfo = hasVenueInfoItems(product?.hotels_json);
+  /** 호텔 사진이 있으면 골프장·호텔·관광지 사진 섹션이 기존 호텔 안내 카드를 대신합니다. */
+  const hasHotelPhotos = hasVenueImages(product?.hotels_json);
+
+  /**
+   * 사이트 헤더 높이는 비로그인 프로모 배너·모바일 검색행·데스크톱 메뉴 줄바꿈에 따라 달라지므로
+   * 실측값으로 상세 탭(1단)과 Day 탭(2단) sticky top을 맞춥니다. 측정 전에는 CSS fallback을 씁니다.
+   */
+  const detailTabsBarRef = useRef<HTMLDivElement | null>(null);
+  const [stickyHeights, setStickyHeights] = useState<{ header: number | null; tabs: number } | null>(
+    null,
+  );
+  useEffect(() => {
+    const bar = detailTabsBarRef.current;
+    if (!bar) return;
+    const header = document.querySelector<HTMLElement>("[data-site-header]");
+    const update = () => {
+      const tabs = bar.offsetHeight;
+      const headerHeight = header ? header.offsetHeight : null;
+      setStickyHeights((prev) =>
+        prev && prev.tabs === tabs && prev.header === headerHeight
+          ? prev
+          : { header: headerHeight, tabs },
+      );
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    if (header) observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  const detailTabsStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!stickyHeights) return undefined;
+    const vars: Record<string, string> = {
+      "--product-detail-tabs-height": `${stickyHeights.tabs}px`,
+    };
+    if (stickyHeights.header != null) vars["--site-header-height"] = `${stickyHeights.header}px`;
+    return vars as CSSProperties;
+  }, [stickyHeights]);
 
   const recommendedAudienceBullets = useMemo(
     () =>
@@ -590,6 +587,8 @@ export default function ProductDetailV2({
     <div className="space-y-8">
       {/* DetailHero */}
       <section className="space-y-5">
+        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
+
         {/* TagRow: 상태 우선, 그 다음 지역/카테고리 */}
         <div className="flex flex-wrap items-center gap-2">
           {statusTag != null && (
@@ -628,7 +627,7 @@ export default function ProductDetailV2({
           <p className="mt-2 whitespace-pre-wrap text-base leading-6 text-slate-600">{oneLiner}</p>
         ) : null}
 
-        {/* Price Summary Card: 캐러셀 위 대표가·구간 비교·추천 대상(PR-F) + 키워드/테마 */}
+        {/* Price Summary Card: 대표가·구간 비교·추천 대상(PR-F) + 키워드/테마 */}
         <Card
           variant="default"
           className="mt-4 border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]"
@@ -636,7 +635,7 @@ export default function ProductDetailV2({
           <div
             className={cn(
               "grid gap-6",
-              hasOverviewAside ? "lg:grid-cols-2 lg:items-start" : undefined,
+              hasOverviewAside ? "xl:grid-cols-2 xl:items-start" : undefined,
             )}
           >
             <div className="min-w-0">
@@ -703,44 +702,25 @@ export default function ProductDetailV2({
                   </p>
                 </>
               )}
+              {shouldShowDescriptionSection(product?.description, product?.golf_course_info) ? (
+                <div className="mt-5">
+                  <ProductDescriptionSection
+                    description={product?.description}
+                    golfCourseInfo={product?.golf_course_info}
+                    embedded
+                  />
+                </div>
+              ) : null}
             </div>
-            {hasOverviewAside ? (
-              <div className="min-w-0 space-y-3">
-                {overviewThemeChart ? (
-                  <div className="rounded-lg border border-slate-200/90 bg-white/90 p-3">
-                    <ThemeChartCard items={overviewThemeChart} />
-                  </div>
-                ) : null}
-                {overviewKeywords.display.length > 0 ? (
-                  <div className="rounded-lg border border-slate-200/90 bg-white/90 p-3">
-                    <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                      핵심 키워드
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {overviewKeywords.display.map((tag, index) => (
-                        <span
-                          key={`overview-seo-${tag}-${index}`}
-                          className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                      {overviewKeywords.overflow > 0 ? (
-                        <span className="inline-flex shrink-0 items-center text-[11px] font-medium text-slate-400">
-                          +{overviewKeywords.overflow}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : null}
+            {overviewThemeChart ? (
+              <div className="hidden min-w-0 rounded-lg border border-slate-200/90 bg-white/90 p-3 md:block">
+                <ThemeChartCard items={overviewThemeChart} />
               </div>
             ) : null}
           </div>
         </Card>
 
-        <div className="mt-5">
-          <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
-        </div>
+        <FlightSummarySection product={product ?? null} compact embedded />
 
         {hasSummaryData && (
           <div className="mt-6">
@@ -774,41 +754,9 @@ export default function ProductDetailV2({
           />
         </div>
 
-        {highlightsForCard.length > 0 ? (
-          <div className="mt-6">
-            <ProductHighlightsCard highlights={highlightsForCard} />
-          </div>
-        ) : null}
-
         {recommendedAudienceBullets.length > 0 ? (
           <div className="mt-4">
             <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
-          </div>
-        ) : null}
-
-        {shouldShowDescriptionSection(
-          product?.description,
-          product?.golf_course_info,
-          product?.golf_courses_json,
-        ) ? (
-          <div className="mt-6">
-            <ProductDescriptionSection
-              description={product?.description}
-              golfCourseInfo={product?.golf_course_info}
-              golfCourses={product?.golf_courses_json}
-            />
-          </div>
-        ) : null}
-
-        {hasHotelInfo ? (
-          <div className="mt-6">
-            <ProductHotelInfoSection hotels={product?.hotels_json} />
-          </div>
-        ) : null}
-
-        {hasVenueInfoItems(product?.attractions_json) ? (
-          <div className="mt-6">
-            <ProductAttractionInfoSection attractions={product?.attractions_json} />
           </div>
         ) : null}
 
@@ -829,43 +777,36 @@ export default function ProductDetailV2({
         </div>
       </section>
 
-      {/* PR42: 상품 핵심 요약 정보 블록 이후 itinerary — 중복 timeline은 Tabs에서도 유지 */}
-      {product?.itinerary_days?.length ? (
-        <div className="mt-8">
-          <ProductItineraryTimeline itinerary={product.itinerary_days} />
-        </div>
-      ) : null}
-
-      <ProductItineraryPreview
-        timelineModel={timelineModel?.days?.length ? timelineModel : null}
-        scheduleDays={scheduleDays}
-        maxDays={4}
-        itinerarySectionId="itinerary-section"
-        onViewFullItinerary={() => setActiveTab("schedule")}
-        onPreviewDayClick={handlePreviewDayClick}
-      />
-
       <ProductVenuePhotosSection
         golfCourses={product?.golf_courses_json}
         hotels={product?.hotels_json}
         attractions={product?.attractions_json}
       />
 
-      {productId ? <ProductPlannerCta productId={productId} className="mt-6" /> : null}
-
-      <FlightSummarySection product={product ?? null} compact embedded />
-
-      {hotelValue && !hasHotelInfo ? <ProductHotelCard hotelName={hotelValue} /> : null}
+      {hotelValue && !hasHotelPhotos ? <ProductHotelCard hotelName={hotelValue} /> : null}
 
       {/* Tabs */}
-      <section id="product-detail-tabs" className="scroll-mt-24">
-        <Tabs value={activeTab} onChange={(v) => setActiveTab(v as MainTab)} className="mb-4 gap-2 overflow-x-auto">
-          <TabsTrigger value="schedule">일정 안내</TabsTrigger>
-          <TabsTrigger value="included">포함/불포함</TabsTrigger>
-          <TabsTrigger value="booking">예약 조건</TabsTrigger>
-          <TabsTrigger value="travel">여행 시 유의사항</TabsTrigger>
-          <TabsTrigger value="refund">환불/취소 규정</TabsTrigger>
-        </Tabs>
+      <section
+        id="product-detail-tabs"
+        className="scroll-mt-[calc(var(--site-header-height,7rem)+env(safe-area-inset-top,0px))]"
+        style={detailTabsStyle}
+      >
+        <div
+          ref={detailTabsBarRef}
+          className="sticky top-[calc(var(--site-header-height,7rem)+env(safe-area-inset-top,0px))] z-30 -mx-4 mb-4 bg-[var(--surface)]/95 px-4 py-2 supports-[backdrop-filter]:backdrop-blur-sm sm:mx-0 sm:px-0"
+        >
+          <Tabs
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as MainTab)}
+            className="scrollbar-hide !flex-nowrap !gap-2 overflow-x-auto"
+          >
+            <TabsTrigger value="schedule" className="whitespace-nowrap">일정 안내</TabsTrigger>
+            <TabsTrigger value="included" className="whitespace-nowrap">포함/불포함</TabsTrigger>
+            <TabsTrigger value="booking" className="whitespace-nowrap">예약 조건</TabsTrigger>
+            <TabsTrigger value="travel" className="whitespace-nowrap">여행 시 유의사항</TabsTrigger>
+            <TabsTrigger value="refund" className="whitespace-nowrap">환불/취소 규정</TabsTrigger>
+          </Tabs>
+        </div>
 
         {activeTab === "schedule" && (
           <div id="itinerary-section" className="space-y-6">
@@ -882,7 +823,7 @@ export default function ProductDetailV2({
                 sourcePath={sourcePath}
                 kakaoHref={kakaoHref}
                 ctaLabelOptions={ctaLabelOptions}
-                selectedDayIndex={pendingPreviewDayIndex ?? undefined}
+                stickyTopClassName="top-[calc(var(--site-header-height,7rem)+var(--product-detail-tabs-height,4.25rem)+env(safe-area-inset-top,0px))]"
               />
             ) : hasSchedule ? (
               <>
@@ -903,6 +844,7 @@ export default function ProductDetailV2({
             ) : (
               <p className="text-base text-slate-500">일정 정보 준비 중입니다.</p>
             )}
+            {productId ? <ProductPlannerCta productId={productId} /> : null}
           </div>
         )}
 

@@ -74,31 +74,46 @@ export type EventMediaSectionProps = {
   eventTitle?: string;
   /** compact: 하나투어형 소형 가로 갤러리 (타임라인 기본) */
   variant?: "hero" | "compact";
+  /**
+   * compact 사진 크기.
+   * full = 1장은 넓은 단일 이미지, 2~3장은 컨테이너 폭 분할(기본).
+   * thumbnail = 장수와 관계없이 4장 이상일 때와 같은 썸네일 폭을 넘지 않음.
+   */
+  compactSizeMode?: "full" | "thumbnail";
 };
 
 const COMPACT_MAX = 5;
 
+const COMPACT_THUMBNAIL_WIDTH_CLASS =
+  "w-[min(48vw,11rem)] sm:w-[min(36vw,12.5rem)] md:w-[min(28vw,13.5rem)] lg:w-[min(22vw,14rem)]";
+const COMPACT_THUMBNAIL_MAX_WIDTH_CLASS = "max-w-[11rem] sm:max-w-[12.5rem] md:max-w-[13.5rem] lg:max-w-[14rem]";
+const COMPACT_THUMBNAIL_SIZES = "(max-width: 640px) 48vw, (max-width: 1024px) 36vw, 216px";
+
 /** 이미지 장수·뷰포트에 맞춰 슬라이드 폭 조절 (모바일 2장 노출, 데스크톱 3~4장) */
-function getCompactSlideClass(count: number): string {
+function getCompactSlideClass(count: number, sizeMode: "full" | "thumbnail"): string {
   const base =
     "relative aspect-[4/3] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] shadow-sm transition hover:border-[var(--primary)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2";
+  const cap = sizeMode === "thumbnail" ? ` ${COMPACT_THUMBNAIL_MAX_WIDTH_CLASS}` : "";
 
   if (count === 1) {
-    return `${base} w-full max-w-sm sm:max-w-md`;
+    return sizeMode === "thumbnail"
+      ? `${base} ${COMPACT_THUMBNAIL_WIDTH_CLASS}`
+      : `${base} w-full max-w-sm sm:max-w-md`;
   }
   if (count === 2) {
-    return `${base} w-[calc(50%-0.25rem)]`;
+    return `${base} w-[calc(50%-0.25rem)]${cap}`;
   }
   if (count === 3) {
-    return `${base} w-[calc(33.333%-0.34rem)] min-w-[6.5rem]`;
+    return `${base} w-[calc(33.333%-0.34rem)] min-w-[6.5rem]${cap}`;
   }
-  return `${base} w-[min(48vw,11rem)] sm:w-[min(36vw,12.5rem)] md:w-[min(28vw,13.5rem)] lg:w-[min(22vw,14rem)]`;
+  return `${base} ${COMPACT_THUMBNAIL_WIDTH_CLASS}`;
 }
 
-function compactImageSizes(count: number): string {
+function compactImageSizes(count: number, sizeMode: "full" | "thumbnail"): string {
+  if (count === 1 && sizeMode === "thumbnail") return COMPACT_THUMBNAIL_SIZES;
   if (count <= 2) return "(max-width: 640px) 50vw, 280px";
   if (count === 3) return "(max-width: 640px) 33vw, 240px";
-  return "(max-width: 640px) 48vw, (max-width: 1024px) 36vw, 216px";
+  return COMPACT_THUMBNAIL_SIZES;
 }
 
 export function EventMediaSection({
@@ -107,6 +122,7 @@ export function EventMediaSection({
   onOpenLightbox,
   eventTitle = "이벤트",
   variant = "compact",
+  compactSizeMode = "full",
 }: EventMediaSectionProps) {
   const inOrder = inDisplayOrder(images);
   const cover = getCoverImage(inOrder);
@@ -117,8 +133,8 @@ export function EventMediaSection({
   if (variant === "compact") {
     const thumbnails = inOrder.slice(0, COMPACT_MAX);
     const canOpenLightbox = typeof onOpenLightbox === "function";
-    const slideClass = getCompactSlideClass(thumbnails.length);
-    const imageSizes = compactImageSizes(thumbnails.length);
+    const slideClass = getCompactSlideClass(thumbnails.length, compactSizeMode);
+    const imageSizes = compactImageSizes(thumbnails.length, compactSizeMode);
 
     return (
       <div className="scrollbar-hide -mx-0.5 flex w-full snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [touch-action:pan-x_pan-y]">

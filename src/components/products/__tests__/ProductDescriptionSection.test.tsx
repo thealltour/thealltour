@@ -32,11 +32,10 @@ describe("shouldShowGolfCourseInfo", () => {
 });
 
 describe("shouldShowDescriptionSection", () => {
-  it("shows the section when only golf course rows exist", () => {
-    expect(shouldShowDescriptionSection("", null, [{ name: "A GC", content: "", images: ["https://x/a.webp"] }])).toBe(
-      true,
-    );
-    expect(shouldShowDescriptionSection("", null, [{ name: "", content: "내용" }])).toBe(false);
+  it("shows the section for description or legacy golf course text only", () => {
+    expect(shouldShowDescriptionSection("밴드 특가", null)).toBe(true);
+    expect(shouldShowDescriptionSection("", "클럽하우스 안내")).toBe(true);
+    expect(shouldShowDescriptionSection("", null)).toBe(false);
   });
 });
 
@@ -80,45 +79,32 @@ describe("ProductDescriptionSection", () => {
     expect(screen.queryByRole("heading", { name: "골프장 정보" })).toBeNull();
   });
 
-  it("shows golf course chips and opens modal", () => {
-    render(
-      <ProductDescriptionSection
-        description="밴드 특가"
-        golfCourses={[
-          { name: "수트라하버 GC", content: "바다 전망 코스 정보" },
-          { name: "달릿베이 GC", content: "산악 지형 코스 정보" },
-        ]}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC 골프장 정보 보기" }));
-    expect(screen.getByRole("dialog", { name: "수트라하버 GC 골프장 정보" })).toBeTruthy();
-    expect(screen.getByText("바다 전망 코스 정보")).toBeTruthy();
-  });
-
-  it("opens the photo gallery modal for golf courses with images", () => {
-    render(
-      <ProductDescriptionSection
-        golfCourses={[
-          {
-            name: "수트라하버 GC",
-            content: "바다 전망 코스 정보",
-            images: ["https://cdn.example.com/golf-1.webp", "https://cdn.example.com/golf-2.webp"],
-          },
-        ]}
-      />,
-    );
-    expect(screen.getByRole("region", { name: "골프장 정보" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC 골프장 사진 2장 보기" }));
-    const dialog = screen.getByRole("dialog", { name: "수트라하버 GC 골프장 사진" });
-    expect(dialog.textContent).toContain("바다 전망 코스 정보");
-    expect(dialog.textContent).toContain("1/2");
-  });
-
   it("renders golf course info alone when description is missing", () => {
     render(<ProductDescriptionSection description="" golfCourseInfo="클럽하우스 안내" />);
     expect(screen.getByRole("region", { name: "골프장 정보" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "상품 소개" })).toBeNull();
     expect(screen.getByText("클럽하우스 안내")).toBeTruthy();
+  });
+
+  it("stacks description and golf info in embedded mode", () => {
+    render(
+      <ProductDescriptionSection
+        description="골프와 휴양의 완벽한 조합"
+        golfCourseInfo="코랄오션 18홀"
+        embedded
+      />,
+    );
+    const region = screen.getByRole("region", { name: "상품 소개와 골프장 정보" });
+    expect(region.className).not.toContain("grid");
+    expect(screen.getByRole("heading", { name: "상품 소개" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "골프장 정보" })).toBeTruthy();
+  });
+
+  it("collapses runs of blank lines so the preview keeps real content", () => {
+    const copy = Array.from({ length: 6 }, (_, i) => `문단 ${i + 1}`).join("\n\n\n\n");
+    render(<ProductDescriptionSection description={copy} embedded />);
+    expect(screen.queryByRole("button", { name: "더보기" })).toBeNull();
+    expect(screen.getByText(/문단 6/)).toBeTruthy();
   });
 
   it("expands collapsed long copy", () => {

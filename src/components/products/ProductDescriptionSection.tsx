@@ -1,9 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { GolfCourseInfoItem } from "@/types/product";
-import { VenueInfoPills } from "@/components/products/venues/VenueInfoPills";
-import { hasVenueInfoItems } from "@/lib/admin/golfCourses";
 import {
   collapsedPreview,
   needsDescriptionCollapse,
@@ -25,13 +22,8 @@ export function shouldShowGolfCourseInfo(golfCourseInfo: string | null | undefin
 export function shouldShowDescriptionSection(
   description: string | null | undefined,
   golfCourseInfo: string | null | undefined,
-  golfCourses: GolfCourseInfoItem[] | null | undefined,
 ): boolean {
-  return (
-    shouldShowProductDescription(description) ||
-    shouldShowGolfCourseInfo(golfCourseInfo) ||
-    hasVenueInfoItems(golfCourses)
-  );
+  return shouldShowProductDescription(description) || shouldShowGolfCourseInfo(golfCourseInfo);
 }
 
 function CollapsiblePlainText({ text, expandLabel }: { text: string; expandLabel: string }) {
@@ -59,33 +51,65 @@ function CollapsiblePlainText({ text, expandLabel }: { text: string; expandLabel
   );
 }
 
+/** 밴드 본문의 연속 빈 줄이 접기 미리보기(12줄)를 잡아먹지 않도록 빈 줄은 한 줄까지만 남깁니다. */
+function normalizePlainText(text: string | null | undefined): string {
+  return (text ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export type ProductDescriptionSectionProps = {
   description?: string | null;
+  /** 레거시 단일 텍스트. 골프장별 목록(golf_courses_json)은 골프장·호텔·관광지 사진 섹션에서 보여줍니다. */
   golfCourseInfo?: string | null;
-  golfCourses?: GolfCourseInfoItem[] | null;
+  /** 가격 요약 카드 안에 붙일 때 사용. 단일 열·작은 제목, 모바일에서는 카드 테두리 없이 같은 면에 흐릅니다. */
+  embedded?: boolean;
 };
 
 export function ProductDescriptionSection({
   description,
   golfCourseInfo,
-  golfCourses,
+  embedded = false,
 }: ProductDescriptionSectionProps) {
-  const descText = useMemo(() => description?.replace(/\r\n/g, "\n").trim() ?? "", [description]);
-  const golfText = useMemo(
-    () => golfCourseInfo?.replace(/\r\n/g, "\n").trim() ?? "",
-    [golfCourseInfo],
-  );
-  const hasCourses = hasVenueInfoItems(golfCourses);
+  const descText = useMemo(() => normalizePlainText(description), [description]);
+  const golfText = useMemo(() => normalizePlainText(golfCourseInfo), [golfCourseInfo]);
   const showDesc = shouldShowProductDescription(descText);
-  const showGolf = hasCourses || shouldShowGolfCourseInfo(golfText);
+  const showGolf = shouldShowGolfCourseInfo(golfText);
   const twoCol = showDesc && showGolf;
 
   if (!showDesc && !showGolf) return null;
 
+  const ariaLabel = twoCol ? "상품 소개와 골프장 정보" : showGolf ? "골프장 정보" : "상품 소개";
+
+  if (embedded) {
+    const headingClass = "mb-2 text-sm font-bold text-[var(--primary)]";
+    return (
+      <section
+        className="space-y-4 md:rounded-lg md:border md:border-slate-200/90 md:bg-white/90 md:p-4"
+        aria-label={ariaLabel}
+      >
+        {showDesc ? (
+          <div>
+            <h2 className={headingClass}>상품 소개</h2>
+            <CollapsiblePlainText text={descText} expandLabel="더보기" />
+          </div>
+        ) : null}
+        {showGolf ? (
+          <div className={twoCol ? "border-t border-slate-200 pt-4" : undefined}>
+            <h2 className={headingClass}>골프장 정보</h2>
+            <CollapsiblePlainText text={golfText} expandLabel="더보기" />
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section
       className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-100/50 md:p-5"
-      aria-label={twoCol ? "상품 소개와 골프장 정보" : showGolf ? "골프장 정보" : "상품 소개"}
+      aria-label={ariaLabel}
     >
       <div className={twoCol ? "grid gap-6 md:grid-cols-2 md:gap-8" : undefined}>
         {showDesc ? (
@@ -97,11 +121,7 @@ export function ProductDescriptionSection({
         {showGolf ? (
           <div className={twoCol ? "md:border-l md:border-slate-200 md:pl-8" : undefined}>
             <h2 className="mb-4 text-lg font-bold text-[var(--primary)]">골프장 정보</h2>
-            {hasCourses ? (
-              <VenueInfoPills items={golfCourses} kindLabel="골프장" />
-            ) : (
-              <CollapsiblePlainText text={golfText} expandLabel="더보기" />
-            )}
+            <CollapsiblePlainText text={golfText} expandLabel="더보기" />
           </div>
         ) : null}
       </div>

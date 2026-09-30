@@ -781,7 +781,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 onChange={(items) => setForm((prev) => ({ ...prev, golf_courses_json: items }))}
                 namePlaceholder="골프장명"
                 contentPlaceholder="골프장 설명"
-                description="상세에서 골프장명을 누르면 사진이 있으면 사진 모달, 없으면 설명 모달이 열립니다."
+                description="사진이 있는 골프장은 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여줍니다."
                 testId="venue-editor-golf"
               />
               {form.golf_course_info.trim() ? (
@@ -813,7 +813,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 onChange={(items) => setForm((prev) => ({ ...prev, hotels_json: items }))}
                 namePlaceholder="호텔명"
                 contentPlaceholder="객실 타입, 부대시설, 위치"
-                description="입력하면 상세의 골프장 정보 아래에 호텔 정보로 보여주고, 기존 숙소 카드는 숨깁니다."
+                description="사진이 있는 호텔은 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여주고, 기존 숙소 카드는 숨깁니다."
                 testId="venue-editor-hotel"
               />
             </div>
@@ -825,7 +825,7 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 onChange={(items) => setForm((prev) => ({ ...prev, attractions_json: items }))}
                 namePlaceholder="관광지명"
                 contentPlaceholder="볼거리, 소요 시간, 이용 팁"
-                description="입력하면 상세의 호텔 정보 아래에 관광 정보로 보여줍니다. 하나투어 패키지 카탈로그의 관광지와는 별개입니다."
+                description="사진이 있는 관광지는 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여줍니다. 하나투어 패키지 카탈로그의 관광지와는 별개입니다."
                 testId="venue-editor-attraction"
               />
             </div>

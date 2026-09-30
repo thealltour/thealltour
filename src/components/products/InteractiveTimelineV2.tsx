@@ -173,7 +173,17 @@ export type InteractiveTimelineV2Props = {
   productTitle?: string;
   sourcePath?: string;
   kakaoHref?: string;
+  /** Day 탭 sticky top. 상품 상세처럼 위에 다른 sticky 탭이 있으면 그 높이만큼 더한 값을 넘깁니다. */
+  stickyTopClassName?: string;
 };
+
+/** Day 탭이 붙는 sticky top(헤더·상위 탭 높이)만큼 덜 내려가야 커버 이미지가 가려지지 않습니다. */
+function scrollAnchorBelowStickyBar(anchor: HTMLElement | null, stickyBar: HTMLElement | null) {
+  if (!anchor) return;
+  const stickyTop = stickyBar ? Number.parseFloat(getComputedStyle(stickyBar).top) || 0 : 0;
+  const top = anchor.getBoundingClientRect().top + window.scrollY - stickyTop;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+}
 
 function CoverImage({
   day,
@@ -242,12 +252,14 @@ export function InteractiveTimelineV2({
   productTitle,
   sourcePath,
   kakaoHref,
+  stickyTopClassName = "top-16 md:top-20",
 }: InteractiveTimelineV2Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [dayRenderKey, setDayRenderKey] = useState(0);
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
+  const dayTabBarRef = useRef<HTMLDivElement | null>(null);
   const selectedCardRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
   const tabButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -270,8 +282,7 @@ export function InteractiveTimelineV2({
   if (!model?.days?.length) return null;
 
   const days = model.days;
-  const fallback = fallbackImageUrl?.trim() ?? "";
-  const activeDay = days[activeIndex] ?? days[0];
+  const fallback = fallbackImageUrl?.trim() ?? "";  const activeDay = days[activeIndex] ?? days[0];
 
   // PR20: sticky Day 탭 active indicator 위치/너비 계산
   useEffect(() => {
@@ -298,9 +309,7 @@ export function InteractiveTimelineV2({
     if (selectedDayIndex < 0 || selectedDayIndex >= days.length) return;
     setActiveIndex(selectedDayIndex);
     setDayRenderKey((k) => k + 1);
-    requestAnimationFrame(() => {
-      topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    requestAnimationFrame(() => scrollAnchorBelowStickyBar(topAnchorRef.current, dayTabBarRef.current));
   }, [selectedDayIndex, days.length, disableAutoScroll]);
 
   // 선택된 이벤트 카드로 스크롤 (상세 페이지 전용; 관리자 편집기에서는 비활성)
@@ -346,9 +355,7 @@ export function InteractiveTimelineV2({
         });
       }
       if (scrollToSection) {
-        requestAnimationFrame(() => {
-          topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
+        requestAnimationFrame(() => scrollAnchorBelowStickyBar(topAnchorRef.current, dayTabBarRef.current));
       }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setIsTransitioning(false));
@@ -384,10 +391,13 @@ export function InteractiveTimelineV2({
       className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
       aria-label="일정 안내"
     >
+      <div ref={topAnchorRef} />
       <div className="p-4 sm:p-6">
-        <div ref={topAnchorRef} />
         {/* PR19/PR20: Sticky Day 탭 — 밀도 개선 + active indicator 모션 */}
-        <div className="sticky top-16 z-20 -mx-4 -mt-4 mb-3 flex border-b border-[var(--border)]/80 bg-[var(--surface)]/90 px-3 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] supports-[backdrop-filter]:bg-[var(--surface)]/95 sm:-mx-6 sm:-mt-6 sm:px-4 md:top-20">
+        <div
+          ref={dayTabBarRef}
+          className={`sticky ${stickyTopClassName} z-20 -mx-4 -mt-4 mb-3 flex border-b border-[var(--border)]/80 bg-[var(--surface)]/90 px-3 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] supports-[backdrop-filter]:bg-[var(--surface)]/95 sm:-mx-6 sm:-mt-6 sm:px-4`}
+        >
           <div
             ref={tabListRef}
             className="scrollbar-hide relative flex w-full flex-nowrap gap-1.5 overflow-x-auto pb-0.5"

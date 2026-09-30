@@ -13,8 +13,11 @@ export type ProductVenuePhotosSectionProps = {
   attractions?: VenueInfoItem[] | null;
 };
 
+type VenueKind = "golf" | "hotel" | "attraction";
+
 type VenuePhotoGroup = {
   key: string;
+  kind: VenueKind;
   kindLabel: string;
   name: string;
   content: string;
@@ -32,7 +35,7 @@ export function buildVenuePhotoGroups(
   attractions?: VenueInfoItem[] | null,
 ): VenuePhotoGroup[] {
   const groups: VenuePhotoGroup[] = [];
-  const sources: Array<[string, string, VenueInfoItem[] | null | undefined]> = [
+  const sources: Array<[VenueKind, string, VenueInfoItem[] | null | undefined]> = [
     ["golf", "골프장", golfCourses],
     ["hotel", "호텔", hotels],
     ["attraction", "관광지", attractions],
@@ -42,6 +45,7 @@ export function buildVenuePhotoGroups(
       if (!venue.images?.length) return;
       groups.push({
         key: `${kind}-${index}`,
+        kind,
         kindLabel,
         name: venue.name,
         content: venue.content,
@@ -97,6 +101,7 @@ export function ProductVenuePhotosSection({ golfCourses, hotels, attractions }: 
               normalizeUrl={thumbUrl}
               eventTitle={group.name}
               onOpenLightbox={(imageIndex) => setActive({ groupIndex, imageIndex })}
+              compactSizeMode={group.kind === "attraction" || group.images.length > 1 ? "thumbnail" : "full"}
             />
             {group.images.length > VISIBLE_THUMBNAILS ? (
               <button

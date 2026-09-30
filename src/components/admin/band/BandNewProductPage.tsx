@@ -321,7 +321,7 @@ export default function BandNewProductPage() {
 
         <BandVenueRowsField
           title="골프장 정보 (선택)"
-          description="골프장별 이름·설명·사진을 입력하면 상세에서 골프장명을 눌렀을 때 사진 모달로 보여줍니다."
+          description="골프장별 이름·설명·사진을 입력하면 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여줍니다."
           itemLabel="골프장"
           namePlaceholder="골프장명 (예: 수트라하버 골프클럽)"
           contentPlaceholder="코스 특징, 운영 시간, 플레이 포인트"
@@ -333,7 +333,7 @@ export default function BandNewProductPage() {
 
         <BandVenueRowsField
           title="호텔 정보 (선택)"
-          description="호텔별 이름·설명·사진을 입력하면 상세의 골프장 정보 아래에 호텔 정보로 보여줍니다."
+          description="호텔별 이름·설명·사진을 입력하면 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여줍니다."
           itemLabel="호텔"
           namePlaceholder="호텔명 (예: 마젤란 수트라 리조트)"
           contentPlaceholder="객실 타입, 부대시설, 위치"
@@ -345,7 +345,7 @@ export default function BandNewProductPage() {
 
         <BandVenueRowsField
           title="관광 정보 (선택)"
-          description="관광지별 이름·설명·사진을 입력하면 상세의 호텔 정보 아래에 관광 정보로 보여줍니다."
+          description="관광지별 이름·설명·사진을 입력하면 상세의 상품이미지와 골프장·호텔·관광지 사진 섹션에 보여줍니다."
           itemLabel="관광지"
           namePlaceholder="관광지명 (예: 마누칸 섬)"
           contentPlaceholder="볼거리, 소요 시간, 이용 팁"

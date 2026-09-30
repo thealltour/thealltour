@@ -80,7 +80,7 @@ export default function SiteHeaderUI({
     : primaryNavRaw.filter((item) => item.key !== "guides");
 
   return (
-    <div className="sticky top-[env(safe-area-inset-top)] z-50 lg:z-40">
+    <div data-site-header className="sticky top-[env(safe-area-inset-top)] z-50 lg:z-40">
       <GuestSignupPromoBanner isLoggedIn={Boolean(session)} />
       <header className="glass-chrome border-b border-[var(--divider)] transition-all duration-200 safe-top">
       {/* 데스크톱: 상단 유틸바 + 메인 헤더바 */}

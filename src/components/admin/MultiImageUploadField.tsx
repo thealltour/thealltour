@@ -12,6 +12,7 @@ type MultiImageUploadFieldProps = {
   onChange: (urls: string[]) => void;
   /** 대표 이미지 URL (지정 시 해당 항목에 "대표" 배지 표시) */
   primaryImageUrl?: string;
+  /** 지정하지 않으면 장 수 제한 없음 */
   maxCount?: number;
   /** 상품 이미지 → 선택된 이벤트에 추가 시 사용. 있으면 썸네일마다 "이 이벤트에 추가" 버튼 표시 */
   selectedEvent?: SelectedEventRef | null;
@@ -38,7 +39,7 @@ export function MultiImageUploadField({
   value,
   onChange,
   primaryImageUrl,
-  maxCount = 10,
+  maxCount,
   selectedEvent = null,
   onAddToEvent,
   onSetPrimary,
@@ -52,9 +53,11 @@ export function MultiImageUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const urls = useMemo(() => uniqueUrls(value ?? []), [value]);
+  const isFull = maxCount != null && urls.length >= maxCount;
 
   function update(next: string[]) {
-    onChange(uniqueUrls(next).slice(0, maxCount));
+    const unique = uniqueUrls(next);
+    onChange(maxCount != null ? unique.slice(0, maxCount) : unique);
   }
 
   function moveItem(from: number, to: number) {
@@ -66,7 +69,7 @@ export function MultiImageUploadField({
   }
 
   async function uploadFiles(files: FileList | File[]) {
-    if (urls.length >= maxCount) {
+    if (isFull) {
       showToast("warning", `이미지는 최대 ${maxCount}장까지 등록할 수 있습니다.`);
       return;
     }
@@ -136,7 +139,9 @@ export function MultiImageUploadField({
               }}
             />
           </label>
-          <span className="text-xs text-[var(--text-muted)]">드래그 앤 드롭 가능 · 최대 {maxCount}장</span>
+          <span className="text-xs text-[var(--text-muted)]">
+            드래그 앤 드롭 가능{maxCount != null ? ` · 최대 ${maxCount}장` : ""}
+          </span>
         </div>
       </div>
 
@@ -152,7 +157,7 @@ export function MultiImageUploadField({
           onClick={() => {
             const next = urlInput.trim();
             if (!next) return;
-            if (urls.length >= maxCount) {
+            if (isFull) {
               showToast("warning", `이미지는 최대 ${maxCount}장까지 등록할 수 있습니다.`);
               return;
             }

@@ -7,16 +7,15 @@ export const BAND_IMPORT_IMAGE_MIME: Record<(typeof BAND_IMPORT_IMAGE_EXTS)[numb
 };
 
 export const MAX_BAND_IMPORT_IMAGE_BYTES = 10 * 1024 * 1024;
+/** AI 분류 비용 상한. 넘는 사진은 버리지 않고 분류 없이 갤러리에 넣습니다. */
 export const MAX_BAND_IMPORT_VISION_IMAGES = 40;
-/** zip 폴더 중첩·대량 사진으로 함수 타임아웃 나지 않게 추출 상한 */
-export const MAX_BAND_IMPORT_EXTRACT_IMAGES = 40;
 
 /** 클라이언트가 브라우저에서 Supabase Storage로 직접 올리는 임시 업로드 버킷 (zip/사진 원본). */
 export const BAND_IMPORT_STAGING_BUCKET = "band-import-staging";
 /** zip 전체 용량 상한 — Vercel 서버리스 함수의 4.5MB 요청 본문 제한과 무관 (직접 업로드로 우회). */
 export const MAX_BAND_IMPORT_ZIP_BYTES = 100 * 1024 * 1024;
 
-export type BandImageRole = "hero" | "gallery" | "dayCover" | "event" | "skip";
+export type BandImageRole = "hero" | "gallery" | "skip";
 
 export type BandImportImageSource = {
   name: string;
@@ -40,8 +39,21 @@ export type BandImportUploadedImage = {
 export type BandImageAssignment = {
   index: number;
   role: BandImageRole;
-  day?: number | null;
-  eventHeading?: string | null;
+};
+
+/** 등록 응답·편집기 배너에 보여줄 사진 처리 요약 */
+export type BandImportImageSummary = {
+  /** zip 해제 후 사용할 수 있는 사진 수 */
+  extracted: number;
+  uploaded: number;
+  gallery: number;
+  /** AI가 일정표 캡처·QR 등으로 제외한 수 */
+  skipped: number;
+  /** zip 안의 heic·gif 등 지원하지 않는 형식 */
+  unsupported: number;
+  /** zip 안의 10MB 초과 사진 */
+  oversize: number;
+  uploadErrors: number;
 };
 
 export function getFilenameExt(name: string): string {

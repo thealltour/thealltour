@@ -1,22 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyBandImageAssignments } from "@/lib/admin/bandImport/applyBandImageAssignments";
 import { BAND_IMPORT_PLACEHOLDER_IMAGE } from "@/lib/admin/bandImport/constants";
-import type { ItineraryV2 } from "@/types/product";
-
-const itinerary: ItineraryV2 = {
-  days: [
-    {
-      day: 1,
-      title: "1일차",
-      events: [
-        { heading: "인천 국제공항 출발", timeText: "08:55", displayRole: "activity" },
-        { heading: "18홀 라운드", displayRole: "activity" },
-        { heading: "중식", displayRole: "summary" },
-        { heading: "숙소", displayRole: "summary" },
-      ],
-    },
-  ],
-};
 
 const uploaded = [
   { url: "https://cdn.example.com/hero.jpg", filename: "hero.jpg" },
@@ -28,47 +12,72 @@ const uploaded = [
 ];
 
 describe("applyBandImageAssignments", () => {
-  it("maps roles onto image_url, day cover, event images, and skips junk", () => {
+  it("keeps every non-skipped photo in the gallery with hero first", () => {
     const result = applyBandImageAssignments({
-      itinerary,
       uploaded,
       assignments: [
-        { index: 0, role: "hero", day: null, eventHeading: null },
-        { index: 1, role: "dayCover", day: 1, eventHeading: null },
-        { index: 2, role: "event", day: 1, eventHeading: "숙소" },
-        { index: 3, role: "skip", day: null, eventHeading: null },
-        { index: 4, role: "event", day: 1, eventHeading: "중식" },
-        { index: 5, role: "gallery", day: null, eventHeading: null },
+        { index: 0, role: "gallery" },
+        { index: 1, role: "hero" },
+        { index: 2, role: "gallery" },
+        { index: 3, role: "skip" },
+        { index: 4, role: "gallery" },
+        { index: 5, role: "gallery" },
       ],
     });
 
-    expect(result.imageUrl).toBe("https://cdn.example.com/hero.jpg");
+    expect(result.imageUrl).toBe("https://cdn.example.com/course.jpg");
     expect(result.imagesJson).toEqual([
+      "https://cdn.example.com/course.jpg",
       "https://cdn.example.com/hero.jpg",
+      "https://cdn.example.com/hotel.jpg",
+      "https://cdn.example.com/lunch.jpg",
       "https://cdn.example.com/gallery.jpg",
     ]);
-    expect(result.imagesJson).not.toContain("https://cdn.example.com/qr.png");
-
-    const day = result.itinerary?.days[0];
-    expect(day?.coverImageUrl).toBe("https://cdn.example.com/course.jpg");
-    expect(day?.events.find((e) => e.heading === "숙소")?.images?.[0]?.url).toBe(
-      "https://cdn.example.com/hotel.jpg",
-    );
-    expect(day?.events.find((e) => e.heading === "중식")?.images?.[0]?.url).toBe(
-      "https://cdn.example.com/lunch.jpg",
-    );
-    expect(day?.events.find((e) => e.heading === "인천 국제공항 출발")?.images).toBeUndefined();
+    expect(result.skippedUrls).toEqual(["https://cdn.example.com/qr.png"]);
   });
 
-  it("falls back to placeholder hero and gallery-only when vision assignments are missing", () => {
+  it("puts all six photos in the gallery when nothing is skipped", () => {
     const result = applyBandImageAssignments({
-      itinerary,
       uploaded,
-      assignments: null,
+      assignments: uploaded.map((_, index) => ({
+        index,
+        role: index === 0 ? ("hero" as const) : ("gallery" as const),
+      })),
     });
+    expect(result.imagesJson).toHaveLength(6);
+  });
 
-    expect(result.imageUrl).toBe(BAND_IMPORT_PLACEHOLDER_IMAGE);
+  it("uses the first gallery photo as hero when vision returns no hero", () => {
+    const result = applyBandImageAssignments({
+      uploaded,
+      assignments: [{ index: 0, role: "skip" }],
+    });
+    expect(result.imageUrl).toBe("https://cdn.example.com/course.jpg");
+    expect(result.imageUrl).not.toBe(BAND_IMPORT_PLACEHOLDER_IMAGE);
+  });
+
+  it("uses the first upload as hero and keeps everything when vision fails", () => {
+    const result = applyBandImageAssignments({ uploaded, assignments: null });
+    expect(result.imageUrl).toBe("https://cdn.example.com/hero.jpg");
     expect(result.imagesJson).toEqual(uploaded.map((item) => item.url));
-    expect(result.itinerary?.days[0].events.every((ev) => !ev.images)).toBe(true);
+    expect(result.skippedUrls).toEqual([]);
+  });
+
+  it("keeps the photos when vision skips every image", () => {
+    const result = applyBandImageAssignments({
+      uploaded: uploaded.slice(0, 2),
+      assignments: [
+        { index: 0, role: "skip" },
+        { index: 1, role: "skip" },
+      ],
+    });
+    expect(result.imagesJson).toHaveLength(2);
+    expect(result.skippedUrls).toEqual([]);
+  });
+
+  it("returns the placeholder only when there are no uploads", () => {
+    const result = applyBandImageAssignments({ uploaded: [], assignments: [] });
+    expect(result.imageUrl).toBe(BAND_IMPORT_PLACEHOLDER_IMAGE);
+    expect(result.imagesJson).toBeNull();
   });
 });

@@ -1,27 +1,18 @@
 import { BAND_IMPORT_PLACEHOLDER_IMAGE } from "@/lib/admin/bandImport/constants";
 import { MAX_BAND_IMPORT_VISION_IMAGES } from "@/lib/admin/bandImport/bandImportImageConstants";
 import type { BandImageAssignment, BandImportUploadedImage } from "@/lib/admin/bandImport/bandImportImageConstants";
-import { isMoveOrFlightEvent } from "@/lib/admin/externalImport/sanitizeAiItinerary";
-import { normalizeDayCoverImages } from "@/lib/images/normalizeDayCoverImages";
-import type { ItineraryEventImage, ItineraryV2, ItineraryV2Day, ItineraryV2Event } from "@/types/product";
 
 export type ApplyBandImageAssignmentsInput = {
-  itinerary: ItineraryV2 | null;
   uploaded: Array<Pick<BandImportUploadedImage, "url" | "filename">>;
-  /** null이면 비전 실패 폴백: 플레이스홀더 대표 + 전부 갤러리 */
+  /** null이면 비전 실패: 첫 사진 대표 + 전부 갤러리 */
   assignments: BandImageAssignment[] | null;
 };
 
 export type ApplyBandImageAssignmentsResult = {
   imageUrl: string;
   imagesJson: string[] | null;
-  itinerary: ItineraryV2 | null;
+  skippedUrls: string[];
 };
-
-function cloneItinerary(itinerary: ItineraryV2 | null): ItineraryV2 | null {
-  if (!itinerary?.days?.length) return itinerary;
-  return JSON.parse(JSON.stringify(itinerary)) as ItineraryV2;
-}
 
 function uniqueUrls(urls: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
@@ -35,62 +26,6 @@ function uniqueUrls(urls: Array<string | undefined | null>): string[] {
   return out;
 }
 
-function toEventImage(url: string, index: number): ItineraryEventImage {
-  return {
-    url,
-    sortOrder: index,
-    isCover: index === 0,
-    status: "active",
-  };
-}
-
-function appendEventImage(event: ItineraryV2Event, url: string): void {
-  const existing = event.images ?? [];
-  if (existing.some((img) => img.url === url)) return;
-  event.images = [...existing, toEventImage(url, existing.length)].map((img, index) => ({
-    ...img,
-    sortOrder: index,
-    isCover: index === 0,
-  }));
-}
-
-function normalizeHeading(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-function headingsSimilar(a: string, b: string): boolean {
-  const left = normalizeHeading(a);
-  const right = normalizeHeading(b);
-  if (!left || !right) return false;
-  if (left === right) return true;
-  return left.includes(right) || right.includes(left);
-}
-
-function findDay(itinerary: ItineraryV2, dayNum: number | null | undefined): ItineraryV2Day | undefined {
-  if (dayNum == null || !Number.isFinite(dayNum)) return undefined;
-  return itinerary.days.find((day) => day.day === dayNum);
-}
-
-function findEvent(
-  itinerary: ItineraryV2,
-  heading: string | null | undefined,
-  dayNum?: number | null,
-): ItineraryV2Event | undefined {
-  const target = heading?.trim();
-  if (!target) return undefined;
-  const scoped = findDay(itinerary, dayNum);
-  const days = scoped ? [scoped, ...itinerary.days.filter((d) => d !== scoped)] : itinerary.days;
-  for (const day of days) {
-    const exact = day.events.find((ev) => normalizeHeading(ev.heading) === normalizeHeading(target));
-    if (exact) return exact;
-  }
-  for (const day of days) {
-    const loose = day.events.find((ev) => headingsSimilar(ev.heading, target));
-    if (loose) return loose;
-  }
-  return undefined;
-}
-
 function assignmentByIndex(assignments: BandImageAssignment[]): Map<number, BandImageAssignment> {
   const map = new Map<number, BandImageAssignment>();
   for (const row of assignments) {
@@ -100,84 +35,43 @@ function assignmentByIndex(assignments: BandImageAssignment[]): Map<number, Band
   return map;
 }
 
+/** skip이 아닌 사진은 모두 대표 갤러리에 넣고, 대표는 hero → 갤러리 첫 장 순으로 고릅니다. */
 export function applyBandImageAssignments(
   input: ApplyBandImageAssignmentsInput,
 ): ApplyBandImageAssignmentsResult {
   const uploaded = input.uploaded.filter((item) => item.url?.trim());
   if (uploaded.length === 0) {
-    return {
-      imageUrl: BAND_IMPORT_PLACEHOLDER_IMAGE,
-      imagesJson: null,
-      itinerary: input.itinerary,
-    };
+    return { imageUrl: BAND_IMPORT_PLACEHOLDER_IMAGE, imagesJson: null, skippedUrls: [] };
   }
 
-  if (!input.assignments) {
-    return {
-      imageUrl: BAND_IMPORT_PLACEHOLDER_IMAGE,
-      imagesJson: uniqueUrls(uploaded.map((item) => item.url)),
-      itinerary: input.itinerary,
-    };
-  }
-
-  const itinerary = cloneItinerary(input.itinerary);
-  const byIndex = assignmentByIndex(input.assignments);
+  const byIndex = assignmentByIndex(input.assignments ?? []);
   const gallery: string[] = [];
   const heroes: string[] = [];
+  const skipped: string[] = [];
 
   uploaded.forEach((item, index) => {
     const url = item.url.trim();
-    const assigned = byIndex.get(index);
     const overflow = index >= MAX_BAND_IMPORT_VISION_IMAGES;
-    const role = overflow ? "gallery" : (assigned?.role ?? "gallery");
+    const role = overflow ? "gallery" : (byIndex.get(index)?.role ?? "gallery");
 
-    if (role === "skip") return;
-
-    if (role === "hero") {
-      heroes.push(url);
-      gallery.push(url);
+    if (role === "skip") {
+      skipped.push(url);
       return;
     }
-
-    if (role === "gallery") {
-      gallery.push(url);
-      return;
-    }
-
-    if (!itinerary) {
-      gallery.push(url);
-      return;
-    }
-
-    if (role === "dayCover") {
-      const day = findDay(itinerary, assigned?.day) ?? findDay(itinerary, itinerary.days[0]?.day);
-      if (!day) {
-        gallery.push(url);
-        return;
-      }
-      const nextCovers = [...(day.coverImages ?? []), toEventImage(url, day.coverImages?.length ?? 0)];
-      const cover = normalizeDayCoverImages({ coverImages: nextCovers });
-      day.coverImages = cover.coverImages;
-      day.coverImageUrl = cover.coverImageUrl;
-      return;
-    }
-
-    if (role === "event") {
-      const event = findEvent(itinerary, assigned?.eventHeading, assigned?.day);
-      if (!event || isMoveOrFlightEvent(event.heading)) {
-        gallery.push(url);
-        return;
-      }
-      appendEventImage(event, url);
-    }
+    if (role === "hero") heroes.push(url);
+    gallery.push(url);
   });
 
-  const hero = heroes[0];
-  const imagesJson = uniqueUrls([hero, ...gallery]);
+  // 전부 skip이면 AI 판단보다 사진 보존을 우선합니다.
+  if (gallery.length === 0) {
+    const all = uniqueUrls(uploaded.map((item) => item.url));
+    return { imageUrl: all[0], imagesJson: all, skippedUrls: [] };
+  }
 
+  const hero = heroes[0] ?? gallery[0];
   return {
-    imageUrl: hero ?? BAND_IMPORT_PLACEHOLDER_IMAGE,
-    imagesJson: imagesJson.length > 0 ? imagesJson : null,
-    itinerary,
+    imageUrl: hero,
+    imagesJson: uniqueUrls([hero, ...gallery]),
+    skippedUrls: uniqueUrls(skipped),
   };
 }

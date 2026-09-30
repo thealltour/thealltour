@@ -16,7 +16,21 @@ import {
   BAND_IMPORT_STAGING_BUCKET,
   MAX_BAND_IMPORT_IMAGE_BYTES,
   MAX_BAND_IMPORT_ZIP_BYTES,
+  type BandImportImageSummary,
 } from "@/lib/admin/bandImport/bandImportImageConstants";
+import type {
+  BandVenueImageNotice,
+  BandVenueImagePathGroup,
+  BandVenueKind,
+} from "@/lib/admin/bandImport/bandVenueImages";
+import {
+  BAND_IMPORT_RESULT_STORAGE_KEY,
+  type BandImportResultNotice,
+} from "@/components/admin/products/editor/ProductVisibilityPanel";
+import BandVenueRowsField, {
+  createBandVenueFormRow,
+  type BandVenueFormRow,
+} from "@/components/admin/band/BandVenueRowsField";
 
 type ImportResponse = {
   id?: string;
@@ -28,21 +42,16 @@ type ImportResponse = {
     duration: string | null;
     status: string | null;
   };
+  images?: BandImportImageSummary | null;
+  venueImages?: BandVenueImageNotice | null;
 };
 
-type GolfCourseFormItem = {
-  name: string;
-  content: string;
-};
-
-function createGolfCourseItem(): GolfCourseFormItem {
-  return { name: "", content: "" };
+function venueRowsPayload(rows: BandVenueFormRow[]): Array<{ name: string; content: string }> {
+  return rows.map((row) => ({ name: row.name.trim(), content: row.content.trim() }));
 }
 
-function normalizeGolfCourses(items: GolfCourseFormItem[]): GolfCourseFormItem[] {
-  return items
-    .map((item) => ({ name: item.name.trim(), content: item.content.trim() }))
-    .filter((item) => item.name.length > 0 && item.content.length > 0);
+function findNamelessVenueWithPhotos(rows: BandVenueFormRow[]): number {
+  return rows.findIndex((row) => row.files.length > 0 && !row.name.trim());
 }
 
 const HWP_ACCEPT = ".hwp,.hwpx,application/haansofthwp,application/x-hwp";
@@ -105,8 +114,9 @@ async function uploadImageFileToStaging(file: File): Promise<{ path: string; fil
 export default function BandNewProductPage() {
   const router = useRouter();
   const [bandText, setBandText] = useState("");
-  const [golfCourseInfo, setGolfCourseInfo] = useState("");
-  const [golfCourses, setGolfCourses] = useState<GolfCourseFormItem[]>([createGolfCourseItem()]);
+  const [golfCourses, setGolfCourses] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
+  const [hotels, setHotels] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
+  const [attractions, setAttractions] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
   const [hwpFile, setHwpFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -160,6 +170,22 @@ export default function BandNewProductPage() {
     setError(null);
     setExistingId(null);
     setSuccessSummary(null);
+    if (!bandText.trim() && !hwpFile) {
+      setError("밴드 본문 또는 HWP 파일(.hwp/.hwpx) 중 하나 이상을 입력해 주세요.");
+      return;
+    }
+    const venueChecks: Array<[string, BandVenueFormRow[]]> = [
+      ["골프장", golfCourses],
+      ["호텔", hotels],
+      ["관광지", attractions],
+    ];
+    for (const [label, rows] of venueChecks) {
+      const nameless = findNamelessVenueWithPhotos(rows);
+      if (nameless >= 0) {
+        setError(`${label} ${nameless + 1}에 사진이 있습니다. ${label}명을 입력해 주세요.`);
+        return;
+      }
+    }
     setIsSubmitting(true);
     progress.start();
 
@@ -169,17 +195,37 @@ export default function BandNewProductPage() {
         stagingImagePaths.push(await uploadImageFileToStaging(file));
       }
 
+      const venueImagePaths: BandVenueImagePathGroup[] = [];
+      const venueGroups: Array<[BandVenueKind, BandVenueFormRow[]]> = [
+        ["golf", golfCourses],
+        ["hotel", hotels],
+        ["attraction", attractions],
+      ];
+      for (const [kind, rows] of venueGroups) {
+        for (const [index, row] of rows.entries()) {
+          if (row.files.length === 0) continue;
+          const paths: BandVenueImagePathGroup["paths"] = [];
+          for (const file of row.files) {
+            paths.push(await uploadImageFileToStaging(file));
+          }
+          venueImagePaths.push({ kind, index, paths });
+        }
+      }
+
       const formData = new FormData();
-      const normalizedGolfCourses = normalizeGolfCourses(golfCourses);
       formData.append("bandText", bandText);
-      formData.append("golfCourseInfo", golfCourseInfo);
-      formData.append("golfCoursesJson", JSON.stringify(normalizedGolfCourses));
+      formData.append("golfCoursesJson", JSON.stringify(venueRowsPayload(golfCourses)));
+      formData.append("hotelsJson", JSON.stringify(venueRowsPayload(hotels)));
+      formData.append("attractionsJson", JSON.stringify(venueRowsPayload(attractions)));
       if (hwpFile) formData.append("hwpFile", hwpFile);
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
       }
       if (stagingImagePaths.length > 0) {
         formData.append("stagingImagePaths", JSON.stringify(stagingImagePaths));
+      }
+      if (venueImagePaths.length > 0) {
+        formData.append("venueImagePaths", JSON.stringify(venueImagePaths));
       }
 
       const res = await fetch("/api/admin/products/import-band", {
@@ -194,7 +240,9 @@ export default function BandNewProductPage() {
       } catch {
         progress.stop();
         if (res.status === 413) {
-          setError("업로드 용량이 너무 큽니다. 한글 문서(HWP)를 20MB 이하로 줄여서 다시 시도해 주세요.");
+          setError(
+            "업로드 용량이 너무 큽니다. 한글 문서(HWP)를 20MB 이하로 줄이거나 사진 수를 줄여 다시 시도해 주세요.",
+          );
           return;
         }
         setError(
@@ -219,6 +267,15 @@ export default function BandNewProductPage() {
       if (data.id) {
         progress.complete();
         setSuccessSummary(data.parsed ?? null);
+        try {
+          const notice: BandImportResultNotice = {
+            images: data.images ?? null,
+            venueImages: data.venueImages ?? null,
+          };
+          sessionStorage.setItem(BAND_IMPORT_RESULT_STORAGE_KEY(data.id), JSON.stringify(notice));
+        } catch {
+          // sessionStorage를 쓸 수 없으면 편집기 배너만 생략
+        }
         const params = new URLSearchParams({
           [ADMIN_PRODUCTS_QUERY_KEYS.VIEW]: ADMIN_PRODUCTS_VIEW.CREATE,
           [ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID]: data.id,
@@ -246,8 +303,8 @@ export default function BandNewProductPage() {
       <div>
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">상품 등록(밴드)</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          네이버 밴드 게시글과 한글 문서(.hwp / .hwpx)를 올리면 AI가 상품 필드를 추출해 등록합니다.
-          사진이나 네이버 블로그 zip을 함께 올리면 대표·갤러리·일정 이미지로 배치합니다.
+          네이버 밴드 게시글과 한글 문서(.hwp / .hwpx)를 올리면 AI가 상품 필드를 추출해 비노출 상태로
+          등록합니다. 편집기에서 검수한 뒤 노출을 시작하세요. 상품 사진은 모두 대표 갤러리에 들어갑니다.
         </p>
       </div>
 
@@ -262,78 +319,41 @@ export default function BandNewProductPage() {
           />
         </label>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <span className="text-sm font-medium text-[var(--text-primary)]">골프장 정보 (선택)</span>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                골프장별 이름/설명을 분리 입력하면 상세에서 이름 클릭 시 모달로 노출됩니다.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setGolfCourses((prev) => [...prev, createGolfCourseItem()])}
-              className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
-            >
-              골프장 추가
-            </button>
-          </div>
+        <BandVenueRowsField
+          title="골프장 정보 (선택)"
+          description="골프장별 이름·설명·사진을 입력하면 상세에서 골프장명을 눌렀을 때 사진 모달로 보여줍니다."
+          itemLabel="골프장"
+          namePlaceholder="골프장명 (예: 수트라하버 골프클럽)"
+          contentPlaceholder="코스 특징, 운영 시간, 플레이 포인트"
+          rows={golfCourses}
+          onChange={setGolfCourses}
+          onError={setError}
+          fieldClass={fieldClass}
+        />
 
-          {golfCourses.map((item, index) => (
-            <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 {index + 1}</span>
-                {golfCourses.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setGolfCourses((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
-                    }
-                    className="text-xs text-rose-600 hover:underline"
-                  >
-                    삭제
-                  </button>
-                ) : null}
-              </div>
-              <input
-                className={fieldClass}
-                value={item.name}
-                onChange={(e) =>
-                  setGolfCourses((prev) =>
-                    prev.map((course, itemIndex) =>
-                      itemIndex === index ? { ...course, name: e.target.value } : course,
-                    ),
-                  )
-                }
-                placeholder="골프장명 (예: 수트라하버 골프클럽)"
-              />
-              <textarea
-                className={`${fieldClass} mt-2 min-h-[96px]`}
-                value={item.content}
-                onChange={(e) =>
-                  setGolfCourses((prev) =>
-                    prev.map((course, itemIndex) =>
-                      itemIndex === index ? { ...course, content: e.target.value } : course,
-                    ),
-                  )
-                }
-                placeholder="코스 특징, 운영 시간, 플레이 포인트"
-              />
-            </div>
-          ))}
+        <BandVenueRowsField
+          title="호텔 정보 (선택)"
+          description="호텔별 이름·설명·사진을 입력하면 상세의 골프장 정보 아래에 호텔 정보로 보여줍니다."
+          itemLabel="호텔"
+          namePlaceholder="호텔명 (예: 마젤란 수트라 리조트)"
+          contentPlaceholder="객실 타입, 부대시설, 위치"
+          rows={hotels}
+          onChange={setHotels}
+          onError={setError}
+          fieldClass={fieldClass}
+        />
 
-          <label className="block space-y-1.5 pt-1">
-            <span className="text-xs font-semibold text-[var(--text-secondary)]">
-              레거시 단일 텍스트 (호환용, 선택)
-            </span>
-            <textarea
-              className={`${fieldClass} min-h-[88px]`}
-              value={golfCourseInfo}
-              onChange={(e) => setGolfCourseInfo(e.target.value)}
-              placeholder="기존 단일 골프장 정보 필드도 함께 저장하려면 입력하세요."
-            />
-          </label>
-        </div>
+        <BandVenueRowsField
+          title="관광 정보 (선택)"
+          description="관광지별 이름·설명·사진을 입력하면 상세의 호텔 정보 아래에 관광 정보로 보여줍니다."
+          itemLabel="관광지"
+          namePlaceholder="관광지명 (예: 마누칸 섬)"
+          contentPlaceholder="볼거리, 소요 시간, 이용 팁"
+          rows={attractions}
+          onChange={setAttractions}
+          onError={setError}
+          fieldClass={fieldClass}
+        />
 
         <div className="space-y-1.5">
           <span className="text-sm font-medium text-[var(--text-primary)]">한글 문서</span>
@@ -410,7 +430,8 @@ export default function BandNewProductPage() {
         <div className="space-y-1.5">
           <span className="text-sm font-medium text-[var(--text-primary)]">상품 사진 (선택)</span>
           <span className="block text-xs text-[var(--text-secondary)]">
-            jpg, png, jpeg, webp 여러 장 또는 네이버 블로그 zip. 일정표·로고·QR은 자동으로 제외합니다.
+            jpg, png, jpeg, webp 여러 장 또는 네이버 블로그 zip. 모두 대표 갤러리에 들어가고 일정표·로고·QR은
+            자동으로 제외합니다. 골프장·호텔·관광지 사진은 위 항목별 사진 필드에 올려 주세요.
           </span>
           <div
             onDragOver={(e) => {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import JSZip from "jszip";
-import { extractBandImportImages, BandImportImageError } from "@/lib/admin/bandImport/extractBandImportImages";
+import {
+  extractBandImportImages,
+  extractBandImportImagesWithStats,
+  BandImportImageError,
+} from "@/lib/admin/bandImport/extractBandImportImages";
 import { detectImageMime } from "@/lib/admin/bandImport/bandImportImageConstants";
 
 const TINY_PNG = Buffer.from(
@@ -64,6 +68,26 @@ describe("extractBandImportImages", () => {
     expect(images).toHaveLength(2);
     expect(images[0].contentType).toBe("image/jpeg");
     expect(images[1].contentType).toBe("image/webp");
+  });
+
+  it("counts unsupported zip entries so the admin can be told", async () => {
+    const zipBytes = await zipWithFiles({
+      "a.jpg": TINY_PNG,
+      "b.heic": TINY_PNG,
+      "c.gif": TINY_PNG,
+    });
+    const result = await extractBandImportImagesWithStats([{ name: "mixed.zip", bytes: zipBytes }]);
+    expect(result.images).toHaveLength(1);
+    expect(result.stats).toEqual({ unsupported: 2, oversize: 0 });
+  });
+
+  it("keeps every photo without a count cap", async () => {
+    const files = Object.fromEntries(
+      Array.from({ length: 45 }, (_, i) => [`photos/${String(i).padStart(2, "0")}.jpg`, TINY_PNG]),
+    );
+    const zipBytes = await zipWithFiles(files);
+    const images = await extractBandImportImages([{ name: "many.zip", bytes: zipBytes }]);
+    expect(images).toHaveLength(45);
   });
 
   it("rejects standalone non-image files", async () => {

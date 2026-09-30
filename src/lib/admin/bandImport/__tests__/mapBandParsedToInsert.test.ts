@@ -226,8 +226,8 @@ describe("mapBandParsedToInsert", () => {
     });
     expect(payload.price).toBe(599000);
     expect(payload.product_source_url).toBe("https://band.us/n/abc");
-    expect(payload.is_active).toBe(true);
-    expect(payload.golf_course_info).toBeNull();
+    expect(payload.is_active).toBe(false);
+    expect(payload).not.toHaveProperty("golf_course_info");
     expect(payload.theme_chart_json).toBeNull();
   });
 
@@ -254,19 +254,26 @@ describe("mapBandParsedToInsert", () => {
     });
   });
 
-  it("stores golf course info separately from band description", () => {
+  it("stores golf courses and hotels with venue photos", () => {
     const payload = mapBandParsedToInsert({
-      parsed: minimalBandParsed({
-        band_marketing_copy: "밴드 홍보",
-        description: "HWP 개요",
-      }),
+      parsed: minimalBandParsed(),
       bandText: "밴드 본문",
       hwpText: "",
-      golfCourseInfo: "  18홀 챔피언십 코스  ",
+      golfCoursesJson: [
+        { name: " 수트라하버 GC ", content: "", images: ["https://cdn/golf.webp"] },
+        { name: "", content: "이름 없는 행" },
+      ],
+      hotelsJson: [{ name: "마젤란 리조트", content: "오션뷰" }],
+      attractionsJson: [{ name: "마누칸 섬", content: "", images: ["https://cdn/island.webp"] }],
     });
 
-    expect(payload.description).toBe("밴드 홍보\n\nHWP 개요");
-    expect(payload.golf_course_info).toBe("18홀 챔피언십 코스");
+    expect(payload.golf_courses_json).toEqual([
+      { name: "수트라하버 GC", content: "", images: ["https://cdn/golf.webp"] },
+    ]);
+    expect(payload.hotels_json).toEqual([{ name: "마젤란 리조트", content: "오션뷰" }]);
+    expect(payload.attractions_json).toEqual([
+      { name: "마누칸 섬", content: "", images: ["https://cdn/island.webp"] },
+    ]);
   });
 
   it("maps expanded meta fields", () => {
@@ -535,6 +542,44 @@ describe("mapBandParsedToInsert", () => {
     ]);
     expect(payload.departure_from_date).toBe("2026-07-24");
     expect(hasExplicitYearInBandSource("7/24 출발", "작성일: 2023.01.15")).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it("moves month/day-only January departures to next year when registered in December", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-12-15T12:00:00+09:00"));
+
+    const payload = mapBandParsedToInsert({
+      parsed: minimalBandParsed({
+        departure_schedules: [
+          {
+            departure_date: "12/28",
+            return_date: "1/2",
+            price: 990000,
+            label: "12/28 출발",
+            status: null,
+          },
+          {
+            departure_date: "1/10",
+            return_date: null,
+            price: 890000,
+            label: "1/10 출발",
+            status: null,
+          },
+        ],
+        departure_from_date: null,
+      }),
+      bandText: "연말연시 골프 12/28, 1/10 출발",
+      hwpText: "",
+    });
+
+    const schedules = payload.departure_schedules_json as Array<{
+      departureDate: string;
+      returnDate: string | null;
+    }>;
+    expect(schedules.map((row) => row.departureDate)).toEqual(["2026-12-28", "2027-01-10"]);
+    expect(schedules[0].returnDate).toBe("2027-01-02");
 
     vi.useRealTimers();
   });

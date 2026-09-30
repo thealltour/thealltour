@@ -17,16 +17,22 @@ import {
   productSaveWarningCodeFromStrippedColumns,
   updateProductWithSchemaFallback,
 } from "@/lib/supabaseProductsColumnFallback";
-import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
 import { deleteProductSupabaseImages } from "@/lib/admin/deleteProductSupabaseImages";
+import {
+  removeProductFromHomePlacements,
+  revalidateHomePlacementCaches,
+} from "@/lib/admin/removeProductFromHomePlacements";
 import type { PackageCatalog } from "@/types/product";
 
 type ProductBody = {
   title?: string;
   description?: string;
   golf_course_info?: string | null;
-  golf_courses_json?: Array<{ name: string; content: string }> | null;
+  golf_courses_json?: unknown;
+  hotels_json?: unknown;
+  attractions_json?: unknown;
   package_catalog_json?: PackageCatalog | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
@@ -144,7 +150,13 @@ export async function PATCH(
     updates.golf_course_info = body.golf_course_info?.trim() || null;
   }
   if (body.golf_courses_json !== undefined) {
-    updates.golf_courses_json = normalizeGolfCoursesJson(body.golf_courses_json);
+    updates.golf_courses_json = normalizeVenueInfoList(body.golf_courses_json);
+  }
+  if (body.hotels_json !== undefined) {
+    updates.hotels_json = normalizeVenueInfoList(body.hotels_json);
+  }
+  if (body.attractions_json !== undefined) {
+    updates.attractions_json = normalizeVenueInfoList(body.attractions_json);
   }
   if (body.package_catalog_json !== undefined) {
     updates.package_catalog_json = normalizePackageCatalog(body.package_catalog_json);
@@ -346,6 +358,9 @@ export async function PATCH(
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
   revalidatePath(`/products/${id}`);
   revalidatePath("/products");
+  if (body.is_active !== undefined) {
+    revalidateHomePlacementCaches();
+  }
 
   const warningCode = productSaveWarningCodeFromStrippedColumns(updateResult.strippedColumns);
   if (warningCode) {
@@ -403,6 +418,15 @@ export async function DELETE(
     }
   } catch (err) {
     console.error("[admin/products DELETE] storage cleanup failed", err);
+  }
+
+  try {
+    const placements = await removeProductFromHomePlacements(id);
+    if (placements.errors.length > 0) {
+      console.error("[admin/products DELETE] home placement cleanup", placements.errors);
+    }
+  } catch (err) {
+    console.error("[admin/products DELETE] home placement cleanup failed", err);
   }
 
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);

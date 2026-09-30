@@ -122,5 +122,11 @@ describe("parseBandProductText", () => {
     );
     expect(String(generateObjectMock.mock.calls[0][0].system)).toContain("4–8 Korean search keywords");
     expect(String(generateObjectMock.mock.calls[0][0].prompt)).toContain("meta_title:");
+    const metaPrompt = String(generateObjectMock.mock.calls[0][0].prompt);
+    expect(metaPrompt).toContain("밴드 본문");
+    expect(metaPrompt).toContain("HWP 본문");
+    const itineraryPrompt = String(generateObjectMock.mock.calls[1][0].prompt);
+    expect(itineraryPrompt).toContain("HWP 본문");
+    expect(itineraryPrompt).toContain("밴드 본문");
   });
 });

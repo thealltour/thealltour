@@ -52,6 +52,8 @@ export const GUIDE_BRIDGE_CANDIDATE_EXCLUDED_COLUMNS = [
   "itinerary_media_json",
   "package_catalog_json",
   "golf_courses_json",
+  "hotels_json",
+  "attractions_json",
   "selling_points_json",
   "options",
   "notes",

@@ -1,4 +1,31 @@
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import type { Product } from "@/types/product";
+
+export type VenueGalleryImage = {
+  url: string;
+  kindLabel: string;
+  venueName: string;
+};
+
+/** 상세 상품이미지 캐러셀에서 상품 사진 뒤에 붙는 장소 사진: 골프장 → 관광지 → 호텔 순 */
+export function collectVenueGalleryImages(
+  product: Pick<Product, "golf_courses_json" | "attractions_json" | "hotels_json">,
+): VenueGalleryImage[] {
+  const sources: Array<[string, Product["golf_courses_json"]]> = [
+    ["골프장", product.golf_courses_json],
+    ["관광지", product.attractions_json],
+    ["호텔", product.hotels_json],
+  ];
+  const out: VenueGalleryImage[] = [];
+  for (const [kindLabel, items] of sources) {
+    for (const venue of normalizeVenueInfoList(items) ?? []) {
+      for (const url of venue.images ?? []) {
+        out.push({ url, kindLabel, venueName: venue.name });
+      }
+    }
+  }
+  return out;
+}
 
 export function normalizeImageList(images: Array<string | null | undefined> | null | undefined): string[] {
   if (!Array.isArray(images)) return [];

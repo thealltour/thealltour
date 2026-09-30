@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag, revalidatePath } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { CACHE_TAGS, REVALIDATE_MAX } from "@/lib/cacheTags";
 import { requireAdminSessionForPath } from "@/lib/apiAuth";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -18,12 +18,24 @@ import {
 } from "@/lib/admin/bandImport/hwpParser";
 import { BandImportImageError } from "@/lib/admin/bandImport/extractBandImportImages";
 import {
+  discardUploadedBandImages,
   filesToBandImportSources,
   processBandImportImages,
   stagingPathsToBandImportSources,
+  uploadBandVenueImages,
+  type BandVenueImageUploadResult,
 } from "@/lib/admin/bandImport/processBandImportImages";
 import { deleteBandImportStagingFiles } from "@/lib/admin/bandImport/bandImportStaging";
-import type { ItineraryV2 } from "@/types/product";
+import type { BandImportImageSummary } from "@/lib/admin/bandImport/bandImportImageConstants";
+import {
+  attachBandVenueImages,
+  parseBandVenueImagePaths,
+  parseBandVenueRows,
+  type BandVenueImageNotice,
+  type BandVenueImagePathGroup,
+  type BandVenueKind,
+  type BandVenueRow,
+} from "@/lib/admin/bandImport/bandVenueImages";
 
 export const maxDuration = 300;
 
@@ -32,30 +44,11 @@ type StagingImageRef = { path: string; filename?: string };
 type ImportBandBody = {
   bandText?: string;
   hwpText?: string;
-  golfCourseInfo?: string;
-  golfCoursesJson?: Array<{ name: string; content: string }>;
+  golfCoursesJson?: unknown;
+  hotelsJson?: unknown;
+  attractionsJson?: unknown;
   product_source_url?: string;
 };
-
-function normalizeGolfCoursesInput(raw: unknown): Array<{ name: string; content: string }> {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((item): item is Record<string, unknown> => item != null && typeof item === "object")
-    .map((item) => ({
-      name: typeof item.name === "string" ? item.name.trim() : "",
-      content: typeof item.content === "string" ? item.content.trim() : "",
-    }))
-    .filter((item) => item.name.length > 0 && item.content.length > 0);
-}
-
-function parseGolfCoursesJsonString(raw: string): Array<{ name: string; content: string }> {
-  if (!raw.trim()) return [];
-  try {
-    return normalizeGolfCoursesInput(JSON.parse(raw));
-  } catch {
-    return [];
-  }
-}
 
 function parseStagingImagePaths(raw: string): Array<{ path: string; filename?: string }> {
   if (!raw) return [];
@@ -98,15 +91,19 @@ function pickImageFiles(formData: FormData): File[] {
   );
 }
 
-async function readImportRequest(request: NextRequest): Promise<{
+type ImportRequest = {
   bandText: string;
   hwpText: string;
-  golfCourseInfo: string;
-  golfCoursesJson: Array<{ name: string; content: string }>;
+  golfCourseRows: BandVenueRow[];
+  hotelRows: BandVenueRow[];
+  attractionRows: BandVenueRow[];
   productSourceUrl: string;
   imageFiles: File[];
   stagingImagePaths: StagingImageRef[];
-}> {
+  venueImagePaths: BandVenueImagePathGroup[];
+};
+
+async function readImportRequest(request: NextRequest): Promise<ImportRequest> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
     let formData: FormData;
@@ -119,11 +116,13 @@ async function readImportRequest(request: NextRequest): Promise<{
     }
     const bandText = formString(formData, "bandText").trim();
     const pastedHwpText = formString(formData, "hwpText").trim();
-    const golfCourseInfo = formString(formData, "golfCourseInfo").trim();
-    const golfCoursesJson = parseGolfCoursesJsonString(formString(formData, "golfCoursesJson"));
+    const golfCourseRows = parseBandVenueRows(formString(formData, "golfCoursesJson"));
+    const hotelRows = parseBandVenueRows(formString(formData, "hotelsJson"));
+    const attractionRows = parseBandVenueRows(formString(formData, "attractionsJson"));
     const productSourceUrl = formString(formData, "product_source_url").trim();
     const imageFiles = pickImageFiles(formData);
     const stagingImagePaths = parseStagingImagePaths(formString(formData, "stagingImagePaths"));
+    const venueImagePaths = parseBandVenueImagePaths(formString(formData, "venueImagePaths"));
     const hwpFile = pickHwpFile(formData);
 
     let hwpText = pastedHwpText;
@@ -137,11 +136,13 @@ async function readImportRequest(request: NextRequest): Promise<{
     return {
       bandText,
       hwpText,
-      golfCourseInfo,
-      golfCoursesJson,
+      golfCourseRows,
+      hotelRows,
+      attractionRows,
       productSourceUrl,
       imageFiles,
       stagingImagePaths,
+      venueImagePaths,
     };
   }
 
@@ -155,35 +156,56 @@ async function readImportRequest(request: NextRequest): Promise<{
   return {
     bandText: body.bandText?.trim() ?? "",
     hwpText: body.hwpText?.trim() ?? "",
-    golfCourseInfo: body.golfCourseInfo?.trim() ?? "",
-    golfCoursesJson: normalizeGolfCoursesInput(body.golfCoursesJson),
+    golfCourseRows: parseBandVenueRows(body.golfCoursesJson),
+    hotelRows: parseBandVenueRows(body.hotelsJson),
+    attractionRows: parseBandVenueRows(body.attractionsJson),
     productSourceUrl: body.product_source_url?.trim() ?? "",
     imageFiles: [],
     stagingImagePaths: [],
+    venueImagePaths: [],
   };
+}
+
+function imageErrorResponse(error: unknown, fallback: string): NextResponse {
+  if (error instanceof BandImportImageError) {
+    return NextResponse.json({ message: error.message }, { status: error.httpStatus });
+  }
+  console.error("[import-band] image import failed:", error);
+  return NextResponse.json(
+    { message: error instanceof Error ? error.message : fallback },
+    { status: 500 },
+  );
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminSessionForPath("/api/admin/products/import-band");
   if (!auth.ok) return auth.res;
 
-  let bandText = "";
-  let hwpText = "";
-  let golfCourseInfo = "";
-  let golfCoursesJson: Array<{ name: string; content: string }> = [];
-  let productSourceUrl = "";
-  let imageFiles: File[] = [];
-  let stagingImagePaths: StagingImageRef[] = [];
-
+  const stagingPathsToDelete: string[] = [];
   try {
-    const parsedBody = await readImportRequest(request);
-    bandText = parsedBody.bandText;
-    hwpText = parsedBody.hwpText;
-    golfCourseInfo = parsedBody.golfCourseInfo;
-    golfCoursesJson = parsedBody.golfCoursesJson;
-    productSourceUrl = parsedBody.productSourceUrl;
-    imageFiles = parsedBody.imageFiles;
-    stagingImagePaths = parsedBody.stagingImagePaths;
+    return await handleImport(request, stagingPathsToDelete);
+  } finally {
+    if (stagingPathsToDelete.length > 0) {
+      try {
+        await deleteBandImportStagingFiles(stagingPathsToDelete);
+      } catch (error) {
+        console.warn("[import-band] staging cleanup failed:", error);
+      }
+    }
+  }
+}
+
+async function handleImport(
+  request: NextRequest,
+  stagingPathsToDelete: string[],
+): Promise<NextResponse> {
+  let importRequest: ImportRequest;
+  try {
+    importRequest = await readImportRequest(request);
+    stagingPathsToDelete.push(
+      ...importRequest.stagingImagePaths.map((item) => item.path),
+      ...importRequest.venueImagePaths.flatMap((group) => group.paths.map((item) => item.path)),
+    );
   } catch (error) {
     if (error instanceof HwpParseError) {
       return NextResponse.json({ message: error.message }, { status: error.httpStatus });
@@ -191,6 +213,18 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "요청 본문이 올바르지 않습니다.";
     return NextResponse.json({ message }, { status: 400 });
   }
+
+  const {
+    bandText,
+    hwpText,
+    golfCourseRows,
+    hotelRows,
+    attractionRows,
+    productSourceUrl,
+    imageFiles,
+    stagingImagePaths,
+    venueImagePaths,
+  } = importRequest;
 
   if (!bandText && !hwpText) {
     return NextResponse.json(
@@ -224,12 +258,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: formatBandParseError(error) }, { status: 500 });
   }
 
+  const uploadedPublicUrls: string[] = [];
+  let imageSummary: BandImportImageSummary | null = null;
+  let venueNotice: BandVenueImageNotice | null = null;
+  let venueImages: Pick<BandVenueImageUploadResult, BandVenueKind> = {
+    golf: new Map(),
+    hotel: new Map(),
+    attraction: new Map(),
+  };
+
+  if (venueImagePaths.length > 0) {
+    try {
+      const rowsByKind: Record<BandVenueKind, BandVenueRow[]> = {
+        golf: golfCourseRows,
+        hotel: hotelRows,
+        attraction: attractionRows,
+      };
+      const uploaded = await uploadBandVenueImages(
+        venueImagePaths.map((group) => ({
+          ...group,
+          rowName: rowsByKind[group.kind][group.index]?.name ?? "",
+        })),
+      );
+      uploadedPublicUrls.push(...uploaded.uploadedUrls);
+      venueImages = uploaded;
+      venueNotice = { uploaded: uploaded.uploadedUrls.length, uploadErrors: uploaded.uploadErrors };
+    } catch (error) {
+      return imageErrorResponse(error, "골프장·호텔·관광지 사진 업로드에 실패했습니다.");
+    }
+  }
+
   const insertPayload = mapBandParsedToInsert({
     parsed,
     bandText,
     hwpText,
-    golfCourseInfo,
-    golfCoursesJson,
+    golfCoursesJson: attachBandVenueImages(golfCourseRows, venueImages.golf),
+    hotelsJson: attachBandVenueImages(hotelRows, venueImages.hotel),
+    attractionsJson: attachBandVenueImages(attractionRows, venueImages.attraction),
     productSourceUrl: productSourceUrl || null,
   });
 
@@ -239,26 +304,14 @@ export async function POST(request: NextRequest) {
         ...(await filesToBandImportSources(imageFiles)),
         ...(await stagingPathsToBandImportSources(stagingImagePaths)),
       ];
-      const applied = await processBandImportImages({
-        sources,
-        itinerary: (insertPayload.itinerary_v2_json as ItineraryV2 | null) ?? null,
-      });
+      const applied = await processBandImportImages({ sources });
       insertPayload.image_url = applied.imageUrl;
       insertPayload.images_json = applied.imagesJson;
-      insertPayload.itinerary_v2_json = applied.itinerary;
+      uploadedPublicUrls.push(...applied.keptUrls);
+      imageSummary = applied.summary;
     } catch (error) {
-      if (error instanceof BandImportImageError) {
-        return NextResponse.json({ message: error.message }, { status: error.httpStatus });
-      }
-      console.error("[import-band] image import failed:", error);
-      return NextResponse.json(
-        { message: error instanceof Error ? error.message : "사진 업로드에 실패했습니다." },
-        { status: 500 },
-      );
-    } finally {
-      if (stagingImagePaths.length > 0) {
-        await deleteBandImportStagingFiles(stagingImagePaths.map((item) => item.path));
-      }
+      await discardUploadedBandImages(uploadedPublicUrls, "gallery image failure");
+      return imageErrorResponse(error, "사진 업로드에 실패했습니다.");
     }
   }
 
@@ -272,15 +325,15 @@ export async function POST(request: NextRequest) {
     console.warn("[import-band] stripped missing columns:", insertResult.strippedColumns.join(", "));
   }
 
-  if (insertResult.error) {
-    console.error("[import-band] insert failed:", insertResult.error);
-    return NextResponse.json(
-      { message: `상품 등록에 실패했습니다. (${insertResult.error.message})` },
-      { status: 500 },
-    );
-  }
-
-  if (!insertResult.data?.id) {
+  if (insertResult.error || !insertResult.data?.id) {
+    await discardUploadedBandImages(uploadedPublicUrls, "insert failure");
+    if (insertResult.error) {
+      console.error("[import-band] insert failed:", insertResult.error);
+      return NextResponse.json(
+        { message: `상품 등록에 실패했습니다. (${insertResult.error.message})` },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       { message: "상품 등록 권한이 없습니다. (RLS 정책 확인 필요)" },
       { status: 403 },
@@ -288,13 +341,16 @@ export async function POST(request: NextRequest) {
   }
 
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
-  revalidatePath("/products");
 
   return NextResponse.json(
     {
       id: insertResult.data.id,
-      message: "밴드 상품이 등록되었습니다.",
-      parsed: summarizeBandParsedForResponse(parsed),
+      message: "밴드 상품이 비노출 상태로 등록되었습니다. 검수 후 노출을 시작해 주세요.",
+      parsed: summarizeBandParsedForResponse(parsed, insertPayload.price),
+      isActive: false,
+      images: imageSummary,
+      venueImages: venueNotice,
+      strippedColumns: insertResult.strippedColumns,
     },
     { status: 201 },
   );

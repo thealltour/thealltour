@@ -14,6 +14,9 @@ const SOURCE_LABEL: Record<ProductImageEntry["source"], string> = {
   "v2-day-cover": "일차 커버",
   "v2-event-image": "일정 이미지",
   catalog: "카탈로그",
+  "golf-course": "골프장",
+  hotel: "호텔",
+  attraction: "관광지",
   "overview-cover": "오버뷰 커버",
 };
 

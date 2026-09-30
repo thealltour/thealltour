@@ -42,8 +42,18 @@ export async function fetchAdminProducts(
   return result;
 }
 
+export class AdminProductFetchError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AdminProductFetchError";
+    this.status = status;
+  }
+}
+
 /**
- * 단건 조회 (editingId 로드). 실패 시 throw.
+ * 단건 조회 (editingId 로드). 실패 시 AdminProductFetchError throw (삭제된 상품은 status 404).
  */
 export async function fetchAdminProduct(productId: string): Promise<Product> {
   const response = await fetch(`${BASE}/${productId}`, { cache: "no-store" });
@@ -51,7 +61,10 @@ export async function fetchAdminProduct(productId: string): Promise<Product> {
     () => ({}),
   );
   if (!response.ok || !result || typeof result !== "object" || !("id" in result)) {
-    throw new Error(extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.PRODUCT_FETCH_FAIL));
+    throw new AdminProductFetchError(
+      extractErrorMessage(result, ADMIN_PRODUCTS_MESSAGES.PRODUCT_FETCH_FAIL),
+      response.status,
+    );
   }
   return result as Product;
 }

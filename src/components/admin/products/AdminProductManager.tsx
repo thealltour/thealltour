@@ -67,6 +67,7 @@ import { CoverRecommendModal } from "@/components/admin/products/modals/CoverRec
 import { parsePastedImageUrls } from "@/lib/admin/parsePastedImageUrls";
 import { ProductFormActionBar } from "@/components/admin/ProductFormActionBar";
 import { ProductFormSectionNav } from "@/components/admin/ProductFormSectionNav";
+import { ProductVisibilityPanel } from "@/components/admin/products/editor/ProductVisibilityPanel";
 import { extractTitleCandidates } from "@/lib/products/extractProductTitle";
 import {
   recommendCoverCandidates,
@@ -302,6 +303,7 @@ export default function AdminProductManager() {
   const isListView = !viewParam || viewParam === ADMIN_PRODUCTS_VIEW.LIST;
   const [form, setForm] = useState<ProductFormState>(initialFormState);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingIsActive, setEditingIsActive] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
@@ -917,6 +919,7 @@ export default function AdminProductManager() {
       // ignore
     }
     setEditingId(null);
+    setEditingIsActive(null);
     setForm(initialFormState);
     resetBaseSnapshot(initialFormState);
     setActiveSchedulePreviewIndex(0);
@@ -953,6 +956,7 @@ export default function AdminProductManager() {
         setForm(nextForm);
         initialFormSnapshotRef.current = structuredClone(nextForm);
         setEditingId(urlEditingId);
+        setEditingIsActive(product.is_active !== false);
         setErrorMessage("");
         resetBaseSnapshot(nextForm);
         setTimeout(() => {
@@ -1744,6 +1748,14 @@ export default function AdminProductManager() {
             </button>
           </div>
         ) : null}
+        {editingId ? (
+          <ProductVisibilityPanel
+            productId={editingId}
+            isActive={editingIsActive}
+            onChange={setEditingIsActive}
+            showToast={showLocalToast}
+          />
+        ) : null}
         <div className="flex items-start gap-4 lg:gap-6">
         {/* 좌측 필드: 섹션 네비 + 액션 바 (sticky, 문서 흐름 내) */}
         <aside
@@ -2193,6 +2205,7 @@ export default function AdminProductManager() {
             locallyOpenedEditingIdRef.current = product.id;
             router.replace(buildAdminProductEditHref(product.id));
             setEditingId(product.id);
+            setEditingIsActive(product.is_active !== false);
             const nextForm = deserializeAdminProductToForm(product);
             setForm(nextForm);
             initialFormSnapshotRef.current = structuredClone(nextForm);

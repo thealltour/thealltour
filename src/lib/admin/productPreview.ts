@@ -14,10 +14,12 @@ import type {
   ItineraryStructuredDay,
   ItineraryV2,
   SeasonalPriceBands,
+  VenueInfoItem,
 } from "@/types/product";
 import {
   sanitizeSeasonalPriceBandsFromFormStrings,
 } from "@/lib/products/seasonalPriceBands";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { buildProductCardInfoBadges } from "@/lib/productCardProps";
@@ -57,6 +59,9 @@ export type ProductFormPayload = {
   title?: string;
   description?: string;
   golf_course_info?: string;
+  golf_courses_json?: VenueInfoItem[];
+  hotels_json?: VenueInfoItem[];
+  attractions_json?: VenueInfoItem[];
   one_liner?: string;
   options_json?: string;
   image_url?: string;
@@ -183,6 +188,9 @@ export function formToPreviewProduct(
     title: ((form.title?.trim() || "상품명") as string).slice(0, 200),
     description: (form.description?.trim() || "") as string,
     golf_course_info: form.golf_course_info?.trim() || undefined,
+    golf_courses_json: normalizeVenueInfoList(form.golf_courses_json) ?? undefined,
+    hotels_json: normalizeVenueInfoList(form.hotels_json) ?? undefined,
+    attractions_json: normalizeVenueInfoList(form.attractions_json) ?? undefined,
     image_url: primaryImageUrl as string,
     images_json: imagesJson.length > 0 ? imagesJson : undefined,
     category: (form.category?.trim() || "여행상품") as string,

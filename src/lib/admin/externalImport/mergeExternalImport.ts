@@ -24,7 +24,6 @@ export type MergeExternalImportInput = {
 function normalizeGalleryUrls(
   productGalleryUrls: string[] | undefined,
   heroImageUrl: string | null | undefined,
-  max = 10,
 ): { imageUrl: string | null; imagesJson: string[] | null } {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -40,11 +39,10 @@ function normalizeGalleryUrls(
   push(heroImageUrl);
   for (const url of productGalleryUrls ?? []) {
     push(url);
-    if (out.length >= max) break;
   }
 
   if (out.length === 0) return { imageUrl: null, imagesJson: null };
-  return { imageUrl: out[0], imagesJson: out.slice(0, max) };
+  return { imageUrl: out[0], imagesJson: out };
 }
 
 export function mergeExternalImport(input: MergeExternalImportInput): ExternalParsedProduct {

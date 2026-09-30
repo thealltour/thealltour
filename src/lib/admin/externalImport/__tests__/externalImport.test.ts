@@ -91,7 +91,7 @@ describe("mapExternalParsedToInsert", () => {
   it("maps flight fields and deterministic gallery", () => {
     const parsed = mergeExternalImport({
       meta: minimalMeta(),
-      productGalleryUrls: Array.from({ length: 9 }, (_, i) => `https://cdn.example.com/g${i}.jpg`),
+      productGalleryUrls: Array.from({ length: 14 }, (_, i) => `https://cdn.example.com/g${i}.jpg`),
       heroImageUrl: "https://cdn.example.com/g0.jpg",
       itineraryBlocks: RICH_BLOCKS,
     });
@@ -104,7 +104,7 @@ describe("mapExternalParsedToInsert", () => {
 
     expect(payload.departure_flight_name).toBe("OZ701");
     expect(payload.category).toBe("하나투어");
-    expect(payload.images_json).toHaveLength(9);
+    expect(payload.images_json).toHaveLength(14);
     expect(payload.image_url).toBe("https://cdn.example.com/g0.jpg");
 
     const itinerary = payload.itinerary_v2_json as {

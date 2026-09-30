@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Modal } from "@/components/ui/Modal";
 import type { GolfCourseInfoItem } from "@/types/product";
+import { VenueInfoPills } from "@/components/products/venues/VenueInfoPills";
+import { hasVenueInfoItems } from "@/lib/admin/golfCourses";
 import {
   collapsedPreview,
   needsDescriptionCollapse,
@@ -19,6 +20,18 @@ export function shouldShowProductDescription(description: string | null | undefi
 
 export function shouldShowGolfCourseInfo(golfCourseInfo: string | null | undefined): boolean {
   return (golfCourseInfo?.trim() ?? "").length > 0;
+}
+
+export function shouldShowDescriptionSection(
+  description: string | null | undefined,
+  golfCourseInfo: string | null | undefined,
+  golfCourses: GolfCourseInfoItem[] | null | undefined,
+): boolean {
+  return (
+    shouldShowProductDescription(description) ||
+    shouldShowGolfCourseInfo(golfCourseInfo) ||
+    hasVenueInfoItems(golfCourses)
+  );
 }
 
 function CollapsiblePlainText({ text, expandLabel }: { text: string; expandLabel: string }) {
@@ -62,20 +75,9 @@ export function ProductDescriptionSection({
     () => golfCourseInfo?.replace(/\r\n/g, "\n").trim() ?? "",
     [golfCourseInfo],
   );
-  const normalizedCourses = useMemo(
-    () =>
-      (golfCourses ?? [])
-        .map((course) => ({
-          name: course.name?.trim() ?? "",
-          content: course.content?.trim() ?? "",
-        }))
-        .filter((course) => course.name.length > 0 && course.content.length > 0),
-    [golfCourses],
-  );
-  const [activeCourseIndex, setActiveCourseIndex] = useState<number | null>(null);
-  const activeCourse = activeCourseIndex != null ? normalizedCourses[activeCourseIndex] : null;
+  const hasCourses = hasVenueInfoItems(golfCourses);
   const showDesc = shouldShowProductDescription(descText);
-  const showGolf = normalizedCourses.length > 0 || shouldShowGolfCourseInfo(golfText);
+  const showGolf = hasCourses || shouldShowGolfCourseInfo(golfText);
   const twoCol = showDesc && showGolf;
 
   if (!showDesc && !showGolf) return null;
@@ -95,49 +97,14 @@ export function ProductDescriptionSection({
         {showGolf ? (
           <div className={twoCol ? "md:border-l md:border-slate-200 md:pl-8" : undefined}>
             <h2 className="mb-4 text-lg font-bold text-[var(--primary)]">골프장 정보</h2>
-            {normalizedCourses.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {normalizedCourses.map((course, index) => (
-                  <button
-                    key={`${course.name}-${index}`}
-                    type="button"
-                    onClick={() => setActiveCourseIndex(index)}
-                    className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
-                  >
-                    {course.name}
-                  </button>
-                ))}
-              </div>
+            {hasCourses ? (
+              <VenueInfoPills items={golfCourses} kindLabel="골프장" />
             ) : (
               <CollapsiblePlainText text={golfText} expandLabel="더보기" />
             )}
           </div>
         ) : null}
       </div>
-      <Modal
-        isOpen={activeCourse != null}
-        onClose={() => setActiveCourseIndex(null)}
-        aria-label={activeCourse ? `${activeCourse.name} 골프장 정보` : "골프장 정보"}
-        className="w-full max-w-2xl"
-      >
-        {activeCourse ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">{activeCourse.name}</h3>
-              <button
-                type="button"
-                onClick={() => setActiveCourseIndex(null)}
-                className="rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              >
-                닫기
-              </button>
-            </div>
-            <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
-              {activeCourse.content}
-            </div>
-          </div>
-        ) : null}
-      </Modal>
     </section>
   );
 }

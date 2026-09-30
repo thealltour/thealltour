@@ -138,7 +138,7 @@ async function getHomeCuratedDataUncached(): Promise<HomeCuratedData> {
 export async function getHomeCuratedData(): Promise<HomeCuratedData> {
   return unstable_cache(getHomeCuratedDataUncached, ["home-curated-data"], {
     revalidate: 60,
-    tags: [CACHE_TAGS.HOME_CURATED],
+    tags: [CACHE_TAGS.HOME_CURATED, CACHE_TAGS.PRODUCTS],
   })();
 }
 

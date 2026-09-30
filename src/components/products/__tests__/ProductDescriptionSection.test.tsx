@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import {
   needsDescriptionCollapse,
   ProductDescriptionSection,
+  shouldShowDescriptionSection,
   shouldShowGolfCourseInfo,
   shouldShowProductDescription,
 } from "@/components/products/ProductDescriptionSection";
@@ -27,6 +28,15 @@ describe("shouldShowGolfCourseInfo", () => {
 
   it("shows filled golf course copy", () => {
     expect(shouldShowGolfCourseInfo("18홀")).toBe(true);
+  });
+});
+
+describe("shouldShowDescriptionSection", () => {
+  it("shows the section when only golf course rows exist", () => {
+    expect(shouldShowDescriptionSection("", null, [{ name: "A GC", content: "", images: ["https://x/a.webp"] }])).toBe(
+      true,
+    );
+    expect(shouldShowDescriptionSection("", null, [{ name: "", content: "내용" }])).toBe(false);
   });
 });
 
@@ -80,9 +90,28 @@ describe("ProductDescriptionSection", () => {
         ]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC" }));
+    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC 골프장 정보 보기" }));
     expect(screen.getByRole("dialog", { name: "수트라하버 GC 골프장 정보" })).toBeTruthy();
     expect(screen.getByText("바다 전망 코스 정보")).toBeTruthy();
+  });
+
+  it("opens the photo gallery modal for golf courses with images", () => {
+    render(
+      <ProductDescriptionSection
+        golfCourses={[
+          {
+            name: "수트라하버 GC",
+            content: "바다 전망 코스 정보",
+            images: ["https://cdn.example.com/golf-1.webp", "https://cdn.example.com/golf-2.webp"],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("region", { name: "골프장 정보" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "수트라하버 GC 골프장 사진 2장 보기" }));
+    const dialog = screen.getByRole("dialog", { name: "수트라하버 GC 골프장 사진" });
+    expect(dialog.textContent).toContain("바다 전망 코스 정보");
+    expect(dialog.textContent).toContain("1/2");
   });
 
   it("renders golf course info alone when description is missing", () => {

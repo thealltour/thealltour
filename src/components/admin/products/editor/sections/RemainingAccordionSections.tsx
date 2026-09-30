@@ -17,6 +17,7 @@ import type { NoticeTemplateGroup, NoticeTemplatesByGroup } from "@/lib/noticeTe
 import { LEGACY_SECTION_ID_MAP } from "@/components/admin/products/editor/adminProductForm.types";
 import { DepartureSchedulesEditor } from "@/components/admin/products/editor/sections/DepartureSchedulesEditor";
 import { ProductOptionsEditor } from "@/components/admin/products/editor/sections/ProductOptionsEditor";
+import { VenueInfoListEditor } from "@/components/admin/products/editor/VenueInfoListEditor";
 import { emptyPackageCatalog } from "@/lib/admin/packageCatalog";
 import type { PackageAttractionItem, PackageOptionalTourItem } from "@/types/product";
 
@@ -772,83 +773,62 @@ export function RemainingAccordionSections(props: RemainingAccordionSectionsProp
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
               />
             </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 정보 (선택)</span>
-              <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/60 p-3">
-                {form.golf_courses_json.map((item, index) => (
-                  <div key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-[var(--text-secondary)]">골프장 {index + 1}</span>
-                      {form.golf_courses_json.length > 1 ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              golf_courses_json: prev.golf_courses_json.filter(
-                                (_, rowIndex) => rowIndex !== index,
-                              ),
-                            }))
-                          }
-                          className="text-xs text-rose-600 hover:underline"
-                        >
-                          삭제
-                        </button>
-                      ) : null}
-                    </div>
-                    <input
-                      value={item.name}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          golf_courses_json: prev.golf_courses_json.map((course, rowIndex) =>
-                            rowIndex === index ? { ...course, name: event.target.value } : course,
-                          ),
-                        }))
-                      }
-                      placeholder="골프장명"
-                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                    />
-                    <textarea
-                      value={item.content}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          golf_courses_json: prev.golf_courses_json.map((course, rowIndex) =>
-                            rowIndex === index ? { ...course, content: event.target.value } : course,
-                          ),
-                        }))
-                      }
-                      rows={4}
-                      placeholder="골프장 설명"
-                      className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      golf_courses_json: [...prev.golf_courses_json, { name: "", content: "" }],
-                    }))
-                  }
-                  className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
-                >
-                  골프장 추가
-                </button>
-              </div>
-              <textarea
-                value={form.golf_course_info}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, golf_course_info: event.target.value }))
-                }
-                rows={4}
-                placeholder="레거시 단일 텍스트 (하위호환용)"
-                id="field-golf-course-info"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]"
+            <div className="space-y-2">
+              <VenueInfoListEditor
+                title="골프장 정보 (선택)"
+                itemLabel="골프장"
+                items={form.golf_courses_json}
+                onChange={(items) => setForm((prev) => ({ ...prev, golf_courses_json: items }))}
+                namePlaceholder="골프장명"
+                contentPlaceholder="골프장 설명"
+                description="상세에서 골프장명을 누르면 사진이 있으면 사진 모달, 없으면 설명 모달이 열립니다."
+                testId="venue-editor-golf"
               />
-            </label>
+              {form.golf_course_info.trim() ? (
+                <div
+                  className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+                  data-testid="legacy-golf-course-info"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                      기존 골프장 설명 텍스트 (상세에 표시 중)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, golf_course_info: "" }))}
+                      className="text-xs font-medium text-[var(--danger)] hover:underline"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                  <p className="whitespace-pre-line text-xs text-[var(--text-primary)]">{form.golf_course_info}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="md:col-span-2">
+              <VenueInfoListEditor
+                title="호텔 정보 (선택)"
+                itemLabel="호텔"
+                items={form.hotels_json}
+                onChange={(items) => setForm((prev) => ({ ...prev, hotels_json: items }))}
+                namePlaceholder="호텔명"
+                contentPlaceholder="객실 타입, 부대시설, 위치"
+                description="입력하면 상세의 골프장 정보 아래에 호텔 정보로 보여주고, 기존 숙소 카드는 숨깁니다."
+                testId="venue-editor-hotel"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <VenueInfoListEditor
+                title="관광 정보 (선택)"
+                itemLabel="관광지"
+                items={form.attractions_json}
+                onChange={(items) => setForm((prev) => ({ ...prev, attractions_json: items }))}
+                namePlaceholder="관광지명"
+                contentPlaceholder="볼거리, 소요 시간, 이용 팁"
+                description="입력하면 상세의 호텔 정보 아래에 관광 정보로 보여줍니다. 하나투어 패키지 카탈로그의 관광지와는 별개입니다."
+                testId="venue-editor-attraction"
+              />
+            </div>
           </div>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:col-span-2">
             <p className="mb-1 text-sm font-semibold text-[var(--text-primary)]">패키지 카탈로그</p>

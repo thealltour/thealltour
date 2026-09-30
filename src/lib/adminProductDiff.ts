@@ -6,6 +6,7 @@
 
 import type { ProductFormState } from "@/types/adminProductForm";
 import type { ItineraryV2Day, ItineraryStructuredDay, ItineraryStructuredEvent } from "@/types/product";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 
 export type ProductDiffSection = {
   key: "basic" | "itinerary" | "images" | "metadata";
@@ -100,8 +101,24 @@ export function getProductDiffSummary(
   if (!strEq(initial.description, current.description)) {
     basic.push("상품 설명이 수정되었습니다.");
   }
-  if (!strEq(initial.golf_course_info, current.golf_course_info)) {
+  if (
+    !strEq(initial.golf_course_info, current.golf_course_info) ||
+    JSON.stringify(normalizeVenueInfoList(initial.golf_courses_json)) !==
+      JSON.stringify(normalizeVenueInfoList(current.golf_courses_json))
+  ) {
     basic.push("골프장 정보가 수정되었습니다.");
+  }
+  if (
+    JSON.stringify(normalizeVenueInfoList(initial.hotels_json)) !==
+    JSON.stringify(normalizeVenueInfoList(current.hotels_json))
+  ) {
+    basic.push("호텔 정보가 수정되었습니다.");
+  }
+  if (
+    JSON.stringify(normalizeVenueInfoList(initial.attractions_json)) !==
+    JSON.stringify(normalizeVenueInfoList(current.attractions_json))
+  ) {
+    basic.push("관광 정보가 수정되었습니다.");
   }
   if (priceNormalized(initial.price) !== priceNormalized(current.price)) {
     basic.push("가격 정보가 변경되었습니다.");

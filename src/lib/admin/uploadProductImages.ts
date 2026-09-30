@@ -3,6 +3,7 @@ import { deriveCardAndHeroWebp } from "@/lib/images/deriveCardAndHeroWebp";
 const ALLOWED_IMAGE_TYPES = /^image\/(jpeg|png|webp)$/i;
 
 export type UploadProductImageFilesOptions = {
+  /** 지정하지 않으면 장 수 제한 없음 */
   maxCount?: number;
   existingCount?: number;
 };
@@ -20,7 +21,7 @@ export async function uploadProductImageFiles(
   files: FileList | File[],
   options: UploadProductImageFilesOptions = {},
 ): Promise<UploadProductImageFilesResult> {
-  const maxCount = options.maxCount ?? 10;
+  const maxCount = options.maxCount ?? Number.POSITIVE_INFINITY;
   const existingCount = options.existingCount ?? 0;
   const all = Array.from(files);
   const valid = all.filter((f) => ALLOWED_IMAGE_TYPES.test(f.type));

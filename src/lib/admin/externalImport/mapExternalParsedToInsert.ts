@@ -51,7 +51,7 @@ function toSafeInteger(value: unknown): number | null {
   return int;
 }
 
-function normalizeImageUrls(urls: string[] | null | undefined, max = 10): string[] {
+function normalizeImageUrls(urls: string[] | null | undefined): string[] {
   if (!urls?.length) return [];
   const seen = new Set<string>();
   const out: string[] = [];
@@ -61,7 +61,6 @@ function normalizeImageUrls(urls: string[] | null | undefined, max = 10): string
     if (trimmed.startsWith("data:")) continue;
     seen.add(trimmed);
     out.push(trimmed);
-    if (out.length >= max) break;
   }
   return out;
 }

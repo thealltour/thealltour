@@ -27,9 +27,12 @@ import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclu
 import { ProductSellingPointsSection } from "@/components/products/ProductSellingPointsSection";
 import {
   ProductDescriptionSection,
-  shouldShowGolfCourseInfo,
-  shouldShowProductDescription,
+  shouldShowDescriptionSection,
 } from "@/components/products/ProductDescriptionSection";
+import { ProductAttractionInfoSection } from "@/components/products/venues/ProductAttractionInfoSection";
+import { ProductHotelInfoSection } from "@/components/products/venues/ProductHotelInfoSection";
+import { ProductVenuePhotosSection } from "@/components/products/venues/ProductVenuePhotosSection";
+import { hasVenueInfoItems } from "@/lib/admin/golfCourses";
 import { ProductPackageCatalogSection } from "@/components/products/ProductPackageCatalogSection";
 import { hasPackageCatalogContent } from "@/lib/admin/packageCatalog";
 import { formatAirlineLabel } from "@/lib/products/formatAirlineLabel";
@@ -39,7 +42,7 @@ import { InteractiveTimelineV2 } from "@/components/products/InteractiveTimeline
 import { ProductImageCarousel } from "@/components/products/ProductImageCarousel";
 import type { ProductGalleryImage } from "@/components/products/ProductImageGalleryModal";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
-import { getPrimaryImageUrl } from "@/lib/products/images";
+import { collectVenueGalleryImages, getPrimaryImageUrl } from "@/lib/products/images";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
 import { ProductItineraryPreview } from "@/components/products/ProductItineraryPreview";
 import { ProductPlannerCta } from "@/components/products/ProductPlannerCta";
@@ -229,13 +232,13 @@ export default function ProductDetailV2({
     const seen = new Set<string>();
     const list: ProductGalleryImage[] = [];
     const altBase = title?.trim() || product?.title?.trim() || "상품";
-    const pushImage = (rawUrl: string | undefined | null, label?: string) => {
+    const pushImage = (rawUrl: string | undefined | null, label?: string, alt?: string) => {
       if (!rawUrl?.trim()) return;
       const normalized = normalizeProductImageUrl(rawUrl);
       if (!normalized) return;
       if (seen.has(normalized)) return;
       seen.add(normalized);
-      list.push({ url: normalized, alt: `${altBase} 이미지`, label });
+      list.push({ url: normalized, alt: alt ?? `${altBase} 이미지`, label });
     };
 
     // 대표(image_url)를 캐러셀 첫 장으로 — 목록 썸네일과 상세 히어로 일치
@@ -248,6 +251,12 @@ export default function ProductDetailV2({
         pushImage(url, `추가 이미지 ${extraIndex + 1}`);
         if (list.length > before) extraIndex += 1;
       });
+    }
+
+    if (product) {
+      for (const image of collectVenueGalleryImages(product)) {
+        pushImage(image.url, `${image.kindLabel} · ${image.venueName}`, `${image.venueName} 사진`);
+      }
     }
 
     if (Array.isArray(product?.itinerary_v2_json?.days)) {
@@ -553,6 +562,8 @@ export default function ProductDetailV2({
     () => (product ? getHotelValue(product) : ""),
     [product],
   );
+  /** hotels_json이 있으면 전용 호텔 정보 섹션이 기존 호텔 안내 카드를 대신합니다. */
+  const hasHotelInfo = hasVenueInfoItems(product?.hotels_json);
 
   const recommendedAudienceBullets = useMemo(
     () =>
@@ -775,14 +786,29 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
-        {shouldShowProductDescription(product?.description) ||
-        shouldShowGolfCourseInfo(product?.golf_course_info) ? (
+        {shouldShowDescriptionSection(
+          product?.description,
+          product?.golf_course_info,
+          product?.golf_courses_json,
+        ) ? (
           <div className="mt-6">
             <ProductDescriptionSection
               description={product?.description}
               golfCourseInfo={product?.golf_course_info}
               golfCourses={product?.golf_courses_json}
             />
+          </div>
+        ) : null}
+
+        {hasHotelInfo ? (
+          <div className="mt-6">
+            <ProductHotelInfoSection hotels={product?.hotels_json} />
+          </div>
+        ) : null}
+
+        {hasVenueInfoItems(product?.attractions_json) ? (
+          <div className="mt-6">
+            <ProductAttractionInfoSection attractions={product?.attractions_json} />
           </div>
         ) : null}
 
@@ -819,11 +845,17 @@ export default function ProductDetailV2({
         onPreviewDayClick={handlePreviewDayClick}
       />
 
+      <ProductVenuePhotosSection
+        golfCourses={product?.golf_courses_json}
+        hotels={product?.hotels_json}
+        attractions={product?.attractions_json}
+      />
+
       {productId ? <ProductPlannerCta productId={productId} className="mt-6" /> : null}
 
       <FlightSummarySection product={product ?? null} compact embedded />
 
-      {hotelValue ? <ProductHotelCard hotelName={hotelValue} /> : null}
+      {hotelValue && !hasHotelInfo ? <ProductHotelCard hotelName={hotelValue} /> : null}
 
       {/* Tabs */}
       <section id="product-detail-tabs" className="scroll-mt-24">

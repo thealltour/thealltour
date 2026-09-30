@@ -82,6 +82,8 @@ const FULL_DB_ROW: Record<string, unknown> = {
   itinerary: "Day1 … Day5",
   package_catalog_json: [{ id: "pkg-1", name: "Standard" }],
   golf_courses_json: [{ name: "ABC Golf" }],
+  hotels_json: [{ name: "ABC Hotel", content: "리조트" }],
+  attractions_json: [{ name: "ABC Beach", content: "해변" }],
   selling_points_json: ["포인트1"],
   options: { groups: [] },
   notes: "internal notes",

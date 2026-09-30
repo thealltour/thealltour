@@ -5,7 +5,11 @@ import Image from "next/image";
 import { ChevronDown, ChevronUp, Loader2, Trash2 } from "lucide-react";
 import type { Product } from "@/types/product";
 import { fetchAdminProductTaxonomy } from "@/components/admin/products/api/adminProductTaxonomy.client";
-import { fetchAdminProducts, fetchAdminProduct } from "@/components/admin/products/api/adminProducts.client";
+import {
+  AdminProductFetchError,
+  fetchAdminProducts,
+  fetchAdminProduct,
+} from "@/components/admin/products/api/adminProducts.client";
 import { useAdminToast } from "@/components/admin/AdminToastProvider";
 import { parseHomeGolfTourProductIds } from "@/lib/siteSettings";
 import type { SiteSettings } from "@/lib/siteSettings";
@@ -21,6 +25,8 @@ const DEFAULT_GOLF_DESCRIPTION = "인기 골프·파크골프 여행을 만나�
 type ListedProduct = {
   id: string;
   product: Product | null;
+  /** 404로 확인된 삭제 상품. 저장 시 목록에서 제외. */
+  missing?: boolean;
 };
 
 /**
@@ -42,7 +48,8 @@ export default function AdminHomeGolfTourCardsManager() {
   const [errorMessage, setErrorMessage] = useState("");
   const { showToast } = useAdminToast();
 
-  const orderedIds = orderedItems.map((item) => item.id);
+  const orderedIds = orderedItems.filter((item) => !item.missing).map((item) => item.id);
+  const missingCount = orderedItems.length - orderedIds.length;
   const selectedSet = new Set(orderedIds);
   const canAdd = orderedIds.length < MAX_HOME_GOLF_PRODUCTS;
 
@@ -60,8 +67,9 @@ export default function AdminHomeGolfTourCardsManager() {
         try {
           const product = await fetchAdminProduct(id);
           return { id, product };
-        } catch {
-          return { id, product: null };
+        } catch (err) {
+          const missing = err instanceof AdminProductFetchError && err.status === 404;
+          return { id, product: null, missing };
         }
       }),
     );
@@ -184,6 +192,7 @@ export default function AdminHomeGolfTourCardsManager() {
       if (!res.ok) {
         throw new Error(data?.message ?? "저장에 실패했습니다.");
       }
+      setOrderedItems((prev) => prev.filter((item) => !item.missing));
       showToast("success", "메인 골프투어 상품이 저장되었습니다.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "저장에 실패했습니다.";
@@ -323,6 +332,11 @@ export default function AdminHomeGolfTourCardsManager() {
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">메인에 노출할 골프투어 상품</h3>
+        {missingCount > 0 ? (
+          <p className="mb-2 text-xs text-[var(--text-muted)]">
+            삭제된 상품 {missingCount}개가 목록에 남아 있습니다. 저장하면 정리됩니다.
+          </p>
+        ) : null}
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
           {orderedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
@@ -334,7 +348,9 @@ export default function AdminHomeGolfTourCardsManager() {
               {orderedItems.map((item, index) => {
                 const product = item.product;
                 const imageUrl = product?.image_url?.trim() || "";
-                const title = product?.title?.trim() || "(상품 정보 없음)";
+                const title = item.missing
+                  ? "삭제된 상품"
+                  : product?.title?.trim() || "(상품 정보 없음)";
                 return (
                   <li key={item.id} className="flex items-center gap-4 p-4">
                     <div className="flex flex-col gap-0.5">
@@ -384,6 +400,7 @@ export default function AdminHomeGolfTourCardsManager() {
                           ? ` · ${new Intl.NumberFormat("ko-KR").format(product.price)}원`
                           : ""}
                         {product?.is_active === false ? " · 비활성(홈 미노출)" : ""}
+                        {item.missing ? "저장하면 목록에서 제외됩니다." : ""}
                       </p>
                     </div>
                     <button

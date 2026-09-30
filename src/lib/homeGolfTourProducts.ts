@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cacheTags";
 import { supabase } from "@/lib/supabase";
 import { getCampaignTaxonomiesForCard } from "@/lib/productTaxonomies";
 import { hydrateProductsWithCampaignCardMeta } from "@/lib/productCampaignResolve";
@@ -49,7 +50,7 @@ async function getHomeGolfTourProductsUncached(): Promise<ProductListItem[]> {
 export async function getHomeGolfTourProducts(): Promise<ProductListItem[]> {
   return unstable_cache(getHomeGolfTourProductsUncached, ["home-golf-tour-products"], {
     revalidate: 300,
-    tags: ["site-settings"],
+    tags: ["site-settings", CACHE_TAGS.PRODUCTS],
   })();
 }
 

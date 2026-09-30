@@ -167,6 +167,27 @@ export function collectProductImageEntries(product: Product): ProductImageEntry[
     }
   }
 
+  const venueGroups = [
+    { source: "golf-course" as const, items: product.golf_courses_json },
+    { source: "hotel" as const, items: product.hotels_json },
+    { source: "attraction" as const, items: product.attractions_json },
+  ];
+  for (const { source, items } of venueGroups) {
+    for (const venue of items ?? []) {
+      (venue.images ?? []).forEach((raw, imgIdx) => {
+        const url = t(raw);
+        if (!url) return;
+        addIfNew(map, {
+          url,
+          source,
+          index: seq++,
+          imageIndexInEvent: imgIdx + 1,
+          eventHeading: venue.name,
+        });
+      });
+    }
+  }
+
   const overviewCover = t(product.overview_json?.coverImageUrl);
   if (overviewCover) {
     addIfNew(map, { url: overviewCover, source: "overview-cover", index: seq++ });

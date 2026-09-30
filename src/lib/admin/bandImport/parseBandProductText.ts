@@ -77,7 +77,7 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "11. 상품 status: AVAILABLE/LIMITED/SOLD_OUT/CONSULT_REQUIRED 또는 null. 출발일 스케줄 status는 AVAILABLE/LIMITED/SOLD_OUT (미기재 시 AVAILABLE).",
     "12. meta_title: 목적지·테마·혜택으로 검색 키워드 4~8개 작성 (공백 구분, # 없음). 상품명 통째 복사 금지. 해시태그 섹션이 있으면 그 토큰 우선.",
     "",
-    "=== 원문 (HWP 우선, 밴드 본문 포함) ===",
+    "[원문] 밴드 본문과 HWP 문서가 섹션 헤더로 구분되어 있습니다. 포함·불포함·약관·항공은 HWP 우선, band_marketing_copy는 밴드 본문에서.",
     source,
   ];
 
@@ -100,7 +100,7 @@ function buildBandItineraryPrompt(input: ParseBandProductTextInput): string {
     "5. meals는 일정표 우측 식사란 문자열 그대로",
     "6. theme_chart_json: 일정 시간 비중으로 골프/관광/자유일정/식사/이동 등 2~5개, 합 100%. theme·category 균등 분할 금지. 일정 없으면 null",
     "",
-    "=== 일정 원문 (HWP 우선) ===",
+    "[일정 원문] HWP 문서의 일정표가 기준입니다. 밴드 본문은 HWP에 없는 일차·시간·장소를 보완할 때만 사용하세요.",
     source,
   ].join("\n");
 }

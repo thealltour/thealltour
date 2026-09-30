@@ -45,6 +45,8 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
     description: product.description ?? "",
     golf_course_info: product.golf_course_info ?? "",
     golf_courses_json: product.golf_courses_json ?? [],
+    hotels_json: product.hotels_json ?? [],
+    attractions_json: product.attractions_json ?? [],
     package_catalog_json: {
       hotels: product.package_catalog_json?.hotels ?? [],
       attractions: product.package_catalog_json?.attractions ?? [],

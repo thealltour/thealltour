@@ -1,4 +1,9 @@
-import type { ItineraryStructuredDay, ItineraryV2, PackageCatalog } from "@/types/product";
+import type {
+  ItineraryStructuredDay,
+  ItineraryV2,
+  PackageCatalog,
+  VenueInfoItem,
+} from "@/types/product";
 
 /** 약관 템플릿 타입 (상품 등록 폼용) */
 export type TermsTemplateType =
@@ -33,7 +38,9 @@ export type ProductFormState = {
   title: string;
   description: string;
   golf_course_info: string;
-  golf_courses_json: Array<{ name: string; content: string }>;
+  golf_courses_json: VenueInfoItem[];
+  hotels_json: VenueInfoItem[];
+  attractions_json: VenueInfoItem[];
   package_catalog_json: PackageCatalog;
   product_source_url: string;
   point_benefits: string;
@@ -175,6 +182,8 @@ export function createEmptyProductFormState(): ProductFormState {
     description: "",
     golf_course_info: "",
     golf_courses_json: [],
+    hotels_json: [],
+    attractions_json: [],
     package_catalog_json: { hotels: [], attractions: [], optionalTours: [], referenceNotes: "" },
     product_source_url: "",
     point_benefits: "",

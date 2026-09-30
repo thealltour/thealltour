@@ -34,6 +34,9 @@ export type ProductImageEntrySource =
   | "v2-day-cover"
   | "v2-event-image"
   | "catalog"
+  | "golf-course"
+  | "hotel"
+  | "attraction"
   | "overview-cover";
 
 export type ProductImageEntry = {

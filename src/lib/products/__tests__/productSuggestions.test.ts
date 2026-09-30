@@ -33,6 +33,8 @@ describe("ProductSuggestion projection", () => {
       "overview_json",
       "package_catalog_json",
       "golf_courses_json",
+      "hotels_json",
+      "attractions_json",
       "images_json",
       "is_popular",
       "is_recommend",

@@ -13,7 +13,7 @@ import {
 } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeAdminProductsPageSize } from "@/components/admin/products/adminProducts.constants";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
 import type { PackageCatalog } from "@/types/product";
 
@@ -37,7 +37,9 @@ type ProductBody = {
   title?: string;
   description?: string;
   golf_course_info?: string | null;
-  golf_courses_json?: Array<{ name: string; content: string }> | null;
+  golf_courses_json?: unknown;
+  hotels_json?: unknown;
+  attractions_json?: unknown;
   package_catalog_json?: PackageCatalog | null;
   product_source_url?: string | null;
   point_benefits?: string | null;
@@ -324,7 +326,13 @@ export async function POST(request: Request) {
     insertPayload.golf_course_info = body.golf_course_info?.trim() || null;
   }
   if (body.golf_courses_json !== undefined) {
-    insertPayload.golf_courses_json = normalizeGolfCoursesJson(body.golf_courses_json);
+    insertPayload.golf_courses_json = normalizeVenueInfoList(body.golf_courses_json);
+  }
+  if (body.hotels_json !== undefined) {
+    insertPayload.hotels_json = normalizeVenueInfoList(body.hotels_json);
+  }
+  if (body.attractions_json !== undefined) {
+    insertPayload.attractions_json = normalizeVenueInfoList(body.attractions_json);
   }
   if (body.package_catalog_json !== undefined) {
     insertPayload.package_catalog_json = normalizePackageCatalog(body.package_catalog_json);

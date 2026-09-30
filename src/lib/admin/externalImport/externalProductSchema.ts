@@ -95,11 +95,9 @@ export const externalProductSchema = externalProductMetaSchema.extend({
 
     .array(z.string())
 
-    .max(10)
-
     .nullable()
 
-    .describe("갤러리 이미지 URL 최대 10개"),
+    .describe("갤러리 이미지 URL 목록 (본문 관련 사진 전부)"),
 
 });
 

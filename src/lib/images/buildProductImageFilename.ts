@@ -82,6 +82,12 @@ export function buildProductImageFilename(
       return `${slug}__day-${nn(entry.dayNumber)}__v2-event-${ee()}__${eventSlug}-${ii()}.${ext}`;
     case "catalog":
       return `${slug}__catalog-${pad2(entry.index + 1)}.${ext}`;
+    case "golf-course":
+      return `${slug}__golf-${eventSlug}-${ii()}.${ext}`;
+    case "hotel":
+      return `${slug}__hotel-${eventSlug}-${ii()}.${ext}`;
+    case "attraction":
+      return `${slug}__attraction-${eventSlug}-${ii()}.${ext}`;
     case "overview-cover":
       return `${slug}__overview-cover.${ext}`;
   }

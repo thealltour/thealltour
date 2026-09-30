@@ -32,16 +32,17 @@ import {
 import { kstTodayYmd } from "@/lib/inquiry/desiredDeparture";
 import { trimOrNull } from "@/lib/admin/stringHelpers";
 import { normalizeThemeChartForInsert } from "@/lib/admin/themeChartSchema";
-import { normalizeGolfCoursesJson } from "@/lib/admin/golfCourses";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import { normalizeSeoMetaTitleKeywords } from "@/lib/products/seoMetaTitleAi";
-import type { ProductDepartureSchedule } from "@/types/product";
+import type { ProductDepartureSchedule, VenueInfoItem } from "@/types/product";
 
 export type MapBandParsedInput = {
   parsed: BandParsedProduct;
   bandText: string;
   hwpText: string;
-  golfCourseInfo?: string | null;
-  golfCoursesJson?: Array<{ name: string; content: string }> | null;
+  golfCoursesJson?: VenueInfoItem[] | null;
+  hotelsJson?: VenueInfoItem[] | null;
+  attractionsJson?: VenueInfoItem[] | null;
   productSourceUrl?: string | null;
   imageUrls?: string[];
 };
@@ -374,7 +375,16 @@ export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): Iti
 }
 
 export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string, unknown> {
-  const { parsed, bandText, hwpText, golfCourseInfo, golfCoursesJson, productSourceUrl, imageUrls } = input;
+  const {
+    parsed,
+    bandText,
+    hwpText,
+    golfCoursesJson,
+    hotelsJson,
+    attractionsJson,
+    productSourceUrl,
+    imageUrls,
+  } = input;
   const images = normalizeImageUrls(imageUrls);
   const imageUrl = images[0] ?? BAND_IMPORT_PLACEHOLDER_IMAGE;
 
@@ -422,8 +432,9 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
   const payload: Record<string, unknown> = {
     title,
     description,
-    golf_course_info: trimOrNull(golfCourseInfo),
-    golf_courses_json: normalizeGolfCoursesJson(golfCoursesJson),
+    golf_courses_json: normalizeVenueInfoList(golfCoursesJson),
+    hotels_json: normalizeVenueInfoList(hotelsJson),
+    attractions_json: normalizeVenueInfoList(attractionsJson),
     image_url: imageUrl,
     images_json: images.length > 0 ? images : null,
     category: trimOrNull(parsed.category) ?? BAND_IMPORT_DEFAULT_CATEGORY,
@@ -455,7 +466,8 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
     travel_insurance: parsed.travel_insurance ?? null,
     booking_notes: bookingNotes,
     options: productOptions,
-    is_active: true,
+    // AI 결과는 관리자가 검수한 뒤 편집기에서 노출을 시작합니다.
+    is_active: false,
     status: parsed.status ?? "AVAILABLE",
     meta_info: formatAirlineMetaInfo(trimOrNull(parsed.airline_name), departureFlight),
     departure_flight_name: departureFlight,
@@ -483,7 +495,11 @@ export function mapBandParsedToInsert(input: MapBandParsedInput): Record<string,
   return payload;
 }
 
-export function summarizeBandParsedForResponse(parsed: BandParsedProduct): {
+export function summarizeBandParsedForResponse(
+  parsed: BandParsedProduct,
+  /** 스케줄 최저가 등으로 보정된 실제 저장 가격 */
+  savedPrice?: unknown,
+): {
   title: string | null;
   price: number | null;
   duration: string | null;
@@ -491,7 +507,7 @@ export function summarizeBandParsedForResponse(parsed: BandParsedProduct): {
 } {
   return {
     title: trimOrNull(parsed.title),
-    price: parsed.price,
+    price: typeof savedPrice === "number" ? savedPrice : parsed.price,
     duration: trimOrNull(parsed.duration),
     status: parsed.status,
   };

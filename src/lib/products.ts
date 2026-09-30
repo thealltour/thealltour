@@ -23,6 +23,7 @@ import { normalizeImageList } from "@/lib/products/images";
 import { normalizeSellingPoints } from "@/lib/products/normalizeSellingPoints";
 import { parseSeasonalPriceBandsFromUnknown } from "@/lib/products/seasonalPriceBands";
 import { normalizePackageCatalog } from "@/lib/admin/packageCatalog";
+import { normalizeVenueInfoList } from "@/lib/admin/golfCourses";
 import {
   deriveDeparturesFromSchedules,
   normalizeDepartureSchedulesFromUnknown,
@@ -99,7 +100,9 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
       typeof row.golf_course_info === "string" && row.golf_course_info.trim() !== ""
         ? row.golf_course_info
         : undefined,
-    golf_courses_json: normalizeGolfCoursesJson(row.golf_courses_json),
+    golf_courses_json: normalizeVenueInfoList(row.golf_courses_json) ?? undefined,
+    hotels_json: normalizeVenueInfoList(row.hotels_json) ?? undefined,
+    attractions_json: normalizeVenueInfoList(row.attractions_json) ?? undefined,
     package_catalog_json: normalizePackageCatalog(row.package_catalog_json) ?? undefined,
     image_url: primaryImage,
     images_json: images.length > 0 ? images : undefined,
@@ -276,18 +279,6 @@ function normalizeThemeChartJson(raw: unknown): { items: Array<{ label: string; 
     })
     .filter((i) => i.label.length > 0);
   return parsed.length >= 2 ? { items: parsed } : undefined;
-}
-
-function normalizeGolfCoursesJson(raw: unknown): Array<{ name: string; content: string }> | undefined {
-  if (!Array.isArray(raw)) return undefined;
-  const items = raw
-    .filter((i): i is Record<string, unknown> => i != null && typeof i === "object")
-    .map((i) => ({
-      name: typeof i.name === "string" ? i.name.trim() : "",
-      content: typeof i.content === "string" ? i.content.trim() : "",
-    }))
-    .filter((i) => i.name.length > 0 && i.content.length > 0);
-  return items.length > 0 ? items : undefined;
 }
 
 const OVERVIEW_SUMMARY_KINDS = ["flight", "hotel", "region", "theme", "golf", "etc"] as const;

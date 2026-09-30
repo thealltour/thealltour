@@ -3,7 +3,6 @@ import {
   getFilenameExt,
   isBandImportImageExt,
   mimeFromImageExt,
-  MAX_BAND_IMPORT_EXTRACT_IMAGES,
   MAX_BAND_IMPORT_IMAGE_BYTES,
   type BandImportExtractedImage,
   type BandImportImageSource,
@@ -18,6 +17,16 @@ export class BandImportImageError extends Error {
     this.httpStatus = 400;
   }
 }
+
+export type BandImportExtractStats = {
+  unsupported: number;
+  oversize: number;
+};
+
+export type BandImportExtractResult = {
+  images: BandImportExtractedImage[];
+  stats: BandImportExtractStats;
+};
 
 function basename(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
@@ -39,12 +48,20 @@ function isZipSource(name: string, bytes: Uint8Array): boolean {
 
 function pushImage(
   out: BandImportExtractedImage[],
+  stats: BandImportExtractStats,
   filename: string,
   bytes: Buffer,
 ): void {
   const ext = getFilenameExt(filename);
-  if (!isBandImportImageExt(ext)) return;
-  if (bytes.length === 0 || bytes.length > MAX_BAND_IMPORT_IMAGE_BYTES) return;
+  if (!isBandImportImageExt(ext)) {
+    stats.unsupported += 1;
+    return;
+  }
+  if (bytes.length === 0) return;
+  if (bytes.length > MAX_BAND_IMPORT_IMAGE_BYTES) {
+    stats.oversize += 1;
+    return;
+  }
   out.push({
     filename: basename(filename),
     bytes,
@@ -52,7 +69,11 @@ function pushImage(
   });
 }
 
-async function extractFromZip(bytes: Uint8Array, depth = 0): Promise<BandImportExtractedImage[]> {
+async function extractFromZip(
+  bytes: Uint8Array,
+  stats: BandImportExtractStats,
+  depth = 0,
+): Promise<BandImportExtractedImage[]> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(bytes);
@@ -66,7 +87,6 @@ async function extractFromZip(bytes: Uint8Array, depth = 0): Promise<BandImportE
 
   const out: BandImportExtractedImage[] = [];
   for (const entry of entries) {
-    if (out.length >= MAX_BAND_IMPORT_EXTRACT_IMAGES) break;
     let buf: Buffer;
     try {
       buf = Buffer.from(await entry.async("uint8array"));
@@ -79,22 +99,22 @@ async function extractFromZip(bytes: Uint8Array, depth = 0): Promise<BandImportE
     const ext = getFilenameExt(entry.name);
     if (ext === "zip" && depth < 2) {
       try {
-        out.push(...(await extractFromZip(buf, depth + 1)));
+        out.push(...(await extractFromZip(buf, stats, depth + 1)));
       } catch (error) {
         console.warn("[extractBandImportImages] nested zip skip:", entry.name, error);
       }
       continue;
     }
-    if (!isBandImportImageExt(ext)) continue;
-    pushImage(out, entry.name, buf);
+    pushImage(out, stats, entry.name, buf);
   }
-  return out.slice(0, MAX_BAND_IMPORT_EXTRACT_IMAGES);
+  return out;
 }
 
-export async function extractBandImportImages(
+export async function extractBandImportImagesWithStats(
   sources: BandImportImageSource[],
-): Promise<BandImportExtractedImage[]> {
+): Promise<BandImportExtractResult> {
   const out: BandImportExtractedImage[] = [];
+  const stats: BandImportExtractStats = { unsupported: 0, oversize: 0 };
 
   for (const source of sources) {
     const name = source.name?.trim() || "upload";
@@ -102,7 +122,7 @@ export async function extractBandImportImages(
     if (!bytes || bytes.length === 0) continue;
 
     if (isZipSource(name, bytes)) {
-      const fromZip = await extractFromZip(bytes);
+      const fromZip = await extractFromZip(bytes, stats);
       if (fromZip.length === 0) {
         throw new BandImportImageError(
           "zip 안에서 jpg/jpeg/png/webp 사진을 찾지 못했습니다. 하위 폴더에 있어도 됩니다. bmp·heic·gif는 지원하지 않습니다.",
@@ -119,8 +139,14 @@ export async function extractBandImportImages(
     if (bytes.length > MAX_BAND_IMPORT_IMAGE_BYTES) {
       throw new BandImportImageError("사진 한 장은 10MB 이하만 업로드할 수 있습니다.");
     }
-    pushImage(out, name, Buffer.from(bytes));
+    pushImage(out, stats, name, Buffer.from(bytes));
   }
 
-  return out.slice(0, MAX_BAND_IMPORT_EXTRACT_IMAGES);
+  return { images: out, stats };
+}
+
+export async function extractBandImportImages(
+  sources: BandImportImageSource[],
+): Promise<BandImportExtractedImage[]> {
+  return (await extractBandImportImagesWithStats(sources)).images;
 }

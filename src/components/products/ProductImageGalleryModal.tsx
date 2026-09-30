@@ -17,6 +17,11 @@ type ProductImageGalleryModalProps = {
   selectedIndex: number;
   onClose: () => void;
   onSelectIndex: (index: number) => void;
+  /** 골프장·호텔처럼 이미지 묶음에 이름이 있을 때 헤더에 표시 */
+  title?: string;
+  /** 이미지 아래에 보여줄 설명 본문 */
+  description?: string;
+  ariaLabel?: string;
 };
 
 function clampIndex(index: number, length: number): number {
@@ -41,6 +46,9 @@ export function ProductImageGalleryModal({
   selectedIndex,
   onClose,
   onSelectIndex,
+  title,
+  description,
+  ariaLabel,
 }: ProductImageGalleryModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -117,12 +125,15 @@ export function ProductImageGalleryModal({
 
   if (!isOpen || images.length === 0 || !current) return null;
 
+  const counterText = `${current.label || `이미지 ${selectedIndex + 1}`} · ${selectedIndex + 1}/${images.length}`;
+  const descriptionText = description?.trim() ?? "";
+
   return (
     <div
       className="fixed inset-0 z-[70] bg-[var(--overlay)] p-3 md:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="상품 이미지 갤러리"
+      aria-label={ariaLabel ?? "상품 이미지 갤러리"}
       onClick={onClose}
     >
       <div
@@ -131,9 +142,16 @@ export function ProductImageGalleryModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--divider)] px-4 py-3">
-          <p className="text-sm font-semibold text-[var(--text-secondary)]">
-            {current.label || `이미지 ${selectedIndex + 1}`} · {selectedIndex + 1}/{images.length}
-          </p>
+          {title ? (
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-[var(--text-primary)]">{title}</h2>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {selectedIndex + 1}/{images.length}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">{counterText}</p>
+          )}
           <div className="mr-2 hidden items-center gap-1 rounded-lg bg-slate-100 p-1 md:inline-flex">
             <button
               type="button"
@@ -256,6 +274,12 @@ export function ProductImageGalleryModal({
               </button>
             ) : null}
           </div>
+
+          {descriptionText ? (
+            <div className="max-h-[18vh] flex-shrink-0 overflow-y-auto whitespace-pre-wrap break-words border-t border-[var(--divider)] px-4 py-3 text-sm leading-6 text-slate-700">
+              {descriptionText}
+            </div>
+          ) : null}
 
           <div className="flex-shrink-0 border-t border-[var(--divider)] bg-[var(--surface)] p-3">
             {mode === "default" ? (

@@ -171,10 +171,16 @@ export type ProductSellingPoints = {
   insurance?: string | null;
 };
 
-export type GolfCourseInfoItem = {
+/** 골프장·호텔·관광지처럼 이름·설명·사진으로 구성된 장소 정보 (golf_courses_json, hotels_json, attractions_json) */
+export type VenueInfoItem = {
   name: string;
   content: string;
+  images?: string[];
 };
+
+export type GolfCourseInfoItem = VenueInfoItem;
+export type HotelInfoItem = VenueInfoItem;
+export type AttractionInfoItem = VenueInfoItem;
 
 /** 하나투어 패키지 카탈로그 (호텔 후보명·관광지·선택관광). itinerary_v2와 분리 */
 export type PackageHotelNameItem = {
@@ -239,6 +245,10 @@ export type Product = {
   golf_course_info?: string | null;
   /** 골프장별 상세 정보. 골프장명 클릭 시 모달 노출용 */
   golf_courses_json?: GolfCourseInfoItem[] | null;
+  /** 호텔별 상세 정보 (여러 곳). 상세의 골프장 정보 아래 노출 */
+  hotels_json?: HotelInfoItem[] | null;
+  /** 관광지별 상세 정보 (여러 곳). 상세의 호텔 정보 아래 노출. 패키지 카탈로그 관광지와 별개 */
+  attractions_json?: AttractionInfoItem[] | null;
   /** 하나투어 패키지 카탈로그 (예정 호텔 이름·관광지·선택관광). 밴드 상품은 비움 */
   package_catalog_json?: PackageCatalog | null;
   /** 상세 히어로용 (hero 1920px). 카드 썸네일은 image_card_url 우선, 없으면 이 값 사용 */

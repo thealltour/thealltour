@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectVenueGalleryImages,
   getPrimaryImageUrl,
   getPrimaryImageUrlFromFormFields,
   mapAdminListProductRow,
@@ -54,6 +55,32 @@ describe("withPrimaryImageFirst", () => {
     expect(
       withPrimaryImageFirst(["https://example.com/first.jpg"], "https://example.com/cover.jpg"),
     ).toEqual(["https://example.com/cover.jpg", "https://example.com/first.jpg"]);
+  });
+});
+
+describe("collectVenueGalleryImages", () => {
+  it("orders venue photos golf → attraction → hotel and skips venues without photos", () => {
+    const images = collectVenueGalleryImages({
+      golf_courses_json: [
+        { name: "수트라하버 GC", content: "", images: ["https://cdn/golf-1.webp", "https://cdn/golf-2.webp"] },
+        { name: "사진 없는 GC", content: "설명" },
+      ],
+      hotels_json: [{ name: "마젤란 리조트", content: "", images: ["https://cdn/hotel-1.webp"] }],
+      attractions_json: [{ name: "마누칸 섬", content: "", images: ["https://cdn/island-1.webp"] }],
+    });
+
+    expect(images.map((image) => [image.kindLabel, image.venueName, image.url])).toEqual([
+      ["골프장", "수트라하버 GC", "https://cdn/golf-1.webp"],
+      ["골프장", "수트라하버 GC", "https://cdn/golf-2.webp"],
+      ["관광지", "마누칸 섬", "https://cdn/island-1.webp"],
+      ["호텔", "마젤란 리조트", "https://cdn/hotel-1.webp"],
+    ]);
+  });
+
+  it("returns nothing when no venue has photos", () => {
+    expect(
+      collectVenueGalleryImages({ golf_courses_json: null, hotels_json: undefined, attractions_json: [] }),
+    ).toEqual([]);
   });
 });
 

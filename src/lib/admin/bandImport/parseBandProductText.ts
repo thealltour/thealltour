@@ -47,6 +47,7 @@ Rules:
 - Split each day into events[]. Do NOT dump the whole day into a single description.
 - Each distinct clock time in the 시간 column is its own event with timeText as HH:mm (e.g. 08:55 인천 국제공항 출발 and 09:25 연태 국제공항 도착 are TWO events).
 - Split 출발 and 도착 even when they sit in the same table row.
+- Keep events in the exact order they appear in the source. Do not reorder by clock time: an overnight flight such as 20:20 인천 출발 then 02:00 사이판 도착 stays departure first.
 - Transfers, golf rounds, meetings, and rest are separate activity events. Keep transfer duration (e.g. 약 40분), course names, and surcharge notes in that event's description. Do NOT summarize.
 - 18홀 is a hole count, not a price.
 - Meals (조식/중식/석식) from the meal column and lodging (숙소/호텔 또는 동급) are separate events. Do not mix them into the all-day activity blob.

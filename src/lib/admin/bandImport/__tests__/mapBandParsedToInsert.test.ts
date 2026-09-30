@@ -115,6 +115,29 @@ describe("mapItineraryDaysToV2", () => {
     expect(events.at(-1)).toMatchObject({ heading: "중식", displayRole: "summary" });
   });
 
+  it("keeps overnight flights in source order instead of sorting by clock time", () => {
+    const v2 = mapItineraryDaysToV2([
+      {
+        day: 1,
+        title: "인천 출발 / 사이판 도착",
+        events: [
+          { heading: "인천 국제공항 출발", description: null, timeText: "20:20", timeOfDay: "저녁", location: null },
+          { heading: "사이판 국제공항 도착", description: null, timeText: "02:00", timeOfDay: null, location: null },
+          { heading: "숙소", description: "PIC리조트 &동급", timeText: null, timeOfDay: null, location: null },
+          { heading: "리조트 체크인 및 휴식", description: null, timeText: null, timeOfDay: null, location: null },
+        ],
+        description: null,
+        meals: null,
+      },
+    ]);
+    expect(v2?.days[0].events.map((e) => e.heading)).toEqual([
+      "인천 국제공항 출발",
+      "사이판 국제공항 도착",
+      "리조트 체크인 및 휴식",
+      "숙소",
+    ]);
+  });
+
   it("maps 연태 day 1 events with split flights and meal summaries last", () => {
     const v2 = mapItineraryDaysToV2([
       {

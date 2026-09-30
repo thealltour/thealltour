@@ -304,17 +304,17 @@ function appendMissingMeals(events: ItineraryV2Event[], day: BandParsedItinerary
   return extra.length > 0 ? [...events, ...extra] : events;
 }
 
-function sortActivityThenSummary(events: ItineraryV2Event[]): ItineraryV2Event[] {
+/**
+ * 활동은 원문 순서를 그대로 두고 요약(숙소·식사)만 뒤로 보냅니다.
+ * 시각으로 정렬하면 20:20 출발 → 02:00 도착 같은 야간 항공편이 뒤집힙니다.
+ */
+function activitiesThenSummaries(events: ItineraryV2Event[]): ItineraryV2Event[] {
   const activities: ItineraryV2Event[] = [];
   const summaries: ItineraryV2Event[] = [];
   for (const ev of events) {
     if (isItinerarySummaryEvent(ev)) summaries.push(ev);
     else activities.push(ev);
   }
-  activities.sort((a, b) => {
-    if (a.timeText && b.timeText) return a.timeText.localeCompare(b.timeText);
-    return 0;
-  });
   return [...activities, ...summaries];
 }
 
@@ -359,7 +359,7 @@ export function mapItineraryDaysToV2(days: BandParsedItineraryDay[] | null): Iti
         .map((ev) => mapParsedEvent(ev))
         .filter((ev): ev is ItineraryV2Event => ev !== null);
       const source = parsedEvents.length > 0 ? parsedEvents : eventsFromLegacyDescription(day);
-      const events = sortActivityThenSummary(appendMissingMeals(source, day));
+      const events = activitiesThenSummaries(appendMissingMeals(source, day));
 
       if (events.length === 0) return null;
 

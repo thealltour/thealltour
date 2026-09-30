@@ -36,6 +36,8 @@ import {
   type BandVenueKind,
   type BandVenueRow,
 } from "@/lib/admin/bandImport/bandVenueImages";
+import { placeBandVenueImagesInItinerary } from "@/lib/admin/bandImport/placeBandVenueImagesInItinerary";
+import type { ItineraryV2, VenueInfoItem } from "@/types/product";
 
 export const maxDuration = 300;
 
@@ -297,6 +299,14 @@ async function handleImport(
     attractionsJson: attachBandVenueImages(attractionRows, venueImages.attraction),
     productSourceUrl: productSourceUrl || null,
   });
+  insertPayload.itinerary_v2_json = placeBandVenueImagesInItinerary(
+    insertPayload.itinerary_v2_json as ItineraryV2 | null,
+    {
+      golfCourses: insertPayload.golf_courses_json as VenueInfoItem[] | null,
+      hotels: insertPayload.hotels_json as VenueInfoItem[] | null,
+      attractions: insertPayload.attractions_json as VenueInfoItem[] | null,
+    },
+  );
 
   if (imageFiles.length > 0 || stagingImagePaths.length > 0) {
     try {

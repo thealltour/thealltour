@@ -21,8 +21,6 @@ export type ResearchSourceRoleWeights = {
   portfolioRole: ResearchSourcePortfolioRole;
   /** How strongly this source should seed the agenda slate pool (0–1). */
   agendaSeedWeight: number;
-  /** How strongly this source should count as factual evidence (0–1). */
-  evidenceAuthorityWeight: number;
   /** How strongly this source reflects Korean outbound traveler demand (0–1). */
   koreanMarketWeight: number;
 };
@@ -31,37 +29,31 @@ const DEFAULT_BY_TYPE: Record<string, ResearchSourceRoleWeights> = {
   official_government: {
     portfolioRole: "safety_verification",
     agendaSeedWeight: 0.22,
-    evidenceAuthorityWeight: 0.95,
     koreanMarketWeight: 0.28,
   },
   tourism_board: {
     portfolioRole: "destination_official",
     agendaSeedWeight: 0.72,
-    evidenceAuthorityWeight: 0.88,
     koreanMarketWeight: 0.55,
   },
   news: {
     portfolioRole: "global_travel_editorial",
     agendaSeedWeight: 0.55,
-    evidenceAuthorityWeight: 0.55,
     koreanMarketWeight: 0.35,
   },
   travel_industry: {
     portfolioRole: "korean_travel_editorial",
     agendaSeedWeight: 0.88,
-    evidenceAuthorityWeight: 0.55,
     koreanMarketWeight: 0.92,
   },
   performance_memory: {
     portfolioRole: "performance_memory",
     agendaSeedWeight: 0.35,
-    evidenceAuthorityWeight: 0.4,
     koreanMarketWeight: 0.7,
   },
   other: {
     portfolioRole: "other",
     agendaSeedWeight: 0.4,
-    evidenceAuthorityWeight: 0.4,
     koreanMarketWeight: 0.4,
   },
 };
@@ -105,30 +97,24 @@ export function resolveSourceRoleWeights(
     agendaSeedWeight: clamp01(
       asFiniteNumber(blob.agendaSeedWeight) ?? fallback.agendaSeedWeight,
     ),
-    evidenceAuthorityWeight: clamp01(
-      asFiniteNumber(blob.evidenceAuthorityWeight) ??
-        (source?.isOfficial ? Math.max(fallback.evidenceAuthorityWeight, 0.85) : fallback.evidenceAuthorityWeight),
-    ),
     koreanMarketWeight: clamp01(
       asFiniteNumber(blob.koreanMarketWeight) ?? fallback.koreanMarketWeight,
     ),
   };
 }
 
-/** Highest agenda-seed / Korean-market / evidence weights across evidence sources. */
+/** Highest agenda-seed / Korean-market weights across evidence sources. */
 export function aggregateEvidenceSourceRoleWeights(
   sources: Array<Pick<ResearchSource, "sourceType" | "metadata" | "isOfficial" | "authorityLevel"> | null | undefined>,
 ): ResearchSourceRoleWeights {
   if (!sources.length) return DEFAULT_BY_TYPE.other!;
   let agendaSeedWeight = 0;
-  let evidenceAuthorityWeight = 0;
   let koreanMarketWeight = 0;
   let portfolioRole: ResearchSourcePortfolioRole = "other";
   let bestSeed = -1;
   for (const source of sources) {
     const weights = resolveSourceRoleWeights(source);
     agendaSeedWeight = Math.max(agendaSeedWeight, weights.agendaSeedWeight);
-    evidenceAuthorityWeight = Math.max(evidenceAuthorityWeight, weights.evidenceAuthorityWeight);
     koreanMarketWeight = Math.max(koreanMarketWeight, weights.koreanMarketWeight);
     if (weights.agendaSeedWeight > bestSeed) {
       bestSeed = weights.agendaSeedWeight;
@@ -138,7 +124,6 @@ export function aggregateEvidenceSourceRoleWeights(
   return {
     portfolioRole,
     agendaSeedWeight,
-    evidenceAuthorityWeight,
     koreanMarketWeight,
   };
 }
@@ -152,7 +137,6 @@ export function buildSourcePortfolioMetadata(
     portfolio: {
       role: weights.portfolioRole,
       agendaSeedWeight: weights.agendaSeedWeight,
-      evidenceAuthorityWeight: weights.evidenceAuthorityWeight,
       koreanMarketWeight: weights.koreanMarketWeight,
     },
   };

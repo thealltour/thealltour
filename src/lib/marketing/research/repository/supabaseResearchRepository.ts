@@ -1,7 +1,10 @@
 import "server-only";
 
 import type { ResearchDbClient } from "@/lib/marketing/research/repository/dbClient";
-import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
+import type {
+  AgendaCandidateArticleRef,
+  ResearchRepository,
+} from "@/lib/marketing/research/repository/contracts";
 import {
   ResearchIdempotencyConflictError,
   ResearchRepositoryError,
@@ -377,6 +380,75 @@ export class SupabaseResearchRepository implements ResearchRepository {
     return asRows(data).map(mapAgendaCandidateRow);
   }
 
+  async findRecentAgendaCandidatesPage(input: {
+    since: string;
+    limit: number;
+    offset: number;
+  }): Promise<AgendaCandidate[]> {
+    const from = Math.max(0, Math.floor(input.offset));
+    const size = Math.max(1, Math.floor(input.limit));
+    const { data, error } = await this.client
+      .from("agenda_candidates")
+      .select("*")
+      .gte("created_at", input.since)
+      .order("composite_research_score", { ascending: false })
+      .order("created_at", { ascending: false })
+      // Total order so offset pages neither skip nor repeat rows among score/created_at ties.
+      .order("id", { ascending: false })
+      .range(from, from + size - 1);
+    if (error) throwDb(error, "findRecentAgendaCandidatesPage failed");
+    return asRows(data).map(mapAgendaCandidateRow);
+  }
+
+  async findAgendaCandidateArticleRefs(
+    candidates: Array<Pick<AgendaCandidate, "id" | "researchBriefId">>,
+  ): Promise<Map<string, AgendaCandidateArticleRef>> {
+    const briefIds = [...new Set(candidates.map((c) => c.researchBriefId).filter(Boolean))];
+    const signalIdByBriefId = new Map<string, string | null>();
+    for (const chunk of chunkIds(briefIds)) {
+      const { data, error } = await this.client
+        .from("research_briefs")
+        .select("id,primary_signal_id")
+        .in("id", chunk);
+      if (error) throwDb(error, "findAgendaCandidateArticleRefs briefs failed");
+      for (const row of asRows(data)) {
+        signalIdByBriefId.set(asString(row.id), asString(row.primary_signal_id) || null);
+      }
+    }
+
+    const signalIds = [
+      ...new Set(
+        [...signalIdByBriefId.values()].filter((id): id is string => typeof id === "string"),
+      ),
+    ];
+    const signalById = new Map<string, { canonicalUrl: string | null; sourceId: string | null }>();
+    for (const chunk of chunkIds(signalIds)) {
+      const { data, error } = await this.client
+        .from("research_signals")
+        .select("id,source_id,canonical_url")
+        .in("id", chunk);
+      if (error) throwDb(error, "findAgendaCandidateArticleRefs signals failed");
+      for (const row of asRows(data)) {
+        signalById.set(asString(row.id), {
+          canonicalUrl: asString(row.canonical_url) || null,
+          sourceId: asString(row.source_id) || null,
+        });
+      }
+    }
+
+    const refs = new Map<string, AgendaCandidateArticleRef>();
+    for (const candidate of candidates) {
+      const signalId = signalIdByBriefId.get(candidate.researchBriefId) ?? null;
+      const signal = signalId ? signalById.get(signalId) : undefined;
+      refs.set(candidate.id, {
+        signalId,
+        canonicalUrl: signal?.canonicalUrl ?? null,
+        sourceId: signal?.sourceId ?? null,
+      });
+    }
+    return refs;
+  }
+
   async deleteAgendaCandidateById(id: string): Promise<void> {
     const { error } = await this.client.from("agenda_candidates").delete().eq("id", id);
     if (error) throwDb(error, "deleteAgendaCandidateById failed");
@@ -394,6 +466,17 @@ export class SupabaseResearchRepository implements ResearchRepository {
     const { error } = await this.client.from("research_signals").delete().eq("id", id);
     if (error) throwDb(error, "deleteSignalById failed");
   }
+}
+
+/** PostgREST `in.(...)` lists travel in the URL; keep each request well under proxy limits. */
+const ID_LOOKUP_CHUNK_SIZE = 80;
+
+function chunkIds(ids: string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_LOOKUP_CHUNK_SIZE) {
+    chunks.push(ids.slice(i, i + ID_LOOKUP_CHUNK_SIZE));
+  }
+  return chunks;
 }
 
 function asString(value: unknown, fallback = ""): string {

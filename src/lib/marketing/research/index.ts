@@ -61,7 +61,9 @@ export { computeAgendaPoolRankScore } from "@/lib/marketing/research/services/sc
 export { DEFERRED_RESEARCH_SOURCES_V1 } from "@/lib/marketing/research/collectors/config";
 export {
   diversifyAgendaCandidatesForCuration,
+  diversifyAgendaCandidatesForCurationWithStats,
   diversifyCompactCurationCandidates,
+  diversifyCompactCurationCandidatesWithStats,
   destinationTopicFamilyKey,
   isCredibleForCurationDiversity,
   diversityDiagnosticsForCompactCandidates,
@@ -69,4 +71,9 @@ export {
   CURATION_CREDIBLE_OUTBOUND_FLOOR,
   CURATION_DIVERSITY_MAX_PER_SOURCE,
   CURATION_DIVERSITY_MAX_PER_FAMILY,
+} from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
+export type {
+  CurationDiversityFillSelection,
+  CurationDiversityFillStage,
+  CurationDiversityFillStats,
 } from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";

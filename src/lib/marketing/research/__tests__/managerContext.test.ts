@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+import { COMMUNITY_SOURCE, INTERNAL_PRODUCT_SOURCE } from "@/lib/marketing/research/__tests__/fixtures";
 import { signalFixture } from "@/lib/marketing/research/__tests__/semanticCalibrationFixtures";
 import { MVP_RESEARCH_SOURCES } from "@/lib/marketing/research/collectors/config";
 import { getMarketingManagerResearchContext } from "@/lib/marketing/research/manager/getMarketingManagerResearchContext";
@@ -22,6 +23,7 @@ async function seedRepo() {
     createdAt: NOW.toISOString(),
     updatedAt: NOW.toISOString(),
   }));
+  sources.push(structuredClone(COMMUNITY_SOURCE), structuredClone(INTERNAL_PRODUCT_SOURCE));
   for (const source of sources) {
     await repo.upsertSource(source);
   }
@@ -74,6 +76,7 @@ async function seedRepo() {
   const lowCredSignal = signalFixture({
     id: "33333333-3333-4333-8333-333333333803",
     title: "Unverified rumor",
+    sourceId: COMMUNITY_SOURCE.id,
     summary: "Low credibility community rumor.",
     signalType: "general_travel_news",
     destinations: ["spain"],
@@ -86,6 +89,7 @@ async function seedRepo() {
   const staleSignal = signalFixture({
     id: "44444444-4444-4444-8444-444444444804",
     title: "Old promo",
+    sourceId: INTERNAL_PRODUCT_SOURCE.id,
     summary: "Stale commercial promo.",
     signalType: "internal_product",
     destinations: ["spain"],
@@ -271,6 +275,25 @@ describe("Marketing Manager research context service", () => {
 
     const ids = context.agendaCandidates.map((c) => c.researchBriefId);
     expect(new Set(ids).size).toBe(ids.length);
+    // Same-article rows are now dropped in the unique-article pre-pool read.
+    expect(context.observability.articlePrePool?.duplicateRowsDropped).toBe(1);
+  });
+
+  it("keeps the downstream brief/title dedupe as a defense on the legacy row read", async () => {
+    const { repo } = await seedRepo();
+    const legacyRepo = Object.create(repo) as typeof repo;
+    Object.assign(legacyRepo, {
+      findRecentAgendaCandidatesPage: undefined,
+      findAgendaCandidateArticleRefs: undefined,
+    });
+    const context = await getMarketingManagerResearchContext(
+      { limit: 10 },
+      { repo: legacyRepo, now: NOW, checkSemanticInfrastructure: async () => true },
+    );
+
+    const ids = context.agendaCandidates.map((c) => c.researchBriefId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(context.observability.articlePrePool?.mode).toBe("legacy_row_limit");
     expect(context.observability.duplicateExcludedCount).toBeGreaterThan(0);
   });
 

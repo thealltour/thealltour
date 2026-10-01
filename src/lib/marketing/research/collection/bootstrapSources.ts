@@ -1,16 +1,22 @@
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
-import { MVP_RESEARCH_SOURCES } from "@/lib/marketing/research/collectors/config";
-import { PERFORMANCE_MEMORY_SOURCE } from "@/lib/marketing/performance/constants";
+import {
+  BOOTSTRAP_RESEARCH_SOURCES,
+  selectBootstrapResearchSources,
+  type ResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 
+/** Upserts every catalog row, paused/retired included: lifecycle gates participation, not catalog presence. */
 export async function bootstrapResearchSources(
   repo: ResearchRepository,
   now: Date = new Date(),
+  sources?: readonly ResearchSourceDefinition[],
 ): Promise<ResearchSource[]> {
   const timestamp = now.toISOString();
   const bootstrapped: ResearchSource[] = [];
+  const rows = sources ? selectBootstrapResearchSources(sources) : BOOTSTRAP_RESEARCH_SOURCES;
 
-  for (const source of [...MVP_RESEARCH_SOURCES, PERFORMANCE_MEMORY_SOURCE]) {
+  for (const source of rows) {
     const existing = await repo.getSourceById(source.id);
     const next: ResearchSource = {
       ...source,

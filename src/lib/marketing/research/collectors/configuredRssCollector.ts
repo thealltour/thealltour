@@ -1,3 +1,4 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import { randomUUID } from "node:crypto";
 
 import { fetchResearchDocument } from "@/lib/marketing/research/collectors/httpClient";
@@ -6,7 +7,7 @@ import {
   conservativeClaim,
   extractDestinationFromTitle,
   inferNewsSignalType,
-  inferOfficialSignalType,
+  inferOfficialSignalTypeDetailed,
   inferTopics,
 } from "@/lib/marketing/research/collectors/mappers/helpers";
 import type {
@@ -14,17 +15,21 @@ import type {
   RawResearchItem,
   ResearchCollector,
 } from "@/lib/marketing/research/collectors/types";
-import type { ResearchSourceType } from "@/lib/marketing/research/types/enums";
+import type { ResearchSignalType, ResearchSourceType } from "@/lib/marketing/research/types/enums";
 
 export type ConfiguredRssCollectorConfig = {
   collectorId: string;
   sourceId: string;
   feedUrl: string;
   sourceType: ResearchSourceType;
+  /** Explicit authority; source type never implies official status. */
+  isOfficial?: boolean;
   locale?: string;
   language?: string;
   evidenceType?: "direct_source" | "official_statement";
   destinationHints?: string[];
+  /** Source `semantics.classification.defaultSignalType`; terminal fallback only. */
+  defaultSignalType: ResearchSignalType;
 };
 
 export type ConfiguredRssCollectorDeps = {
@@ -37,6 +42,7 @@ export function createConfiguredRssCollector(
 ): ResearchCollector {
   return {
     collectorId: config.collectorId,
+    sourceId: config.sourceId,
     sourceType: config.sourceType,
     async collect(context: CollectorContext): Promise<RawResearchItem[]> {
       const observedAt = context.now.toISOString();
@@ -46,7 +52,7 @@ export function createConfiguredRssCollector(
       });
       const items = await parseFeedFromXml(body, config.feedUrl);
       const limit = context.maxItems ?? 25;
-      const official = config.sourceType === "official_government" || config.sourceType === "tourism_board";
+      const official = isOfficialResearchSource(config);
 
       const mapped: Array<RawResearchItem | null> = items.slice(0, limit).map((item) => {
         const title = item.title?.trim();
@@ -59,6 +65,9 @@ export function createConfiguredRssCollector(
           ...(config.destinationHints ?? []),
         ];
         const topics = inferTopics(title, summary);
+        const officialInference = official
+          ? inferOfficialSignalTypeDetailed(title, summary, config.defaultSignalType)
+          : null;
         const row: RawResearchItem = {
           externalId: item.externalId,
           title,
@@ -68,7 +77,7 @@ export function createConfiguredRssCollector(
           publishedAt: item.publishedAt,
           observedAt,
           locale: config.locale ?? null,
-          language: config.language ?? null,
+          language: null,
           destinationHints: [...new Set(destinations)],
           topicHints: topics,
           evidence: [
@@ -85,9 +94,12 @@ export function createConfiguredRssCollector(
           ],
           metadata: {
             collectorId: config.collectorId,
-            signalTypeHint: official
-              ? inferOfficialSignalType(title, summary)
-              : inferNewsSignalType(title, summary),
+            signalTypeHint: officialInference
+              ? officialInference.signalType
+              : inferNewsSignalType(title, summary, config.defaultSignalType),
+            ...(officialInference
+              ? { signalTypeFallbackApplied: !officialInference.keywordMatched }
+              : {}),
             claimSource: "source",
             feedUrl: config.feedUrl,
           },

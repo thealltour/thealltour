@@ -35,6 +35,7 @@ class MockResearchDb {
       filters: Array<{ op: "eq" | "gte"; column: string; value: unknown }>;
       orderBy?: { column: string; ascending: boolean };
       limit?: number;
+      offset?: number;
       pendingWrite?: { kind: "insert" | "update" | "upsert" | "delete"; values: Row | Row[] };
       selectCols?: string;
       singleMode?: "none" | "maybe" | "one";
@@ -62,7 +63,8 @@ class MockResearchDb {
         });
       }
       if (state.limit != null) {
-        list = list.slice(0, state.limit);
+        const offset = state.offset ?? 0;
+        list = list.slice(offset, offset + state.limit);
       }
 
       if (state.pendingWrite?.kind === "delete") {
@@ -148,6 +150,11 @@ class MockResearchDb {
       },
       limit(count) {
         state.limit = count;
+        return builder;
+      },
+      range(from, to) {
+        state.offset = from;
+        state.limit = to - from + 1;
         return builder;
       },
       maybeSingle() {

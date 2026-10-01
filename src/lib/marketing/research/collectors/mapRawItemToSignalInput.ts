@@ -66,7 +66,7 @@ export function mapRawResearchItemToSignalInput(
     destinations: item.destinationHints ?? [],
     topics: item.topicHints ?? ["travel"],
     entities: [],
-    language: item.language ?? "en",
+    language: item.language ?? null,
     metadata: item.metadata ?? null,
   };
 }

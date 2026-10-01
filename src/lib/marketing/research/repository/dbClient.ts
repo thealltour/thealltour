@@ -19,6 +19,7 @@ export type ResearchDbQuery = {
   gte(column: string, value: string): ResearchDbQuery;
   order(column: string, options?: { ascending?: boolean }): ResearchDbQuery;
   limit(count: number): ResearchDbQuery;
+  range(from: number, to: number): ResearchDbQuery;
   maybeSingle(): PromiseLike<ResearchDbResult>;
   single(): PromiseLike<ResearchDbResult>;
   then: PromiseLike<ResearchDbResult>["then"];

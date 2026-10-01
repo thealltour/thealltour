@@ -1,15 +1,9 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type {
   CredibilityAssessment,
   ResearchEvidence,
 } from "@/lib/marketing/research/types/researchSignal";
-
-const OFFICIAL_SOURCE_TYPES = new Set([
-  "official_government",
-  "tourism_board",
-  "airline",
-  "airport",
-]);
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -30,11 +24,11 @@ export function scoreCredibility(input: {
   const reasons: string[] = [];
   let score = input.source.defaultCredibility ?? 0.4;
 
-  if (input.source.isOfficial || OFFICIAL_SOURCE_TYPES.has(input.source.sourceType)) {
+  if (isOfficialResearchSource(input.source)) {
     score += 0.25;
     reasons.push("official_or_authoritative_source_type");
   }
-  if (input.source.authorityLevel === "official") {
+  if (isOfficialResearchSource(input.source)) {
     score += 0.15;
     reasons.push("source_authority_official");
   } else if (input.source.authorityLevel === "primary") {

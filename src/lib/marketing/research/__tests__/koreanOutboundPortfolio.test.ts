@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   MVP_RESEARCH_SOURCES,
   DEFERRED_RESEARCH_SOURCES_V1,
-  UK_GOV_TRAVEL_SOURCE_ID,
-  TRAVELTIMES_SOURCE_ID,
-  VIETNAM_TRAVEL_SOURCE_ID,
 } from "@/lib/marketing/research/collectors/config";
+import {
+  TRAVELTIMES_SOURCE,
+  UK_GOV_TRAVEL_SOURCE,
+  VIETNAM_TRAVEL_SOURCE,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { resolveSourceRoleWeights } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
 import { scoreKoreanOutboundRelevance } from "@/lib/marketing/research/services/koreanOutboundRelevanceScorer";
 import {
@@ -29,7 +31,7 @@ function brief(partial: Partial<ResearchBrief> & Pick<ResearchBrief, "title" | "
     evidence: partial.evidence ?? [
       {
         id: "33333333-3333-4333-8333-333333333301",
-        sourceId: UK_GOV_TRAVEL_SOURCE_ID,
+        sourceId: UK_GOV_TRAVEL_SOURCE.id,
         evidenceType: "official_statement",
         observedAt: NOW.toISOString(),
         excerpt: partial.summary,
@@ -79,23 +81,25 @@ function sourceById(id: string): ResearchSource {
 
 describe("STEP R-1 source portfolio roles", () => {
   it("FCDO is high evidence authority but low agenda seed / Korean market", () => {
-    const weights = resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID));
+    const fcdo = sourceById(UK_GOV_TRAVEL_SOURCE.id);
+    const weights = resolveSourceRoleWeights(fcdo);
     expect(weights.portfolioRole).toBe("safety_verification");
-    expect(weights.evidenceAuthorityWeight).toBeGreaterThan(0.9);
+    expect(fcdo.isOfficial).toBe(true);
+    expect(fcdo.defaultCredibility).toBeGreaterThan(0.85);
     expect(weights.agendaSeedWeight).toBeLessThan(0.3);
     expect(weights.koreanMarketWeight).toBeLessThan(0.35);
   });
 
   it("Korean editorial source gets strong market/seed contribution", () => {
-    const weights = resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE_ID));
+    const weights = resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE.id));
     expect(weights.portfolioRole).toBe("korean_travel_editorial");
     expect(weights.agendaSeedWeight).toBeGreaterThan(0.85);
     expect(weights.koreanMarketWeight).toBeGreaterThan(0.9);
   });
 
   it("authoritative FCDO evidence remains usable even when agendaSeedWeight is low", () => {
-    const weights = resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID));
-    expect(weights.evidenceAuthorityWeight).toBeGreaterThan(weights.agendaSeedWeight);
+    const fcdo = sourceById(UK_GOV_TRAVEL_SOURCE.id);
+    expect(fcdo.defaultCredibility).toBeGreaterThan(resolveSourceRoleWeights(fcdo).agendaSeedWeight);
   });
 
   it("documents deferred sources without inventing unsafe scrapers", () => {
@@ -113,7 +117,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       topics: ["season", "travel"],
       signalTypes: ["destination_trend"],
       seasonalityScore: 0.75,
-      sourceRole: resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE_ID)),
+      sourceRole: resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE.id)),
     });
     const southSudan = scoreKoreanOutboundRelevance({
       title: "south sudan",
@@ -121,7 +125,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       destinations: ["south-sudan"],
       topics: ["travel", "visa"],
       signalTypes: ["entry_requirement"],
-      sourceRole: resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID)),
+      sourceRole: resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE.id)),
     });
     expect(japan.score).toBeGreaterThan(southSudan.score);
     expect(japan.demandBand).toBe("high");
@@ -135,7 +139,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       destinations: ["vietnam"],
       topics: ["visa", "travel"],
       signalTypes: ["entry_requirement"],
-      sourceRole: resolveSourceRoleWeights(sourceById(VIETNAM_TRAVEL_SOURCE_ID)),
+      sourceRole: resolveSourceRoleWeights(sourceById(VIETNAM_TRAVEL_SOURCE.id)),
     });
     const chad = scoreKoreanOutboundRelevance({
       title: "chad",
@@ -143,7 +147,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       destinations: ["chad"],
       topics: ["safety"],
       signalTypes: ["safety"],
-      sourceRole: resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID)),
+      sourceRole: resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE.id)),
     });
     expect(vietnam.score).toBeGreaterThan(chad.score);
   });
@@ -162,7 +166,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
   });
 
   it("low relevance does not destroy factual evidence authority", () => {
-    const weights = resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID));
+    const weights = resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE.id));
     const scored = scoreKoreanOutboundRelevance({
       title: "south sudan",
       summary: "Updated Ebola entry requirements.",
@@ -172,7 +176,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       sourceRole: weights,
     });
     expect(scored.score).toBeLessThan(0.25);
-    expect(weights.evidenceAuthorityWeight).toBeGreaterThan(0.9);
+    expect(sourceById(UK_GOV_TRAVEL_SOURCE.id).defaultCredibility).toBeGreaterThan(0.85);
   });
 
   it("does not silently overload travelRelevanceScore", () => {
@@ -193,7 +197,7 @@ describe("STEP R-1 koreanOutboundRelevanceScore", () => {
       }),
       NOW,
       [],
-      { evidenceSources: [sourceById(TRAVELTIMES_SOURCE_ID)] },
+      { evidenceSources: [sourceById(TRAVELTIMES_SOURCE.id)] },
     );
     expect(candidate.travelRelevanceScore).toBeCloseTo(0.81, 2);
     expect(candidate.koreanOutboundRelevanceScore).toBeGreaterThan(0.5);
@@ -237,7 +241,7 @@ describe("STEP R-1 agenda pool soft ranking", () => {
       evidence: [
         {
           id: "33333333-3333-4333-8333-333333333302",
-          sourceId: UK_GOV_TRAVEL_SOURCE_ID,
+          sourceId: UK_GOV_TRAVEL_SOURCE.id,
           evidenceType: "official_statement",
           observedAt: NOW.toISOString(),
           excerpt: "Ebola entry update",
@@ -247,19 +251,19 @@ describe("STEP R-1 agenda pool soft ranking", () => {
     });
 
     const japan = buildAgendaCandidateFromBrief(japanBrief, NOW, [], {
-      evidenceSources: [sourceById(TRAVELTIMES_SOURCE_ID)],
+      evidenceSources: [sourceById(TRAVELTIMES_SOURCE.id)],
       signalTypes: ["destination_trend"],
     });
     const sudan = buildAgendaCandidateFromBrief(sudanBrief, NOW, [], {
-      evidenceSources: [sourceById(UK_GOV_TRAVEL_SOURCE_ID)],
+      evidenceSources: [sourceById(UK_GOV_TRAVEL_SOURCE.id)],
       signalTypes: ["entry_requirement"],
     });
     sudan.compositeResearchScore = Math.max(sudan.compositeResearchScore, japan.compositeResearchScore + 0.05);
 
     const ranked = rankAgendaCandidates([sudan, japan], {
       agendaSeedWeightByCandidateId: new Map([
-        [japan.id, resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE_ID)).agendaSeedWeight],
-        [sudan.id, resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE_ID)).agendaSeedWeight],
+        [japan.id, resolveSourceRoleWeights(sourceById(TRAVELTIMES_SOURCE.id)).agendaSeedWeight],
+        [sudan.id, resolveSourceRoleWeights(sourceById(UK_GOV_TRAVEL_SOURCE.id)).agendaSeedWeight],
       ]),
     });
     expect(ranked[0]?.title).toContain("Japan");

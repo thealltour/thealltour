@@ -34,6 +34,33 @@ export type DiversifyAgendaCandidatesForCurationOptions = {
   credibleOutboundFloor?: number;
 };
 
+export type CurationDiversityFillStage =
+  | "pass1_soft_cap"
+  | "pass1b_min_families"
+  | "staged_cap_relaxation"
+  | "unrestricted_credible_fill"
+  | "weak_outbound_fallback";
+
+export type CurationDiversityFillSelection = {
+  id: string;
+  stage: CurationDiversityFillStage;
+  /** Source/family cap in force for staged picks (max of the two); null otherwise. */
+  relaxedCap: number | null;
+};
+
+export type CurationDiversityFillStats = {
+  pass1Picked: number;
+  pass1bPicked: number;
+  stagedFillPicked: number;
+  /** Highest staged cap that admitted at least one pick; null when no staged pick happened. */
+  maxRelaxedCapUsed: number | null;
+  unrestrictedFillPicked: number;
+  weakFallbackPicked: number;
+  selections: CurationDiversityFillSelection[];
+};
+
+const WEAK_FALLBACK_OUTBOUND_FLOOR = 0.28;
+
 function normalizeToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -201,26 +228,51 @@ export type DiversifiableCurationCandidate = {
   scoreReasons: string[];
 };
 
+export type DiversifyAgendaCandidatesAccessors<T> = {
+  getId: (item: T) => string;
+  getSourceKey: (item: T) => string;
+  getFamilyKey: (item: T) => string;
+  getOutboundScore: (item: T) => number;
+  isCredible: (item: T) => boolean;
+};
+
+function emptyFillStats(): CurationDiversityFillStats {
+  return {
+    pass1Picked: 0,
+    pass1bPicked: 0,
+    stagedFillPicked: 0,
+    maxRelaxedCapUsed: null,
+    unrestrictedFillPicked: 0,
+    weakFallbackPicked: 0,
+    selections: [],
+  };
+}
+
 /**
  * Select up to `limit` candidates from an already outbound-aware ranked list.
  *
  * Soft source/destination caps apply while any under-cap credible alternative
- * remains. Caps relax only when no such alternative exists (capacity fill).
+ * remains. When they run out, caps are raised one step at a time (2/2 → 3/3 →
+ * 4/4 …) so repetition grows evenly; only then does an unrestricted credible
+ * fill run, followed by the weak-outbound fallback.
  * Demoted inbound/domestic/B2B items are never used to invent diversity.
  */
 export function diversifyAgendaCandidatesForCuration<T>(
   ranked: T[],
-  accessors: {
-    getId: (item: T) => string;
-    getSourceKey: (item: T) => string;
-    getFamilyKey: (item: T) => string;
-    getOutboundScore: (item: T) => number;
-    isCredible: (item: T) => boolean;
-  },
+  accessors: DiversifyAgendaCandidatesAccessors<T>,
   options: DiversifyAgendaCandidatesForCurationOptions,
 ): T[] {
+  return diversifyAgendaCandidatesForCurationWithStats(ranked, accessors, options).picked;
+}
+
+export function diversifyAgendaCandidatesForCurationWithStats<T>(
+  ranked: T[],
+  accessors: DiversifyAgendaCandidatesAccessors<T>,
+  options: DiversifyAgendaCandidatesForCurationOptions,
+): { picked: T[]; stats: CurationDiversityFillStats } {
+  const stats = emptyFillStats();
   const limit = Math.max(0, Math.floor(options.limit));
-  if (limit === 0 || ranked.length === 0) return [];
+  if (limit === 0 || ranked.length === 0) return { picked: [], stats };
 
   const maxPerSource = options.maxPerSource ?? CURATION_DIVERSITY_MAX_PER_SOURCE;
   const maxPerFamily = options.maxPerFamily ?? CURATION_DIVERSITY_MAX_PER_FAMILY;
@@ -230,7 +282,11 @@ export function diversifyAgendaCandidatesForCuration<T>(
   const sourceCount = new Map<string, number>();
   const familyCount = new Map<string, number>();
 
-  const tryPick = (item: T): boolean => {
+  const tryPick = (
+    item: T,
+    stage: CurationDiversityFillStage,
+    relaxedCap: number | null = null,
+  ): boolean => {
     const id = accessors.getId(item);
     if (pickedIds.has(id)) return false;
     const sk = accessors.getSourceKey(item);
@@ -239,6 +295,7 @@ export function diversifyAgendaCandidatesForCuration<T>(
     pickedIds.add(id);
     sourceCount.set(sk, (sourceCount.get(sk) ?? 0) + 1);
     familyCount.set(fk, (familyCount.get(fk) ?? 0) + 1);
+    stats.selections.push({ id, stage, relaxedCap });
     return true;
   };
 
@@ -270,7 +327,7 @@ export function diversifyAgendaCandidatesForCuration<T>(
       // No under-cap alternative left — fall through to relax below.
       break;
     }
-    tryPick(item);
+    tryPick(item, "pass1_soft_cap");
   }
 
   const minFamilies = options.minFamiliesTarget ?? CURATION_DIVERSITY_MIN_FAMILIES_TARGET;
@@ -284,16 +341,63 @@ export function diversifyAgendaCandidatesForCuration<T>(
       const fk = accessors.getFamilyKey(item);
       if ((sourceCount.get(sk) ?? 0) >= maxPerSource) continue;
       if ((familyCount.get(fk) ?? 0) >= maxPerFamily) continue;
-      tryPick(item);
+      tryPick(item, "pass1b_min_families");
     }
   }
 
-  // Pass 2 — credible capacity fill (caps relaxed because alternatives exhausted)
+  // Pass 2 — staged credible fill: raise source/family caps together one step at a time.
+  // Within a stage the least-represented source goes first; rank order breaks ties.
+  if (picked.length < limit) {
+    const credibleRows = ranked
+      .map((item) => ({
+        item,
+        id: accessors.getId(item),
+        sourceKey: accessors.getSourceKey(item),
+        familyKey: accessors.getFamilyKey(item),
+        credible: accessors.isCredible(item),
+      }))
+      .filter((row) => row.credible);
+
+    const fillStage = (sourceCap: number, familyCap: number): number => {
+      let added = 0;
+      while (picked.length < limit) {
+        let best: (typeof credibleRows)[number] | null = null;
+        let bestSourceCount = Number.POSITIVE_INFINITY;
+        for (const row of credibleRows) {
+          if (pickedIds.has(row.id)) continue;
+          const sc = sourceCount.get(row.sourceKey) ?? 0;
+          if (sc >= sourceCap) continue;
+          if ((familyCount.get(row.familyKey) ?? 0) >= familyCap) continue;
+          if (sc < bestSourceCount) {
+            best = row;
+            bestSourceCount = sc;
+          }
+        }
+        if (!best) break;
+        if (tryPick(best.item, "staged_cap_relaxation", Math.max(sourceCap, familyCap))) added += 1;
+      }
+      return added;
+    };
+
+    // A cap >= limit can no longer bind, so the progression ends there at the latest.
+    for (let step = 1; picked.length < limit; step += 1) {
+      if (!credibleRows.some((row) => !pickedIds.has(row.id))) break;
+      const sourceCap = maxPerSource + step;
+      const familyCap = maxPerFamily + step;
+      if (fillStage(sourceCap, familyCap) > 0) {
+        stats.maxRelaxedCapUsed = Math.max(sourceCap, familyCap);
+      }
+      if (sourceCap >= limit && familyCap >= limit) break;
+    }
+  }
+
+  // Pass 2b — unrestricted credible fill. The staged progression normally exhausts credible
+  // capacity first; this stays as the last credible resort before the weak fallback.
   if (picked.length < limit) {
     for (const item of ranked) {
       if (picked.length >= limit) break;
       if (!accessors.isCredible(item)) continue;
-      tryPick(item);
+      tryPick(item, "unrestricted_credible_fill");
     }
   }
 
@@ -304,29 +408,47 @@ export function diversifyAgendaCandidatesForCuration<T>(
       if (picked.length >= limit) break;
       // Skip hard demotions even for capacity: score floor failures that are intent-demoted
       // are already non-credible; additionally skip very low outbound scores.
-      if (accessors.getOutboundScore(item) < 0.28) continue;
-      tryPick(item);
+      if (accessors.getOutboundScore(item) < WEAK_FALLBACK_OUTBOUND_FLOOR) continue;
+      tryPick(item, "weak_outbound_fallback");
     }
   }
 
-  return picked;
+  for (const selection of stats.selections) {
+    if (selection.stage === "pass1_soft_cap") stats.pass1Picked += 1;
+    else if (selection.stage === "pass1b_min_families") stats.pass1bPicked += 1;
+    else if (selection.stage === "staged_cap_relaxation") stats.stagedFillPicked += 1;
+    else if (selection.stage === "unrestricted_credible_fill") stats.unrestrictedFillPicked += 1;
+    else stats.weakFallbackPicked += 1;
+  }
+
+  return { picked, stats };
 }
 
+type CompactCurationCandidate = {
+  agendaCandidateId: string;
+  title: string;
+  summary: string;
+  destinations?: string[] | null;
+  topics?: string[] | null;
+  koreanOutboundRelevanceScore?: number | null;
+  scoreReasons?: string[] | null;
+  evidence?: Array<{ sourceName?: string | null; sourceId?: string | null }> | null;
+};
+
 /** Convenience accessors for compact MM / fallback candidates. */
-export function diversifyCompactCurationCandidates<
-  T extends {
-    agendaCandidateId: string;
-    title: string;
-    summary: string;
-    destinations?: string[] | null;
-    topics?: string[] | null;
-    koreanOutboundRelevanceScore?: number | null;
-    scoreReasons?: string[] | null;
-    evidence?: Array<{ sourceName?: string | null; sourceId?: string | null }> | null;
-  },
->(ranked: T[], options: DiversifyAgendaCandidatesForCurationOptions): T[] {
+export function diversifyCompactCurationCandidates<T extends CompactCurationCandidate>(
+  ranked: T[],
+  options: DiversifyAgendaCandidatesForCurationOptions,
+): T[] {
+  return diversifyCompactCurationCandidatesWithStats(ranked, options).picked;
+}
+
+export function diversifyCompactCurationCandidatesWithStats<T extends CompactCurationCandidate>(
+  ranked: T[],
+  options: DiversifyAgendaCandidatesForCurationOptions,
+): { picked: T[]; stats: CurationDiversityFillStats } {
   const floor = options.credibleOutboundFloor ?? CURATION_CREDIBLE_OUTBOUND_FLOOR;
-  return diversifyAgendaCandidatesForCuration(
+  return diversifyAgendaCandidatesForCurationWithStats(
     ranked,
     {
       getId: (item) => item.agendaCandidateId,

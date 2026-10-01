@@ -28,6 +28,8 @@ export type CollectorContext = {
 
 export type ResearchCollector = {
   collectorId: string;
+  /** Registered research source id; the cycle rejects collectors without a registry match. */
+  sourceId: string;
   sourceType: ResearchSourceType;
   collect(context: CollectorContext): Promise<RawResearchItem[]>;
 };
@@ -36,7 +38,8 @@ export type CollectorRunStatus = "success" | "partial" | "failed" | "skipped";
 
 export type CollectorRunResult = {
   collectorId: string;
-  sourceId: string;
+  /** Null only for a `collector_identity_missing` failure. */
+  sourceId: string | null;
   startedAt: string;
   completedAt: string;
   status: CollectorRunStatus;

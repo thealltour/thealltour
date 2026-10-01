@@ -12,6 +12,11 @@ import {
   RESEARCH_SIGNAL_TYPES,
   RESEARCH_SOURCE_TYPES,
 } from "@/lib/marketing/research/types/enums";
+import {
+  RESEARCH_SOURCE_COMMERCIAL_BIAS_LEVELS,
+  RESEARCH_SOURCE_COVERAGE_SCOPES,
+  RESEARCH_SOURCE_LIFECYCLE_STATUSES,
+} from "@/lib/marketing/research/types/sourceSemantics";
 
 const scoreSchema = z.number().min(0).max(1);
 
@@ -61,6 +66,41 @@ export const researchSourceSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
+
+export const researchSourceSemanticsSchema = z
+  .object({
+    commercialBias: z.enum(RESEARCH_SOURCE_COMMERCIAL_BIAS_LEVELS),
+    coverage: z
+      .object({
+        scope: z.enum(RESEARCH_SOURCE_COVERAGE_SCOPES),
+        countries: z.array(z.string().regex(/^[A-Z]{2}$/)).min(1).optional(),
+        cities: z.array(z.string().min(1)).min(1).optional(),
+      })
+      .strict()
+      .refine((coverage) => coverage.scope !== "country" || Boolean(coverage.countries), {
+        message: "country coverage requires countries",
+      })
+      .refine((coverage) => coverage.scope !== "city" || Boolean(coverage.cities), {
+        message: "city coverage requires cities",
+      }),
+    languages: z
+      .object({
+        primary: z.string().min(2),
+      })
+      .strict(),
+    classification: z
+      .object({
+        defaultSignalType: z.enum(RESEARCH_SIGNAL_TYPES),
+      })
+      .strict(),
+    lifecycle: z
+      .object({
+        status: z.enum(RESEARCH_SOURCE_LIFECYCLE_STATUSES),
+        note: z.string().min(1).optional(),
+      })
+      .strict(),
+  })
+  .strict();
 
 export const researchSignalSchema = z.object({
   id: z.string().uuid(),

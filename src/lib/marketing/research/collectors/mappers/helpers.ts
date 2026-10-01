@@ -29,24 +29,62 @@ export function inferTopics(title: string, summary: string): string[] {
   return [...topics];
 }
 
-export function inferOfficialSignalType(title: string, summary: string): ResearchSignalType {
+export type SignalTypeInference = {
+  signalType: ResearchSignalType;
+  /** False when no rule matched and the caller's terminal `fallback` was returned. */
+  keywordMatched: boolean;
+};
+
+/** @deprecated Alias kept for existing imports. */
+export type OfficialSignalTypeInference = SignalTypeInference;
+
+/** `fallback` is the source's `semantics.classification.defaultSignalType`. */
+export function inferOfficialSignalTypeDetailed(
+  title: string,
+  summary: string,
+  fallback: ResearchSignalType,
+): SignalTypeInference {
   const text = `${title} ${summary}`.toLowerCase();
-  if (/visa|passport|entry requirement/i.test(text)) return "entry_requirement";
-  if (/warning|insurance|safety|terror|crime/i.test(text)) return "safety";
-  if (/policy|regulation|law/i.test(text)) return "policy_change";
-  if (/flight|airline|airport/i.test(text)) return "flight_route";
-  return "entry_requirement";
+  if (/visa|passport|entry requirement/i.test(text)) return { signalType: "entry_requirement", keywordMatched: true };
+  if (/warning|insurance|safety|terror|crime/i.test(text)) return { signalType: "safety", keywordMatched: true };
+  if (/policy|regulation|law/i.test(text)) return { signalType: "policy_change", keywordMatched: true };
+  if (/flight|airline|airport/i.test(text)) return { signalType: "flight_route", keywordMatched: true };
+  return { signalType: fallback, keywordMatched: false };
 }
 
-export function inferNewsSignalType(title: string, summary: string): ResearchSignalType {
+export function inferOfficialSignalType(
+  title: string,
+  summary: string,
+  fallback: ResearchSignalType,
+): ResearchSignalType {
+  return inferOfficialSignalTypeDetailed(title, summary, fallback).signalType;
+}
+
+/**
+ * A generic travel-keyword hit is a resolved `general_travel_news`, not a fallback;
+ * `fallback` (the source's `defaultSignalType`) applies only when nothing matched.
+ */
+export function inferNewsSignalTypeDetailed(
+  title: string,
+  summary: string,
+  fallback: ResearchSignalType,
+): SignalTypeInference {
   const text = `${title} ${summary}`.toLowerCase();
-  if (/visa|passport/i.test(text)) return "visa";
-  if (/airfare|fare|ticket price/i.test(text)) return "airfare";
-  if (/hotel|resort/i.test(text)) return "hotel_resort";
-  if (/festival|event/i.test(text)) return "event";
-  if (/weather|storm/i.test(text)) return "weather";
-  if (TRAVEL_KEYWORDS.test(text)) return "general_travel_news";
-  return "general_travel_news";
+  if (/visa|passport/i.test(text)) return { signalType: "visa", keywordMatched: true };
+  if (/airfare|fare|ticket price/i.test(text)) return { signalType: "airfare", keywordMatched: true };
+  if (/hotel|resort/i.test(text)) return { signalType: "hotel_resort", keywordMatched: true };
+  if (/festival|event/i.test(text)) return { signalType: "event", keywordMatched: true };
+  if (/weather|storm/i.test(text)) return { signalType: "weather", keywordMatched: true };
+  if (TRAVEL_KEYWORDS.test(text)) return { signalType: "general_travel_news", keywordMatched: true };
+  return { signalType: fallback, keywordMatched: false };
+}
+
+export function inferNewsSignalType(
+  title: string,
+  summary: string,
+  fallback: ResearchSignalType,
+): ResearchSignalType {
+  return inferNewsSignalTypeDetailed(title, summary, fallback).signalType;
 }
 
 export function conservativeClaim(summary: string, title: string): string {

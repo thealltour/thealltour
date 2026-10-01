@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
-  UK_GOV_TRAVEL_SOURCE_ID,
-  NYT_TRAVEL_SOURCE_ID,
-} from "@/lib/marketing/research/collectors/config";
+  NYT_TRAVEL_SOURCE,
+  UK_GOV_TRAVEL_SOURCE,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { fetchResearchDocument, ResearchHttpError } from "@/lib/marketing/research/collectors/httpClient";
 import { parseFeedFromXml } from "@/lib/marketing/research/collectors/feedParser";
 import { mapRawResearchItemToSignalInput } from "@/lib/marketing/research/collectors/mapRawItemToSignalInput";
@@ -23,7 +23,7 @@ describe("research collectors", () => {
   it("maps valid official UK gov item", async () => {
     const items = await parseFeedFromXml(UK_GOV_ATOM_SAMPLE, "https://example.gov/atom");
     const mapped = mapUkGovItemToRawResearchItem(items[0]!, {
-      sourceId: UK_GOV_TRAVEL_SOURCE_ID,
+      sourceId: UK_GOV_TRAVEL_SOURCE.id,
       observedAt: NOW,
     });
     expect(mapped).not.toBeNull();
@@ -32,7 +32,7 @@ describe("research collectors", () => {
     expect(mapped!.destinationHints).toContain("japan");
 
     const signal = mapRawResearchItemToSignalInput(mapped!, {
-      sourceId: UK_GOV_TRAVEL_SOURCE_ID,
+      sourceId: UK_GOV_TRAVEL_SOURCE.id,
       sourceType: "official_government",
     });
     expect(signal).not.toBeNull();
@@ -42,7 +42,7 @@ describe("research collectors", () => {
   it("maps valid NYT travel news item", async () => {
     const items = await parseFeedFromXml(NYT_TRAVEL_RSS_SAMPLE, "https://example.com/rss");
     const mapped = mapNytItemToRawResearchItem(items[0]!, {
-      sourceId: NYT_TRAVEL_SOURCE_ID,
+      sourceId: NYT_TRAVEL_SOURCE.id,
       observedAt: NOW,
     });
     expect(mapped).not.toBeNull();
@@ -60,7 +60,7 @@ describe("research collectors", () => {
         summary: "tiny",
         publishedAt: null,
       },
-      { sourceId: NYT_TRAVEL_SOURCE_ID, observedAt: NOW },
+      { sourceId: NYT_TRAVEL_SOURCE.id, observedAt: NOW },
     );
     expect(mapped).toBeNull();
   });

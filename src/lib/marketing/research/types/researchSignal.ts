@@ -113,7 +113,10 @@ export type RawResearchSignalInput = Omit<
   | "status"
   | "createdAt"
   | "updatedAt"
+  | "language"
 > & {
   id?: string;
   status?: ResearchSignal["status"];
+  /** Null/undefined means unresolved; normalization resolves it. */
+  language?: string | null;
 };

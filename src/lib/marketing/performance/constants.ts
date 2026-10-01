@@ -1,28 +1,13 @@
+import {
+  PERFORMANCE_MEMORY_SOURCE_DEFINITION,
+  projectResearchSource,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 
-/** Stable research source id for performance_memory (aligned with research fixtures). */
-export const PERFORMANCE_MEMORY_SOURCE_ID = "44444444-4444-4444-8444-444444444444" as const;
+export const PERFORMANCE_MEMORY_SOURCE_ID = PERFORMANCE_MEMORY_SOURCE_DEFINITION.id;
 
-export const PERFORMANCE_MEMORY_SOURCE: Omit<ResearchSource, "createdAt" | "updatedAt"> = {
-  id: PERFORMANCE_MEMORY_SOURCE_ID,
-  sourceType: "performance_memory",
-  name: "Performance Analyst Memory",
-  authorityLevel: "primary",
-  defaultCredibility: 0.75,
-  language: "ko",
-  isOfficial: false,
-  isEnabled: true,
-  metadata: {
-    adapter: "performance_signal",
-    advisoryOnly: true,
-    portfolio: {
-      role: "performance_memory",
-      agendaSeedWeight: 0.35,
-      evidenceAuthorityWeight: 0.4,
-      koreanMarketWeight: 0.7,
-    },
-  },
-};
+export const PERFORMANCE_MEMORY_SOURCE: Omit<ResearchSource, "createdAt" | "updatedAt"> =
+  projectResearchSource(PERFORMANCE_MEMORY_SOURCE_DEFINITION);
 
 export function performanceSnapshotExternalId(snapshotId: string): string {
   return `content_performance_snapshot:${snapshotId}`;

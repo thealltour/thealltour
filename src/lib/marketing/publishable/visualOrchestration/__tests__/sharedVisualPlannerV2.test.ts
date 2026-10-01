@@ -454,18 +454,14 @@ describe("Shared Visual Planner v2 — VRA-aware", () => {
     );
   });
 
-  it("G. Threads slot0 + IG card on same master allowed", () => {
-    const { plan } = materializeSharedVisualPlanFromLlm({
+  it("G. Threads slot0 on an IG master is dropped — the plan serves Instagram cardnews only", () => {
+    const { plan, warnings } = materializeSharedVisualPlanFromLlm({
       bundle: daoBundle(),
       llmRaw: validFullCoverageLlm(),
       instagramVisualRolePlan: daoVra(),
     });
-    const cross = plan.visuals.find(
-      (v) =>
-        v.usages.some((u) => u.channel === "threads") &&
-        v.usages.some((u) => u.channel === "instagram"),
-    );
-    expect(cross).toBeTruthy();
+    expect(plan.visuals.flatMap((v) => v.usages).some((u) => u.channel === "threads")).toBe(false);
+    expect(warnings.some((w) => w.endsWith("_usage_dropped"))).toBe(true);
   });
 
   it("H. duplicate card usage fail-closed when VRA present", () => {

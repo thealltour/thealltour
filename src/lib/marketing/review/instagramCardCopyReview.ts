@@ -7,6 +7,7 @@
 import { resolveMarketingAssetRoot } from "@/lib/marketing/assets/config";
 import { resolvePackageDirectory } from "@/lib/marketing/assets/paths";
 import type { CompletedMarketingCandidate } from "@/lib/marketing/cron/daily/types";
+import { resolveExternalInstagramCoverTitleSuggestion } from "@/lib/marketing/publishable/channelSources/importInstagramCardnews";
 import { readPublishableBundle } from "@/lib/marketing/publishable/channelSources/packageIo";
 import { readChannelSourceSelection } from "@/lib/marketing/publishable/channelSources/selection";
 import {
@@ -39,6 +40,8 @@ export type InstagramCardCopyReviewView = {
   staleHumanEdits: boolean;
   limits: typeof INSTAGRAM_CARD_COPY_FIELD_LIMITS;
   coverTitleMaxLength: number;
+  /** Thumbnail title proposed by the External Instagram cardnews result (operator applies it). */
+  suggestedCoverTitleKo: string | null;
 };
 
 export function defaultInstagramCardCopyPackageRoot(candidate: CompletedMarketingCandidate): string {
@@ -94,6 +97,7 @@ export function buildInstagramCardCopyReviewView(input: {
       staleHumanEdits: false,
       limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
       coverTitleMaxLength: INSTAGRAM_COVER_TITLE_MAX_LENGTH,
+      suggestedCoverTitleKo: null,
     };
   }
   const stored = storedReview(input.review) ?? gate.review;
@@ -114,6 +118,10 @@ export function buildInstagramCardCopyReviewView(input: {
     staleHumanEdits: !matches && hasInstagramCardHumanEdits(stored),
     limits: INSTAGRAM_CARD_COPY_FIELD_LIMITS,
     coverTitleMaxLength: INSTAGRAM_COVER_TITLE_MAX_LENGTH,
+    suggestedCoverTitleKo: resolveExternalInstagramCoverTitleSuggestion(
+      input.packageRoot,
+      readPublishableBundle(input.packageRoot),
+    ),
   };
 }
 

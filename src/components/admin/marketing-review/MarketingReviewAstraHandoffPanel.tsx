@@ -77,6 +77,8 @@ type ViewDto = {
   packagePresent: boolean;
   message: string | null;
   planStaleFromCardCopyOnly: boolean;
+  planLegacy?: boolean;
+  cardCopyBlockReason?: string | null;
   plan: {
     status: "not_generated" | "fresh" | "stale";
     statusLabel: string;
@@ -448,19 +450,28 @@ export function MarketingReviewAstraHandoffPanel(props: {
         </div>
 
         <p className="text-xs text-[var(--text-secondary)]">
-          채널 생성/재생성과 독립된 cross-channel editorial stage입니다. 채널을 바꾼 뒤에는 Plan이
-          stale이 되며, 자동으로 재생성되지 않습니다.
+          승인된 Instagram 카드 문구만을 기준으로 카드뉴스 이미지 구성을 잡습니다. 캡션이나 다른 채널을 바꿔도
+          Plan은 그대로이며, 카드 구성이 바뀌면 stale이 됩니다. 자동으로 재생성되지 않습니다.
         </p>
 
-        {plan.status === "stale" && cardCopyDriftOnly ? (
+        {view.cardCopyBlockReason ? (
+          <p className="text-sm text-[var(--warning)]">{view.cardCopyBlockReason}</p>
+        ) : null}
+
+        {plan.status === "stale" && view.planLegacy ? (
+          <p className="text-sm text-[var(--warning)]">
+            기존 Plan은 모든 채널 기준으로 만들어졌습니다. 승인된 Instagram 카드 문구 기준으로 다시
+            생성하세요. (기존 Plan·Handoff·업로드 이미지는 유지됩니다.)
+          </p>
+        ) : plan.status === "stale" && cardCopyDriftOnly ? (
           <p className="text-sm text-[var(--text-secondary)]">
             카드 문구가 Plan 생성 이후 바뀌었습니다. 기존 Plan·Handoff·업로드 이미지로 그대로
             카드뉴스를 렌더할 수 있습니다. 이미지 구성을 새로 잡고 싶을 때만 재생성하세요.
           </p>
         ) : plan.status === "stale" ? (
           <p className="text-sm text-[var(--warning)]">
-            채널 결과가 변경되어 Plan이 오래되었습니다. 검토 후 재생성하세요. (기존 Plan은
-            유지됩니다.)
+            Instagram 카드 구성이 바뀌어 Plan이 오래되었습니다. 카드 문구를 확인한 뒤 재생성하세요.
+            (기존 Plan은 유지됩니다.)
           </p>
         ) : null}
 
@@ -489,7 +500,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
 
         <button
           type="button"
-          disabled={planBusy}
+          disabled={planBusy || Boolean(view.cardCopyBlockReason)}
+          title={view.cardCopyBlockReason ?? undefined}
           onClick={() => void generatePlan()}
           className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
         >
@@ -528,8 +540,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
         </div>
 
         <p className="text-xs text-[var(--text-secondary)]">
-          fresh Shared Visual Plan이 있을 때만 생성할 수 있습니다. Plan 재생성 후 Handoff는 stale이
-          됩니다.
+          Instagram 카드 문구가 승인되고 Shared Visual Plan이 최신일 때만 생성할 수 있습니다. Plan 재생성 후
+          Handoff는 stale이 됩니다.
         </p>
 
         {view.handoffBlockReason && !view.canGenerateHandoff ? (
@@ -563,8 +575,8 @@ export function MarketingReviewAstraHandoffPanel(props: {
               </p>
             ) : handoffView.handoffStale && !handoffDriftOnly ? (
               <p className="text-sm text-[var(--warning)]">
-                채널 결과가 바뀌어 Handoff가 오래되었습니다. 이미지 구성을 새로 잡으려면 Plan과
-                Handoff를 재생성하세요.
+                Instagram 카드 기준 Plan이 바뀌어 Handoff가 오래되었습니다. 이미지 구성을 새로 잡으려면
+                Plan과 Handoff를 재생성하세요.
               </p>
             ) : null}
 

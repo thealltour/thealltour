@@ -26,8 +26,15 @@ vi.mock("@/lib/marketing/review/repository/createHumanMarketingReviewRepository"
   createHumanMarketingReviewRepository: async () => ({ update: mocks.repoUpdate }),
 }));
 vi.mock("@/lib/marketing/canonicalAsset/applyExternalResearchConflicts", () => ({
-  readExternalResearchSummary: (result: { research?: { status?: string } }) =>
-    result.research ? { status: result.research.status } : null,
+  readExternalResearchSummary: (result: { research?: { status?: string; conflictCount?: number } }) =>
+    result.research
+      ? {
+          status: result.research.status,
+          findings: [],
+          unresolved: [],
+          conflicts: Array.from({ length: result.research.conflictCount ?? 0 }, (_, i) => ({ conflictId: `c${i}` })),
+        }
+      : null,
 }));
 vi.mock("@/lib/marketing/canonicalAsset/persistence", () => ({
   resolveCanonicalMarketingAsset: () => ({ assetId: "cma_1", version: 3, status: "approved", approvedVersion: 3 }),
@@ -51,7 +58,7 @@ function post(raw = "{}") {
   });
 }
 
-function imported(status: string) {
+function imported(status: string | null, conflictCount = 0) {
   return {
     ok: true,
     candidateRef: "context/channel-sources/external-editorial/xe_1.json",
@@ -60,10 +67,12 @@ function imported(status: string) {
       importedAt: "2026-09-29T00:00:00.000Z",
       warnings: ["research.status가 blocked이지만 채널 결과를 그대로 가져옵니다."],
       channelReadiness: {},
-      result: { research: { status } },
+      result: status === null ? {} : { research: { status, conflictCount } },
     },
   };
 }
+
+const NO_CHANNELS = { reviewChanged: false, applied: [], failed: [], warnings: [] };
 
 describe("research-editorial-import POST auto-apply", () => {
   beforeEach(() => {
@@ -110,8 +119,31 @@ describe("research-editorial-import POST auto-apply", () => {
 
     const json = await (await post()).json();
     expect(mocks.getOrCreateHumanReview).toHaveBeenCalledWith("cmc_1", "ysh");
+    expect(json.message).toContain("Research 결과를 가져왔습니다");
     expect(json.message).toContain("다시 실행하세요");
     expect(mocks.repoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("points a research-only import with conflicts to the conflict list", async () => {
+    mocks.importExternalEditorialResult.mockReturnValue(imported("completed", 2));
+    mocks.applyExternalCandidateToAllChannels.mockReturnValue({ review: REVIEW, ...NO_CHANNELS });
+    const json = await (await post()).json();
+    expect(json.message).toContain("충돌한 항목");
+    expect(json.appliedChannels).toEqual([]);
+  });
+
+  it("points a clean research-only import to the Instagram cardnews handoff", async () => {
+    mocks.importExternalEditorialResult.mockReturnValue(imported("completed"));
+    mocks.applyExternalCandidateToAllChannels.mockReturnValue({ review: REVIEW, ...NO_CHANNELS });
+    const json = await (await post()).json();
+    expect(json.message).toContain("Instagram 카드뉴스 JSON");
+  });
+
+  it("asks to rerun when the result has no research", async () => {
+    mocks.importExternalEditorialResult.mockReturnValue(imported(null));
+    mocks.applyExternalCandidateToAllChannels.mockReturnValue({ review: REVIEW, ...NO_CHANNELS });
+    const json = await (await post()).json();
+    expect(json.message).toContain("research가 없습니다");
   });
 
   it("still returns 409 for a result that belongs to another candidate", async () => {

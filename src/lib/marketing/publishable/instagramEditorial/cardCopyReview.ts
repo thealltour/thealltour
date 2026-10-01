@@ -540,3 +540,18 @@ export const INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO: Record<
   base_changed: "생성된 Instagram 카드 문구가 바뀌어 이전 검토가 무효가 되었습니다. 다시 검토하세요.",
   approved_stale: "승인 이후 카드 문구가 바뀌었습니다. 다시 승인하세요.",
 };
+
+export const INSTAGRAM_CARD_COPY_MISSING_FOR_VISUALS_MESSAGE_KO =
+  "Instagram 카드 문구가 없습니다. Instagram 카드뉴스 JSON을 가져와 카드 문구를 검토·승인한 뒤 진행하세요.";
+
+/** Shared Visual Plan / Astra handoff run on approved Instagram card copy only. */
+export function resolveInstagramCardCopyApprovalBlock(
+  packageRoot: string,
+): { code: "instagram_card_copy_missing" | "instagram_card_copy_review_required"; messageKo: string } | null {
+  const gate = resolveInstagramCardCopyReviewGate(packageRoot);
+  if (gate.state === "approved") return null;
+  if (gate.state === "not_applicable") {
+    return { code: "instagram_card_copy_missing", messageKo: INSTAGRAM_CARD_COPY_MISSING_FOR_VISUALS_MESSAGE_KO };
+  }
+  return { code: "instagram_card_copy_review_required", messageKo: INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO[gate.state] };
+}

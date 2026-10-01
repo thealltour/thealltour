@@ -127,6 +127,7 @@ function allowedInstagramCardIds(
   return ids;
 }
 
+/** The Shared Visual Plan serves Instagram cardnews only; any other channel usage is dropped. */
 export function validateAndNormalizeUsage(
   raw: unknown,
   bundle: PublishableContentBundle,
@@ -134,16 +135,6 @@ export function validateAndNormalizeUsage(
 ): SharedVisualUsage | null {
   if (!raw || typeof raw !== "object") return null;
   const row = raw as Record<string, unknown>;
-  if (row.channel === "threads") {
-    const slotIndex =
-      typeof row.slotIndex === "number" && Number.isFinite(row.slotIndex)
-        ? Math.max(0, Math.floor(row.slotIndex))
-        : null;
-    if (slotIndex == null) return null;
-    const max = allowedThreadsSlotMax(bundle);
-    if (max < 0 || slotIndex > max) return null;
-    return { channel: "threads", slotIndex };
-  }
   if (row.channel === "instagram") {
     const cardId = typeof row.cardId === "string" ? row.cardId.trim() : "";
     if (!cardId) return null;

@@ -329,7 +329,7 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
     expect(carryToDay3).toHaveLength(0);
   });
 
-  it("12-13: rejected exact identity suppressed 7 days; unrelated remains", async () => {
+  it("12-13: rejected and untouched shown identities are excluded next day; unseen research remains", async () => {
     const slateRepo = createInMemoryDailyAgendaSlateRepository();
     const runRepo = createInMemoryDailyMarketingRunRepository();
     const day1 = await runDailyMarketingAgendaSlate(
@@ -338,9 +338,10 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
         repo: runRepo,
         slateRepo,
         now: NOW,
-        getResearchContext: async () => multiCandidateContext(6),
+        getResearchContext: async () => multiCandidateContext(12),
       },
     );
+    const shownDay1 = new Set(day1.slate!.candidates.map((c) => c.agendaCandidateId));
     const rejected = day1.slate!.candidates[0]!;
     const unrelated = day1.slate!.candidates[1]!;
     const service = await createAgendaSlateService({ slateRepo, now: NOW });
@@ -356,16 +357,136 @@ describe("STEP G-3/G-4/G-5/G-6 agenda slate curation & human gates", () => {
         repo: runRepo,
         slateRepo,
         now: NOW,
-        getResearchContext: async () => multiCandidateContext(6),
+        getResearchContext: async () => multiCandidateContext(12),
       },
     );
     expect(day2.slate?.candidates.some((c) => c.agendaCandidateId === rejected.agendaCandidateId)).toBe(
       false,
     );
     expect(day2.slate?.candidates.some((c) => c.agendaCandidateId === unrelated.agendaCandidateId)).toBe(
-      true,
+      false,
     );
+    expect(day2.slate!.candidates.length).toBeGreaterThan(0);
+    expect(day2.slate!.candidates.every((c) => !shownDay1.has(c.agendaCandidateId))).toBe(true);
     expect(day2.slate?.cooldown.rejectedExcludedAgendaCandidateIds).toContain(rejected.agendaCandidateId);
+    expect(day2.slate?.cooldown.previouslyPresentedExcludedCount).toBeGreaterThan(0);
+  });
+
+  describe("agenda pool and previous-slate exclusion", () => {
+    const DAY3 = "2026-09-06";
+
+    async function runDay(
+      deps: {
+        slateRepo: ReturnType<typeof createInMemoryDailyAgendaSlateRepository>;
+        runRepo: ReturnType<typeof createInMemoryDailyMarketingRunRepository>;
+      },
+      businessDateKst: string,
+    ) {
+      return runDailyMarketingAgendaSlate(
+        { productId: PRODUCT, channel: "threads", businessDateKst },
+        {
+          repo: deps.runRepo,
+          slateRepo: deps.slateRepo,
+          now: NOW,
+          getResearchContext: async () => multiCandidateContext(18),
+        },
+      );
+    }
+
+    function freshRepos() {
+      return {
+        slateRepo: createInMemoryDailyAgendaSlateRepository(),
+        runRepo: createInMemoryDailyMarketingRunRepository(),
+      };
+    }
+
+    it("keep_in_pool brings the item back as agenda_pool and keeps it eligible while untouched", async () => {
+      const repos = freshRepos();
+      const day1 = await runDay(repos, PREV);
+      const pooled = day1.slate!.candidates[0]!;
+      const untouched = day1.slate!.candidates[1]!;
+      const service = await createAgendaSlateService({ slateRepo: repos.slateRepo, now: NOW });
+      await service.applyAction({ slateItemId: pooled.slateItemId, action: "keep_in_pool", businessDateKst: PREV });
+
+      const day2 = await runDay(repos, DAY);
+      const back = day2.slate!.candidates.find((c) => c.agendaCandidateId === pooled.agendaCandidateId);
+      expect(back?.origin).toBe("agenda_pool");
+      expect(back?.state).toBe("AVAILABLE");
+      expect(back?.poolKeptFromBusinessDateKst).toBe(PREV);
+      expect(day2.slate!.candidates.some((c) => c.agendaCandidateId === untouched.agendaCandidateId)).toBe(false);
+      expect(day2.slate!.cooldown.pooledEligibleCount).toBe(1);
+
+      const day3 = await runDay(repos, DAY3);
+      const stillThere = day3.slate!.candidates.find((c) => c.agendaCandidateId === pooled.agendaCandidateId);
+      expect(stillThere?.origin).toBe("agenda_pool");
+      expect(stillThere?.poolKeptFromBusinessDateKst).toBe(PREV);
+    });
+
+    it("rejecting a pooled item on a later day removes it from the pool", async () => {
+      const repos = freshRepos();
+      const day1 = await runDay(repos, PREV);
+      const pooled = day1.slate!.candidates[0]!;
+      const service = await createAgendaSlateService({ slateRepo: repos.slateRepo, now: NOW });
+      await service.applyAction({ slateItemId: pooled.slateItemId, action: "keep_in_pool", businessDateKst: PREV });
+
+      const day2 = await runDay(repos, DAY);
+      const back = day2.slate!.candidates.find((c) => c.agendaCandidateId === pooled.agendaCandidateId)!;
+      const day2Service = await createAgendaSlateService({ slateRepo: repos.slateRepo, now: NOW });
+      await day2Service.applyAction({ slateItemId: back.slateItemId, action: "reject", businessDateKst: DAY });
+
+      const day3 = await runDay(repos, DAY3);
+      expect(day3.slate!.candidates.some((c) => c.agendaCandidateId === pooled.agendaCandidateId)).toBe(false);
+    });
+
+    it("a deferred item left untouched on its carry-over day is excluded the day after", async () => {
+      const repos = freshRepos();
+      const day1 = await runDay(repos, PREV);
+      const deferred = day1.slate!.candidates[0]!;
+      const service = await createAgendaSlateService({ slateRepo: repos.slateRepo, now: NOW });
+      await service.applyAction({ slateItemId: deferred.slateItemId, action: "defer", businessDateKst: PREV });
+
+      const day2 = await runDay(repos, DAY);
+      expect(
+        day2.slate!.candidates.find((c) => c.agendaCandidateId === deferred.agendaCandidateId)?.origin,
+      ).toBe("deferred_carryover");
+
+      const day3 = await runDay(repos, DAY3);
+      expect(day3.slate!.candidates.some((c) => c.agendaCandidateId === deferred.agendaCandidateId)).toBe(false);
+    });
+
+    it("ignores slates older than the 7-day window", async () => {
+      const repos = freshRepos();
+      const old = await runDay(repos, "2026-08-25");
+      const shownLongAgo = old.slate!.candidates[0]!;
+      const today = await runDay(repos, DAY);
+      expect(today.slate!.candidates.some((c) => c.agendaCandidateId === shownLongAgo.agendaCandidateId)).toBe(true);
+    });
+
+    it("keep_in_pool only from AVAILABLE; reset_available clears an organic pool mark", () => {
+      const slate = buildDailyAgendaSlate({
+        research: multiCandidateContext(6),
+        logicalRunKey: `daily-marketing-plan:${DAY}`,
+        businessDateKst: DAY,
+        runId: "run",
+        correlationId: "corr",
+        now: NOW,
+      });
+      const id = slate.candidates[0]!.slateItemId;
+      const kept = applyAgendaSlateAction({ slate, slateItemId: id, action: "keep_in_pool", expectedBusinessDateKst: DAY, now: NOW });
+      expect(kept.candidates[0]).toMatchObject({ state: "KEPT_IN_POOL", poolKeptFromBusinessDateKst: DAY });
+
+      expect(() =>
+        applyAgendaSlateAction({ slate: kept, slateItemId: id, action: "select_today", expectedBusinessDateKst: DAY, now: NOW }),
+      ).toThrow(AgendaSlateActionError);
+
+      const reset = applyAgendaSlateAction({ slate: kept, slateItemId: id, action: "reset_available", expectedBusinessDateKst: DAY, now: NOW });
+      expect(reset.candidates[0]).toMatchObject({ state: "AVAILABLE", poolKeptFromBusinessDateKst: null });
+
+      const selected = applyAgendaSlateAction({ slate, slateItemId: id, action: "select_today", expectedBusinessDateKst: DAY, now: NOW });
+      expect(() =>
+        applyAgendaSlateAction({ slate: selected, slateItemId: id, action: "keep_in_pool", expectedBusinessDateKst: DAY, now: NOW }),
+      ).toThrow(AgendaSlateActionError);
+    });
   });
 
   it("14: existing downstream production executor remains independently callable", async () => {

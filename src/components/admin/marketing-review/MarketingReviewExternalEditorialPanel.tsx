@@ -18,6 +18,7 @@ type CandidateSummary = {
   importId: string;
   importedAt: string;
   importedBy: string | null;
+  resultContract?: string;
   canonicalVersion: number;
   warnings: string[];
   channelReadiness: Record<PublishableChannel, ExternalEditorialChannelReadiness>;
@@ -63,12 +64,19 @@ type Props = {
   onBusy: (busy: boolean) => void;
   onMessage: (message: string) => void;
   onReload: () => void | Promise<void>;
+  /** Bumped when a candidate is imported elsewhere (e.g. Instagram cardnews JSON). */
+  refreshKey?: number;
 };
 
 const SOURCE_LABEL: Record<ChannelGenerationSource, string> = {
   hermes_auto: "Hermes Auto",
   external_editorial: "External Editorial",
 };
+
+function candidateKindLabel(candidate: CandidateSummary): string {
+  if (candidate.resultContract === "instagram-cardnews-chatgpt-result-v1") return "Instagram 카드뉴스";
+  return candidate.research ? "Research" : "외부 편집";
+}
 
 type ApiError = { message?: string; code?: string; details?: string[] };
 
@@ -84,6 +92,7 @@ export function MarketingReviewExternalEditorialPanel({
   onBusy,
   onMessage,
   onReload,
+  refreshKey = 0,
 }: Props) {
   const [raw, setRaw] = useState("");
   const [channels, setChannels] = useState<ChannelSourceView[]>([]);
@@ -115,17 +124,19 @@ export function MarketingReviewExternalEditorialPanel({
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus]);
+  }, [loadStatus, refreshKey]);
 
   const selectedCandidate = candidates.find((c) => c.importId === selectedImportId) ?? null;
-  const research = selectedCandidate?.research ?? null;
-  const candidateHasNoChannels =
-    selectedCandidate !== null && Object.values(selectedCandidate.channelReadiness).every((r) => !r.present);
-  const researchBlocked = research?.status === "blocked" && candidateHasNoChannels;
+  // Instagram cardnews imports carry no research; conflicts stay on the newest research import.
+  const researchCandidate = selectedCandidate?.research
+    ? selectedCandidate
+    : (candidates.find((c) => c.research) ?? null);
+  const research = researchCandidate?.research ?? null;
+  const researchBlocked = research?.status === "blocked";
 
   useEffect(() => {
-    setCheckedConflicts(defaultConflictSelection(selectedCandidate));
-  }, [selectedCandidate]);
+    setCheckedConflicts(defaultConflictSelection(researchCandidate));
+  }, [researchCandidate]);
 
   function toggleConflict(index: number) {
     setCheckedConflicts((prev) =>
@@ -134,7 +145,7 @@ export function MarketingReviewExternalEditorialPanel({
   }
 
   async function applyResearchConflicts() {
-    if (!selectedCandidate || checkedConflicts.length === 0 || !canonical) return;
+    if (!researchCandidate || checkedConflicts.length === 0 || !canonical) return;
     const nextVersion = canonical.version + 1;
     if (
       !window.confirm(
@@ -153,7 +164,7 @@ export function MarketingReviewExternalEditorialPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "apply_research_conflicts",
-          importId: selectedCandidate.importId,
+          importId: researchCandidate.importId,
           conflictIndexes: checkedConflicts,
         }),
       });
@@ -167,7 +178,7 @@ export function MarketingReviewExternalEditorialPanel({
         tone: "ok",
         text:
           `승인본 v${version} 초안을 만들었습니다.\n` +
-          "공통 원문에서 본문을 확인·수정한 뒤 수정본 승인 → Research Editorial용 JSON 다시 복사 → ChatGPT 재실행",
+          "공통 원문에서 본문을 확인·수정한 뒤 수정본을 승인하고, Instagram 카드뉴스 JSON을 복사해 ChatGPT에 요청하세요.",
       });
       await loadStatus();
       await onReload();
@@ -253,11 +264,11 @@ export function MarketingReviewExternalEditorialPanel({
 
   return (
     <AdminCard className="space-y-3 p-4">
-      <h2 className="text-base font-semibold">외부 편집 결과 (Research Editorial)</h2>
+      <h2 className="text-base font-semibold">Research 결과 가져오기</h2>
       <p className="text-xs text-[var(--text-secondary)]">
-        ChatGPT가 돌려준 editorial-research-bundle-chatgpt-result-v1 JSON을 가져오면 결과가 있는 모든 채널에 바로
-        적용됩니다(사람 수정본도 덮어씀). 채널마다 Hermes Auto로 되돌릴 수 있고, 가져온 결과와 Hermes 결과는 모두
-        보존됩니다.
+        ChatGPT가 돌려준 Research JSON(editorial-research-bundle-chatgpt-result-v1)을 붙여넣습니다. 승인본과 충돌한
+        항목을 골라 새 초안에 반영하고, 수정본을 승인하면 공통 원문이 확정됩니다. 채널별 source 전환 기록과 가져온
+        결과는 모두 보존됩니다.
       </p>
 
       <textarea
@@ -277,7 +288,7 @@ export function MarketingReviewExternalEditorialPanel({
         onClick={() => void importResult()}
         className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
       >
-        외부 편집 결과 가져오기
+        Research 결과 가져오기
       </button>
       {feedback ? (
         <p
@@ -300,7 +311,8 @@ export function MarketingReviewExternalEditorialPanel({
           >
             {candidates.map((c) => (
               <option key={c.importId} value={c.importId}>
-                {c.importId} · {new Date(c.importedAt).toLocaleString("ko-KR")} · v{c.canonicalVersion}
+                {candidateKindLabel(c)} · {c.importId} · {new Date(c.importedAt).toLocaleString("ko-KR")} · v
+                {c.canonicalVersion}
                 {c.stale ? " (이전 승인본 기준)" : ""}
               </option>
             ))}
@@ -310,8 +322,8 @@ export function MarketingReviewExternalEditorialPanel({
 
       {researchBlocked ? (
         <p className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs">
-          ChatGPT가 연구를 보류하고 채널 결과를 보내지 않았습니다. Research Editorial용 JSON을 다시 복사해 ChatGPT를
-          재실행하면 채널 결과가 모두 작성됩니다.
+          ChatGPT가 연구를 보류했습니다(blocked). 미해결 항목을 확인하고, 필요하면 Research JSON을 다시 복사해 ChatGPT를
+          재실행하세요.
         </p>
       ) : null}
 
@@ -365,7 +377,7 @@ export function MarketingReviewExternalEditorialPanel({
               </p>
               <ul className="space-y-2">
                 {research.conflicts.map((c) => {
-                  const applicable = isApplicableConflict(c) && !selectedCandidate?.stale;
+                  const applicable = isApplicableConflict(c) && !researchCandidate?.stale;
                   return (
                     <li key={c.index} className="text-xs">
                       <label className="flex items-start gap-2">
@@ -392,7 +404,7 @@ export function MarketingReviewExternalEditorialPanel({
                   );
                 })}
               </ul>
-              {selectedCandidate?.stale ? (
+              {researchCandidate?.stale ? (
                 <p className="text-xs text-[var(--text-secondary)]">
                   이 결과는 이전 승인본 기준이라 반영할 수 없습니다. 최신 승인본으로 ChatGPT를 다시 실행하세요.
                 </p>
@@ -407,13 +419,13 @@ export function MarketingReviewExternalEditorialPanel({
                   busy ||
                   !canEdit ||
                   !canonical?.approved ||
-                  Boolean(selectedCandidate?.stale) ||
+                  Boolean(researchCandidate?.stale) ||
                   checkedConflicts.length === 0
                 }
                 onClick={() => void applyResearchConflicts()}
                 className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
-                승인본 v{(canonical?.version ?? selectedCandidate?.canonicalVersion ?? 0) + 1} 초안 만들기
+                승인본 v{(canonical?.version ?? researchCandidate?.canonicalVersion ?? 0) + 1} 초안 만들기
               </button>
             </div>
           ) : null}
@@ -441,7 +453,7 @@ export function MarketingReviewExternalEditorialPanel({
                 {!view.selectionInSync ? (
                   <span className="text-xs text-[var(--danger,#b91c1c)]">선택 기록이 실제 채널 본문과 다릅니다</span>
                 ) : null}
-                {selectedCandidate && externalDisabledReason && !researchBlocked ? (
+                {readiness?.present && externalDisabledReason ? (
                   <span className="basis-full text-xs text-[var(--danger,#b91c1c)]">
                     External 선택 불가: {externalDisabledReason}
                   </span>

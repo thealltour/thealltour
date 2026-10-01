@@ -24,7 +24,7 @@ export type AgendaExportFieldAuthority =
  * Identifiers and always-null placeholders are intentionally omitted.
  */
 export const AGENDA_EXPORT_FIELD_AUTHORITY = {
-  titleKo: "source",
+  titleKo: "mixed",
   summaryKo: "mixed",
   topicIdentity: "heuristic",
   originDestination: "heuristic",
@@ -80,8 +80,8 @@ function exportAgendaItem(item: AgendaSlateCandidate) {
     researchBriefId: item.researchBriefId,
     state: item.state,
     origin: item.origin,
-    titleKo: item.title,
-    summaryKo: item.summary,
+    titleKo: item.titleKo ?? item.title,
+    summaryKo: item.summaryKo ?? item.summary,
     topicIdentity: {
       destinations: item.destinations,
       topics: item.topics,

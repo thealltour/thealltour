@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const agendaSlateActionSchema = z.object({
-  action: z.enum(["select_today", "defer", "reject", "reset_available"]),
+  action: z.enum(["select_today", "defer", "keep_in_pool", "reject", "reset_available"]),
   businessDateKst: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

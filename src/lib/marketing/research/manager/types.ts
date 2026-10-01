@@ -118,4 +118,9 @@ export type GetMarketingManagerResearchContextOptions = {
   topic?: string;
   destination?: string;
   now?: Date;
+  /**
+   * Identities to drop before diversification and the `limit` cut (produced, rejected,
+   * or already shown on an earlier slate), so exclusions do not shrink the MM pool.
+   */
+  excludeResearchIdentities?: import("@/lib/marketing/cron/daily/researchIdentityCooldown").ResearchIdentitySet;
 };

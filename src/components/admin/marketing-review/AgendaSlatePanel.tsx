@@ -38,12 +38,26 @@ function stateLabel(state: AgendaSlateCandidate["state"]): string {
     case "SELECTED_TODAY":
       return "오늘 제작";
     case "DEFERRED":
-      return "내일";
+      return "내일로 넘김";
+    case "KEPT_IN_POOL":
+      return "풀 보관";
     case "REJECTED":
       return "제외";
     default:
       return "대기";
   }
+}
+
+/** Korean title/summary first; the source title stays visible when it differs. */
+export function agendaSlateItemDisplayText(
+  item: Pick<AgendaSlateCandidate, "title" | "summary" | "titleKo" | "summaryKo">,
+): { displayTitle: string; sourceTitle: string | null; displaySummary: string } {
+  const titleKo = item.titleKo?.trim() || null;
+  return {
+    displayTitle: titleKo ?? item.title,
+    sourceTitle: titleKo && titleKo !== item.title.trim() ? item.title : null,
+    displaySummary: item.summaryKo?.trim() || item.summary,
+  };
 }
 
 function productionStatusLabel(
@@ -463,6 +477,8 @@ function CandidateCard(props: {
   const storyCandidateCount = countStoryCandidates(pr);
   const canClearStories = Boolean(pr && !storyResetBlocked(pr) && storyCandidateCount > 0);
 
+  const { displayTitle, sourceTitle, displaySummary } = agendaSlateItemDisplayText(item);
+
   const actionRow = (
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
       <button
@@ -479,7 +495,15 @@ function CandidateCard(props: {
         onClick={() => onAction("defer")}
         className="min-h-11 rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-3 py-2 text-sm font-medium text-[var(--warning)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
       >
-        내일
+        내일로 넘기기
+      </button>
+      <button
+        type="button"
+        disabled={busy || item.state === "KEPT_IN_POOL"}
+        onClick={() => onAction("keep_in_pool")}
+        className="min-h-11 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-primary)] disabled:opacity-50 sm:min-h-0 sm:py-1.5 sm:text-xs"
+      >
+        풀에 남기기
       </button>
       <button
         type="button"
@@ -508,16 +532,22 @@ function CandidateCard(props: {
         "space-y-3 border-t border-[var(--border)] px-4 py-4 first:border-t-0",
         item.state === "SELECTED_TODAY" && "bg-[var(--success-bg)]",
         item.state === "DEFERRED" && "bg-[var(--warning-bg)]",
+        item.state === "KEPT_IN_POOL" && "bg-[var(--surface-muted)]",
         item.state === "REJECTED" && "bg-[var(--surface-muted)] opacity-80",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{item.title}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{displayTitle}</h3>
             {item.origin === "deferred_carryover" ? (
               <span className="rounded border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-1.5 py-0.5 text-[11px] text-[var(--warning)]">
                 어제 미룸
+              </span>
+            ) : null}
+            {item.origin === "agenda_pool" ? (
+              <span className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)]">
+                풀에서 다시
               </span>
             ) : null}
             <span className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)]">
@@ -539,7 +569,10 @@ function CandidateCard(props: {
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.summary}</p>
+          {sourceTitle ? (
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">원문: {sourceTitle}</p>
+          ) : null}
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{displaySummary}</p>
         </div>
         <div className="text-right text-xs text-[var(--text-secondary)]">
           <div>연구 점수 {item.score != null ? item.score.toFixed(2) : "—"}</div>
@@ -1385,6 +1418,10 @@ export function AgendaSlatePanel({
             <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
               DB에 저장된 날짜별 슬레이트를 불러옵니다. 「오늘 제작」= 선택 · 「제작 요청」= Pi
               대기열 등록.
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+              조치하지 않은 후보는 다음 날 후보에서 빠집니다. 다시 보려면 「내일로 넘기기」 또는
+              「풀에 남기기」를 누르세요.
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[16rem]">

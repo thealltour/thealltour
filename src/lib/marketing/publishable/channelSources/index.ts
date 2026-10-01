@@ -27,6 +27,13 @@ export {
 } from "@/lib/marketing/publishable/channelSources/externalCandidateStore";
 export { importExternalEditorialResult } from "@/lib/marketing/publishable/channelSources/importExternalEditorial";
 export {
+  INSTAGRAM_CARDNEWS_IMPORT_MESSAGES_KO,
+  importInstagramCardnewsResult,
+  resolveExternalInstagramCoverTitleSuggestion,
+  type ImportInstagramCardnewsResult,
+  type InstagramCardnewsImportErrorCode,
+} from "@/lib/marketing/publishable/channelSources/importInstagramCardnews";
+export {
   applyExternalCandidateToAllChannels,
   listChannelSourceViews,
   selectChannelSource,

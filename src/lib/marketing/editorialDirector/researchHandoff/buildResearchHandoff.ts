@@ -46,7 +46,7 @@ export type BuildEditorialResearchHandoffResult =
   | { ok: true; payload: EditorialResearchBundleChatGptHandoff }
   | { ok: false; code: EditorialResearchHandoffFailureCode; messageKo: string };
 
-const EDITORIAL_CONTEXT_NOTE_KO =
+export const EDITORIAL_CONTEXT_NOTE_KO =
   "기획 배경(Story/Proposition)입니다. 사실 근거가 아니며, 사실 판단은 approvedCanonical과 직접 수행한 research로만 합니다.";
 
 const RESEARCH_CONTEXT_AVAILABLE_NOTE_KO =
@@ -55,7 +55,7 @@ const RESEARCH_CONTEXT_AVAILABLE_NOTE_KO =
 const RESEARCH_CONTEXT_UNAVAILABLE_NOTE_KO =
   "이 원문에 연결된 내부 사전 리서치(EvidenceBackedStoryBrief)가 없습니다. approvedCanonical을 기준으로 직접 검증하세요.";
 
-const TERMINOLOGY_RULES_KO: readonly string[] = [
+export const TERMINOLOGY_RULES_KO: readonly string[] = [
   "approvedCanonical과 출처에 쓰인 고유명사·상품명·지명 표기를 그대로 유지합니다.",
   "확인되지 않은 한글 음역을 새로 만들지 않습니다. 공식 한글 표기를 확인할 수 없으면 원문 표기를 씁니다.",
   "canonicalLockedTerms에 있는 표기는 모든 결과에서 글자 그대로 사용합니다.",
@@ -77,7 +77,7 @@ function strings(values: readonly string[] | null | undefined): string[] {
   return values.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean);
 }
 
-function projectApprovedCanonical(asset: CanonicalMarketingAsset): ResearchHandoffApprovedCanonical {
+export function projectApprovedCanonical(asset: CanonicalMarketingAsset): ResearchHandoffApprovedCanonical {
   return {
     authority: "factual_baseline",
     titleKo: asset.titleKo,
@@ -103,7 +103,7 @@ function projectApprovedCanonical(asset: CanonicalMarketingAsset): ResearchHando
   };
 }
 
-function projectStory(
+export function projectStory(
   asset: CanonicalMarketingAsset,
   storyPoint: StoryContentPoint | null | undefined,
 ): ResearchHandoffStoryContext | null {
@@ -131,7 +131,7 @@ function projectStory(
   return hasEditorialText ? projected : null;
 }
 
-function projectProposition(
+export function projectProposition(
   proposition: ContentProposition | null | undefined,
 ): ResearchHandoffPropositionContext | null {
   if (!proposition) return null;
@@ -208,7 +208,7 @@ function projectResearchContext(
   };
 }
 
-function uniqueTerms(terms: readonly string[] | undefined): string[] {
+export function uniqueTerms(terms: readonly string[] | undefined): string[] {
   const out: string[] = [];
   for (const term of terms ?? []) {
     const t = typeof term === "string" ? term.trim() : "";

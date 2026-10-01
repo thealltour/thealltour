@@ -47,8 +47,13 @@ function sameDraft(a: DraftFields, b: DraftFields): boolean {
  * Instagram card-by-card copy review. Approval here is what unblocks VRA / Shared Visual Plan /
  * cardnews render; it is separate from the Instagram caption approval in the channel tabs.
  */
-export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: string; canEdit: boolean }) {
-  const { candidateId, canEdit } = props;
+export function MarketingReviewInstagramCardCopyPanel(props: {
+  candidateId: string;
+  canEdit: boolean;
+  /** Bumped when the Instagram slot is replaced elsewhere (e.g. cardnews JSON import). */
+  refreshKey?: number;
+}) {
+  const { candidateId, canEdit, refreshKey = 0 } = props;
   const [view, setView] = useState<InstagramCardCopyReviewView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftFields>>({});
   const [coverTitleDraft, setCoverTitleDraft] = useState("");
@@ -88,7 +93,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const savedDrafts = useMemo(
     () =>
@@ -139,9 +144,9 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
         <div>
           <h2 className="text-base font-semibold">Instagram 카드 문구 검토</h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            카드별 문구를 확인·수정한 뒤 승인해야 Shared Visual Plan 생성과 카드뉴스 렌더가 진행됩니다. 문구만
-            고친 경우 이미지 재생성 없이 기존 업로드 이미지로 렌더합니다. 캡션 승인과는 별개이며, 원본 생성 문구는
-            그대로 보존됩니다.
+            카드별 문구를 확인·수정한 뒤 저장·승인해야 Shared Visual Plan, Astra 요청문 생성과 카드뉴스 렌더가
+            진행됩니다. 승인 후 문구만 고친 경우 이미지 재생성 없이 기존 업로드 이미지로 렌더합니다. 캡션 승인과는
+            별개이며, 원본 생성 문구는 그대로 보존됩니다.
           </p>
         </div>
         <span
@@ -177,6 +182,23 @@ export function MarketingReviewInstagramCardCopyPanel(props: { candidateId: stri
           onChange={(e) => setCoverTitleDraft(e.target.value)}
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
         />
+        {view.suggestedCoverTitleKo && view.suggestedCoverTitleKo !== coverTitleDraft.trim() ? (
+          <span className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <span>ChatGPT 제안: {view.suggestedCoverTitleKo}</span>
+            <AdminButton
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={!editable}
+              onClick={(e) => {
+                e.preventDefault();
+                setCoverTitleDraft(view.suggestedCoverTitleKo ?? "");
+              }}
+            >
+              제안 적용
+            </AdminButton>
+          </span>
+        ) : null}
       </label>
 
       <ol className="space-y-4">

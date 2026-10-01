@@ -30,8 +30,11 @@ export {
   buildVisualPlanFingerprintPayload,
 } from "@/lib/marketing/publishable/sharedVisualPlan/fingerprint";
 export {
+  SOURCE_CHANNEL_SNAPSHOT_VERSION,
   buildSourceChannelSnapshot,
   computeChannelContentFingerprint,
+  computeInstagramCardStructureFingerprint,
+  isLegacySourceChannelSnapshot,
   computeSourceChannelSnapshotFingerprint,
   sourceChannelSnapshotsEqual,
   parseSourceChannelSnapshot,

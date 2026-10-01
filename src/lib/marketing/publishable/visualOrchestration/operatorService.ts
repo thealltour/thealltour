@@ -14,10 +14,7 @@ import {
   PUBLISHABLE_CONTENT_BUNDLE_CONTRACT,
   type PublishableContentBundle,
 } from "@/lib/marketing/publishable/contracts";
-import {
-  INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO,
-  resolveInstagramCardCopyReviewGate,
-} from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
+import { resolveInstagramCardCopyApprovalBlock } from "@/lib/marketing/publishable/instagramEditorial/cardCopyReview";
 import { PUBLISHABLE_CONTENT_RELATIVE_PATH } from "@/lib/marketing/publishable/paths";
 import { approvedAssetToManualAstraContext } from "@/lib/marketing/publishable/refreshDerivedVisualArtifacts";
 import { readManualAstraHandoff } from "@/lib/marketing/publishable/manualAstraHandoff";
@@ -32,6 +29,7 @@ import {
 } from "@/lib/marketing/publishable/sharedVisualAssets";
 import { formatUsageLine } from "@/lib/marketing/publishable/manualAstraHandoff/formatCopyText";
 import {
+  isLegacySharedVisualPlan,
   lifecycleLabelKo,
   resolveManualAstraHandoffLifecycle,
   type VisualArtifactLifecycleStatus,
@@ -66,19 +64,13 @@ function readPublishableBundle(packageRoot: string): PublishableContentBundle | 
   }
 }
 
-/** VRA/SVP must not start from unreviewed Instagram card copy; other channels alone are not gated. */
-function assertInstagramCardCopyReviewedForVisualPlan(
-  packageRoot: string,
-  bundle: PublishableContentBundle,
-): void {
-  if (!bundle.instagram || !(bundle.targetChannels ?? []).includes("instagram")) return;
-  const gate = resolveInstagramCardCopyReviewGate(packageRoot);
-  if (gate.state === "not_applicable" || gate.state === "approved") return;
-  throw new AstraHandoffOperatorError(
-    "instagram_card_copy_review_required",
-    INSTAGRAM_CARD_COPY_REVIEW_GATE_MESSAGES_KO[gate.state],
-    409,
-  );
+/**
+ * SVP / Astra handoff serve the Instagram cardnews only, so they require approved Instagram card
+ * copy. Other channels are never a condition.
+ */
+function assertInstagramCardCopyApprovedForVisuals(packageRoot: string): void {
+  const block = resolveInstagramCardCopyApprovalBlock(packageRoot);
+  if (block) throw new AstraHandoffOperatorError(block.code, block.messageKo, 409);
 }
 
 async function resolvePackageRoot(candidateId: string): Promise<{
@@ -122,6 +114,10 @@ export type VisualOrchestrationOperatorView = {
   };
   /** Plan is stale only because reviewed Instagram card copy changed; existing visuals stay usable. */
   planStaleFromCardCopyOnly: boolean;
+  /** Plan was built from the legacy all-channel snapshot and must be regenerated. */
+  planLegacy: boolean;
+  /** Why SVP / Astra handoff cannot run yet (Instagram card copy missing or not approved). */
+  cardCopyBlockReason: string | null;
   handoff: AstraHandoffOperatorView;
   canGenerateHandoff: boolean;
   handoffBlockReason: string | null;
@@ -152,6 +148,8 @@ export async function getVisualOrchestrationOperatorView(
       packagePresent: false,
       message: emptyHandoff.message,
       planStaleFromCardCopyOnly: false,
+      planLegacy: false,
+      cardCopyBlockReason: null,
       plan: {
         status: "not_generated",
         statusLabel: lifecycleLabelKo("not_generated"),
@@ -264,21 +262,28 @@ export async function getVisualOrchestrationOperatorView(
     plan,
     bundle,
   });
-  const canGenerateHandoff = planLifecycle === "fresh";
-  const handoffBlockReason =
-    planLifecycle === "not_generated"
+  const cardCopyBlock = resolveInstagramCardCopyApprovalBlock(resolved.packageRoot);
+  const planLegacy = plan ? isLegacySharedVisualPlan(plan) : false;
+  const canGenerateHandoff = planLifecycle === "fresh" && !cardCopyBlock;
+  const handoffBlockReason = cardCopyBlock
+    ? cardCopyBlock.messageKo
+    : planLifecycle === "not_generated"
       ? "Shared Visual Plan이 없습니다."
-      : planStaleFromCardCopyOnly
-        ? "카드 문구가 Plan 생성 이후 바뀌어, Handoff를 새로 만들려면 Plan부터 재생성해야 합니다. 기존 Handoff와 업로드 이미지로 렌더하는 데는 필요 없습니다."
-        : planLifecycle === "stale"
-          ? "Shared Visual Plan이 오래되었습니다. Plan을 먼저 재생성하세요."
-          : null;
+      : planLegacy
+        ? "기존 Shared Visual Plan은 모든 채널 기준으로 만들어졌습니다. 승인된 Instagram 카드 문구 기준으로 Plan을 다시 생성하세요."
+        : planStaleFromCardCopyOnly
+          ? "카드 문구가 Plan 생성 이후 바뀌어, Handoff를 새로 만들려면 Plan부터 재생성해야 합니다. 기존 Handoff와 업로드 이미지로 렌더하는 데는 필요 없습니다."
+          : planLifecycle === "stale"
+            ? "Instagram 카드 구성이 Plan 생성 이후 바뀌었습니다. Plan을 먼저 재생성하세요."
+            : null;
 
   return {
     candidateId: resolved.candidateId,
     packagePresent: true,
     message: null,
     planStaleFromCardCopyOnly,
+    planLegacy,
+    cardCopyBlockReason: cardCopyBlock?.messageKo ?? null,
     plan: {
       status: planLifecycle,
       statusLabel: lifecycleLabelKo(planLifecycle),
@@ -348,7 +353,7 @@ export async function generateSharedVisualPlanForCandidate(input: {
       409,
     );
   }
-  assertInstagramCardCopyReviewedForVisualPlan(resolved.packageRoot, bundle);
+  assertInstagramCardCopyApprovedForVisuals(resolved.packageRoot);
 
   const result = await generateSharedVisualPlanWithLlm({
     packageRoot: resolved.packageRoot,
@@ -411,6 +416,7 @@ export async function generateAstraHandoffForCandidate(input: {
       409,
     );
   }
+  assertInstagramCardCopyApprovedForVisuals(resolved.packageRoot);
   const planLifecycle = resolveSharedVisualPlanLifecycleForPackage({
     packageRoot: resolved.packageRoot,
     plan,

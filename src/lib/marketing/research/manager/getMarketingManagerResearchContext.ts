@@ -27,6 +27,7 @@ import {
   diversityDiagnosticsForCompactCandidates,
 } from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
 import { isVerificationResearchArtifact } from "@/lib/marketing/research/manager/isVerificationResearchArtifact";
+import { agendaCandidateMatchesCooldown } from "@/lib/marketing/cron/daily/researchIdentityCooldown";
 
 /** MM curation input window — larger than slate size so diversification has room. */
 const DEFAULT_LIMIT = 18;
@@ -386,13 +387,22 @@ export async function getMarketingManagerResearchContext(
 
   const preDiversifyBriefs: CompactManagerResearchBrief[] = [];
   const preDiversifyCandidates: CompactManagerAgendaCandidate[] = [];
+  let identityExcludedCount = 0;
 
   for (const candidate of eligible) {
     const briefRow = await repo.findBriefById(candidate.researchBriefId);
     if (!briefRow) continue;
     const compactBrief = await buildCompactBrief(briefRow, repo, sourceCache);
+    const compactCandidate = buildCompactCandidate(candidate, compactBrief);
+    if (
+      options.excludeResearchIdentities &&
+      agendaCandidateMatchesCooldown(compactCandidate, options.excludeResearchIdentities)
+    ) {
+      identityExcludedCount += 1;
+      continue;
+    }
     preDiversifyBriefs.push(compactBrief);
-    preDiversifyCandidates.push(buildCompactCandidate(candidate, compactBrief));
+    preDiversifyCandidates.push(compactCandidate);
   }
 
   // STEP R-4: diversify AFTER outbound-aware ranking, BEFORE MM curation input.
@@ -425,6 +435,9 @@ export async function getMarketingManagerResearchContext(
   }
   if (verificationExcludedCount > 0) {
     notes.push(`verification_fixture_excluded:${verificationExcludedCount}`);
+  }
+  if (identityExcludedCount > 0) {
+    notes.push(`research_identity_pre_excluded:${identityExcludedCount}`);
   }
 
   return {

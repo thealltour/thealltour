@@ -96,7 +96,7 @@ describe("slate export — semantic noise reduction", () => {
   it("declares field authority at the payload top level", () => {
     const payload = buildAgendaSlateEditorialExportPayload(makeSlate(2));
     expect(payload.fieldAuthority).toMatchObject({
-      titleKo: "source",
+      titleKo: "mixed",
       summaryKo: "mixed",
       topicIdentity: "heuristic",
       originDestination: "heuristic",

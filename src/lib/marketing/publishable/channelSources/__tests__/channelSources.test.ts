@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -45,16 +45,19 @@ import {
   resolveSharedVisualPlanLifecycleForPackage,
 } from "@/lib/marketing/publishable/visualOrchestration/packageLifecycle";
 import { EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT } from "@/lib/marketing/editorialDirector/researchHandoff/contracts";
+import { INSTAGRAM_CARDNEWS_CHATGPT_RESULT_CONTRACT } from "@/lib/marketing/editorialDirector/instagramCardnewsHandoff/contracts";
 import {
   applyExternalCandidateToAllChannels,
   CHANNEL_SOURCE_SELECTION_RELATIVE_PATH,
   EXTERNAL_EDITORIAL_MODEL_PROFILE,
   ExternalEditorialCandidateExistsError,
   importExternalEditorialResult,
+  importInstagramCardnewsResult,
   listChannelSourceViews,
   readChannelSourceSelection,
   readExternalEditorialCandidate,
   reconcileChannelSourceSelection,
+  resolveExternalInstagramCoverTitleSuggestion,
   resolveInstagramNarrativeForVisualPlanning,
   selectChannelSource,
   type ExternalEditorialCandidate,
@@ -97,6 +100,7 @@ import {
 import {
   approveInstagramCardCopyReview,
   buildInstagramCardCopyReview,
+  INSTAGRAM_CARD_COPY_REVIEW_RELATIVE_PATH,
   persistInstagramCardCopyReview,
   readInstagramCardCopyReviewFromPackage,
   resolveInstagramCardCopyReviewGate,
@@ -1361,9 +1365,26 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     });
   }
 
+  function approveCardCopyAsIs() {
+    const base = readInstagramCardCopyFromPackage(packageRoot)!;
+    const review = buildInstagramCardCopyReview({
+      candidateId: CANDIDATE_ID,
+      cardCopy: base,
+      carousel: readInstagramCarouselPlanFromPackage(packageRoot),
+      source: { kind: "external_editorial", candidateRef: null },
+      updatedBy: "ysh",
+      nowIso: T0,
+    });
+    persistInstagramCardCopyReview({
+      packageRoot,
+      review: approveInstagramCardCopyReview({ review, base, approvedBy: "ysh", nowIso: T0 }),
+    });
+  }
+
   async function generatePlanOnExternalInstagram() {
     const c = importOk();
     expectOk(select("instagram", "external_editorial", { importId: c.importId }));
+    approveCardCopyAsIs();
     const vraInvoke = vi.fn<VisualRoleArchitectInvoke>(async () => JSON.stringify(VRA_LLM));
     const result = await generateSharedVisualPlanWithLlm({
       packageRoot,
@@ -1435,6 +1456,18 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
     expect(invoke).not.toHaveBeenCalled();
   });
 
+  it("blocks the Astra Handoff when the card copy review was reset after the plan was built", async () => {
+    const { result } = await generatePlanOnExternalInstagram();
+    expect(result.ok).toBe(true);
+    rmSync(join(packageRoot, INSTAGRAM_CARD_COPY_REVIEW_RELATIVE_PATH), { force: true });
+    const writer = astraWriterInvoke();
+    await expect(generateAstraHandoffForCandidate({ candidateId: CANDIDATE_ID, invoke: writer })).rejects.toMatchObject({
+      code: "instagram_card_copy_review_required",
+      httpStatus: 409,
+    });
+    expect(writer).not.toHaveBeenCalled();
+  });
+
   it("an approved card copy edit makes SVP + handoff stale, and VRA regenerates from the effective copy", async () => {
     const { result } = await generatePlanOnExternalInstagram();
     expect(result.ok).toBe(true);
@@ -1491,5 +1524,142 @@ describe("VRA → SVP → Astra Handoff on the External Instagram path", () => {
         bundle: readBundle(),
       }),
     ).toBe("fresh");
+  });
+});
+
+describe("Instagram cardnews ChatGPT result import", () => {
+  function cardnewsResult(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    const base = externalResult();
+    const instagram = base.instagram as Record<string, Record<string, unknown[]>>;
+    return {
+      contract: INSTAGRAM_CARDNEWS_CHATGPT_RESULT_CONTRACT,
+      candidateId: CANDIDATE_ID,
+      assetId: "cma_rev123",
+      canonicalVersion: 3,
+      sourceRevision: "rev123",
+      narrative: base.narrative,
+      instagram: {
+        carouselPlan: {
+          cards: [
+            ...instagram.carouselPlan!.cards!,
+            { cardId: "c4", role: "cta", beatIds: ["b3"], communicationGoal: "저장을 권한다", visualPriority: "none" },
+          ],
+        },
+        cardCopy: {
+          cards: [
+            ...instagram.cardCopy!.cards!,
+            { cardId: "c4", kicker: null, headline: "저장해 두고 동선부터 적기", body: null, microcopy: null, evidenceRefs: [] },
+          ],
+        },
+        caption: instagram.caption,
+        coverTitleKo: "방콕 숙소는 위치부터",
+      },
+      ...overrides,
+    };
+  }
+
+  function importCardnews(result: Record<string, unknown> = cardnewsResult(), approvedCanonical = asset()) {
+    return importInstagramCardnewsResult({
+      packageRoot,
+      candidateId: CANDIDATE_ID,
+      approvedCanonical,
+      raw: JSON.stringify(result),
+      importedBy: "ysh",
+      now: IMPORT_AT,
+    });
+  }
+
+  function candidateFiles(): string[] {
+    const dir = join(packageRoot, "context", "channel-sources", "external-editorial");
+    return existsSync(dir) ? readdirSync(dir) : [];
+  }
+
+  it("stores an Instagram-only candidate and returns the thumbnail title suggestion", () => {
+    const out = importCardnews();
+    if (!out.ok) throw new Error(`${out.code} ${out.details.join("; ")}`);
+    expect(out.candidate.resultContract).toBe(INSTAGRAM_CARDNEWS_CHATGPT_RESULT_CONTRACT);
+    expect(out.candidate.channelReadiness.instagram).toEqual({ present: true, materializable: true, issues: [] });
+    expect(out.candidate.channelReadiness.threads.present).toBe(false);
+    expect(out.coverTitleKo).toBe("방콕 숙소는 위치부터");
+    expect(candidateFiles()).toEqual([`${out.candidate.importId}.json`]);
+  });
+
+  it("applies to Instagram only, resets the card copy review, and surfaces the cover title suggestion", () => {
+    const out = importCardnews();
+    if (!out.ok) throw new Error(out.code);
+    const threadsBefore = readBundle().threads;
+
+    expectOk(select("instagram", "external_editorial", { importId: out.candidate.importId, allowOverwriteHuman: true }));
+
+    const bundle = readBundle();
+    expect(bundle.threads).toEqual(threadsBefore);
+    expect(bundle.targetChannels).toContain("instagram");
+    expect(bundle.instagram?.provenance.externalCandidateRef).toBe(out.candidateRef);
+    expect(readInstagramCarouselPlanFromPackage(packageRoot)!.cards.map((c) => c.cardId)).toEqual([
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+    ]);
+    expect(readInstagramCardCopyFromPackage(packageRoot)!.cards[3]!.headline).toBe("저장해 두고 동선부터 적기");
+    expect(resolveInstagramCardCopyReviewGate(packageRoot).state).toBe("review_missing");
+    expect(resolveExternalInstagramCoverTitleSuggestion(packageRoot, bundle)).toBe("방콕 숙소는 위치부터");
+  });
+
+  it("warns but imports when the result echoes an older approved version or exceeds review limits", () => {
+    const result = cardnewsResult({ canonicalVersion: 2 });
+    const instagram = result.instagram as { cardCopy: { cards: Array<Record<string, unknown>> } };
+    instagram.cardCopy.cards[1] = { ...instagram.cardCopy.cards[1], body: "가".repeat(401), evidenceRefs: ["F9"] };
+    const out = importCardnews(result);
+    if (!out.ok) throw new Error(out.code);
+    const warnings = out.candidate.warnings.join("\n");
+    expect(warnings).toContain("canonicalVersion");
+    expect(warnings).toContain("instagram.cardCopy.cards[1].body 401자");
+    expect(warnings).toContain("F9");
+  });
+
+  it.each([
+    ["contract_mismatch", () => cardnewsResult({ contract: EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT })],
+    ["stale_identity", () => cardnewsResult({ candidateId: "other_candidate" })],
+    ["unknown_top_level_key", () => cardnewsResult({ threads: { body: "x" } })],
+    ["narrative_missing", () => cardnewsResult({ narrative: null })],
+    [
+      "unknown_instagram_key",
+      () => {
+        const r = cardnewsResult();
+        (r.instagram as Record<string, unknown>).storyboard = {};
+        return r;
+      },
+    ],
+    [
+      "card_count_out_of_range",
+      () => {
+        const r = cardnewsResult();
+        const ig = r.instagram as { carouselPlan: { cards: unknown[] }; cardCopy: { cards: unknown[] } };
+        ig.carouselPlan.cards = ig.carouselPlan.cards.slice(0, 3);
+        ig.cardCopy.cards = ig.cardCopy.cards.slice(0, 3);
+        return r;
+      },
+    ],
+    [
+      "instagram_not_materializable",
+      () => {
+        const r = cardnewsResult();
+        const ig = r.instagram as { cardCopy: { cards: Array<Record<string, unknown>> } };
+        ig.cardCopy.cards[3] = { ...ig.cardCopy.cards[3], cardId: "c9" };
+        return r;
+      },
+    ],
+  ] as const)("rejects %s without storing a candidate", (code, build) => {
+    const out = importCardnews(build());
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe(code);
+    expect(candidateFiles()).toEqual([]);
+  });
+
+  it("rejects when the current Canonical version is not approved", () => {
+    const out = importCardnews(cardnewsResult(), asset({ status: "human_edited", approvedVersion: 2 }));
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("canonical_not_approved");
   });
 });

@@ -2,15 +2,13 @@ import { requireAdminPermission } from "@/lib/apiAuth";
 import { z } from "zod";
 import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanMarketingReviewService";
 import { humanReviewErrorResponse } from "@/lib/marketing/review/apiErrors";
-import { readExternalResearchSummary } from "@/lib/marketing/canonicalAsset/applyExternalResearchConflicts";
 import { resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
 import { resolveCandidatePackageRoot } from "@/lib/marketing/editorialDirector/researchHandoff/loadResearchHandoffSource";
 import {
   ExternalEditorialCandidateExistsError,
-  applyExternalCandidateToAllChannels,
-  importExternalEditorialResult,
+  importInstagramCardnewsResult,
+  selectChannelSource,
 } from "@/lib/marketing/publishable/channelSources";
-import { channelLabel } from "@/lib/marketing/review/channelReviews";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +19,9 @@ const bodySchema = z.object({
 type RouteContext = { params: Promise<{ candidateId: string }> };
 
 /**
- * Import editorial-research-bundle-chatgpt-result-v1 as an immutable External Editorial candidate.
- * Current results carry research only; older all-channel results still apply every channel they
- * carry (human drafts overwritten).
+ * Import instagram-cardnews-chatgpt-result-v1 as an immutable External Editorial candidate and
+ * apply it to the Instagram channel only (human drafts / card copy review reset). Other channels
+ * keep their current source.
  */
 export async function POST(request: Request, context: RouteContext) {
   const auth = await requireAdminPermission("settings.manage");
@@ -53,7 +51,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
     const approvedCanonical = resolveCanonicalMarketingAsset({ candidate: detail.candidate, packageRoot });
 
-    const result = importExternalEditorialResult({
+    const result = importInstagramCardnewsResult({
       packageRoot,
       candidateId,
       approvedCanonical,
@@ -61,66 +59,60 @@ export async function POST(request: Request, context: RouteContext) {
       importedBy: auth.session.username ?? null,
     });
     if (!result.ok) {
-      const status = result.code === "invalid_json" ? 400 : result.code.startsWith("canonical_") || result.code === "stale_identity" ? 409 : 422;
-      return Response.json(
-        { message: result.messageKo, code: result.code, details: result.details },
-        { status },
-      );
+      const status =
+        result.code === "invalid_json"
+          ? 400
+          : result.code.startsWith("canonical_") || result.code === "stale_identity"
+            ? 409
+            : 422;
+      return Response.json({ message: result.messageKo, code: result.code, details: result.details }, { status });
     }
 
     const { candidate } = result;
-    const research = readExternalResearchSummary(candidate.result, approvedCanonical);
-
     const review =
       detail.review ?? (await service.getOrCreateHumanReview(candidateId, auth.session.username ?? "admin"));
-    const applyResult = applyExternalCandidateToAllChannels({
+    const applied = selectChannelSource({
       packageRoot,
       candidateId,
       approvedCanonical,
+      channel: "instagram",
+      source: "external_editorial",
       importId: candidate.importId,
       selectedBy: auth.session.username ?? null,
+      allowOverwriteHuman: true,
       review,
     });
-    let updatedReview = applyResult.review;
-    if (applyResult.reviewChanged) {
+    if (!applied.ok) {
+      return Response.json(
+        {
+          importId: candidate.importId,
+          message: `Instagram 카드뉴스 결과를 저장했지만 적용에 실패했습니다: ${[applied.messageKo, ...applied.details].join(" ")}`,
+          code: applied.code,
+          details: applied.details,
+          warnings: candidate.warnings,
+        },
+        { status: applied.status },
+      );
+    }
+
+    let updatedReview = applied.review;
+    if (applied.reviewChanged) {
       const { createHumanMarketingReviewRepository } = await import(
         "@/lib/marketing/review/repository/createHumanMarketingReviewRepository"
       );
       const repo = await createHumanMarketingReviewRepository();
-      updatedReview = await repo.update(applyResult.review);
+      updatedReview = await repo.update(applied.review);
     }
-
-    const appliedLabel = applyResult.applied.map((c) => channelLabel(c)).join(", ");
-    const failedLabel = applyResult.failed
-      .map((f) => `${channelLabel(f.channel)}(${[f.messageKo, ...f.details].join(" ")})`)
-      .join(", ");
-    const researchNext = !research
-      ? "결과에 research가 없습니다. ChatGPT에서 research를 작성하도록 다시 실행하세요."
-      : research.status === "blocked"
-        ? "research가 보류(blocked)되었습니다. 연구 결과를 확인하고 필요하면 ChatGPT에서 다시 실행하세요."
-        : research.conflicts.length > 0
-          ? "승인본과 충돌한 항목을 확인해 반영할 항목을 고른 뒤 새 초안을 만드세요."
-          : "공통 원문을 확정했다면 Instagram 카드뉴스 JSON을 복사해 ChatGPT에 요청하세요.";
-    const message =
-      applyResult.applied.length > 0
-        ? `외부 편집 결과를 가져와 ${appliedLabel} 채널에 바로 적용했습니다. 채널별 검토에서 확인하세요.${
-            failedLabel ? ` 적용 실패: ${failedLabel}` : ""
-          }`
-        : applyResult.failed.length > 0
-          ? `외부 편집 결과를 저장했지만 채널 적용에 실패했습니다: ${failedLabel}`
-          : `Research 결과를 가져왔습니다. ${researchNext}`;
 
     return Response.json({
       importId: candidate.importId,
       candidateRef: result.candidateRef,
       importedAt: candidate.importedAt,
-      warnings: [...candidate.warnings, ...applyResult.warnings],
-      channelReadiness: candidate.channelReadiness,
-      researchStatus: research?.status ?? null,
-      appliedChannels: applyResult.applied,
-      failedChannels: applyResult.failed,
+      coverTitleKo: result.coverTitleKo,
+      warnings: [...candidate.warnings, ...applied.warnings],
       review: updatedReview,
-      message,
+      message:
+        "Instagram 카드뉴스 결과를 가져와 Instagram 채널에 적용했습니다. 아래 카드 문구 검수에서 확인하고 저장·승인하세요.",
     });
   } catch (error) {
     if (error instanceof ExternalEditorialCandidateExistsError) {

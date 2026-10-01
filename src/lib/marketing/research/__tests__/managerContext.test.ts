@@ -229,6 +229,28 @@ describe("Marketing Manager research context service", () => {
     expect(lowIdx).toBeGreaterThan(officialIdx);
   });
 
+  it("drops excluded identities before the limit so the pool keeps its size", async () => {
+    const { repo } = await seedRepo();
+    const deps = { repo, now: NOW, checkSemanticInfrastructure: async () => true };
+    const baseline = await getMarketingManagerResearchContext({ limit: 1 }, deps);
+    const top = baseline.agendaCandidates[0]!;
+
+    const excluded = await getMarketingManagerResearchContext(
+      {
+        limit: 1,
+        excludeResearchIdentities: {
+          agendaCandidateIds: new Set(),
+          researchBriefIds: new Set([top.researchBriefId]),
+          sourceArticleIds: new Set(),
+        },
+      },
+      deps,
+    );
+    expect(excluded.agendaCandidates).toHaveLength(1);
+    expect(excluded.agendaCandidates[0]!.researchBriefId).not.toBe(top.researchBriefId);
+    expect(excluded.notes.some((n) => n.startsWith("research_identity_pre_excluded:"))).toBe(true);
+  });
+
   it("excludes stale research from manager context", async () => {
     const { repo } = await seedRepo();
     const context = await getMarketingManagerResearchContext(

@@ -2,9 +2,11 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { DEFAULT_INFORMATIONAL_TRAVEL_AUDIENCE } from "@/lib/marketing/content/createSelectedAgenda";
 import {
+  createEmptyResearchIdentitySet,
   DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
   normalizeSourceArticleIdentity,
   subtractKstBusinessDays,
+  type ResearchIdentitySet,
 } from "@/lib/marketing/cron/daily/researchIdentityCooldown";
 import { resolveAgendaSlateTargetSize } from "@/lib/marketing/cron/daily/agendaSlate/config";
 import type { ManagerSlateCurationItem } from "@/lib/marketing/cron/daily/agendaSlate/curateManagerAgendaSlate";
@@ -118,6 +120,11 @@ function findResearchMatch(
   );
 }
 
+/** Korean-language sources already read in Korean; other languages need MM's titleKo/summaryKo. */
+function koreanSourceTextOrNull(text: string): string | null {
+  return text && /[\uac00-\ud7a3]/.test(text) ? text : null;
+}
+
 export function mapResearchCandidateToSlateItem(
   candidate: CompactManagerAgendaCandidate,
   input: {
@@ -132,9 +139,13 @@ export function mapResearchCandidateToSlateItem(
     recommendedFormats?: string[];
     recommendedChannel?: string | null;
     summary?: string;
+    titleKo?: string | null;
+    summaryKo?: string | null;
   },
 ): AgendaSlateCandidate {
   const origin = input.origin ?? "organic_research";
+  const title = candidate.title.trim();
+  const summary = (input.summary ?? candidate.summary).trim();
   const editorial = { ...emptyEditorial(), ...(input.editorial ?? {}) };
   if (!editorial.freshnessWhyNow && candidate.freshnessScore != null) {
     editorial.freshnessWhyNow =
@@ -161,8 +172,10 @@ export function mapResearchCandidateToSlateItem(
     agendaCandidateId: candidate.agendaCandidateId,
     researchBriefId: candidate.researchBriefId,
     canonicalArticleIds: canonicalArticleIdsForCandidate(candidate),
-    title: candidate.title.trim(),
-    summary: (input.summary ?? candidate.summary).trim(),
+    title,
+    summary,
+    titleKo: input.titleKo?.trim() || koreanSourceTextOrNull(title),
+    summaryKo: input.summaryKo?.trim() || koreanSourceTextOrNull(summary),
     score: candidate.totalResearchScore ?? null,
     scoreReasons: (candidate.scoreReasons ?? []).slice(0, 8),
     destinations: (candidate.destinations ?? []).slice(0, 8),
@@ -218,11 +231,12 @@ function finalizeSlate(input: {
   candidates: AgendaSlateCandidate[];
   cooldown?: DailyAgendaSlate["cooldown"];
   curation: DailyAgendaSlate["curation"];
+  agendaPool?: readonly AgendaPoolEntry[];
   now: Date;
   metadata?: Record<string, unknown>;
 }): DailyAgendaSlate {
   const iso = input.now.toISOString();
-  const candidates = input.candidates.slice(0, input.targetSize);
+  const candidates = markAgendaPoolOrigins(input.candidates.slice(0, input.targetSize), input.agendaPool);
   return {
     contract: DAILY_AGENDA_SLATE_CONTRACT,
     slateId: `das_${createHash("sha256").update(input.logicalRunKey).digest("hex").slice(0, 24)}`,
@@ -247,6 +261,7 @@ function finalizeSlate(input: {
     observability: {
       organicCount: candidates.filter((c) => c.origin === "organic_research").length,
       deferredCarryoverCount: candidates.filter((c) => c.origin === "deferred_carryover").length,
+      agendaPoolCount: candidates.filter((c) => c.origin === "agenda_pool").length,
       availableCount: candidates.filter((c) => c.state === "AVAILABLE").length,
       selectedTodayCount: candidates.filter((c) => c.state === "SELECTED_TODAY").length,
     },
@@ -295,6 +310,7 @@ export function buildDailyAgendaSlate(input: {
   channel?: string | null;
   targetSize?: number;
   deferredCarryover?: AgendaSlateCandidate[];
+  agendaPool?: readonly AgendaPoolEntry[];
   cooldown?: DailyAgendaSlate["cooldown"];
   curation?: DailyAgendaSlate["curation"];
   now?: Date;
@@ -355,6 +371,7 @@ export function buildDailyAgendaSlate(input: {
     research: input.research,
     candidates: [...carryover, ...organic],
     cooldown: input.cooldown,
+    agendaPool: input.agendaPool,
     curation: input.curation ?? {
       mode: "deterministic_fallback",
       managerMessage: "manager_curation_unavailable_or_skipped",
@@ -381,6 +398,7 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
   channel?: string | null;
   targetSize?: number;
   deferredCarryover?: AgendaSlateCandidate[];
+  agendaPool?: readonly AgendaPoolEntry[];
   cooldown?: DailyAgendaSlate["cooldown"];
   now?: Date;
   metadataExtras?: Record<string, unknown>;
@@ -438,6 +456,8 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
       channel,
       origin: "organic_research",
       summary: item?.summary ?? sel.match.summary,
+      titleKo: item?.titleKo ?? null,
+      summaryKo: item?.summaryKo ?? null,
       rationale: isRepair
         ? [
             "결정론적 diversity repair: MM 과밀(source/family) 선택을 입력 풀 대안으로 교체",
@@ -516,6 +536,7 @@ export function buildDailyAgendaSlateFromManagerCuration(input: {
     research: input.research,
     candidates: [...carryover, ...curated],
     cooldown: input.cooldown,
+    agendaPool: input.agendaPool,
     curation: {
       mode: "manager_curated",
       managerMessage: input.managerMessage ?? null,
@@ -601,6 +622,100 @@ export function listDeferredSlateCandidates(slates: DailyAgendaSlate[]): AgendaS
     }
   }
   return out;
+}
+
+/** An identity an operator kept in the agenda pool and has not acted on since. */
+export type AgendaPoolEntry = {
+  identityKeys: string[];
+  poolKeptFromBusinessDateKst: string;
+  titleKo: string | null;
+  summaryKo: string | null;
+};
+
+function isStillPooled(item: AgendaSlateCandidate): boolean {
+  return item.state === "KEPT_IN_POOL" || (item.origin === "agenda_pool" && item.state === "AVAILABLE");
+}
+
+/**
+ * Identities shown on earlier slates within the window, resolved by their latest
+ * appearance (slates read oldest → newest). Pooled identities stay eligible; every
+ * other shown identity is excluded from today's organic pool. Yesterday's DEFERRED
+ * items are excluded here too — they come back through the deferred pin instead.
+ */
+export function collectPreviouslyPresentedResearchIdentities(
+  slates: DailyAgendaSlate[],
+  businessDateKst: string,
+  windowDays = DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+): { excluded: ResearchIdentitySet; pool: AgendaPoolEntry[]; excludedIdentityCount: number } {
+  const floor = subtractKstBusinessDays(businessDateKst, windowDays);
+  const ordered = slates
+    .filter(
+      (s) =>
+        s.status !== "superseded" && s.businessDateKst >= floor && s.businessDateKst < businessDateKst,
+    )
+    .sort(
+      (a, b) =>
+        a.businessDateKst.localeCompare(b.businessDateKst) || a.updatedAt.localeCompare(b.updatedAt),
+    );
+
+  const latestByKey = new Map<string, { pooled: boolean; entry: AgendaPoolEntry | null }>();
+  for (const slate of ordered) {
+    for (const item of slate.candidates) {
+      const keys = identityKeysForSlateItem(item);
+      if (keys.length === 0) continue;
+      const pooled = isStillPooled(item);
+      const entry: AgendaPoolEntry | null = pooled
+        ? {
+            identityKeys: keys,
+            poolKeptFromBusinessDateKst: item.poolKeptFromBusinessDateKst ?? slate.businessDateKst,
+            titleKo: item.titleKo ?? null,
+            summaryKo: item.summaryKo ?? null,
+          }
+        : null;
+      for (const key of keys) latestByKey.set(key, { pooled, entry });
+    }
+  }
+
+  const pool: AgendaPoolEntry[] = [];
+  const pooledKeys = new Set<string>();
+  for (const { pooled, entry } of latestByKey.values()) {
+    if (!pooled || !entry || pool.includes(entry)) continue;
+    pool.push(entry);
+    for (const key of entry.identityKeys) pooledKeys.add(key);
+  }
+
+  const excluded = createEmptyResearchIdentitySet();
+  let excludedIdentityCount = 0;
+  for (const [key, { pooled }] of latestByKey) {
+    if (pooled || pooledKeys.has(key)) continue;
+    excludedIdentityCount += 1;
+    if (key.startsWith("ac:")) excluded.agendaCandidateIds.add(key.slice(3));
+    else if (key.startsWith("rb:")) excluded.researchBriefIds.add(key.slice(3));
+    else if (key.startsWith("art:")) excluded.sourceArticleIds.add(key.slice(4));
+  }
+
+  return { excluded, pool, excludedIdentityCount };
+}
+
+/** Re-tag organic picks that match a pooled identity so the pool survives another day. */
+function markAgendaPoolOrigins(
+  candidates: AgendaSlateCandidate[],
+  pool: readonly AgendaPoolEntry[] | undefined,
+): AgendaSlateCandidate[] {
+  if (!pool || pool.length === 0) return candidates;
+  return candidates.map((item) => {
+    if (item.origin !== "organic_research") return item;
+    const keys = identityKeysForSlateItem(item);
+    const entry = pool.find((p) => p.identityKeys.some((k) => keys.includes(k)));
+    if (!entry) return item;
+    return {
+      ...item,
+      origin: "agenda_pool" as const,
+      poolKeptFromBusinessDateKst: entry.poolKeptFromBusinessDateKst,
+      titleKo: item.titleKo ?? entry.titleKo,
+      summaryKo: item.summaryKo ?? entry.summaryKo,
+    };
+  });
 }
 
 /** Collect REJECTED exact identities from recent slates for 7-day organic suppression. */

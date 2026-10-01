@@ -170,13 +170,17 @@ describe("planner authority — Worker metadata advisory", () => {
     });
     expect(input.authority.channelVisualMetadata).toBe("advisory_hint_only");
     expect(input.authority.finalVisualAuthority).toBe("shared_visual_planner");
-    const threads = input.channels.threads as {
+    const instagram = input.channels.instagram as {
       content: unknown;
-      visualHints: { imageCount: number; recommended: boolean };
+      visualHints: { cards: Array<{ sourceVisualId: string | null }> };
     };
-    expect(threads.content).toBeTruthy();
-    expect(threads.visualHints.imageCount).toBe(1);
-    expect((input.channels.threads as { mediaPlan?: unknown }).mediaPlan).toBeUndefined();
+    expect(instagram.content).toBeTruthy();
+    expect(instagram.visualHints.cards.map((c) => c.sourceVisualId)).toEqual([
+      "social_visual_01",
+      "social_visual_04",
+      null,
+    ]);
+    expect(Object.keys(input.channels)).toEqual(["instagram"]);
     expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/sole final authority for \*\*master visual asset orchestration\*\*|master visual asset orchestration/i);
     expect(SHARED_VISUAL_PLANNER_SOUL).toMatch(/ADVISORY ONLY|advisory compatibility/i);
   });
@@ -264,13 +268,9 @@ describe("planner authority — Worker metadata advisory", () => {
     expect(plan.visuals[0]!.generatedVisualNeeded).toBe(false);
   });
 
-  it("D. reusable flags false → shared master still PASS", () => {
+  it("D. Threads usage on a shared master is dropped; the Instagram usage is kept", () => {
     const bundle = daoBundle();
-    expect(bundle.threads.mediaPlan!.visuals[0]!.reusableOnInstagram).toBe(false);
-    expect(
-      bundle.instagram?.instagramMeta?.cardPlan?.[0]?.visual?.reusableOnThreads,
-    ).toBe(false);
-    const { plan } = materializeSharedVisualPlanFromLlm({
+    const { plan, warnings } = materializeSharedVisualPlanFromLlm({
       bundle,
       llmRaw: {
         strategySummary: "one shared establishing",
@@ -289,7 +289,8 @@ describe("planner authority — Worker metadata advisory", () => {
       },
     });
     expect(plan.visuals).toHaveLength(1);
-    expect(plan.visuals[0]!.usages).toHaveLength(2);
+    expect(plan.visuals[0]!.usages).toEqual([{ channel: "instagram", cardId: "card-01" }]);
+    expect(warnings).toContain("visual_0_usage_dropped");
   });
 
   it("E. same worker visualId collision → 2 masters with fresh IDs", () => {
@@ -309,7 +310,7 @@ describe("planner authority — Worker metadata advisory", () => {
             generatedVisualNeeded: true,
             visualIntent: CONCRETE,
             visualId: "social_visual_01",
-            usages: [{ channel: "threads", slotIndex: 0 }],
+            usages: [{ channel: "instagram", cardId: "card-01" }],
           },
           {
             role: "architecture_detail",
@@ -496,7 +497,7 @@ describe("planner authority — Worker metadata advisory", () => {
     }
   });
 
-  it("Threads recommended=false still allows slot 0 usage", () => {
+  it("Threads-only master is dropped from the Instagram-only plan", () => {
     const bundle = daoBundle({
       threads: channel({
         channel: "threads",
@@ -510,25 +511,31 @@ describe("planner authority — Worker metadata advisory", () => {
       }),
     });
     expect(allowedThreadsSlotMax(bundle)).toBe(0);
-    const { plan } = materializeSharedVisualPlanFromLlm({
+    const { plan, warnings } = materializeSharedVisualPlanFromLlm({
       bundle,
       llmRaw: {
-        strategySummary: "reuse cover on threads despite recommended=false",
+        strategySummary: "threads-only cover plus instagram cover",
         visuals: [
+          {
+            role: "threads_cover",
+            visualMode: "editorial_photo",
+            generatedVisualNeeded: true,
+            visualIntent: CONCRETE,
+            usages: [{ channel: "threads", slotIndex: 0 }],
+          },
           {
             role: "context_cover",
             visualMode: "editorial_photo",
             generatedVisualNeeded: true,
             visualIntent: CONCRETE,
-            usages: [
-              { channel: "threads", slotIndex: 0 },
-              { channel: "instagram", cardId: "card-01" },
-            ],
+            usages: [{ channel: "instagram", cardId: "card-01" }],
           },
         ],
       },
     });
-    expect(plan.visuals[0]!.usages.some((u) => u.channel === "threads")).toBe(true);
+    expect(plan.visuals).toHaveLength(1);
+    expect(plan.visuals[0]!.usages).toEqual([{ channel: "instagram", cardId: "card-01" }]);
+    expect(warnings).toContain("visual_0_no_valid_usages");
   });
 
   it("deterministic dedupe ignores reusableCrossChannel hard gate", () => {
@@ -592,6 +599,6 @@ describe("planner authority — Worker metadata advisory", () => {
     });
     expect(plan.visuals).toHaveLength(2);
     expect(plan.visuals[0]!.generatedVisualNeeded).toBe(true);
-    expect(plan.visuals[0]!.usages.some((u) => u.channel === "threads")).toBe(true);
+    expect(plan.visuals.flatMap((v) => v.usages).every((u) => u.channel === "instagram")).toBe(true);
   });
 });

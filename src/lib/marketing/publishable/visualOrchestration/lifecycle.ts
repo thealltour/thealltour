@@ -9,11 +9,17 @@ import type { SharedVisualPlan } from "@/lib/marketing/publishable/sharedVisualP
 import { computePlanSourceFingerprintFromBundle } from "@/lib/marketing/publishable/sharedVisualPlan/fingerprint";
 import {
   buildSourceChannelSnapshot,
+  isLegacySourceChannelSnapshot,
   sourceChannelSnapshotsEqual,
 } from "@/lib/marketing/publishable/sharedVisualPlan/sourceChannelSnapshot";
 import { isManualAstraHandoffSourceStale } from "@/lib/marketing/publishable/sharedVisualAssets/status";
 
 export type VisualArtifactLifecycleStatus = "not_generated" | "fresh" | "stale";
+
+/** Built before the Instagram-only snapshot (always stale; regenerate from approved card copy). */
+export function isLegacySharedVisualPlan(plan: Pick<SharedVisualPlan, "sourceChannelSnapshot">): boolean {
+  return !plan.sourceChannelSnapshot || isLegacySourceChannelSnapshot(plan.sourceChannelSnapshot);
+}
 
 export function resolveSharedVisualPlanLifecycle(input: {
   plan: SharedVisualPlan | null | undefined;

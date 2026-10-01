@@ -35,6 +35,7 @@ type ProductBody = {
   attractions_json?: unknown;
   package_catalog_json?: PackageCatalog | null;
   product_source_url?: string | null;
+  departure_city?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
   point_guide?: string | null;
@@ -196,6 +197,7 @@ export async function PATCH(
     updates.refund_policy_template_type = body.refund_policy_template_type?.trim() || null;
   if (body.terms_template_type !== undefined) updates.terms_template_type = body.terms_template_type?.trim() || null;
   if (body.product_source_url !== undefined) updates.product_source_url = body.product_source_url?.trim() || null;
+  if (body.departure_city !== undefined) updates.departure_city = body.departure_city?.trim() || null;
   if (body.departure_from_airport !== undefined)
     updates.departure_from_airport = body.departure_from_airport?.trim() || null;
   if (body.departure_from_date !== undefined) updates.departure_from_date = body.departure_from_date?.trim() || null;
@@ -412,7 +414,18 @@ export async function DELETE(
   }
 
   try {
-    const storage = await deleteProductSupabaseImages(imageUrlsProduct);
+    let sharedWith: ReturnType<typeof normalizeProduct>[] = [];
+    if (imageUrlsProduct.departure_group_id) {
+      const siblings = await supabaseAdmin
+        .from("products")
+        .select("*")
+        .eq("departure_group_id", imageUrlsProduct.departure_group_id);
+      if (siblings.error) {
+        throw new Error(`형제 상품 조회 실패로 사진 정리를 건너뜁니다: ${siblings.error.message}`);
+      }
+      sharedWith = (siblings.data ?? []).map((row) => normalizeProduct(row as Record<string, unknown>));
+    }
+    const storage = await deleteProductSupabaseImages(imageUrlsProduct, { sharedWith });
     if (storage.errors.length > 0) {
       console.error("[admin/products DELETE] storage cleanup", storage.errors);
     }

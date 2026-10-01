@@ -43,6 +43,10 @@ export type ProductFormState = {
   attractions_json: VenueInfoItem[];
   package_catalog_json: PackageCatalog;
   product_source_url: string;
+  /** 출발지 라벨 (예: 인천, 부산) */
+  departure_city: string;
+  /** 출발지별 형제 상품 묶음 id. 읽기 전용 — 저장 페이로드에 보내지 않음 */
+  departure_group_id: string | null;
   point_benefits: string;
   point_tourism: "O" | "X";
   point_guide: "O" | "X";
@@ -186,6 +190,8 @@ export function createEmptyProductFormState(): ProductFormState {
     attractions_json: [],
     package_catalog_json: { hotels: [], attractions: [], optionalTours: [], referenceNotes: "" },
     product_source_url: "",
+    departure_city: "",
+    departure_group_id: null,
     point_benefits: "",
     point_tourism: "X",
     point_guide: "X",

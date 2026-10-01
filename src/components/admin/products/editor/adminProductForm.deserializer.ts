@@ -54,6 +54,8 @@ export function deserializeAdminProductToForm(product: Product): ProductFormStat
       referenceNotes: product.package_catalog_json?.referenceNotes ?? "",
     },
     product_source_url: product.product_source_url ?? "",
+    departure_city: product.departure_city ?? "",
+    departure_group_id: product.departure_group_id ?? null,
     point_benefits: product.point_benefits ?? "",
     point_tourism: normalizeOXValue(product.point_tourism),
     point_guide: normalizeOXValue(product.point_guide),

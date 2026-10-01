@@ -31,20 +31,54 @@ import BandVenueRowsField, {
   createBandVenueFormRow,
   type BandVenueFormRow,
 } from "@/components/admin/band/BandVenueRowsField";
+import {
+  MAX_BAND_HWP_FILE_BYTES,
+  MAX_BAND_HWP_FILES,
+  formatDepartureLabel,
+  guessDepartureCityFromFilename,
+  normalizeDepartureCity,
+  type BandStagingHwpFile,
+} from "@/lib/admin/bandImport/bandDepartureVariants";
+
+type ParsedSummary = {
+  title: string | null;
+  price: number | null;
+  duration: string | null;
+  status: string | null;
+};
+
+type ImportedProduct = {
+  id: string;
+  title: string;
+  departureCity: string | null;
+  parsed: ParsedSummary;
+};
 
 type ImportResponse = {
   id?: string;
   message?: string;
   existingId?: string;
-  parsed?: {
-    title: string | null;
-    price: number | null;
-    duration: string | null;
-    status: string | null;
-  };
+  parsed?: ParsedSummary;
+  products?: ImportedProduct[];
   images?: BandImportImageSummary | null;
   venueImages?: BandVenueImageNotice | null;
 };
+
+type HwpFormEntry = {
+  key: string;
+  file: File;
+  departureCity: string;
+};
+
+const emptyParsed: ParsedSummary = { title: null, price: null, duration: null, status: null };
+
+function createHwpEntry(file: File): HwpFormEntry {
+  return {
+    key: `${file.name}-${file.size}-${Math.random().toString(36).slice(2, 8)}`,
+    file,
+    departureCity: guessDepartureCityFromFilename(file.name) ?? "",
+  };
+}
 
 function venueRowsPayload(rows: BandVenueFormRow[]): Array<{ name: string; content: string }> {
   return rows.map((row) => ({ name: row.name.trim(), content: row.content.trim() }));
@@ -78,8 +112,10 @@ function isZipFilename(name: string): boolean {
 }
 
 function guessContentType(file: File): string {
-  if (file.type) return file.type;
   const ext = file.name.split(".").pop()?.toLowerCase();
+  // 스테이징 버킷 allowed_mime_types에 한글 MIME이 없어 octet-stream으로 올린다
+  if (ext === "hwp" || ext === "hwpx") return "application/octet-stream";
+  if (file.type) return file.type;
   if (ext === "zip") return "application/zip";
   if (ext === "png") return "image/png";
   if (ext === "webp") return "image/webp";
@@ -117,7 +153,7 @@ export default function BandNewProductPage() {
   const [golfCourses, setGolfCourses] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
   const [hotels, setHotels] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
   const [attractions, setAttractions] = useState<BandVenueFormRow[]>([createBandVenueFormRow()]);
-  const [hwpFile, setHwpFile] = useState<File | null>(null);
+  const [hwpFiles, setHwpFiles] = useState<HwpFormEntry[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggingImages, setIsDraggingImages] = useState(false);
@@ -128,15 +164,35 @@ export default function BandNewProductPage() {
   const [successSummary, setSuccessSummary] = useState<ImportResponse["parsed"] | null>(null);
   const progress = useSimulatedImportProgress();
 
-  const assignHwpFile = useCallback((file: File | undefined | null) => {
-    if (!file) return;
-    if (!isHwpFilename(file.name)) {
-      setError("hwp 또는 hwpx 파일만 업로드할 수 있습니다.");
-      return;
-    }
-    setError(null);
-    setHwpFile(file);
-  }, []);
+  const addHwpFiles = useCallback(
+    (incoming: FileList | File[] | undefined | null) => {
+      if (!incoming?.length) return;
+      const files = Array.from(incoming);
+      for (const file of files) {
+        if (!isHwpFilename(file.name)) {
+          setError("hwp 또는 hwpx 파일만 업로드할 수 있습니다.");
+          return;
+        }
+        if (file.size > MAX_BAND_HWP_FILE_BYTES) {
+          setError(
+            `한글 문서는 ${formatFileSize(MAX_BAND_HWP_FILE_BYTES)} 이하만 올릴 수 있습니다. (${file.name}: ${formatFileSize(file.size)})`,
+          );
+          return;
+        }
+      }
+      if (hwpFiles.length + files.length > MAX_BAND_HWP_FILES) {
+        setError(`한글 문서는 최대 ${MAX_BAND_HWP_FILES}개까지 올릴 수 있습니다.`);
+        return;
+      }
+      setError(null);
+      setHwpFiles((prev) => [...prev, ...files.map(createHwpEntry)]);
+    },
+    [hwpFiles.length],
+  );
+
+  const updateHwpDepartureCity = (key: string, departureCity: string) => {
+    setHwpFiles((prev) => prev.map((entry) => (entry.key === key ? { ...entry, departureCity } : entry)));
+  };
 
   const addImageFiles = useCallback((incoming: FileList | File[] | undefined | null) => {
     if (!incoming?.length) return;
@@ -170,9 +226,23 @@ export default function BandNewProductPage() {
     setError(null);
     setExistingId(null);
     setSuccessSummary(null);
-    if (!bandText.trim() && !hwpFile) {
+    if (!bandText.trim() && hwpFiles.length === 0) {
       setError("밴드 본문 또는 HWP 파일(.hwp/.hwpx) 중 하나 이상을 입력해 주세요.");
       return;
+    }
+    if (hwpFiles.length > 1) {
+      const missing = hwpFiles.findIndex((entry) => !normalizeDepartureCity(entry.departureCity));
+      if (missing >= 0) {
+        setError(
+          `한글 문서가 여러 개면 문서마다 출발지가 필요합니다. ${hwpFiles[missing].file.name}의 출발지를 입력해 주세요.`,
+        );
+        return;
+      }
+      const cities = hwpFiles.map((entry) => normalizeDepartureCity(entry.departureCity));
+      if (new Set(cities).size !== cities.length) {
+        setError("출발지가 같은 한글 문서가 있습니다. 문서마다 다른 출발지를 입력해 주세요.");
+        return;
+      }
     }
     const venueChecks: Array<[string, BandVenueFormRow[]]> = [
       ["골프장", golfCourses],
@@ -190,6 +260,12 @@ export default function BandNewProductPage() {
     progress.start();
 
     try {
+      const stagingHwpFiles: BandStagingHwpFile[] = [];
+      for (const entry of hwpFiles) {
+        const staged = await uploadImageFileToStaging(entry.file);
+        stagingHwpFiles.push({ ...staged, departureCity: normalizeDepartureCity(entry.departureCity) });
+      }
+
       const stagingImagePaths: Array<{ path: string; filename: string }> = [];
       for (const file of imageFiles) {
         stagingImagePaths.push(await uploadImageFileToStaging(file));
@@ -217,7 +293,9 @@ export default function BandNewProductPage() {
       formData.append("golfCoursesJson", JSON.stringify(venueRowsPayload(golfCourses)));
       formData.append("hotelsJson", JSON.stringify(venueRowsPayload(hotels)));
       formData.append("attractionsJson", JSON.stringify(venueRowsPayload(attractions)));
-      if (hwpFile) formData.append("hwpFile", hwpFile);
+      if (stagingHwpFiles.length > 0) {
+        formData.append("stagingHwpFiles", JSON.stringify(stagingHwpFiles));
+      }
       if (productSourceUrl.trim()) {
         formData.append("product_source_url", productSourceUrl.trim());
       }
@@ -267,12 +345,20 @@ export default function BandNewProductPage() {
       if (data.id) {
         progress.complete();
         setSuccessSummary(data.parsed ?? null);
+        const imported: ImportedProduct[] = data.products?.length
+          ? data.products
+          : [{ id: data.id, title: data.parsed?.title ?? "", departureCity: null, parsed: data.parsed ?? emptyParsed }];
         try {
-          const notice: BandImportResultNotice = {
-            images: data.images ?? null,
-            venueImages: data.venueImages ?? null,
-          };
-          sessionStorage.setItem(BAND_IMPORT_RESULT_STORAGE_KEY(data.id), JSON.stringify(notice));
+          for (const product of imported) {
+            const notice: BandImportResultNotice = {
+              images: data.images ?? null,
+              venueImages: data.venueImages ?? null,
+              siblings: imported
+                .filter((other) => other.id !== product.id)
+                .map(({ id, title, departureCity }) => ({ id, title, departureCity })),
+            };
+            sessionStorage.setItem(BAND_IMPORT_RESULT_STORAGE_KEY(product.id), JSON.stringify(notice));
+          }
         } catch {
           // sessionStorage를 쓸 수 없으면 편집기 배너만 생략
         }
@@ -359,7 +445,9 @@ export default function BandNewProductPage() {
           <span className="text-sm font-medium text-[var(--text-primary)]">한글 문서</span>
           <span className="block text-xs text-[var(--text-secondary)]">
             한글 문서(.hwp / .hwpx)를 업로드하세요. 서버에서 본문·표를 추출한 뒤 AI가 상품 필드를
-            채웁니다.
+            채웁니다. 출발지별 문서(예: 인천출발·부산출발)를 여러 개 올리면 문서마다 상품을 따로 만들고,
+            상세 페이지에서 출발지를 바꿔 볼 수 있게 연결합니다. 밴드 본문·골프장·호텔·관광지·사진은
+            모든 상품에 함께 들어갑니다.
           </span>
           <div
             onDragOver={(e) => {
@@ -370,7 +458,7 @@ export default function BandNewProductPage() {
             onDrop={(e) => {
               e.preventDefault();
               setIsDragging(false);
-              assignHwpFile(e.dataTransfer.files[0]);
+              addHwpFiles(e.dataTransfer.files);
             }}
             className={`rounded-lg border border-dashed px-4 py-5 transition ${
               isDragging
@@ -378,36 +466,79 @@ export default function BandNewProductPage() {
                 : "border-[var(--border)] bg-[var(--surface)]"
             }`}
           >
-            {hwpFile ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                    {hwpFile.name}
-                  </p>
-                  <p className="text-xs text-[var(--text-secondary)]">{formatFileSize(hwpFile.size)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setHwpFile(null)}
-                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                  제거
-                </button>
-              </div>
+            {hwpFiles.length > 0 ? (
+              <ul className="space-y-3">
+                {hwpFiles.map((entry) => (
+                  <li key={entry.key} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                          {entry.file.name}
+                        </p>
+                        <p className="text-xs text-[var(--text-secondary)]">{formatFileSize(entry.file.size)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHwpFiles((prev) => prev.filter((item) => item.key !== entry.key))}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                        제거
+                      </button>
+                    </div>
+                    {hwpFiles.length > 1 ? (
+                      <label className="flex items-center gap-2">
+                        <span className="shrink-0 text-xs font-medium text-[var(--text-primary)]">출발지</span>
+                        <input
+                          type="text"
+                          className={`${fieldClass} max-w-[200px] py-1.5`}
+                          value={entry.departureCity}
+                          onChange={(e) => updateHwpDepartureCity(entry.key, e.target.value)}
+                          placeholder="예: 부산"
+                        />
+                        {normalizeDepartureCity(entry.departureCity) ? (
+                          <span className="text-xs text-[var(--text-secondary)]">
+                            {formatDepartureLabel(normalizeDepartureCity(entry.departureCity)!)} 상품으로 등록
+                          </span>
+                        ) : null}
+                      </label>
+                    ) : null}
+                  </li>
+                ))}
+                {hwpFiles.length < MAX_BAND_HWP_FILES ? (
+                  <li>
+                    <label className="inline-flex cursor-pointer text-xs font-medium text-[var(--primary)]">
+                      출발지별 문서 추가
+                      <input
+                        type="file"
+                        accept={HWP_ACCEPT}
+                        multiple
+                        className="sr-only"
+                        onChange={(e) => {
+                          addHwpFiles(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </li>
+                ) : null}
+              </ul>
             ) : (
               <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
                 <Upload className="h-6 w-6 text-[var(--text-secondary)]" aria-hidden />
                 <span className="text-sm text-[var(--text-primary)]">
                   {isDragging ? "여기에 놓기" : "파일을 선택하거나 드래그 앤 드롭"}
                 </span>
-                <span className="text-xs text-[var(--text-secondary)]">.hwp, .hwpx · 최대 20MB</span>
+                <span className="text-xs text-[var(--text-secondary)]">
+                  .hwp, .hwpx · 파일당 최대 20MB · 출발지별로 최대 {MAX_BAND_HWP_FILES}개
+                </span>
                 <input
                   type="file"
                   accept={HWP_ACCEPT}
+                  multiple
                   className="sr-only"
                   onChange={(e) => {
-                    assignHwpFile(e.target.files?.[0]);
+                    addHwpFiles(e.target.files);
                     e.target.value = "";
                   }}
                 />
@@ -536,7 +667,11 @@ export default function BandNewProductPage() {
 
         <div className="flex gap-2">
           <AdminButton type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "AI 파싱·등록 중..." : "상품 등록"}
+            {isSubmitting
+              ? "AI 파싱·등록 중..."
+              : hwpFiles.length > 1
+                ? `출발지별 상품 ${hwpFiles.length}개 등록`
+                : "상품 등록"}
           </AdminButton>
           <AdminButton
             type="button"

@@ -94,12 +94,23 @@ export function useProductQuote() {
   return ctx ?? FALLBACK_QUOTE;
 }
 
-export function ProductQuoteProvider({ children }: { children: ReactNode }) {
+export function ProductQuoteProvider({
+  children,
+  initialTravelerCount,
+}: {
+  children: ReactNode;
+  /** 출발지 전환으로 넘어온 인원 (?pax=) */
+  initialTravelerCount?: number | null;
+}) {
   const [quoteSummary, setQuoteSummary] = useState<QuoteResult | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions | null>(null);
   const [selectedDeparture, setSelectedDeparture] = useState<SelectedDeparture | null>(null);
   const [selectedDepartureKey, setSelectedDepartureKey] = useState<string | null>(null);
-  const [travelerCount, setTravelerCountState] = useState(DEFAULT_TRAVELER_COUNT);
+  const [travelerCount, setTravelerCountState] = useState(() =>
+    typeof initialTravelerCount === "number"
+      ? clampTravelerCount(initialTravelerCount)
+      : DEFAULT_TRAVELER_COUNT,
+  );
   const [requiredGroupsMissing, setRequiredGroupsMissing] = useState(false);
   const [departureRequired, setDepartureRequired] = useState(false);
   const [departureSelectionMissing, setDepartureSelectionMissing] = useState(false);

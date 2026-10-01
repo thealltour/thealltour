@@ -1,16 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { patchAdminProduct } from "@/components/admin/products/api/adminProducts.client";
+import {
+  ADMIN_PRODUCTS_QUERY_KEYS,
+  ADMIN_PRODUCTS_VIEW,
+} from "@/components/admin/products/adminProducts.constants";
+import { formatDepartureLabel } from "@/lib/admin/bandImport/bandDepartureVariants";
 import type { BandImportImageSummary } from "@/lib/admin/bandImport/bandImportImageConstants";
 import type { BandVenueImageNotice } from "@/lib/admin/bandImport/bandVenueImages";
 
 export const BAND_IMPORT_RESULT_STORAGE_KEY = (productId: string) => `band-import-result:${productId}`;
 
+export type BandImportSiblingNotice = {
+  id: string;
+  title: string;
+  departureCity: string | null;
+};
+
 export type BandImportResultNotice = {
   images: BandImportImageSummary | null;
   venueImages?: BandVenueImageNotice | null;
+  /** 출발지별로 함께 등록된 다른 상품 (자기 자신 제외) */
+  siblings?: BandImportSiblingNotice[];
 };
+
+function siblingEditorHref(id: string): string {
+  const params = new URLSearchParams({
+    [ADMIN_PRODUCTS_QUERY_KEYS.VIEW]: ADMIN_PRODUCTS_VIEW.CREATE,
+    [ADMIN_PRODUCTS_QUERY_KEYS.EDITING_ID]: id,
+  });
+  return `/theall_manager_only/products?${params.toString()}`;
+}
 
 function formatVenueImageNotice(venue: BandVenueImageNotice): string {
   const text = `골프장·호텔·관광지 사진 ${venue.uploaded}장`;
@@ -93,6 +115,19 @@ export function ProductVisibilityPanel({
             밴드에서 비노출로 등록됨
             {notice.images ? ` · ${formatBandImportImageSummary(notice.images)}` : ""}
             {notice.venueImages ? ` · ${formatVenueImageNotice(notice.venueImages)}` : ""}
+          </p>
+        ) : null}
+        {notice?.siblings && notice.siblings.length > 0 ? (
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            함께 등록됨:{" "}
+            {notice.siblings.map((sibling, index) => (
+              <span key={sibling.id}>
+                {index > 0 ? ", " : ""}
+                <Link href={siblingEditorHref(sibling.id)} className="font-medium text-[var(--primary)] underline">
+                  {sibling.departureCity ? formatDepartureLabel(sibling.departureCity) : sibling.title} 편집
+                </Link>
+              </span>
+            ))}
           </p>
         ) : null}
       </div>

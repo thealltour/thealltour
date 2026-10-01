@@ -22,7 +22,13 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 import { ProductQuoteProvider } from "@/components/products/ProductQuoteContext";
 import AlertCard from "@/components/ui/AlertCard";
 import { ConsultModalProvider } from "@/components/inquiry/ConsultModal";
-import { getProductByIdFresh } from "@/lib/products";
+import { ProductDepartureSiblingsProvider } from "@/components/products/ProductDepartureSiblingsContext";
+import { getDepartureSiblings, getProductByIdFresh } from "@/lib/products";
+import {
+  DEPARTURE_QUERY_KEYS,
+  parseCarriedDepartureYmd,
+  parseCarriedTravelerCount,
+} from "@/lib/products/departureSiblings";
 import { loadRelatedProductListItems } from "@/lib/products/relatedProductCandidate";
 import { getGuidesByDestinationId } from "@/lib/guides";
 import { getProductReviewStats, getProductReviews } from "@/lib/reviewStats";
@@ -193,12 +199,17 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   const settings = await getSiteSettings();
   const kakaoHref = settings.kakao_chat_url || settings.kakao_channel_url || "https://pf.kakao.com";
   const sourcePath = `/products/${product.id}`;
+  const departureSiblings = await getDepartureSiblings(product);
   const [relatedGuides, relatedProducts] = await Promise.all([
     product.destination_id?.trim()
       ? getGuidesByDestinationId(product.destination_id.trim(), 3)
       : Promise.resolve([]),
-    loadRelatedProductListItems(product, 6),
+    loadRelatedProductListItems(product, 6, {
+      excludeIds: departureSiblings.map((sibling) => sibling.id),
+    }),
   ]);
+  const carriedTravelerCount = parseCarriedTravelerCount(rawSearch?.[DEPARTURE_QUERY_KEYS.PAX]);
+  const carriedDepartureYmd = parseCarriedDepartureYmd(rawSearch?.[DEPARTURE_QUERY_KEYS.DATE]);
   const statusV2 = product.status ?? "AVAILABLE";
   const oneLiner =
     product.one_liner?.trim() ||
@@ -209,7 +220,17 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
   return (
     <ConsultModalProvider>
-      <ProductQuoteProvider>
+      <ProductQuoteProvider key={product.id} initialTravelerCount={carriedTravelerCount}>
+        <ProductDepartureSiblingsProvider
+          siblings={departureSiblings}
+          departureSource={{
+            departureSchedules: product.departureSchedules,
+            departures: product.departures,
+            departure_from_date: product.departure_from_date,
+            departure_to_date: product.departure_to_date,
+          }}
+          initialDepartureYmd={carriedDepartureYmd}
+        >
         <SiteHeader activeTab="products" />
       <div className="min-h-screen page-bg-wash py-6 sm:py-10 md:py-14">
         <PageContainer size="wide">
@@ -360,6 +381,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           variant={reviewExperimentVariant}
         />
       </div>
+        </ProductDepartureSiblingsProvider>
       </ProductQuoteProvider>
     </ConsultModalProvider>
   );

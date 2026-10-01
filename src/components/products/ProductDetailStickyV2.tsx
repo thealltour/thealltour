@@ -7,6 +7,7 @@ import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
 import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
 import { ProductStickyCheckoutRail } from "@/components/products/ProductStickyCheckoutRail";
 import { ProductBookingSheet } from "@/components/products/ProductBookingSheet";
+import { useProductDepartureSiblings } from "@/components/products/ProductDepartureSiblingsContext";
 import {
   useProductQuote,
   type BookingScrollTarget,
@@ -173,6 +174,7 @@ export function ProductDetailStickyV2Desktop({
   variant,
 }: ProductDetailStickyV2Props) {
   const { quoteSummary, selectedDeparture } = useProductQuote();
+  const { siblings: departureSiblings } = useProductDepartureSiblings();
   const isSoldOut = status === "SOLD_OUT";
 
   const stickyPrice = useMemo(
@@ -233,7 +235,7 @@ export function ProductDetailStickyV2Desktop({
               </div>
             )}
           </div>
-          {productHasBookingSelection(product) ? (
+          {productHasBookingSelection(product) || departureSiblings.length > 1 ? (
             <div className="mt-1">
               <ConnectedProductBookingSelectionPanel
                 variant="rail"
@@ -332,13 +334,15 @@ export function ProductDetailStickyV2Mobile({
     [product, stickyPrice.mode, selectedDeparture],
   );
 
-  const showBookingSheetTrigger = productHasBookingSelection(product);
+  const { siblings: departureSiblings, current: currentDeparture } = useProductDepartureSiblings();
+  const showBookingSheetTrigger = productHasBookingSelection(product) || departureSiblings.length > 1;
   const bookingSummaryLabel = useMemo(() => {
+    const cityPrefix = currentDeparture ? `${currentDeparture.departureCity}출발 · ` : "";
     const dateLabel = getSelectedDepartureStickyDateLabel(selectedDeparture);
-    if (dateLabel) return `${dateLabel} · ${travelerCount}명`;
-    if (selectedDeparture?.label) return `${selectedDeparture.label} · ${travelerCount}명`;
-    return "출발일·인원 선택";
-  }, [selectedDeparture, travelerCount]);
+    if (dateLabel) return `${cityPrefix}${dateLabel} · ${travelerCount}명`;
+    if (selectedDeparture?.label) return `${cityPrefix}${selectedDeparture.label} · ${travelerCount}명`;
+    return `${cityPrefix}출발일·인원 선택`;
+  }, [currentDeparture, selectedDeparture, travelerCount]);
 
   useEffect(() => {
     registerOpenBookingSheet((target = "panel") => {

@@ -6,6 +6,7 @@ import type { SelectedEventRef } from "@/types/product";
 import { MultiImageUploadField } from "@/components/admin/MultiImageUploadField";
 import { normalizeProductImageUrl } from "@/lib/media/normalizeProductImageUrl";
 import { BOOKMARKLET_EXTRACT_IMAGE_URLS } from "@/lib/bookmarkletExtractImageUrls";
+import { DepartureGroupField } from "./DepartureGroupField";
 
 export type BasicInfoSectionProps = {
   form: ProductFormState;
@@ -22,6 +23,8 @@ export type BasicInfoSectionProps = {
   setPreviewImageFile: (f: File | null) => void;
   openCoverRecommendModal: () => void;
   setShowImageImportGuideModal: (open: boolean) => void;
+  /** 편집 중인 상품 id (신규 작성이면 null). 출발지 형제 목록 조회용 */
+  editingId?: string | null;
 };
 
 export function BasicInfoSection({
@@ -38,6 +41,7 @@ export function BasicInfoSection({
   setPreviewImageFile,
   openCoverRecommendModal,
   setShowImageImportGuideModal,
+  editingId,
 }: BasicInfoSectionProps) {
   return (
 ﻿        <div className="flex flex-col gap-3">
@@ -342,6 +346,7 @@ export function BasicInfoSection({
               1) 버튼 눌러 북마클릿 복사 → 2) 브라우저 북마크 URL에 붙여넣기 → 3) 모두투어 등 원본 페이지에서 북마클릿 실행 → URL 복사됨 → 4) 아래 상품 이미지 또는 이벤트 이미지 입력란에 붙여넣기
             </p>
           </div>
+          <DepartureGroupField form={form} setForm={setForm} editingId={editingId} />
                   </div>
   );
 }

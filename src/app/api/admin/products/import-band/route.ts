@@ -25,7 +25,10 @@ import {
   uploadBandVenueImages,
   type BandVenueImageUploadResult,
 } from "@/lib/admin/bandImport/processBandImportImages";
-import { deleteBandImportStagingFiles } from "@/lib/admin/bandImport/bandImportStaging";
+import {
+  deleteBandImportStagingFiles,
+  downloadBandImportStagingFile,
+} from "@/lib/admin/bandImport/bandImportStaging";
 import type { BandImportImageSummary } from "@/lib/admin/bandImport/bandImportImageConstants";
 import {
   attachBandVenueImages,
@@ -37,6 +40,14 @@ import {
   type BandVenueRow,
 } from "@/lib/admin/bandImport/bandVenueImages";
 import { placeBandVenueImagesInItinerary } from "@/lib/admin/bandImport/placeBandVenueImagesInItinerary";
+import {
+  MAX_BAND_HWP_FILES,
+  appendDepartureToTitle,
+  normalizeDepartureCity,
+  resolveDepartureCity,
+  type BandStagingHwpFile,
+} from "@/lib/admin/bandImport/bandDepartureVariants";
+import type { BandParsedProduct } from "@/lib/admin/bandImport/productParserSchema";
 import type { ItineraryV2, VenueInfoItem } from "@/types/product";
 
 export const maxDuration = 300;
@@ -50,6 +61,13 @@ type ImportBandBody = {
   hotelsJson?: unknown;
   attractionsJson?: unknown;
   product_source_url?: string;
+};
+
+/** 문서 하나 = 상품 하나. 문서 없이 밴드 본문만 있으면 hwpText가 빈 문서 1개 */
+type HwpDocument = {
+  hwpText: string;
+  filename: string | null;
+  departureCity: string | null;
 };
 
 function parseStagingImagePaths(raw: string): Array<{ path: string; filename?: string }> {
@@ -76,6 +94,28 @@ function parseStagingImagePaths(raw: string): Array<{ path: string; filename?: s
   }
 }
 
+function parseStagingHwpFiles(raw: string): BandStagingHwpFile[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const out: BandStagingHwpFile[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object" || typeof item.path !== "string" || !item.path) continue;
+      out.push({
+        path: item.path,
+        filename: typeof item.filename === "string" && item.filename ? item.filename : item.path,
+        departureCity: normalizeDepartureCity(
+          typeof item.departureCity === "string" ? item.departureCity : null,
+        ),
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 function formString(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
@@ -95,7 +135,10 @@ function pickImageFiles(formData: FormData): File[] {
 
 type ImportRequest = {
   bandText: string;
-  hwpText: string;
+  /** 붙여넣기 텍스트 또는 직접 업로드한 단일 HWP (하위 호환) */
+  inlineHwpText: string;
+  inlineHwpFilename: string | null;
+  stagingHwpFiles: BandStagingHwpFile[];
   golfCourseRows: BandVenueRow[];
   hotelRows: BandVenueRow[];
   attractionRows: BandVenueRow[];
@@ -125,19 +168,24 @@ async function readImportRequest(request: NextRequest): Promise<ImportRequest> {
     const imageFiles = pickImageFiles(formData);
     const stagingImagePaths = parseStagingImagePaths(formString(formData, "stagingImagePaths"));
     const venueImagePaths = parseBandVenueImagePaths(formString(formData, "venueImagePaths"));
+    const stagingHwpFiles = parseStagingHwpFiles(formString(formData, "stagingHwpFiles"));
     const hwpFile = pickHwpFile(formData);
 
-    let hwpText = pastedHwpText;
+    let inlineHwpText = pastedHwpText;
+    let inlineHwpFilename: string | null = null;
     if (hwpFile) {
       if (hwpFile.size > MAX_HWP_FILE_BYTES) {
         throw new HwpParseError("HWP 파일은 20MB 이하만 업로드할 수 있습니다.");
       }
-      hwpText = await parseHwpFileToText(hwpFile, hwpFile.name || "upload.hwpx");
+      inlineHwpFilename = hwpFile.name || "upload.hwpx";
+      inlineHwpText = await parseHwpFileToText(hwpFile, inlineHwpFilename);
     }
 
     return {
       bandText,
-      hwpText,
+      inlineHwpText,
+      inlineHwpFilename,
+      stagingHwpFiles,
       golfCourseRows,
       hotelRows,
       attractionRows,
@@ -157,7 +205,9 @@ async function readImportRequest(request: NextRequest): Promise<ImportRequest> {
 
   return {
     bandText: body.bandText?.trim() ?? "",
-    hwpText: body.hwpText?.trim() ?? "",
+    inlineHwpText: body.hwpText?.trim() ?? "",
+    inlineHwpFilename: null,
+    stagingHwpFiles: [],
     golfCourseRows: parseBandVenueRows(body.golfCoursesJson),
     hotelRows: parseBandVenueRows(body.hotelsJson),
     attractionRows: parseBandVenueRows(body.attractionsJson),
@@ -166,6 +216,31 @@ async function readImportRequest(request: NextRequest): Promise<ImportRequest> {
     stagingImagePaths: [],
     venueImagePaths: [],
   };
+}
+
+async function loadHwpDocuments(importRequest: ImportRequest): Promise<HwpDocument[]> {
+  const documents: HwpDocument[] = [];
+  for (const staged of importRequest.stagingHwpFiles) {
+    const { bytes } = await downloadBandImportStagingFile(staged.path);
+    let text: string;
+    try {
+      text = await parseHwpFileToText(Buffer.from(bytes), staged.filename);
+    } catch (error) {
+      if (error instanceof HwpParseError) {
+        throw new HwpParseError(`${staged.filename}: ${error.message}`);
+      }
+      throw error;
+    }
+    documents.push({ hwpText: text, filename: staged.filename, departureCity: staged.departureCity });
+  }
+  if (documents.length === 0 && importRequest.inlineHwpText) {
+    documents.push({
+      hwpText: importRequest.inlineHwpText,
+      filename: importRequest.inlineHwpFilename,
+      departureCity: null,
+    });
+  }
+  return documents;
 }
 
 function imageErrorResponse(error: unknown, fallback: string): NextResponse {
@@ -197,17 +272,31 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function deleteInsertedProducts(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabaseAdmin.from("products").delete().in("id", ids);
+  if (error) {
+    console.error("[import-band] rollback of inserted siblings failed:", error.message, ids);
+  }
+}
+
 async function handleImport(
   request: NextRequest,
   stagingPathsToDelete: string[],
 ): Promise<NextResponse> {
   let importRequest: ImportRequest;
+  let documents: HwpDocument[];
   try {
     importRequest = await readImportRequest(request);
     stagingPathsToDelete.push(
       ...importRequest.stagingImagePaths.map((item) => item.path),
       ...importRequest.venueImagePaths.flatMap((group) => group.paths.map((item) => item.path)),
+      ...importRequest.stagingHwpFiles.map((item) => item.path),
     );
+    if (importRequest.stagingHwpFiles.length > MAX_BAND_HWP_FILES) {
+      throw new HwpParseError(`한글 문서는 최대 ${MAX_BAND_HWP_FILES}개까지 올릴 수 있습니다.`);
+    }
+    documents = await loadHwpDocuments(importRequest);
   } catch (error) {
     if (error instanceof HwpParseError) {
       return NextResponse.json({ message: error.message }, { status: error.httpStatus });
@@ -218,7 +307,6 @@ async function handleImport(
 
   const {
     bandText,
-    hwpText,
     golfCourseRows,
     hotelRows,
     attractionRows,
@@ -228,11 +316,25 @@ async function handleImport(
     venueImagePaths,
   } = importRequest;
 
-  if (!bandText && !hwpText) {
+  if (!bandText && documents.length === 0) {
     return NextResponse.json(
       { message: "밴드 본문 또는 HWP 파일(.hwp/.hwpx) 중 하나 이상을 입력해 주세요." },
       { status: 400 },
     );
+  }
+  if (documents.length === 0) {
+    documents = [{ hwpText: "", filename: null, departureCity: null }];
+  }
+
+  const isMultiDeparture = documents.length > 1;
+  if (isMultiDeparture) {
+    const cities = documents.map((doc) => doc.departureCity);
+    if (cities.some((city) => !city) || new Set(cities).size !== cities.length) {
+      return NextResponse.json(
+        { message: "한글 문서가 여러 개면 문서마다 서로 다른 출발지를 입력해 주세요." },
+        { status: 400 },
+      );
+    }
   }
 
   if (productSourceUrl) {
@@ -252,12 +354,20 @@ async function handleImport(
     return NextResponse.json({ message: MISSING_IMPORT_AI_KEY_MESSAGE }, { status: 500 });
   }
 
-  let parsed;
-  try {
-    parsed = await parseBandProductText({ bandText, hwpText });
-  } catch (error) {
-    console.error("[import-band] AI parse failed:", error);
-    return NextResponse.json({ message: formatBandParseError(error) }, { status: 500 });
+  const parseResults = await Promise.allSettled(
+    documents.map((doc) => parseBandProductText({ bandText, hwpText: doc.hwpText })),
+  );
+  const parsedList: BandParsedProduct[] = [];
+  for (const [index, result] of parseResults.entries()) {
+    if (result.status === "rejected") {
+      console.error("[import-band] AI parse failed:", result.reason);
+      const prefix = isMultiDeparture && documents[index].filename ? `${documents[index].filename}: ` : "";
+      return NextResponse.json(
+        { message: `${prefix}${formatBandParseError(result.reason)}` },
+        { status: 500 },
+      );
+    }
+    parsedList.push(result.value);
   }
 
   const uploadedPublicUrls: string[] = [];
@@ -290,24 +400,7 @@ async function handleImport(
     }
   }
 
-  const insertPayload = mapBandParsedToInsert({
-    parsed,
-    bandText,
-    hwpText,
-    golfCoursesJson: attachBandVenueImages(golfCourseRows, venueImages.golf),
-    hotelsJson: attachBandVenueImages(hotelRows, venueImages.hotel),
-    attractionsJson: attachBandVenueImages(attractionRows, venueImages.attraction),
-    productSourceUrl: productSourceUrl || null,
-  });
-  insertPayload.itinerary_v2_json = placeBandVenueImagesInItinerary(
-    insertPayload.itinerary_v2_json as ItineraryV2 | null,
-    {
-      golfCourses: insertPayload.golf_courses_json as VenueInfoItem[] | null,
-      hotels: insertPayload.hotels_json as VenueInfoItem[] | null,
-      attractions: insertPayload.attractions_json as VenueInfoItem[] | null,
-    },
-  );
-
+  let gallery: { imageUrl: string | null; imagesJson: string[] | null } | null = null;
   if (imageFiles.length > 0 || stagingImagePaths.length > 0) {
     try {
       const sources = [
@@ -315,8 +408,7 @@ async function handleImport(
         ...(await stagingPathsToBandImportSources(stagingImagePaths)),
       ];
       const applied = await processBandImportImages({ sources });
-      insertPayload.image_url = applied.imageUrl;
-      insertPayload.images_json = applied.imagesJson;
+      gallery = { imageUrl: applied.imageUrl, imagesJson: applied.imagesJson };
       uploadedPublicUrls.push(...applied.keptUrls);
       imageSummary = applied.summary;
     } catch (error) {
@@ -325,42 +417,104 @@ async function handleImport(
     }
   }
 
-  const insertResult = await insertProductWithSchemaFallback(
-    async (payload) =>
-      await supabaseAdmin.from("products").insert(payload).select("id").maybeSingle(),
-    insertPayload as Record<string, unknown>,
-  );
+  const departureGroupId = isMultiDeparture ? crypto.randomUUID() : null;
+  const payloads = documents.map((doc, index) => {
+    const parsed = parsedList[index];
+    const insertPayload = mapBandParsedToInsert({
+      parsed,
+      bandText,
+      hwpText: doc.hwpText,
+      golfCoursesJson: attachBandVenueImages(golfCourseRows, venueImages.golf),
+      hotelsJson: attachBandVenueImages(hotelRows, venueImages.hotel),
+      attractionsJson: attachBandVenueImages(attractionRows, venueImages.attraction),
+      productSourceUrl: productSourceUrl || null,
+    });
+    insertPayload.itinerary_v2_json = placeBandVenueImagesInItinerary(
+      insertPayload.itinerary_v2_json as ItineraryV2 | null,
+      {
+        golfCourses: insertPayload.golf_courses_json as VenueInfoItem[] | null,
+        hotels: insertPayload.hotels_json as VenueInfoItem[] | null,
+        attractions: insertPayload.attractions_json as VenueInfoItem[] | null,
+      },
+    );
+    if (gallery) {
+      insertPayload.image_url = gallery.imageUrl;
+      insertPayload.images_json = gallery.imagesJson;
+    }
 
-  if (insertResult.strippedColumns.length > 0) {
-    console.warn("[import-band] stripped missing columns:", insertResult.strippedColumns.join(", "));
-  }
+    let departureCity: string | null = null;
+    if (isMultiDeparture) {
+      departureCity = resolveDepartureCity({
+        explicit: doc.departureCity,
+        filename: doc.filename,
+        airport: parsed.departure_from_airport,
+      });
+      insertPayload.departure_city = departureCity;
+      insertPayload.departure_group_id = departureGroupId;
+      insertPayload.title = appendDepartureToTitle(String(insertPayload.title ?? ""), departureCity);
+    }
+    return { insertPayload, parsed, departureCity };
+  });
 
-  if (insertResult.error || !insertResult.data?.id) {
-    await discardUploadedBandImages(uploadedPublicUrls, "insert failure");
-    if (insertResult.error) {
-      console.error("[import-band] insert failed:", insertResult.error);
+  const inserted: Array<{
+    id: string;
+    title: string;
+    departureCity: string | null;
+    parsed: ReturnType<typeof summarizeBandParsedForResponse>;
+  }> = [];
+  const strippedColumns = new Set<string>();
+
+  for (const { insertPayload, parsed, departureCity } of payloads) {
+    const insertResult = await insertProductWithSchemaFallback(
+      async (payload) =>
+        await supabaseAdmin.from("products").insert(payload).select("id").maybeSingle(),
+      insertPayload,
+    );
+    insertResult.strippedColumns.forEach((column) => strippedColumns.add(column));
+
+    if (insertResult.error || !insertResult.data?.id) {
+      await deleteInsertedProducts(inserted.map((item) => item.id));
+      await discardUploadedBandImages(uploadedPublicUrls, "insert failure");
+      if (insertResult.error) {
+        console.error("[import-band] insert failed:", insertResult.error);
+        return NextResponse.json(
+          { message: `상품 등록에 실패했습니다. (${insertResult.error.message})` },
+          { status: 500 },
+        );
+      }
       return NextResponse.json(
-        { message: `상품 등록에 실패했습니다. (${insertResult.error.message})` },
-        { status: 500 },
+        { message: "상품 등록 권한이 없습니다. (RLS 정책 확인 필요)" },
+        { status: 403 },
       );
     }
-    return NextResponse.json(
-      { message: "상품 등록 권한이 없습니다. (RLS 정책 확인 필요)" },
-      { status: 403 },
-    );
+
+    inserted.push({
+      id: insertResult.data.id,
+      title: String(insertPayload.title ?? ""),
+      departureCity,
+      parsed: summarizeBandParsedForResponse(parsed, insertPayload.price),
+    });
+  }
+
+  if (strippedColumns.size > 0) {
+    console.warn("[import-band] stripped missing columns:", [...strippedColumns].join(", "));
   }
 
   revalidateTag(CACHE_TAGS.PRODUCTS, REVALIDATE_MAX);
 
+  const first = inserted[0];
   return NextResponse.json(
     {
-      id: insertResult.data.id,
-      message: "밴드 상품이 비노출 상태로 등록되었습니다. 검수 후 노출을 시작해 주세요.",
-      parsed: summarizeBandParsedForResponse(parsed, insertPayload.price),
+      id: first.id,
+      message: isMultiDeparture
+        ? `출발지별 밴드 상품 ${inserted.length}개가 비노출 상태로 등록되었습니다. 검수 후 노출을 시작해 주세요.`
+        : "밴드 상품이 비노출 상태로 등록되었습니다. 검수 후 노출을 시작해 주세요.",
+      parsed: first.parsed,
+      products: inserted,
       isActive: false,
       images: imageSummary,
       venueImages: venueNotice,
-      strippedColumns: insertResult.strippedColumns,
+      strippedColumns: [...strippedColumns],
     },
     { status: 201 },
   );

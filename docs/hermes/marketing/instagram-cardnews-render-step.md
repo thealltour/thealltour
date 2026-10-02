@@ -25,6 +25,30 @@ The brief's cardnews cards are written at export time by
 which derives them from `instagramMeta`. The render step never rewrites the
 brief, so it cannot trip the artifact sha conflict guard.
 
+## Reviewed text and line breaks
+
+The renderer reads all four fields (`kicker`, `headline`, `body`, `microcopy`) from
+the approved effective Instagram card copy by `cardId`. This is a render-only
+input; the public handoff/result and media-brief JSON shapes stay unchanged.
+Missing, null, or whitespace-only auxiliary fields occupy no space. Kicker is a
+20px secondary label; microcopy is a 24px supplementary block below the body.
+Existing two-field cards retain the established layout when it fits.
+
+Break precedence is authored newlines (including blank paragraphs), Korean
+semantic commas, then width wrapping within each paragraph. A comma directly
+between two Hangul syllables becomes a forced newline and disappears in the
+image: `그런데 최근,한국인 숙박이` renders on two lines. A comma followed by
+whitespace stays punctuation. Numeric grouping (`1,000`), Latin lists/CSV and
+URL tokens stay literal. The transform applies to all four fields during layout
+and never rewrites stored copy or approval fingerprints.
+
+Dense copy is measured as a complete stack before final allocation. Overlay
+images keep their full-canvas size while the text band expands upward below the
+wordmark; fonts shrink only to the readable minima. Split-image templates keep
+their minimum image height and footer reserve. Unreadable content still raises
+`cardnews_render_overflow` (HTTP 422), naming the card and field. The UI's empty
+`{}` POST is valid and selects normal rendering; approval gates still apply.
+
 ## Aspect ratios
 
 `CARDNEWS_SIZE_PRESETS` in

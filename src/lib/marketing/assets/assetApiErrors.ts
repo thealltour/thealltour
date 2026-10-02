@@ -9,7 +9,7 @@ import {
   MarketingAssetPathError,
 } from "@/lib/marketing/assets/errors";
 
-const CARDNEWS_FIELD_LABEL_KO = { headline: "헤드라인", body: "본문" } as const;
+const CARDNEWS_FIELD_LABEL_KO = { headline: "헤드라인", body: "본문", kicker: "키커", microcopy: "마이크로카피" } as const;
 
 export function marketingAssetErrorResponse(error: unknown): NextResponse {
   if (error instanceof CardNewsRenderOverflowError) {

@@ -92,7 +92,7 @@ const CTA_FORBIDDEN = [
 describe("cardnews v2.6 wide overlay + brand closing", () => {
   it("version bump", () => {
     expect(CARDNEWS_RENDERER_VERSION).toBe(
-      "cardnews-render-v2.6-wide-overlay-brand-closing",
+      "cardnews-render-v2.8-cjk-color-emoji",
     );
   });
 

@@ -31,6 +31,7 @@ import {
 } from "@/lib/marketing/publishable/contracts";
 import {
   overlayEffectiveInstagramCardCopyForPackage,
+  resolveApprovedInstagramCardCopy,
   resolveInstagramCardCopyReviewGate,
   resolveInstagramCoverTitleKo,
   type InstagramCardCopyReviewGateState,
@@ -199,6 +200,12 @@ export async function renderInstagramCardnewsForPackage(input: {
 
   // Approved gate ⇒ this is the reviewed title; a cleared title makes the 1:1 render drop the variant.
   const instagramThumbnailTitle = resolveInstagramCoverTitleKo(cardCopyGate.review);
+  const approvedCopy = resolveApprovedInstagramCardCopy(input.packageRoot);
+  const editorialCopyByCardId = approvedCopy
+    ? Object.fromEntries(approvedCopy.cards.map((card) => [card.cardId, {
+        headline: card.headline, body: card.body, kicker: card.kicker, microcopy: card.microcopy,
+      }]))
+    : undefined;
 
   const renders: RenderCardNewsPackageResult[] = [];
   for (const aspectRatio of aspectRatios) {
@@ -215,6 +222,7 @@ export async function renderInstagramCardnewsForPackage(input: {
         visuals: visualMap.visuals,
         allowedVisualRoots: [input.packageRoot, getSharedVisualRenderCacheDir()],
         editorialRolesByCardId,
+        editorialCopyByCardId,
         instagramThumbnailTitle: aspectRatio === "1:1" ? instagramThumbnailTitle : null,
         now: input.now,
       }),

@@ -17,6 +17,7 @@ type Props = {
   onBusy: (busy: boolean) => void;
   onMessage: (message: string) => void;
   onReload: () => void | Promise<void>;
+  showResearchHandoff?: boolean;
 };
 
 export function MarketingReviewCanonicalAssetPanel({
@@ -27,6 +28,7 @@ export function MarketingReviewCanonicalAssetPanel({
   onBusy,
   onMessage,
   onReload,
+  showResearchHandoff = true,
 }: Props) {
   const [titleKo, setTitleKo] = useState(asset.titleKo);
   const [openingHookKo, setOpeningHookKo] = useState(asset.openingHookKo);
@@ -445,6 +447,7 @@ export function MarketingReviewCanonicalAssetPanel({
         >
           ChatGPT용 원문 복사
         </button>
+        {showResearchHandoff ? (
         <button
           type="button"
           disabled={busy || !canEdit || !isCurrentVersionApproved}
@@ -458,6 +461,7 @@ export function MarketingReviewCanonicalAssetPanel({
         >
           Research 검증용 JSON 복사 (research만)
         </button>
+        ) : null}
       </div>
 
       <details className="rounded-lg border border-[var(--border)] p-3">

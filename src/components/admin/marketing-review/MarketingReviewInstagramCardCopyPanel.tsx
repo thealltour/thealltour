@@ -21,6 +21,25 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   microcopy: "마이크로카피",
 };
 
+const FIELD_GUIDES: Record<FieldKey, { description: string; example: string }> = {
+  kicker: {
+    description: "헤드라인 위에 작게 표시하는 맥락 안내입니다. 주제·장소·전환점을 짧게 적으세요. 선택 항목입니다.",
+    example: "고치도 움직였습니다",
+  },
+  headline: {
+    description: "카드에서 가장 크게 보이는 핵심 문장입니다. 한 장에서 전할 메시지 하나를 담으세요.",
+    example: "물 들어올 때 노 저어야죠",
+  },
+  body: {
+    description: "헤드라인 아래의 본문입니다. 핵심 문장을 이해할 수 있도록 사실·이유·이야기를 풀어주세요.",
+    example: "한국인 관광객이 빠르게 늘자 고치현도 한국 노선 유치에 나서고 있습니다.",
+  },
+  microcopy: {
+    description: "본문 아래에 작게 붙이는 보충 문구입니다. 짧은 덧붙임·질문·저장·팔로우 안내에 쓰세요. 선택 항목입니다.",
+    example: "다음 일본 여행을 위해 저장해 두세요.",
+  },
+};
+
 const GATE_LABELS: Record<InstagramCardCopyReviewGateState, string> = {
   not_applicable: "대상 아님",
   review_missing: "검토 전",
@@ -52,14 +71,17 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
   canEdit: boolean;
   /** Bumped when the Instagram slot is replaced elsewhere (e.g. cardnews JSON import). */
   refreshKey?: number;
+  onStatusChange?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const { candidateId, canEdit, refreshKey = 0 } = props;
+  const { candidateId, canEdit, refreshKey = 0, onDirtyChange } = props;
   const [view, setView] = useState<InstagramCardCopyReviewView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftFields>>({});
   const [coverTitleDraft, setCoverTitleDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string | null | undefined>(undefined);
 
   const apply = useCallback((next: InstagramCardCopyReviewView) => {
     setView(next);
@@ -108,6 +130,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
   const savedCoverTitle = view?.review?.instagramCoverTitleKo ?? "";
   const coverTitleDirty = coverTitleDraft.trim() !== savedCoverTitle.trim();
   const dirty = cardsDirty || coverTitleDirty;
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
 
   async function post(body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -125,6 +148,7 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
       }
       apply(data);
       setMessage(success);
+      props.onStatusChange?.();
     } catch {
       setMessage("요청 처리에 실패했습니다.");
     } finally {
@@ -158,6 +182,25 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
           {GATE_LABELS[view.gateState]}
         </span>
       </div>
+
+      <details className="rounded-lg border border-[var(--border)] p-3 text-sm">
+        <summary className="cursor-pointer font-medium">키커·헤드라인·본문·마이크로카피, 어떻게 쓰나요?</summary>
+        <p className="mt-3 text-xs text-[var(--text-secondary)]">
+          카드의 읽는 순서는 키커 → 헤드라인 → 본문 → 마이크로카피입니다. 키커와 마이크로카피는 필요할 때만
+          쓰세요. 비워두면 해당 문구의 자리도 생략됩니다. 본문을 작은 글씨로 옮기기보다 핵심 설명은 본문에 남겨주세요.
+        </p>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          {(Object.keys(FIELD_LABELS) as FieldKey[]).map((key) => (
+            <div key={key} className="rounded-lg bg-[var(--surface)] p-3">
+              <dt className="font-medium">{FIELD_LABELS[key]}</dt>
+              <dd className="mt-1 text-xs text-[var(--text-secondary)]">
+                {FIELD_GUIDES[key].description}
+                <span className="mt-1 block">예: {FIELD_GUIDES[key].example}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </details>
 
       {view.staleHumanEdits ? (
         <p className={cn("text-sm", adminToneText.warning)}>
@@ -206,7 +249,14 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
           const draft = drafts[card.cardId] ?? toDraft(card.aiDraft);
           const edited = !sameDraft(draft, toDraft(card.aiDraft));
           return (
-            <li key={card.cardId} className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+            <li key={card.cardId}>
+              <details className="space-y-2 rounded-lg border border-[var(--border)] p-3"
+                open={expandedCardId === undefined ? index === 0 : expandedCardId === card.cardId}
+                onToggle={(event) => {
+                  if (event.currentTarget.open) setExpandedCardId(card.cardId);
+                  else setExpandedCardId((current) => current === card.cardId ? null : current);
+                }}>
+                <summary className="cursor-pointer text-sm font-medium">{index + 1}. {draft.headline || "제목 없음"} <span className="ml-2 text-xs text-[var(--text-secondary)]">{edited ? "수정본" : "AI 초안"}{savedDrafts[card.cardId] && !sameDraft(draft, savedDrafts[card.cardId]) ? " · 저장 필요" : ""}</span></summary>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-secondary)]">
                 <span>
                   {index + 1}. <span className="font-mono">{card.cardId}</span>
@@ -227,8 +277,13 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
                         {value.trim().length}/{limits[key]}
                       </span>
                     </span>
+                    <span id={`cardcopy-${card.cardId}-${key}-help`} className="mb-2 block text-xs text-[var(--text-secondary)]">
+                      {FIELD_GUIDES[key].description}
+                    </span>
                     {key === "body" ? (
                       <textarea
+                        aria-label={`${index + 1}번 카드 ${FIELD_LABELS[key]}`}
+                        aria-describedby={`cardcopy-${card.cardId}-${key}-help`}
                         value={value}
                         rows={3}
                         disabled={!editable}
@@ -239,6 +294,8 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
                       />
                     ) : (
                       <input
+                        aria-label={`${index + 1}번 카드 ${FIELD_LABELS[key]}`}
+                        aria-describedby={`cardcopy-${card.cardId}-${key}-help`}
                         value={value}
                         disabled={!editable}
                         onChange={(e) =>
@@ -255,12 +312,13 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
                   </label>
                 );
               })}
+              </details>
             </li>
           );
         })}
       </ol>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
         <AdminButton
           type="button"
           disabled={!editable || !dirty}

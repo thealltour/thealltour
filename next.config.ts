@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
     "@evilmartians/agent-prism-types",
   ],
   outputFileTracingIncludes: {
+    "/api/admin/marketing-review/**/*": ["./assets/cardnews-fonts/**/*", "./node_modules/pretendard/dist/web/static/woff/Pretendard-{Regular,Bold}.woff"],
     "/api/admin/tools/extensions/**/*": ["./public/extension-builds/**/*"],
   },
   experimental: {

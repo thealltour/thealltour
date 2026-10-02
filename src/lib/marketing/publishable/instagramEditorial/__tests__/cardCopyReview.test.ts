@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createCardNewsVerificationBrief } from "@/lib/marketing/assets/cardnews/fixture";
 import { renderInstagramCardnewsForPackage } from "@/lib/marketing/assets/cardnews/instagramCardnews";
+import * as renderSpec from "@/lib/marketing/assets/cardnews/presentation/resolveRenderSpec";
 import {
   resolveInstagramCardnewsRenderBrief,
   resolveInstagramCardnewsSkip,
@@ -137,6 +138,34 @@ function edit(review: InstagramCardCopyReview, base: InstagramCardCopy, headline
 }
 
 describe("Instagram card copy review — effective copy", () => {
+  it("passes all approved fields to every ratio without rewriting source contracts", async () => {
+    const { assetRoot, packageRoot } = seedPackage();
+    const base = cardCopy();
+    const edited = updateInstagramCardCopyReviewDrafts({
+      review: freshReview(base), base,
+      edits: [{ cardId: "c3", kicker: "사람 키커", headline: "사람,헤드라인", body: "사람 본문", microcopy: "사람 안내" }],
+      updatedBy: "ysh", nowIso: T1,
+    });
+    persistInstagramCardCopyReview({ packageRoot, review: edited });
+    const spy = vi.spyOn(renderSpec, "buildResolvedCardRenderSpec");
+    try {
+      const pending = await renderInstagramCardnewsForPackage({ packageRoot, assetRoot, dryRun: true, graphicOnly: true });
+      expect(pending.skipReason).toBe("card_copy_review_required");
+      expect(spy).not.toHaveBeenCalled();
+      persistInstagramCardCopyReview({ packageRoot, review: approveInstagramCardCopyReview({ review: edited, base, approvedBy: "ysh", nowIso: T1 }) });
+      const paths = ["context/media-brief.json", PUBLISHABLE_CONTENT_RELATIVE_PATH, "context/instagram-card-copy.json", "human-edited/instagram-card-copy-review.json"];
+      const before = paths.map((path) => readFileSync(join(packageRoot, path), "utf8"));
+      const result = await renderInstagramCardnewsForPackage({ packageRoot, assetRoot, dryRun: true, graphicOnly: true });
+      expect(result.status).toBe("rendered");
+      const calls = spy.mock.calls.map(([args]) => args).filter((args) => args.card.cardId === "c3");
+      expect(calls.map((args) => args.geometry.aspectRatio)).toEqual(["4:5", "1:1"]);
+      for (const args of calls) expect(args).toMatchObject({ editorialKicker: "사람 키커", editorialMicrocopy: "사람 안내", card: { headline: "사람,헤드라인", body: "사람 본문" } });
+      expect(paths.map((path) => readFileSync(join(packageRoot, path), "utf8"))).toEqual(before);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("keeps the generated copy untouched and overlays only human text", () => {
     const base = cardCopy();
     const snapshot = JSON.stringify(base);

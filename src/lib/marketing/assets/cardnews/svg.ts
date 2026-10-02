@@ -10,7 +10,7 @@ import { join } from "node:path";
 import type { CardNewsRole } from "@/lib/marketing/assets/contracts";
 import {
   CARDNEWS_BRAND,
-  CARDNEWS_FONT_FAMILY,
+  CARDNEWS_FONT_STACK,
   CARDNEWS_WORDMARK_RELATIVE,
   CARDNEWS_WORDMARK_TEXT,
   resolveCardNewsGeometry,
@@ -68,8 +68,10 @@ function textBlock(input: {
   if (input.lines.length === 0) return "";
   const tspans = input.lines
     .map((line, index) => {
-      const dy = index === 0 ? 0 : input.lineHeight;
-      return `<tspan x="${input.x}" dy="${dy}">${escapeXml(line)}</tspan>`;
+      // Absolute baselines preserve blank authored lines even in SVG rasterizers
+      // that ignore dy on an empty tspan.
+      const y = input.y + index * input.lineHeight;
+      return `<tspan x="${input.x}" y="${y}">${escapeXml(line)}</tspan>`;
     })
     .join("");
   const shadowKind =
@@ -84,7 +86,7 @@ function textBlock(input: {
       : shadowKind === "soft"
         ? ` style="filter:drop-shadow(0 2px 6px rgba(8,12,20,0.42))"`
         : "";
-  return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}"${shadow}>${tspans}</text>`;
+  return `<text x="${input.x}" y="${input.y}" font-family="${CARDNEWS_FONT_STACK}" font-size="${input.fontSize}" font-weight="${input.weight}" fill="${input.fill}"${shadow}>${tspans}</text>`;
 }
 
 function wordmark(
@@ -95,7 +97,7 @@ function wordmark(
   if (model.wordmarkDataUri) {
     return `<image href="${model.wordmarkDataUri}" x="${placement.x}" y="${placement.y}" width="${placement.width}" height="${placement.height}" opacity="${opacity}" preserveAspectRatio="xMinYMid meet"/>`;
   }
-  return `<text x="${placement.x}" y="${placement.y + 24}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="22" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="${opacity}">${escapeXml(CARDNEWS_WORDMARK_TEXT)}</text>`;
+  return `<text x="${placement.x}" y="${placement.y + 24}" font-family="${CARDNEWS_FONT_STACK}" font-size="22" font-weight="700" fill="${CARDNEWS_BRAND.blue}" fill-opacity="${opacity}">${escapeXml(CARDNEWS_WORDMARK_TEXT)}</text>`;
 }
 
 function progress(
@@ -235,8 +237,8 @@ export function buildCardNewsSvgFromSpec(
   const citation =
     spec.citation && !overlaySurface
       ? [
-          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(140)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(spec.citation.label)}</text>`,
-          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(112)}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="18" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(spec.citation.detail)}</text>`,
+          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(140)}" font-family="${CARDNEWS_FONT_STACK}" font-size="18" font-weight="700" fill="${CARDNEWS_BRAND.blue}">${escapeXml(spec.citation.label)}</text>`,
+          `<text x="${layout.text.x}" y="${geo.height - geo.scaleY(112)}" font-family="${CARDNEWS_FONT_STACK}" font-size="18" font-weight="400" fill="${CARDNEWS_BRAND.muted}">${escapeXml(spec.citation.detail)}</text>`,
         ].join("")
       : "";
 
@@ -259,7 +261,11 @@ export function buildCardNewsSvgFromSpec(
   ${textZoneBackdrop(layout, geo)}
   ${layout.overlay ? overlayGradient(spec.cardId, layout.overlay, geo.width) : ""}
   ${editorialAccent}
-  ${spec.kicker ? `<text x="${layout.text.x}" y="${layout.text.kickerY}" font-family="${CARDNEWS_FONT_FAMILY}" font-size="20" font-weight="700" fill="${layout.text.kickerFill}">${escapeXml(spec.kicker)}</text>` : ""}
+  ${spec.kicker ? textBlock({
+    lines: spec.kickerText?.lines ?? [spec.kicker], x: layout.text.x, y: layout.text.kickerY,
+    fontSize: spec.kickerText?.fontSize ?? 20, lineHeight: spec.kickerText?.lineHeight ?? 27,
+    weight: 700, fill: layout.text.kickerFill, shadow: overlaySurface ? "soft" : undefined,
+  }) : ""}
   ${textBlock({
     lines: spec.headline.lines,
     x: layout.text.x,
@@ -280,6 +286,11 @@ export function buildCardNewsSvgFromSpec(
     fill: layout.text.bodyFill,
     shadow: overlaySurface ? "soft" : undefined,
   })}
+  ${spec.microcopy?.lines.length ? textBlock({
+    lines: spec.microcopy.lines, x: layout.text.x, y: spec.microcopyY ?? bodyY + spec.body.height + 18,
+    fontSize: spec.microcopy.fontSize, lineHeight: spec.microcopy.lineHeight,
+    weight: 400, fill: layout.text.bodyFill, shadow: overlaySurface ? "soft" : undefined,
+  }) : ""}
   ${citation}
   ${signatureRule}
   ${progress(spec.index, spec.total, layout.brand.progressY, layout.text.x, overlaySurface)}

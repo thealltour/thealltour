@@ -14,6 +14,7 @@ export type CardNewsFontFiles = {
   directory: string;
   regularPath: string;
   boldPath: string;
+  fallbackPaths: string[];
   configPath: string;
 };
 
@@ -98,12 +99,17 @@ function pretendardWoff(fileName: string): string {
 }
 
 export function ensureCardNewsFonts(): CardNewsFontFiles {
-  if (cached && existsSync(cached.regularPath) && existsSync(cached.boldPath) && existsSync(cached.configPath)) {
+  if (cached && [cached.regularPath, cached.boldPath, cached.configPath, ...cached.fallbackPaths].every(existsSync)) {
     return cached;
   }
   const regularSfnt = woffToSfnt(readFileSync(pretendardWoff("Pretendard-Regular.woff")));
   const boldSfnt = woffToSfnt(readFileSync(pretendardWoff("Pretendard-Bold.woff")));
-  const digest = sha256Buffer(Buffer.concat([regularSfnt, boldSfnt])).slice(0, 12);
+  // Bundle fallback fonts: the isolated fontconfig deliberately does not rely on host fonts.
+  const fallbacks = ["NotoSansCJKjp-Regular.otf", "NotoSansCJKjp-Bold.otf", "Noto-COLRv1.ttf"].map((name) => ({
+    name,
+    data: readFileSync(join(process.cwd(), "assets", "cardnews-fonts", name)),
+  }));
+  const digest = sha256Buffer(Buffer.concat([Buffer.from("fallback-v2"), regularSfnt, boldSfnt, ...fallbacks.map((font) => font.data)])).slice(0, 12);
   const directory = join(tmpdir(), `thealltour-cardnews-fonts-${digest}`);
   mkdirSync(directory, { recursive: true });
   const regularPath = join(directory, "Pretendard-Regular.ttf");
@@ -111,6 +117,11 @@ export function ensureCardNewsFonts(): CardNewsFontFiles {
   const configPath = join(directory, "fonts.conf");
   if (!existsSync(regularPath)) writeFileSync(regularPath, regularSfnt);
   if (!existsSync(boldPath)) writeFileSync(boldPath, boldSfnt);
+  const fallbackPaths = fallbacks.map(({ name, data }) => {
+    const path = join(directory, name);
+    if (!existsSync(path)) writeFileSync(path, data);
+    return path;
+  });
   writeFileSync(
     configPath,
     `<?xml version="1.0"?>
@@ -118,6 +129,15 @@ export function ensureCardNewsFonts(): CardNewsFontFiles {
 <fontconfig>
   <dir>${directory}</dir>
   <cachedir>${join(directory, "cache")}</cachedir>
+  <alias>
+    <family>Pretendard</family>
+    <prefer><family>Pretendard</family><family>Noto Sans CJK JP</family><family>Noto Color Emoji</family></prefer>
+  </alias>
+  <alias><family>emoji</family><prefer><family>Noto Color Emoji</family></prefer></alias>
+  <match target="font">
+    <test name="family"><string>Noto Color Emoji</string></test>
+    <edit name="scalable" mode="assign"><bool>true</bool></edit>
+  </match>
   <config></config>
 </fontconfig>
 `,
@@ -127,6 +147,7 @@ export function ensureCardNewsFonts(): CardNewsFontFiles {
     directory,
     regularPath,
     boldPath,
+    fallbackPaths,
     configPath,
   };
   return cached;

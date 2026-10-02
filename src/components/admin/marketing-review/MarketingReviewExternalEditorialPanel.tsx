@@ -58,6 +58,7 @@ function defaultConflictSelection(candidate: CandidateSummary | null): number[] 
 }
 
 type Props = {
+  mode?: "all" | "research" | "channels";
   candidateId: string;
   canEdit: boolean;
   busy: boolean;
@@ -86,6 +87,7 @@ function errorText(json: ApiError, fallback: string): string {
 }
 
 export function MarketingReviewExternalEditorialPanel({
+  mode = "all",
   candidateId,
   canEdit,
   busy,
@@ -264,6 +266,7 @@ export function MarketingReviewExternalEditorialPanel({
 
   return (
     <AdminCard className="space-y-3 p-4">
+      <div hidden={mode === "channels"} className={mode === "channels" ? "hidden" : "space-y-3"}>
       <h2 className="text-base font-semibold">Research 결과 가져오기</h2>
       <p className="text-xs text-[var(--text-secondary)]">
         ChatGPT가 돌려준 Research JSON(editorial-research-bundle-chatgpt-result-v1)을 붙여넣습니다. 승인본과 충돌한
@@ -290,16 +293,10 @@ export function MarketingReviewExternalEditorialPanel({
       >
         Research 결과 가져오기
       </button>
-      {feedback ? (
-        <p
-          className={`whitespace-pre-line text-xs ${
-            feedback.tone === "error" ? "text-[var(--danger,#b91c1c)]" : "text-[var(--success,#047857)]"
-          }`}
-        >
-          {feedback.text}
-        </p>
-      ) : null}
 
+
+      </div>
+      {mode === "channels" ? <h2 className="text-base font-semibold">채널 생성 원문 선택</h2> : null}
       {candidates.length > 0 ? (
         <label className="block text-sm">
           <span className="mb-1 block text-[var(--text-secondary)]">External candidate</span>
@@ -320,6 +317,7 @@ export function MarketingReviewExternalEditorialPanel({
         </label>
       ) : null}
 
+      <div hidden={mode === "channels"} className={mode === "channels" ? "hidden" : "space-y-3"}>
       {researchBlocked ? (
         <p className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs">
           ChatGPT가 연구를 보류했습니다(blocked). 미해결 항목을 확인하고, 필요하면 Research JSON을 다시 복사해 ChatGPT를
@@ -432,7 +430,17 @@ export function MarketingReviewExternalEditorialPanel({
         </section>
       ) : null}
 
-      {channels.length > 0 ? (
+      </div>
+      {feedback ? (
+        <p
+          className={`whitespace-pre-line text-xs ${
+            feedback.tone === "error" ? "text-[var(--danger,#b91c1c)]" : "text-[var(--success,#047857)]"
+          }`}
+        >
+          {feedback.text}
+        </p>
+      ) : null}
+      {mode !== "research" && channels.length > 0 ? (
         <ul className="divide-y divide-[var(--border)] text-sm">
           {channels.map((view) => {
             const readiness = selectedCandidate?.channelReadiness[view.channel];

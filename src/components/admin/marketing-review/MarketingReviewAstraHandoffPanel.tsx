@@ -200,8 +200,10 @@ export function MarketingReviewAstraHandoffPanel(props: {
   candidateId: string;
   /** Bump after channel generate/reload so panel refetches artifacts. */
   refreshKey?: number;
+  showRenderActions?: boolean;
+  onStatusChange?: () => void;
 }) {
-  const { candidateId, refreshKey = 0 } = props;
+  const { candidateId, refreshKey = 0, showRenderActions = true, onStatusChange } = props;
   const [view, setView] = useState<ViewDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyVisualId, setBusyVisualId] = useState<string | null>(null);
@@ -253,13 +255,14 @@ export function MarketingReviewAstraHandoffPanel(props: {
         code?: string;
       };
       await load();
+      onStatusChange?.();
       setMessage(data.message ?? (res.ok ? "Shared Visual Plan을 생성했습니다." : "Plan 생성 실패"));
     } catch {
       setMessage("Shared Visual Plan 생성에 실패했습니다.");
     } finally {
       setPlanBusy(false);
     }
-  }, [candidateId, load]);
+  }, [candidateId, load, onStatusChange]);
 
   const generateHandoff = useCallback(async () => {
     setHandoffBusy(true);
@@ -271,13 +274,14 @@ export function MarketingReviewAstraHandoffPanel(props: {
       );
       const data = (await res.json()) as { message?: string; ok?: boolean };
       await load();
+      onStatusChange?.();
       setMessage(data.message ?? (res.ok ? "Astra Handoff를 생성했습니다." : "Handoff 생성 실패"));
     } catch {
       setMessage("Astra Handoff 생성에 실패했습니다.");
     } finally {
       setHandoffBusy(false);
     }
-  }, [candidateId, load]);
+  }, [candidateId, load, onStatusChange]);
 
   const onUpload = useCallback(
     async (visualId: string, file: File) => {
@@ -296,6 +300,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
           return;
         }
         await load();
+      onStatusChange?.();
         setMessage(data.message ?? "업로드했습니다.");
       } catch {
         setMessage("업로드에 실패했습니다.");
@@ -303,7 +308,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
         setBusyVisualId(null);
       }
     },
-    [candidateId, load],
+    [candidateId, load, onStatusChange],
   );
 
   const rebindUploads = useCallback(async () => {
@@ -320,13 +325,14 @@ export function MarketingReviewAstraHandoffPanel(props: {
         return;
       }
       await load();
+      onStatusChange?.();
       setMessage(data.message ?? "기존 업로드 이미지를 연결했습니다.");
     } catch {
       setMessage("기존 이미지 연결에 실패했습니다.");
     } finally {
       setRebindBusy(false);
     }
-  }, [candidateId, load]);
+  }, [candidateId, load, onStatusChange]);
 
   const exportToHdd = useCallback(async () => {
     setExportBusy(true);
@@ -366,13 +372,14 @@ export function MarketingReviewAstraHandoffPanel(props: {
           ? ` (공유 비주얼 ${incomplete}개 미업로드 — context는 갱신됨)`
           : "";
       await load();
+      onStatusChange?.();
       setMessage(`${base}${note}${soft}`);
     } catch {
       setMessage("HDD보내기에 실패했습니다.");
     } finally {
       setExportBusy(false);
     }
-  }, [candidateId, load, view]);
+  }, [candidateId, load, view, onStatusChange]);
 
   const startCardnewsRender = useCallback(async () => {
     setRenderBusy(true);
@@ -396,6 +403,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
         return;
       }
       await load();
+      onStatusChange?.();
       setMessage(
         data.note ?? (data.status === "skipped" ? "렌더를 건너뛰었습니다." : "렌더를 완료했습니다."),
       );
@@ -404,7 +412,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
     } finally {
       setRenderBusy(false);
     }
-  }, [candidateId, load]);
+  }, [candidateId, load, onStatusChange]);
 
   if (loading && !view) {
     return (
@@ -623,9 +631,11 @@ export function MarketingReviewAstraHandoffPanel(props: {
                   title="Astra 요청문 복사"
                 />
               </div>
+              <details><summary className="cursor-pointer text-xs text-[var(--text-secondary)]">요청문 내용 보기</summary>
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs">
                 {handoff.copyText}
               </pre>
+              </details>
             </div>
 
             <div className="space-y-3">
@@ -641,6 +651,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
                   >
                     {exportBusy ? "HDD 보내는 중…" : "HDD 다시 보내기"}
                   </button>
+{showRenderActions ? (
                   <button
                     type="button"
                     disabled={exportBusy || renderBusy || !view?.packagePresent}
@@ -650,6 +661,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
                   >
                     {renderBusy ? "카드뉴스 렌더 중…" : "카드뉴스 렌더링 시작"}
                   </button>
+) : null}
                 </div>
               </div>
               {handoffView.slots.length === 0 ? (
@@ -658,7 +670,9 @@ export function MarketingReviewAstraHandoffPanel(props: {
                 </p>
               ) : (
                 handoffView.slots.map((slot) => (
-                  <SlotRow
+                  <details key={slot.visualId} className="rounded-lg border border-[var(--border)] p-2">
+                  <summary className="cursor-pointer text-sm font-medium">{slot.visualId} · {slot.usageLabels.join(" · ")} · {slot.uploaded ? (handoffView.assetsStale ? "연결 확인 필요" : "업로드됨") : "미업로드"}</summary>
+                <SlotRow
                     key={slot.visualId}
                     candidateId={candidateId}
                     slot={slot}
@@ -667,6 +681,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
                     busyVisualId={busyVisualId}
                     onUpload={onUpload}
                   />
+                </details>
                 ))
               )}
             </div>

@@ -166,7 +166,8 @@ export function MarketingReviewInstagramCardCopyPanel(props: {
     <AdminCard className="space-y-4 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Instagram 카드 문구 검토</h2>
+          <h2 className="text-base font-semibold">Instagram 카드 문구 검토 · {view.review.cards.length}장</h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">가져온 카드 구성 전체를 표시합니다. 현재 화면에서는 문구를 수정하며, 카드 수와 순서는 생성·가져오기 단계에서 결정됩니다.</p>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             카드별 문구를 확인·수정한 뒤 저장·승인해야 Shared Visual Plan, Astra 요청문 생성과 카드뉴스 렌더가
             진행됩니다. 승인 후 문구만 고친 경우 이미지 재생성 없이 기존 업로드 이미지로 렌더합니다. 캡션 승인과는

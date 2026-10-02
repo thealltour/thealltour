@@ -16,6 +16,10 @@ import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/
 import { MarketingReviewCanonicalAssetPanel } from "@/components/admin/marketing-review/MarketingReviewCanonicalAssetPanel";
 import { MarketingReviewExternalEditorialPanel } from "@/components/admin/marketing-review/MarketingReviewExternalEditorialPanel";
 import { MarketingReviewInstagramCardCopyPanel } from "@/components/admin/marketing-review/MarketingReviewInstagramCardCopyPanel";
+import { MarketingReviewNarrationPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationPanel";
+import { MarketingReviewNarrationScenesPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationScenesPanel";
+import { MarketingReviewNarrationInstagramPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationInstagramPanel";
+import { MarketingReviewNarrationShortformPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationShortformPanel";
 import { MarketingReviewInstagramCardnewsHandoffPanel } from "@/components/admin/marketing-review/MarketingReviewInstagramCardnewsHandoffPanel";
 import { MarketingReviewWorkflowNav, MarketingReviewWorkflowStage, type ReviewWorkflowStepId } from "@/components/admin/marketing-review/MarketingReviewWorkflowNav";
 import { MarketingReviewResearchHandoffButton } from "@/components/admin/marketing-review/MarketingReviewResearchHandoffButton";
@@ -76,7 +80,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
   useEffect(() => {
     try {
       const saved = Number(localStorage.getItem(workflowStorageKey));
-      setActiveStep(saved >= 1 && saved <= 6 && Number.isInteger(saved) ? saved as ReviewWorkflowStepId : 1);
+      setActiveStep(saved >= 1 && saved <= 10 && Number.isInteger(saved) ? saved as ReviewWorkflowStepId : 1);
     } catch { setActiveStep(1); }
   }, [workflowStorageKey]);
   function selectStep(step: ReviewWorkflowStepId) {
@@ -297,6 +301,18 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           refreshKey={artifactRefreshKey}
         />
 
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={7} activeStep={activeStep}>
+          <MarketingReviewNarrationPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={8} activeStep={activeStep}>
+          <MarketingReviewNarrationScenesPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={10} activeStep={activeStep}>
+          <MarketingReviewNarrationShortformPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={9} activeStep={activeStep}>
+          <MarketingReviewNarrationInstagramPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
         </MarketingReviewWorkflowStage>
         <MarketingReviewWorkflowStage step={3} activeStep={activeStep}>
         <MarketingReviewInstagramCardnewsHandoffPanel

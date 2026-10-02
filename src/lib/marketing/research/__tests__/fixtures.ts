@@ -5,6 +5,16 @@ import type { RawResearchSignalInput } from "@/lib/marketing/research/types/rese
 
 const NOW = "2026-09-02T00:00:00.000Z";
 
+/** Explicit source semantics for unrelated domain fixtures after the fail-closed migration. */
+export const TEST_ACTIVE_SOURCE_SEMANTICS = {
+  commercialBias: "none",
+  coverage: { scope: "global" },
+  languages: { primary: "ko" },
+  classification: { defaultSignalType: "general_travel_news" },
+  lifecycle: { status: "active" },
+} as const;
+
+
 export const OFFICIAL_JNTO_SOURCE: ResearchSource = {
   id: "11111111-1111-4111-8111-111111111101",
   sourceType: "tourism_board",
@@ -17,7 +27,7 @@ export const OFFICIAL_JNTO_SOURCE: ResearchSource = {
   language: "en",
   isOfficial: true,
   isEnabled: true,
-  metadata: null,
+  metadata: { semantics: structuredClone(TEST_ACTIVE_SOURCE_SEMANTICS) },
   createdAt: NOW,
   updatedAt: NOW,
 };
@@ -31,7 +41,7 @@ export const COMMUNITY_SOURCE: ResearchSource = {
   language: "ko",
   isOfficial: false,
   isEnabled: true,
-  metadata: null,
+  metadata: { semantics: structuredClone(TEST_ACTIVE_SOURCE_SEMANTICS) },
   createdAt: NOW,
   updatedAt: NOW,
 };
@@ -45,7 +55,7 @@ export const INTERNAL_PRODUCT_SOURCE: ResearchSource = {
   language: "ko",
   isOfficial: true,
   isEnabled: true,
-  metadata: null,
+  metadata: { semantics: structuredClone(TEST_ACTIVE_SOURCE_SEMANTICS) },
   createdAt: NOW,
   updatedAt: NOW,
 };
@@ -59,7 +69,7 @@ export const PERFORMANCE_SOURCE: ResearchSource = {
   language: "ko",
   isOfficial: false,
   isEnabled: true,
-  metadata: null,
+  metadata: { semantics: structuredClone(TEST_ACTIVE_SOURCE_SEMANTICS) },
   createdAt: NOW,
   updatedAt: NOW,
 };

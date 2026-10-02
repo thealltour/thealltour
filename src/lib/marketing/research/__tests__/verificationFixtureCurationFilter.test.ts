@@ -3,7 +3,7 @@ vi.mock("server-only", () => ({}));
 import { describe, expect, it } from "vitest";
 
 import { STEP_3_9_VERIFICATION_PURPOSE } from "@/lib/marketing/operations/verification";
-import { PERFORMANCE_MEMORY_SOURCE_ID } from "@/lib/marketing/performance/constants";
+import { PERFORMANCE_MEMORY_SOURCE, PERFORMANCE_MEMORY_SOURCE_ID } from "@/lib/marketing/performance/constants";
 import { signalFixture } from "@/lib/marketing/research/__tests__/semanticCalibrationFixtures";
 import { MVP_RESEARCH_SOURCES } from "@/lib/marketing/research/collectors/config";
 import {
@@ -43,14 +43,7 @@ async function seedMixedPool() {
   }));
   // Ensure Performance Analyst Memory source exists without treating all of it as fixture.
   sources.push({
-    id: PERFORMANCE_MEMORY_SOURCE_ID,
-    sourceType: "performance_memory",
-    name: "Performance Analyst Memory",
-    authorityLevel: "primary",
-    defaultCredibility: 0.75,
-    language: "ko",
-    isOfficial: false,
-    isEnabled: true,
+    ...PERFORMANCE_MEMORY_SOURCE,
     createdAt: NOW.toISOString(),
     updatedAt: NOW.toISOString(),
   });

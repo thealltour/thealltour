@@ -150,6 +150,7 @@ export function restoreRelatedProductListItemOrderByIds(
 export async function loadRelatedProductListItems(
   currentProduct: RelatedScorableProduct,
   limit = 6,
+  options: { excludeIds?: string[] } = {},
 ): Promise<ProductListItem[]> {
   if (!currentProduct?.id?.trim()) return [];
 
@@ -158,7 +159,11 @@ export async function loadRelatedProductListItems(
     getCampaignTaxonomiesForCard(),
   ]);
 
-  const hydrated = hydrateProductsWithCampaignCardMeta(candidates, campaignTaxonomies);
+  const excluded = new Set(options.excludeIds ?? []);
+  const hydrated = hydrateProductsWithCampaignCardMeta(
+    excluded.size > 0 ? candidates.filter((candidate) => !excluded.has(candidate.id)) : candidates,
+    campaignTaxonomies,
+  );
   const related = getRelatedProducts({
     currentProduct,
     allProducts: hydrated,

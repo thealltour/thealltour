@@ -1,3 +1,4 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import "server-only";
 
 import { truncateBotText } from "@/lib/marketing/bot/sanitize";
@@ -9,24 +10,35 @@ import {
 } from "@/lib/marketing/research/services/agendaCandidateBuilder";
 import { aggregateEvidenceSourceRoleWeights } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
 import { isStaleFreshness } from "@/lib/marketing/research/services/freshnessScorer";
+import {
+  aggregateBiasAdjustedAgendaSeedWeight,
+  type BiasAdjustedAgendaSeed,
+} from "@/lib/marketing/research/sourceCommercialBias";
+import { canSourceParticipateInMm } from "@/lib/marketing/research/sourceLifecycle";
 import type {
   CompactManagerAgendaCandidate,
   CompactManagerEvidenceRef,
   CompactManagerResearchBrief,
   GetMarketingManagerResearchContextOptions,
+  MarketingResearchAgendaSeedAttenuation,
+  MarketingResearchArticlePrePool,
+  MarketingResearchCurationDiversityFill,
   MarketingResearchContext,
   MarketingResearchContextStatus,
 } from "@/lib/marketing/research/manager/types";
+import { collectUniqueArticleAgendaCandidates } from "@/lib/marketing/research/manager/collectUniqueArticleAgendaCandidates";
+import { createMmSourceLifecycleEligibility } from "@/lib/marketing/research/manager/mmSourceLifecycleEligibility";
 import { MARKETING_RESEARCH_CONTEXT_CONTRACT } from "@/lib/marketing/research/manager/types";
 import type { ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
 import type { AgendaCandidate } from "@/lib/marketing/research/types/researchBrief";
 import type { ResearchEvidence } from "@/lib/marketing/research/types/researchSignal";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import {
-  diversifyCompactCurationCandidates,
+  diversifyCompactCurationCandidatesWithStats,
   diversityDiagnosticsForCompactCandidates,
 } from "@/lib/marketing/research/services/diversifyAgendaCandidatesForCuration";
 import { isVerificationResearchArtifact } from "@/lib/marketing/research/manager/isVerificationResearchArtifact";
+import { agendaCandidateMatchesCooldown } from "@/lib/marketing/cron/daily/researchIdentityCooldown";
 
 /** MM curation input window — larger than slate size so diversification has room. */
 const DEFAULT_LIMIT = 18;
@@ -79,7 +91,7 @@ function mapEvidenceRef(
     sourceId: evidence.sourceId,
     sourceType: source?.sourceType ?? null,
     sourceName: source?.name ?? null,
-    isOfficial: Boolean(source?.isOfficial || source?.sourceType === "official_government"),
+    isOfficial: isOfficialResearchSource(source),
     evidenceType: evidence.evidenceType,
     url: evidence.url ?? null,
     reference: evidence.reference ?? null,
@@ -235,12 +247,27 @@ export async function getMarketingManagerResearchContext(
       ? await deps.checkSemanticInfrastructure()
       : await defaultSemanticInfrastructureCheck();
 
+  const sourceCache = new Map<string, ResearchSource | null>();
   let rawCandidates: AgendaCandidate[];
+  let articlePrePool: MarketingResearchArticlePrePool;
   try {
-    rawCandidates = await repo.findRecentAgendaCandidates({
+    // Lifecycle eligibility runs before article dedup so non-participating sources never use pre-pool capacity.
+    const prePool = await collectUniqueArticleAgendaCandidates(repo, {
       since,
-      limit: Math.max(limit * 10, 180),
+      targetUniqueArticles: Math.max(limit * 10, 180),
+      isCandidateEligible: createMmSourceLifecycleEligibility(repo, sourceCache),
     });
+    rawCandidates = prePool.candidates;
+    articlePrePool = prePool.diagnostics;
+    console.info(
+      "[mm-research-context]",
+      JSON.stringify({
+        event: "article_prepool",
+        since,
+        ...articlePrePool,
+        sourceLifecycleExcludedRows: prePool.ineligibleRowsSkipped,
+      }),
+    );
   } catch (error) {
     return emptyContext({
       status: "unavailable",
@@ -252,9 +279,9 @@ export async function getMarketingManagerResearchContext(
     });
   }
 
-  const sourceCache = new Map<string, ResearchSource | null>();
   const enriched: AgendaCandidate[] = [];
   const seedByCandidateId = new Map<string, number>();
+  const attenuatedSeedByCandidateId = new Map<string, BiasAdjustedAgendaSeed>();
 
   for (const candidate of rawCandidates) {
     const brief = await repo.findBriefById(candidate.researchBriefId);
@@ -271,8 +298,13 @@ export async function getMarketingManagerResearchContext(
       }
       evidenceSources.push(source);
     }
+    // Korean outbound keeps the raw role weights; commercial bias only reaches the final rank seed.
     const sourceRole = aggregateEvidenceSourceRoleWeights(evidenceSources);
-    seedByCandidateId.set(candidate.id, sourceRole.agendaSeedWeight);
+    const rankSeed = aggregateBiasAdjustedAgendaSeedWeight(evidenceSources);
+    seedByCandidateId.set(candidate.id, rankSeed.biasAdjustedAgendaSeedWeight);
+    if (rankSeed.biasAdjustedAgendaSeedWeight < rankSeed.rawAgendaSeedWeight) {
+      attenuatedSeedByCandidateId.set(candidate.id, rankSeed);
+    }
 
     {
       const signalTypes = await resolveSignalTypes(repo, brief);
@@ -310,6 +342,7 @@ export async function getMarketingManagerResearchContext(
   let staleExcludedCount = 0;
   let duplicateExcludedCount = 0;
   let verificationExcludedCount = 0;
+  let lifecycleExcludedCount = 0;
   const seenBriefIds = new Set<string>();
   const seenTitleKeys = new Set<string>();
   const eligible: AgendaCandidate[] = [];
@@ -370,6 +403,24 @@ export async function getMarketingManagerResearchContext(
       continue;
     }
 
+    // Defense in depth behind the pre-pool filter; the candidate row itself is left untouched.
+    const primarySourceId = primarySignal?.sourceId ?? brief.evidence[0]?.sourceId ?? null;
+    if (!primarySourceId) {
+      lifecycleExcludedCount += 1;
+      continue;
+    }
+    if (primarySourceId) {
+      let primarySource = sourceCache.get(primarySourceId);
+      if (primarySource === undefined) {
+        primarySource = await repo.getSourceById(primarySourceId);
+        sourceCache.set(primarySourceId, primarySource);
+      }
+      if (!canSourceParticipateInMm(primarySource)) {
+        lifecycleExcludedCount += 1;
+        continue;
+      }
+    }
+
     if (!matchesFilter(brief.destinations, options.destination)) {
       continue;
     }
@@ -386,25 +437,77 @@ export async function getMarketingManagerResearchContext(
 
   const preDiversifyBriefs: CompactManagerResearchBrief[] = [];
   const preDiversifyCandidates: CompactManagerAgendaCandidate[] = [];
+  let identityExcludedCount = 0;
 
   for (const candidate of eligible) {
     const briefRow = await repo.findBriefById(candidate.researchBriefId);
     if (!briefRow) continue;
     const compactBrief = await buildCompactBrief(briefRow, repo, sourceCache);
+    const compactCandidate = buildCompactCandidate(candidate, compactBrief);
+    if (
+      options.excludeResearchIdentities &&
+      agendaCandidateMatchesCooldown(compactCandidate, options.excludeResearchIdentities)
+    ) {
+      identityExcludedCount += 1;
+      continue;
+    }
     preDiversifyBriefs.push(compactBrief);
-    preDiversifyCandidates.push(buildCompactCandidate(candidate, compactBrief));
+    preDiversifyCandidates.push(compactCandidate);
   }
 
   // STEP R-4: diversify AFTER outbound-aware ranking, BEFORE MM curation input.
-  const agendaCandidates = diversifyCompactCurationCandidates(preDiversifyCandidates, {
-    limit,
-  });
+  const { picked: agendaCandidates, stats: fillStats } =
+    diversifyCompactCurationCandidatesWithStats(preDiversifyCandidates, { limit });
   const briefById = new Map(preDiversifyBriefs.map((b) => [b.researchBriefId, b]));
   const briefs = agendaCandidates
     .map((c) => briefById.get(c.researchBriefId))
     .filter((b): b is CompactManagerResearchBrief => b != null);
 
   const diversity = diversityDiagnosticsForCompactCandidates(agendaCandidates);
+  const curationDiversityFill: MarketingResearchCurationDiversityFill = {
+    pass1Picked: fillStats.pass1Picked,
+    pass1bPicked: fillStats.pass1bPicked,
+    stagedFillPicked: fillStats.stagedFillPicked,
+    maxRelaxedCapUsed: fillStats.maxRelaxedCapUsed,
+    unrestrictedFillPicked: fillStats.unrestrictedFillPicked,
+    weakFallbackPicked: fillStats.weakFallbackPicked,
+    sourceCounts: diversity.sourceCounts,
+    familyCounts: diversity.familyCounts,
+  };
+  console.info(
+    "[mm-research-context]",
+    JSON.stringify({
+      event: "curation_diversity_fill",
+      preWindow: preDiversifyCandidates.length,
+      ...curationDiversityFill,
+      selections: fillStats.selections,
+    }),
+  );
+  let agendaSeedAttenuation: MarketingResearchAgendaSeedAttenuation | undefined;
+  if (attenuatedSeedByCandidateId.size > 0) {
+    agendaSeedAttenuation = {
+      attenuatedRankedCount: attenuatedSeedByCandidateId.size,
+      attenuatedCandidateCount: attenuatedSeedByCandidateId.size,
+      candidates: agendaCandidates.flatMap((c) => {
+        const seed = attenuatedSeedByCandidateId.get(c.agendaCandidateId);
+        return seed
+          ? [
+              {
+                agendaCandidateId: c.agendaCandidateId,
+                commercialBias: seed.commercialBias,
+                rawAgendaSeedWeight: seed.rawAgendaSeedWeight,
+                biasAdjustedAgendaSeedWeight: seed.biasAdjustedAgendaSeedWeight,
+                seedSourceId: seed.seedSourceId,
+              },
+            ]
+          : [];
+      }),
+    };
+    console.info(
+      "[mm-research-context]",
+      JSON.stringify({ event: "agenda_seed_attenuation", ...agendaSeedAttenuation }),
+    );
+  }
   const hasData = agendaCandidates.length > 0;
   let status: MarketingResearchContextStatus = "ok";
   const notes: string[] = [];
@@ -425,6 +528,12 @@ export async function getMarketingManagerResearchContext(
   }
   if (verificationExcludedCount > 0) {
     notes.push(`verification_fixture_excluded:${verificationExcludedCount}`);
+  }
+  if (identityExcludedCount > 0) {
+    notes.push(`research_identity_pre_excluded:${identityExcludedCount}`);
+  }
+  if (lifecycleExcludedCount > 0) {
+    notes.push(`source_lifecycle_excluded:${lifecycleExcludedCount}`);
   }
 
   return {
@@ -453,6 +562,9 @@ export async function getMarketingManagerResearchContext(
       degraded: !semanticOk,
       staleExcludedCount,
       duplicateExcludedCount,
+      articlePrePool,
+      curationDiversityFill,
+      ...(agendaSeedAttenuation ? { agendaSeedAttenuation } : {}),
     },
     notes,
   };

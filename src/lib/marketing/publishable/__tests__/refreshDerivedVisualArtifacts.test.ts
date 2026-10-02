@@ -291,7 +291,7 @@ describe("refreshDerivedVisualArtifacts orchestration", () => {
     }
   });
 
-  it("E. regenerate intent change → fingerprint/handoff refresh", () => {
+  it("E. regenerate threads intent change → handoff refresh; Instagram-only fingerprint unchanged", () => {
     const dir = mkdtempSync(join(tmpdir(), "drv-e-"));
     try {
       const first = refreshDerivedVisualArtifacts({
@@ -338,9 +338,7 @@ describe("refreshDerivedVisualArtifacts orchestration", () => {
         }),
         approvedCanonicalAsset: approvedAsset,
       });
-      expect(first.plan?.sourceVisualPlanFingerprint).not.toBe(
-        second.plan?.sourceVisualPlanFingerprint,
-      );
+      expect(first.plan?.sourceVisualPlanFingerprint).toBe(second.plan?.sourceVisualPlanFingerprint);
       expect(second.handoff?.visuals[0]?.visualIntent).toContain("intent B");
       expect(readManualAstraHandoff(dir)?.copyText).toContain("intent B");
     } finally {
@@ -348,7 +346,7 @@ describe("refreshDerivedVisualArtifacts orchestration", () => {
     }
   });
 
-  it("F. body-only change → fingerprint changes (channel snapshot includes body)", () => {
+  it("F. threads body-only change → fingerprint unchanged (snapshot tracks Instagram cards only)", () => {
     const dir = mkdtempSync(join(tmpdir(), "drv-f-"));
     try {
       const mediaPlan = {
@@ -378,8 +376,7 @@ describe("refreshDerivedVisualArtifacts orchestration", () => {
         }),
         approvedCanonicalAsset: approvedAsset,
       });
-      // Lifecycle redesign: body changes affect visual strategy → snapshot fingerprint differs.
-      expect(a.plan?.sourceVisualPlanFingerprint).not.toBe(b.plan?.sourceVisualPlanFingerprint);
+      expect(a.plan?.sourceVisualPlanFingerprint).toBe(b.plan?.sourceVisualPlanFingerprint);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

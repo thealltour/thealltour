@@ -178,6 +178,7 @@ export const SHORTFORM_OUTPUT_SCHEMA = {
   ],
 } as const;
 
+/** Keys this handoff asks the model to return — research only. */
 export const EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER = [
   "contract",
   "candidateId",
@@ -185,6 +186,14 @@ export const EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER = [
   "canonicalVersion",
   "sourceRevision",
   "research",
+] as const;
+
+/**
+ * Keys accepted on import. Results produced by the earlier all-channel version of this handoff
+ * still carry narrative/channel artifacts and keep importing as before.
+ */
+export const EDITORIAL_RESEARCH_RESULT_ACCEPTED_KEYS = [
+  ...EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER,
   "narrative",
   "threads",
   "instagram",
@@ -197,13 +206,13 @@ export const EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER = [
 export const EDITORIAL_RESEARCH_OUTPUT_RULES_KO: readonly string[] = [
   "JSON 객체 하나만 반환합니다. 코드 펜스, 설명 문장, 주석을 붙이지 않습니다.",
   "requiredEcho의 contract·candidateId·assetId·canonicalVersion·sourceRevision 값을 최상위에 그대로 복사합니다.",
-  "research 객체는 필수이며 narrative·채널 결과보다 먼저 작성하고 완료합니다. research가 없으면 결과 전체가 무효입니다.",
-  "research.status와 관계없이 narrative와 모든 채널 결과(threads, instagram, naverBlog, naverBand, kakao, shortform)를 항상 작성합니다. 어떤 채널도 null로 두지 않습니다.",
-  "approvedCanonical은 주제와 방향을 잡는 출발점입니다. forbiddenClaimsKo·limitationsKo·storySupportVerdict·supportedClaimBoundaryKo는 참고 정보일 뿐 채널 작성을 막지 않습니다.",
-  "조사로 확인한 사실이 approvedCanonical과 다르면 조사 결과를 채널 문안에 반영하고, 달라진 점은 research.canonicalConflicts에 기록합니다.",
+  "research 객체만 작성합니다. research가 없으면 결과 전체가 무효입니다.",
+  "narrative와 채널 결과(threads, instagram, naverBlog 등)는 이 단계에서 작성하지 않습니다. Instagram 카드뉴스 카피는 공통 원문을 확정한 뒤 별도 요청으로 받습니다.",
+  "approvedCanonical은 검증하고 보강할 출발점입니다. 주장마다 사실 여부를 확인하고, 독자에게 도움이 되는 확인된 사실을 findings에 더합니다.",
+  "조사로 확인한 사실이 approvedCanonical과 다르면 research.canonicalConflicts에 기록합니다. canonicalText에는 충돌하는 원문 문장을 그대로 적습니다.",
   "editorialContext는 기획 배경일 뿐 사실 근거가 아닙니다. editorialContext만으로 사실을 주장하지 않습니다.",
   "research.findings[].sources에는 실제로 확인한 출처만 적습니다. 제목·발행처·URL을 추측하거나 만들어 내지 않습니다. 날짜를 확인할 수 없으면 null입니다.",
-  "채널 결과에는 contract·fingerprint·provenance 같은 서버 소유 필드를 쓰지 않습니다. schema에 있는 필드만 작성합니다.",
+  "contract·fingerprint·provenance 같은 서버 소유 필드를 쓰지 않습니다. schema에 있는 필드만 작성합니다.",
 ];
 
 export function buildEditorialResearchOutputContract(echo: {
@@ -226,20 +235,6 @@ export function buildEditorialResearchOutputContract(echo: {
     rulesKo: [...EDITORIAL_RESEARCH_OUTPUT_RULES_KO],
     schema: {
       research: RESEARCH_OUTPUT_SCHEMA,
-      narrative: NARRATIVE_OUTPUT_SCHEMA,
-      threads: THREADS_OUTPUT_SCHEMA,
-      instagram: {
-        carouselPlan: INSTAGRAM_CAROUSEL_PLAN_OUTPUT_SCHEMA,
-        cardCopy: INSTAGRAM_CARD_COPY_OUTPUT_SCHEMA,
-        caption: INSTAGRAM_CAPTION_OUTPUT_SCHEMA,
-      },
-      naverBlog: {
-        structure: NAVER_BLOG_STRUCTURE_OUTPUT_SCHEMA,
-        copy: NAVER_BLOG_COPY_OUTPUT_SCHEMA,
-      },
-      naverBand: NAVER_BAND_OUTPUT_SCHEMA,
-      kakao: KAKAO_OUTPUT_SCHEMA,
-      shortform: SHORTFORM_OUTPUT_SCHEMA,
     },
   };
 }

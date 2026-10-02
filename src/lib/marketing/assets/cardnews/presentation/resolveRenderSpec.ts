@@ -17,8 +17,6 @@ import type { CardPresentation } from "@/lib/marketing/assets/cardnews/presentat
 import {
   densityBodyPx,
   densityHeadlinePx,
-  estimateGlyphBottom,
-  estimateGlyphTop,
   focalToPreserveAspectRatio,
   resolveTemplateLayout,
   resolveTextBandAnchors,
@@ -38,6 +36,8 @@ import {
   formatScaleForAspect,
 } from "@/lib/marketing/assets/cardnews/typographyTokens";
 import { paperTextMaxWidth } from "@/lib/marketing/assets/cardnews/overlayTextInsets";
+import { CardNewsRenderOverflowError } from "@/lib/marketing/assets/errors";
+import { buildEditorialTextSpec } from "@/lib/marketing/assets/cardnews/presentation/editorialTextLayout";
 
 export type ResolvedCardRenderSpec = {
   cardId: string;
@@ -47,6 +47,9 @@ export type ResolvedCardRenderSpec = {
   total: number;
   /** Optional explicit editorial kicker; empty when absent. Never role-derived. */
   kicker: string;
+  kickerText?: FittedText;
+  microcopy?: FittedText;
+  microcopyY?: number;
   headline: FittedText;
   body: FittedText;
   citation: CardCitation | null;
@@ -58,8 +61,6 @@ export type ResolvedCardRenderSpec = {
   headlineBodyGapPx: number;
 };
 
-const KICKER_FONT_PX = 20;
-
 /** Trim / reject blank; never invent copy from role or index. */
 export function normalizeExplicitEditorialKicker(
   value: string | null | undefined,
@@ -67,19 +68,6 @@ export function normalizeExplicitEditorialKicker(
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : "";
-}
-
-/** Drop kicker when layout would still place it inside the headline glyph box. */
-function kickerSafeForHeadline(
-  kicker: string,
-  layout: ResolvedTemplateLayout,
-  headlineFontPx: number,
-): string {
-  if (!kicker) return "";
-  const kickerBottom = estimateGlyphBottom(layout.text.kickerY, KICKER_FONT_PX);
-  const headlineTop = estimateGlyphTop(layout.text.y, headlineFontPx);
-  if (headlineTop < kickerBottom + 24) return "";
-  return kicker;
 }
 
 function applyMobileLineHeights(
@@ -340,7 +328,7 @@ function buildContentAwareImageBackedSpec(input: {
     },
   };
 
-  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+  const kicker = input.explicitKicker;
 
   return {
     cardId: input.card.cardId,
@@ -496,7 +484,7 @@ function buildContentAwareClosingSpec(input: {
     },
   };
 
-  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+  const kicker = input.explicitKicker;
 
   return {
     cardId: input.card.cardId,
@@ -656,7 +644,7 @@ function buildFullBleedOverlaySpec(input: {
     },
   };
 
-  const kicker = kickerSafeForHeadline(input.explicitKicker, layout, headline.fontSize);
+  const kicker = input.explicitKicker;
   return {
     cardId: input.card.cardId,
     role: input.card.role,
@@ -674,7 +662,7 @@ function buildFullBleedOverlaySpec(input: {
   };
 }
 
-export function buildResolvedCardRenderSpec(input: {
+export type BuildCardRenderSpecInput = {
   card: CardNewsCard;
   index: number;
   total: number;
@@ -688,7 +676,23 @@ export function buildResolvedCardRenderSpec(input: {
    * used as a fallback — omit or pass null/"" when the brief has none.
    */
   editorialKicker?: string | null;
-}): ResolvedCardRenderSpec {
+  editorialMicrocopy?: string | null;
+};
+
+/** Keep established two-field geometry; use full-stack fitting for additional copy or overflow. */
+export function buildResolvedCardRenderSpec(input: BuildCardRenderSpecInput): ResolvedCardRenderSpec {
+  const kicker = normalizeExplicitEditorialKicker(input.editorialKicker);
+  const microcopy = normalizeExplicitEditorialKicker(input.editorialMicrocopy);
+  if (kicker || microcopy || !input.card.headline.trim()) return buildEditorialTextSpec(input);
+  try {
+    return buildLegacyResolvedCardRenderSpec(input);
+  } catch (error) {
+    if (!(error instanceof CardNewsRenderOverflowError)) throw error;
+    return buildEditorialTextSpec(input);
+  }
+}
+
+function buildLegacyResolvedCardRenderSpec(input: BuildCardRenderSpecInput): ResolvedCardRenderSpec {
   const hasVisual = Boolean(input.visualDataUri);
   const explicitKicker = normalizeExplicitEditorialKicker(input.editorialKicker);
   const template = input.presentation.template;
@@ -753,7 +757,7 @@ export function buildResolvedCardRenderSpec(input: {
     maxLinesBody,
   });
   applyMobileLineHeights(layout.template, headline, body);
-  const kicker = kickerSafeForHeadline(explicitKicker, layout, headline.fontSize);
+  const kicker = explicitKicker;
   return {
     cardId: input.card.cardId,
     role: input.card.role,

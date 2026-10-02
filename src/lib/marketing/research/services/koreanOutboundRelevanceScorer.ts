@@ -9,6 +9,10 @@ import {
   classifyTravelDirection,
   type TravelDirection,
 } from "@/lib/marketing/research/services/travelDirection";
+import {
+  hangulCompoundPattern,
+  hangulPlacePattern,
+} from "@/lib/marketing/research/services/hangulAwareTermMatcher";
 
 export type KoreanOutboundRelevanceAssessment = {
   score: number;
@@ -18,36 +22,146 @@ export type KoreanOutboundRelevanceAssessment = {
 };
 
 const HIGH_DEMAND_DESTINATION_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
-  { id: "japan", pattern: /\b(japan|tokyo|osaka|kyoto|hokkaido|okinawa|fukuoka|nagoya|일본|도쿄|오사카|교토|홋카이도|오키나와)\b/i },
-  { id: "vietnam", pattern: /\b(vietnam|danang|da\s*nang|nha\s*trang|hanoi|ho\s*chi\s*minh|saigon|베트남|다낭|나트랑|하노이|호치민)\b/i },
-  { id: "thailand", pattern: /\b(thailand|bangkok|phuket|chiang\s*mai|pattaya|태국|방콕|푸켓|치앙마이)\b/i },
-  { id: "taiwan", pattern: /\b(taiwan|taipei|kaohsiung|대만|타이베이|타이완)\b/i },
-  { id: "philippines", pattern: /\b(philippines?|cebu|boracay|manila|필리핀|세부|보라카이|마닐라)\b/i },
-  { id: "usa_fit", pattern: /\b(united\s*states|\busa\b|\bu\.s\.|hawaii|guam|saipan|las\s*vegas|new\s*york|grand\s*canyon|california|미국|하와이|괌|사이판|그랜드\s*캐년)\b/i },
-  { id: "europe_core", pattern: /\b(spain|barcelona|france|paris|italy|rome|uk|london|croatia|prague|budapest|swiss|switzerland|스페인|프랑스|이탈리아|영국|런던|크로아티아|프라하)\b/i },
-  { id: "se_asia_core", pattern: /\b(singapore|hong\s*kong|macau|malaysia|bali|indonesia|싱가포르|홍콩|마카오|말레이시아|발리|인도네시아)\b/i },
-  { id: "australia", pattern: /\b(australia|sydney|melbourne|호주|시드니)\b/i },
+  {
+    id: "japan",
+    pattern: hangulPlacePattern(
+      /\b(japan|tokyo|osaka|kyoto|hokkaido|okinawa|fukuoka|nagoya)\b/i,
+      ["일본", "도쿄", "오사카", "교토", "홋카이도", "오키나와", "후쿠오카", "나고야"],
+    ),
+  },
+  {
+    id: "vietnam",
+    pattern: hangulPlacePattern(
+      /\b(vietnam|danang|da\s*nang|nha\s*trang|hanoi|ho\s*chi\s*minh|saigon)\b/i,
+      ["베트남", "다낭", "나트랑", "하노이", "호치민"],
+    ),
+  },
+  {
+    id: "thailand",
+    pattern: hangulPlacePattern(
+      /\b(thailand|bangkok|phuket|chiang\s*mai|pattaya)\b/i,
+      ["태국", "방콕", "푸켓", "치앙마이"],
+    ),
+  },
+  {
+    id: "taiwan",
+    pattern: hangulPlacePattern(/\b(taiwan|taipei|kaohsiung)\b/i, [
+      { term: "대만", notBefore: "족" },
+      "타이베이",
+      "타이완",
+    ]),
+  },
+  {
+    id: "philippines",
+    pattern: hangulPlacePattern(/\b(philippines?|cebu|boracay|manila)\b/i, [
+      "필리핀",
+      // "세부 사항/내용/일정" = details, not Cebu.
+      {
+        term: "세부",
+        notBefore:
+          "\\s*(?:사항|내용|일정|정보|계획|조건|규정|지침|항목|설명|절차|요건|과제|조율|협의|논의|방안|전략|기준|프로그램)",
+      },
+      "보라카이",
+      "마닐라",
+    ]),
+  },
+  {
+    id: "usa_fit",
+    pattern: hangulPlacePattern(
+      /\b(united\s*states|\busa\b|\bu\.s\.|hawaii|guam|saipan|las\s*vegas|new\s*york|grand\s*canyon|california)\b/i,
+      ["미국", "하와이", "괌", "사이판", "그랜드 캐년"],
+    ),
+  },
+  {
+    id: "europe_core",
+    pattern: hangulPlacePattern(
+      /\b(spain|barcelona|france|paris|italy|rome|uk|london|croatia|prague|budapest|swiss|switzerland)\b/i,
+      ["스페인", "프랑스", "이탈리아", "영국", "런던", "크로아티아", "프라하"],
+    ),
+  },
+  {
+    id: "se_asia_core",
+    pattern: hangulPlacePattern(
+      /\b(singapore|hong\s*kong|macau|malaysia|bali|indonesia)\b/i,
+      ["싱가포르", "홍콩", "마카오", "말레이시아", "발리", "인도네시아"],
+    ),
+  },
+  {
+    id: "australia",
+    pattern: hangulPlacePattern(/\b(australia|sydney|melbourne)\b/i, [
+      { term: "호주", notBefore: "머니" },
+      "시드니",
+    ]),
+  },
 ];
 
 const MEDIUM_DEMAND_DESTINATION_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
-  { id: "nepal", pattern: /\b(nepal|네팔|히말라야|himalaya)\b/i },
-  { id: "kenya", pattern: /\b(kenya|케냐|safari|사파리)\b/i },
-  { id: "india", pattern: /\b(india|인도(?!\s*네시아))\b/i },
-  { id: "turkey", pattern: /\b(turkey|turkiye|istanbul|터키|이스탄불)\b/i },
-  { id: "uae", pattern: /\b(dubai|uae|abu\s*dhabi|두바이|아랍에미리트)\b/i },
-  { id: "canada", pattern: /\b(canada|vancouver|toronto|캐나다)\b/i },
-  { id: "germany", pattern: /\b(germany|munich|berlin|독일|뮌헨|베를린)\b/i },
-  { id: "egypt", pattern: /\b(egypt|cairo|이집트)\b/i },
+  { id: "nepal", pattern: hangulPlacePattern(/\b(nepal|himalaya)\b/i, ["네팔", "히말라야"]) },
+  { id: "kenya", pattern: hangulPlacePattern(/\b(kenya|safari)\b/i, ["케냐", "사파리"]) },
+  {
+    id: "india",
+    pattern: hangulPlacePattern(/\b(india)\b/i, [
+      // 인도네시아 (Indonesia), 인도어 (indoor), 인도 받다/되다 (handover) are not India.
+      { term: "인도", notBefore: "네시아|어|\\s*(?:받|되|하|요청|절차)", notAfter: "범죄인\\s*" },
+    ]),
+  },
+  {
+    id: "turkey",
+    pattern: hangulPlacePattern(/\b(turkey|turkiye|istanbul)\b/i, ["터키", "이스탄불"]),
+  },
+  {
+    id: "uae",
+    pattern: hangulPlacePattern(/\b(dubai|uae|abu\s*dhabi)\b/i, ["두바이", "아랍에미리트"]),
+  },
+  { id: "canada", pattern: hangulPlacePattern(/\b(canada|vancouver|toronto)\b/i, ["캐나다"]) },
+  {
+    id: "germany",
+    pattern: hangulPlacePattern(/\b(germany|munich|berlin)\b/i, ["독일", "뮌헨", "베를린"]),
+  },
+  { id: "egypt", pattern: hangulPlacePattern(/\b(egypt|cairo)\b/i, ["이집트"]) },
 ];
 
 const LOW_DEMAND_DESTINATION_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
-  { id: "south_sudan", pattern: /\b(south\s*sudan|남수단)\b/i },
-  { id: "sudan", pattern: /\b(?<!south\s)sudan|수단\b/i },
-  { id: "sahel", pattern: /\b(chad|niger|mali|burkina|yemen|syria|somalia|중앙아프리카|예멘|시리아|소말리아)\b/i },
+  { id: "south_sudan", pattern: hangulPlacePattern(/\b(south\s*sudan)\b/i, ["남수단"]) },
+  {
+    id: "sudan",
+    pattern: hangulPlacePattern(/\b(?<!south\s)sudan/i, [
+      // 수단 = "means" in 교통 수단 / 결제 수단 / 최후의 수단; glued forms are already
+      // excluded by the Hangul left boundary.
+      {
+        term: "수단",
+        notAfter:
+          "(?:교통|결제|지불|이동|운송|수송|통신|대체|홍보|생계|투쟁|정책|마케팅|핵심|주요|다양한|새로운|효과적인|중요한|유일한|최후의|하나의)\\s+",
+        notBefore: "\\s*(?:과\\s*방법|으로써|을\\s*가리지)",
+      },
+    ]),
+  },
+  {
+    id: "sahel",
+    pattern: hangulPlacePattern(/\b(chad|niger|mali|burkina|yemen|syria|somalia)\b/i, [
+      "중앙아프리카",
+      "예멘",
+      "시리아",
+      "소말리아",
+    ]),
+  },
 ];
 
-const PRACTICAL_IMPACT =
-  /\b(visa|entry|passport|flight|delay|cancel|typhoon|flood|reopen|advisory|safety|festival|season|hotel|airport|outbreak|quarantine|환승|비자|입국|항공|결항|태풍|축제|성수기|안전)\b/i;
+const PRACTICAL_IMPACT = hangulCompoundPattern(
+  /\b(visa|entry|passport|flight|delay|cancel|typhoon|flood|reopen|advisory|safety|festival|season|hotel|airport|outbreak|quarantine)\b/i,
+  [
+    { term: "환승", notBefore: "연애" },
+    // 소비자 (consumer), 비자금 (slush fund), 비자발적 (involuntary).
+    { term: "비자", notAfter: "소", notBefore: "금|발적" },
+    "입국",
+    { term: "항공", notBefore: "모함" },
+    "결항",
+    "태풍",
+    "축제",
+    "성수기",
+    { term: "안전", notBefore: "자산" },
+  ],
+);
 
 const NICHE_ONLY =
   /\b(ngo|diplomatic|mission|expat\s*compound|mining\s*camp|peacekeeping)\b/i;

@@ -13,10 +13,16 @@ export type AgendaSlateCandidateState =
   | "AVAILABLE"
   | "SELECTED_TODAY"
   | "DEFERRED"
+  /** Operator kept it in the agenda pool: stays eligible (not pinned) on later days. */
+  | "KEPT_IN_POOL"
   | "REJECTED";
 
-/** Distinguishes intentional deferred carry-over from organic rediscovery. */
-export type AgendaSlateCandidateOrigin = "organic_research" | "deferred_carryover";
+/**
+ * Distinguishes intentional deferred carry-over and agenda-pool resurfacing from
+ * organic rediscovery. Items already shown on an earlier slate only come back via
+ * these two paths.
+ */
+export type AgendaSlateCandidateOrigin = "organic_research" | "deferred_carryover" | "agenda_pool";
 
 export type AgendaSlateEvidenceSummary = {
   evidenceId: string;
@@ -50,8 +56,14 @@ export type AgendaSlateCandidate = {
   agendaCandidateId: string | null;
   researchBriefId: string | null;
   canonicalArticleIds: string[];
+  /** Source-language title/summary; production requests and Story keep using these. */
   title: string;
   summary: string;
+  /** Korean display title/summary from MM curation (null when unavailable). */
+  titleKo?: string | null;
+  summaryKo?: string | null;
+  /** First business date an operator kept this identity in the agenda pool. */
+  poolKeptFromBusinessDateKst?: string | null;
   score: number | null;
   scoreReasons: string[];
   destinations: string[];
@@ -99,6 +111,9 @@ export type DailyAgendaSlate = {
     excludedAgendaCandidateIds: string[];
     excludedBriefIds: string[];
     rejectedExcludedAgendaCandidateIds?: string[];
+    /** Identity keys shown on an earlier slate and not kept in the pool. */
+    previouslyPresentedExcludedCount?: number;
+    pooledEligibleCount?: number;
   };
   curation: {
     mode: "manager_curated" | "deterministic_fallback";
@@ -107,6 +122,7 @@ export type DailyAgendaSlate = {
   observability: {
     organicCount: number;
     deferredCarryoverCount: number;
+    agendaPoolCount?: number;
     availableCount: number;
     selectedTodayCount: number;
   };
@@ -116,6 +132,7 @@ export type DailyAgendaSlate = {
 export type AgendaSlateAction =
   | "select_today"
   | "defer"
+  | "keep_in_pool"
   | "reject"
   | "reset_available";
 

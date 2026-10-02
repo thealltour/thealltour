@@ -16,6 +16,9 @@ export type ManagerSlateCurationItem = {
   researchBriefId: string | null;
   title: string;
   summary: string;
+  /** Korean display title/summary for the operator (null when the model omitted them). */
+  titleKo?: string | null;
+  summaryKo?: string | null;
   rationale: string[];
   freshnessWhyNow: string | null;
   koreanTravelerRelevance: string | null;
@@ -227,6 +230,18 @@ export function measureManagerSlateCurationPromptBytes(
   };
 }
 
+const TITLE_KO_CHAR_LIMIT = 80;
+const SUMMARY_KO_CHAR_LIMIT = 320;
+
+/** The operator reviews the slate in Korean; source title/summary stay in their own language. */
+const KOREAN_OUTPUT_RULES: readonly string[] = [
+  "Every item MUST include titleKo and summaryKo written in natural Korean (한국어), even when the source is English or another language.",
+  "titleKo: one Korean headline, about 60 characters or fewer. summaryKo: 1-2 Korean sentences, about 200 characters or fewer.",
+  "Translate faithfully from the input title/summary/evidence; do not add facts that are not in the input.",
+  "Write rationale, freshnessWhyNow, koreanTravelerRelevance, practicalTravelValue, theAllTourBusinessRelevance, contentPotential in Korean.",
+  "Keep proper nouns (places, brands, airlines) recognizable; add the original spelling in parentheses only when needed.",
+];
+
 export function buildManagerAgendaSlateCurationPrompt(
   context: MarketingResearchContext,
   targetSize = 6,
@@ -251,8 +266,9 @@ export function buildManagerAgendaSlateCurationPrompt(
     "Copy agendaCandidateId/researchBriefId EXACTLY from input.agendaCandidates.",
     "Do NOT echo the empty schema example. Do NOT return an empty items array when candidates exist.",
     "Title/summary may be omitted when IDs are valid; IDs are mandatory and must resolve to the pool.",
+    ...KOREAN_OUTPUT_RULES,
     JSON.stringify(payload),
-    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","title":"<optional>","summary":"<optional>","rationale":["..."],"freshnessWhyNow":"...","koreanTravelerRelevance":"...","practicalTravelValue":"...","theAllTourBusinessRelevance":"...","contentPotential":"...","recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
+    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","title":"<optional>","summary":"<optional>","titleKo":"<한국어 제목>","summaryKo":"<한국어 요약>","rationale":["..."],"freshnessWhyNow":"...","koreanTravelerRelevance":"...","practicalTravelValue":"...","theAllTourBusinessRelevance":"...","contentPotential":"...","recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
   ].join("\n");
 }
 
@@ -282,8 +298,9 @@ export function buildManagerAgendaSlateFormatRepairPrompt(
     `Select ${size} distinct candidates from input.agendaCandidates (allowed range 5-8).`,
     "Copy agendaCandidateId/researchBriefId EXACTLY from input. Do NOT invent IDs.",
     "Title/summary may be omitted when IDs resolve. Do NOT draft content.",
+    ...KOREAN_OUTPUT_RULES,
     JSON.stringify(payload),
-    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","rationale":["..."],"recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
+    'shape: {"decision":"curate","items":[{"agendaCandidateId":"<from input>","researchBriefId":"<from input>","titleKo":"<한국어 제목>","summaryKo":"<한국어 요약>","rationale":["..."],"recommendedFormats":["threads_text"],"recommendedChannel":"threads"}],"managerMessage":null,"deferReason":null}',
   ].join("\n");
 }
 
@@ -370,6 +387,8 @@ export function parseManagerAgendaSlateCurationDetailed(
       researchBriefId: known.researchBriefId,
       title,
       summary,
+      titleKo: clipText(asOptionalString(record.titleKo), TITLE_KO_CHAR_LIMIT),
+      summaryKo: clipText(asOptionalString(record.summaryKo), SUMMARY_KO_CHAR_LIMIT),
       rationale: asStringArray(record.rationale, 6),
       freshnessWhyNow: asOptionalString(record.freshnessWhyNow),
       koreanTravelerRelevance: asOptionalString(record.koreanTravelerRelevance),

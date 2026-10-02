@@ -227,12 +227,12 @@ describe("Instagram presence for Shared Visual Planner", () => {
         instagram: ig,
       }),
     });
-    expect(Object.keys(input.channels)).toEqual(expect.arrayContaining(["threads", "instagram"]));
+    expect(Object.keys(input.channels)).toEqual(["instagram"]);
     expect(input.sourceChannelSnapshot.channels.instagram?.present).toBe(true);
     expect(input.sourceChannelSnapshot.channels.instagram?.present).not.toBe(false);
   });
 
-  it("E. Planner IG usage kept when card exists", () => {
+  it("E. Planner IG usage kept when card exists; Threads usage dropped", () => {
     const bundle = baseBundle({
       instagram: channel({
         channel: "instagram",
@@ -275,10 +275,7 @@ describe("Instagram presence for Shared Visual Planner", () => {
         ],
       },
     });
-    expect(plan.visuals[0]!.usages).toEqual([
-      { channel: "threads", slotIndex: 0 },
-      { channel: "instagram", cardId: "card-01" },
-    ]);
+    expect(plan.visuals[0]!.usages).toEqual([{ channel: "instagram", cardId: "card-01" }]);
   });
 
   it("F. invalid cardId dropped only — presence stays true", () => {
@@ -326,7 +323,7 @@ describe("Instagram presence for Shared Visual Planner", () => {
     expect(buildSourceChannelSnapshot(bundle).channels.instagram?.present).toBe(true);
   });
 
-  it("G. Dao-like: Threads+Instagram both present in snapshot and planner input", () => {
+  it("G. Dao-like: only Instagram reaches the snapshot and planner input", () => {
     const bundle = baseBundle({
       threads: channel({
         channel: "threads",
@@ -368,9 +365,11 @@ describe("Instagram presence for Shared Visual Planner", () => {
       }),
     });
     const snap = buildSourceChannelSnapshot(bundle);
-    expect(snap.channels.threads?.present).toBe(true);
+    expect(snap.version).toBe(2);
+    expect(snap.channels.threads).toBeUndefined();
     expect(snap.channels.instagram?.present).toBe(true);
     const input = buildSharedVisualPlannerInput({ approvedAsset, bundle });
+    expect(input.channels.threads).toBeUndefined();
     expect(input.channels.instagram).toBeDefined();
     expect(
       (input.channels.instagram as { content: { cards: unknown[] } }).content.cards.length,

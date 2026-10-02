@@ -1,6 +1,9 @@
 /**
  * Source channel snapshot for Shared Visual Plan provenance + stale detection.
- * Tracks which publishable channel outputs a plan was built against.
+ * Version 2 tracks only the Instagram card structure the plan was built against: caption edits
+ * and other channels never make the plan stale. Reviewed card copy drift is detected separately
+ * through the Instagram Visual Role Plan (packageLifecycle). Snapshots without a version
+ * (all-channel v1) never equal a v2 snapshot, so plans built before v2 read as stale.
  */
 
 import { createHash } from "node:crypto";
@@ -30,7 +33,11 @@ export type SourceChannelSnapshotEntry = {
   status: string | null;
 };
 
+export const SOURCE_CHANNEL_SNAPSHOT_VERSION = 2 as const;
+
 export type SourceChannelSnapshot = {
+  /** Absent on legacy all-channel snapshots. */
+  version?: number;
   bundleSourceRevision: string;
   channels: Partial<Record<SourceChannelSnapshotKey, SourceChannelSnapshotEntry>>;
 };
@@ -128,44 +135,46 @@ export function computeChannelContentFingerprint(
   return hashPayload(payload);
 }
 
-function slotForKey(
-  bundle: PublishableContentBundle,
-  key: SourceChannelSnapshotKey,
-): PublishableChannelContent | null | undefined {
-  switch (key) {
-    case "threads":
-      return bundle.threads;
-    case "instagram":
-      return bundle.instagram;
-    case "naver_blog":
-      return bundle.naver_blog;
-    case "naver_band":
-      return bundle.naver_band;
-    case "kakao_channel":
-      return bundle.kakao_channel;
-    case "shortform":
-      return bundle.shortform;
-  }
+/** Instagram card structure only — caption, generatedAt, and status are excluded on purpose. */
+export function computeInstagramCardStructureFingerprint(
+  slot: PublishableChannelContent | null | undefined,
+): string | null {
+  if (!slot || !isGeneratedChannel(slot)) return null;
+  return hashPayload({
+    channel: "instagram",
+    cards: (slot.instagramMeta?.cardPlan ?? []).map((card, i) => ({
+      i,
+      cardId: card.cardId ?? null,
+      role: norm(card.role),
+      visualIntent: norm(card.visualIntent),
+      visual: card.visual
+        ? {
+            visualMode: norm(card.visual.visualMode),
+            generatedVisualNeeded: Boolean(card.visual.generatedVisualNeeded),
+            visualIntent: norm(card.visual.visualIntent),
+          }
+        : null,
+    })),
+  });
 }
 
 export function buildSourceChannelSnapshot(
   bundle: PublishableContentBundle,
 ): SourceChannelSnapshot {
-  const channels: SourceChannelSnapshot["channels"] = {};
-  for (const key of SOURCE_CHANNEL_SNAPSHOT_CHANNELS) {
-    const slot = slotForKey(bundle, key);
-    const present = isGeneratedChannel(slot);
-    channels[key] = {
-      present,
-      revision: present ? (slot?.sourceRevision?.trim() || null) : null,
-      fingerprint: present ? computeChannelContentFingerprint(slot) : null,
-      generatedAt: present ? (slot?.generatedAt ?? null) : null,
-      status: present ? (slot?.status ?? null) : null,
-    };
-  }
+  const slot = bundle.instagram;
+  const present = isGeneratedChannel(slot);
   return {
+    version: SOURCE_CHANNEL_SNAPSHOT_VERSION,
     bundleSourceRevision: bundle.sourceRevision?.trim() || "",
-    channels,
+    channels: {
+      instagram: {
+        present,
+        revision: present ? (slot?.sourceRevision?.trim() || null) : null,
+        fingerprint: present ? computeInstagramCardStructureFingerprint(slot) : null,
+        generatedAt: null,
+        status: null,
+      },
+    },
   };
 }
 
@@ -188,6 +197,7 @@ export function parseSourceChannelSnapshot(raw: unknown): SourceChannelSnapshot 
   const row = raw as Record<string, unknown>;
   const bundleSourceRevision =
     typeof row.bundleSourceRevision === "string" ? row.bundleSourceRevision.trim() : "";
+  const version = typeof row.version === "number" && Number.isFinite(row.version) ? row.version : undefined;
   const channelsRaw =
     row.channels && typeof row.channels === "object"
       ? (row.channels as Record<string, unknown>)
@@ -205,5 +215,9 @@ export function parseSourceChannelSnapshot(raw: unknown): SourceChannelSnapshot 
       status: typeof e.status === "string" ? e.status : null,
     };
   }
-  return { bundleSourceRevision, channels };
+  return { ...(version !== undefined ? { version } : {}), bundleSourceRevision, channels };
+}
+
+export function isLegacySourceChannelSnapshot(snapshot: SourceChannelSnapshot | null | undefined): boolean {
+  return Boolean(snapshot) && snapshot!.version !== SOURCE_CHANNEL_SNAPSHOT_VERSION;
 }

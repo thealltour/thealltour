@@ -111,7 +111,7 @@ describe("MarketingReviewExternalEditorialPanel research conflicts", () => {
     mockFetch([candidate("xe_1790664679428_09c87ca6b0", false)]);
     renderPanel();
 
-    expect(await screen.findByText(/연구를 보류하고 채널 결과를 보내지 않았습니다/)).toBeTruthy();
+    expect(await screen.findByText(/연구를 보류했습니다\(blocked\)/)).toBeTruthy();
     expect(screen.queryByText(/External 선택 불가/)).toBeNull();
     expect(screen.getByRole("link", { name: "MICHELIN Guide" }).getAttribute("href")).toBe(
       "https://guide.michelin.com/x",
@@ -145,7 +145,40 @@ describe("MarketingReviewExternalEditorialPanel research conflicts", () => {
       importId: "xe_1790664679428_09c87ca6b0",
       conflictIndexes: [0, 1],
     });
-    expect(await screen.findByText(/수정본 승인 → Research Editorial용 JSON 다시 복사 → ChatGPT 재실행/)).toBeTruthy();
+    expect(await screen.findByText(/Instagram 카드뉴스 JSON을 복사해 ChatGPT에 요청하세요/)).toBeTruthy();
+  });
+
+  it("keeps research conflicts from the newest research import when an Instagram cardnews import is newer", async () => {
+    const instagramReadiness = {
+      ...readiness(),
+      instagram: { present: true, materializable: true, issues: [] },
+    };
+    const calls = mockFetch([
+      {
+        importId: "xe_1790664679999_igcardnews",
+        importedAt: "2026-09-29T03:00:00.000Z",
+        importedBy: "ysh",
+        resultContract: "instagram-cardnews-chatgpt-result-v1",
+        canonicalVersion: 2,
+        warnings: [],
+        channelReadiness: instagramReadiness,
+        stale: false,
+        research: null,
+      },
+      candidate("xe_1790664679428_09c87ca6b0", false),
+    ]);
+    renderPanel();
+
+    expect(await screen.findByText(/Instagram 카드뉴스 · xe_1790664679999_igcardnews/)).toBeTruthy();
+    expect(screen.getByLabelText("충돌 1")).toBeTruthy();
+    expect(screen.queryByText(/External 선택 불가/)).toBeNull();
+
+    const draftButton = screen.getByRole("button", { name: "승인본 v3 초안 만들기" }) as HTMLButtonElement;
+    await waitFor(() => expect(draftButton.disabled).toBe(false));
+    fireEvent.click(draftButton);
+    await waitFor(() => expect(calls.some((c) => c.init?.method === "POST")).toBe(true));
+    const postCall = calls.find((c) => c.init?.method === "POST");
+    expect(JSON.parse(String(postCall?.init?.body)).importId).toBe("xe_1790664679428_09c87ca6b0");
   });
 
   it("reloads channel review after an import that applied channels and lists the warnings", async () => {
@@ -161,7 +194,7 @@ describe("MarketingReviewExternalEditorialPanel research conflicts", () => {
     fireEvent.change(await screen.findByPlaceholderText(/editorial-research-bundle-chatgpt-result-v1/), {
       target: { value: '{"contract":"x"}' },
     });
-    fireEvent.click(screen.getByRole("button", { name: "외부 편집 결과 가져오기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Research 결과 가져오기" }));
 
     await waitFor(() => expect(onReload).toHaveBeenCalled());
     expect(calls.find((c) => c.init?.method === "POST")?.url).toBe(

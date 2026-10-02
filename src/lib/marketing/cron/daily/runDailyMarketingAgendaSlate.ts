@@ -2,7 +2,8 @@
  * Human-gated daily agenda slate orchestration (STEP G-1–G-6).
  *
  * Cron path:
- *   research → Validation Hardening cooldown (+ rejected slate cooldown)
+ *   research → Validation Hardening cooldown (+ rejected slate cooldown, + items shown
+ *   on earlier slates unless kept in the agenda pool)
  *   → deferred one-day carry → MM multi-curation (or deterministic fallback)
  *   → persist slate → STOP
  *
@@ -27,8 +28,10 @@ import { resolveResearchPrecondition } from "@/lib/marketing/cron/daily/resolveM
 import {
   buildDailyAgendaSlate,
   buildDailyAgendaSlateFromManagerCuration,
+  collectPreviouslyPresentedResearchIdentities,
   collectRejectedResearchIdentities,
   listDeferredFromPreviousDaySlate,
+  type AgendaPoolEntry,
 } from "@/lib/marketing/cron/daily/agendaSlate/buildDailyAgendaSlate";
 import {
   buildManagerAgendaSlateCurationPrompt,
@@ -196,6 +199,7 @@ async function curateOrFallbackSlate(input: {
   channel?: string | null;
   targetSize: number;
   deferredCarryover: DailyAgendaSlate["candidates"];
+  agendaPool: readonly AgendaPoolEntry[];
   cooldown: DailyAgendaSlate["cooldown"];
   invokeManagerProfile?: DailyAgendaSlatePipelineDeps["invokeManagerProfile"];
   now: Date;
@@ -209,6 +213,7 @@ async function curateOrFallbackSlate(input: {
     channel: input.channel,
     targetSize: input.targetSize,
     deferredCarryover: input.deferredCarryover,
+    agendaPool: input.agendaPool,
     cooldown: input.cooldown,
     now: input.now,
   };
@@ -240,7 +245,7 @@ async function curateOrFallbackSlate(input: {
     const raw1 = await input.invokeManagerProfile(prompt);
     let detailed = parseManagerAgendaSlateCurationDetailed(raw1, input.research, input.targetSize);
     let managerAttemptCount = 1;
-    let firstAttemptFailureClass = detailed.diagnostics.failureClass;
+    const firstAttemptFailureClass = detailed.diagnostics.failureClass;
     let formatRetryUsed = false;
 
     // Exactly one bounded format-repair retry for JSON/format parse failure only.
@@ -454,6 +459,33 @@ export async function runDailyMarketingAgendaSlate(
     }
   }
 
+  const recentCandidates = await repo.listCandidates({ limit: 64 });
+  const cooledFromProduction = collectRecentResearchIdentities(
+    recentCandidates,
+    businessDateKst,
+    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+  );
+
+  const recentSlates = await slateRepo.listRecent({
+    limit: 14,
+    beforeBusinessDateKst: businessDateKst,
+  });
+  const rejected = collectRejectedResearchIdentities(
+    recentSlates,
+    businessDateKst,
+    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+  );
+  const previouslyPresented = collectPreviouslyPresentedResearchIdentities(
+    recentSlates,
+    businessDateKst,
+    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
+  );
+  const cooledIdentities = mergeResearchIdentitySets(
+    cooledFromProduction,
+    rejectedIdentitiesToSet(rejected),
+    previouslyPresented.excluded,
+  );
+
   let research: MarketingResearchContext;
   try {
     if (deps.getResearchContext) {
@@ -462,7 +494,10 @@ export async function runDailyMarketingAgendaSlate(
       const { getMarketingManagerResearchContext } = await import(
         "@/lib/marketing/research/manager/getMarketingManagerResearchContext"
       );
-      research = await getMarketingManagerResearchContext({}, { now });
+      research = await getMarketingManagerResearchContext(
+        { excludeResearchIdentities: cooledIdentities },
+        { now },
+      );
     }
   } catch {
     return failRun(repo, { ...run, researchStatus: "unavailable" }, "RESEARCH_UNAVAILABLE", now);
@@ -518,26 +553,7 @@ export async function runDailyMarketingAgendaSlate(
     // Live editorial overlay must never block Agenda.
   }
 
-  const recentCandidates = await repo.listCandidates({ limit: 64 });
-  const cooledFromProduction = collectRecentResearchIdentities(
-    recentCandidates,
-    businessDateKst,
-    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
-  );
-
-  const recentSlates = await slateRepo.listRecent({
-    limit: 14,
-    beforeBusinessDateKst: businessDateKst,
-  });
-  const rejected = collectRejectedResearchIdentities(
-    recentSlates,
-    businessDateKst,
-    DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
-  );
-  const cooledIdentities = mergeResearchIdentitySets(
-    cooledFromProduction,
-    rejectedIdentitiesToSet(rejected),
-  );
+  // Safety net: injected contexts (tests) and pre-filter misses still get the same exclusions.
   const cooldownApplied = applyResearchIdentityCooldown(research, cooledIdentities);
   research = cooldownApplied.context;
 
@@ -619,6 +635,8 @@ export async function runDailyMarketingAgendaSlate(
         excludedAgendaCandidateIds: cooldownApplied.excludedAgendaCandidateIds,
         excludedBriefIds: cooldownApplied.excludedBriefIds,
         rejectedExcludedAgendaCandidateIds: rejected.agendaCandidateIds,
+        previouslyPresentedExcludedCount: previouslyPresented.excludedIdentityCount,
+        pooledEligibleCount: previouslyPresented.pool.length,
       },
       semanticSoftDemotion: semanticSoftDemotionMeta,
       trendPreflight: trendPreflightMeta,
@@ -667,11 +685,14 @@ export async function runDailyMarketingAgendaSlate(
     channel: input.channel,
     targetSize,
     deferredCarryover,
+    agendaPool: previouslyPresented.pool,
     cooldown: {
       days: DEFAULT_RESEARCH_IDENTITY_COOLDOWN_DAYS,
       excludedAgendaCandidateIds: cooldownApplied.excludedAgendaCandidateIds,
       excludedBriefIds: cooldownApplied.excludedBriefIds,
       rejectedExcludedAgendaCandidateIds: rejected.agendaCandidateIds,
+      previouslyPresentedExcludedCount: previouslyPresented.excludedIdentityCount,
+      pooledEligibleCount: previouslyPresented.pool.length,
     },
     invokeManagerProfile: deps.invokeManagerProfile,
     now,

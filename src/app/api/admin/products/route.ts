@@ -42,6 +42,7 @@ type ProductBody = {
   attractions_json?: unknown;
   package_catalog_json?: PackageCatalog | null;
   product_source_url?: string | null;
+  departure_city?: string | null;
   point_benefits?: string | null;
   point_tourism?: string | null;
   point_guide?: string | null;
@@ -378,6 +379,10 @@ export async function POST(request: Request) {
   }
   if (body.product_source_url !== undefined) {
     insertPayload.product_source_url = body.product_source_url?.trim() || null;
+  }
+  // 이 경로는 컬럼 자동 제거가 없어, 마이그레이션 전 DB에서 빈 값으로 500이 나지 않게 값이 있을 때만 넣는다
+  if (body.departure_city?.trim()) {
+    insertPayload.departure_city = body.departure_city.trim();
   }
   if (body.departure_from_airport !== undefined) {
     insertPayload.departure_from_airport = body.departure_from_airport?.trim() || null;

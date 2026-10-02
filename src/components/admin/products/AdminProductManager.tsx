@@ -1864,6 +1864,7 @@ export default function AdminProductManager() {
             openCoverRecommendModal,
             setShowImageImportGuideModal,
             formatPriceWithCommas,
+            editingId,
           }}
           scheduleProps={{
             form,

@@ -6,6 +6,9 @@ import {
   normalizeStringList,
   normalizeTitle,
 } from "@/lib/marketing/research/fingerprint";
+import { canCollectResearchSource, sourceLifecycleRejectionReason } from "@/lib/marketing/research/sourceLifecycle";
+import { resolveSignalGeography } from "@/lib/marketing/research/sourceCoverage";
+import { resolveSignalLanguage } from "@/lib/marketing/research/sourceLanguage";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type {
   RawResearchSignalInput,
@@ -29,20 +32,28 @@ export function normalizeResearchSignal(
   source: ResearchSource,
   now: Date = new Date(),
 ): NormalizeSignalResult {
-  if (!source.isEnabled) {
-    return { ok: false, reason: "source_disabled" };
+  if (!canCollectResearchSource(source)) {
+    return { ok: false, reason: sourceLifecycleRejectionReason(source) };
   }
   if (!hasMinimalProvenance(input)) {
     return { ok: false, reason: "insufficient_provenance" };
   }
 
   const id = input.id ?? randomUUID();
-  const observedAt = input.observedAt;
   const title = normalizeTitle(input.title);
   const destinations = normalizeStringList(input.destinations ?? []);
-  const geography = normalizeStringList(input.geography ?? []);
   const topics = normalizeStringList(input.topics ?? []);
   const entities = normalizeStringList(input.entities ?? []);
+  const resolvedGeography = resolveSignalGeography(
+    { geography: input.geography, title: input.title, summary: input.summary, entities },
+    source,
+  );
+  const geography = normalizeStringList(resolvedGeography.geography);
+  const resolvedLanguage = resolveSignalLanguage(input.language, source);
+  const fallbackProvenance = {
+    ...(resolvedGeography.coverageFallbackApplied ? { geographyFallbackApplied: true } : {}),
+    ...(resolvedLanguage.languageFallbackApplied ? { languageFallbackApplied: true } : {}),
+  };
 
   const rawFingerprint = computeRawFingerprint({
     sourceId: input.sourceId,
@@ -70,8 +81,12 @@ export function normalizeResearchSignal(
     geography,
     topics,
     entities,
+    language: resolvedLanguage.language,
     rawFingerprint,
     normalizedFingerprint,
+    ...(Object.keys(fallbackProvenance).length > 0
+      ? { metadata: { ...(input.metadata ?? {}), ...fallbackProvenance } }
+      : {}),
     status: "normalized",
     duplicateOfSignalId: null,
     corroborationCount: 0,

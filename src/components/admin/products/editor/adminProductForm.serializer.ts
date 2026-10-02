@@ -175,6 +175,7 @@ export function serializeAdminProductForm(
     refund_policy_template_type:
       form.refund_policy_template_type === "" ? null : form.refund_policy_template_type,
     product_source_url: form.product_source_url.trim() === "" ? null : form.product_source_url.trim(),
+    departure_city: form.departure_city.trim() === "" ? null : form.departure_city.trim(),
     image_url: primaryImageUrl,
     images_json: normalizedImages.length > 0 ? normalizedImages : undefined,
     category: String(form.category ?? "").trim(),

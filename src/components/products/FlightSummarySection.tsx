@@ -2,6 +2,8 @@
 
 import type { Product } from "@/types/product";
 import { AirlineLogo } from "@/components/airlines/AirlineLogo";
+import { ProductDepartureCitySwitcher } from "@/components/products/ProductDepartureCitySwitcher";
+import { useProductDepartureSiblings } from "@/components/products/ProductDepartureSiblingsContext";
 import { Icon } from "@/components/ui/Icon";
 import type { IconName } from "@/icons";
 
@@ -181,22 +183,27 @@ export type FlightSummarySectionProps = {
   product: Product | null;
   compact?: boolean;
   embedded?: boolean;
+  /** 출발지별 형제 상품 전환 칩 (상품 상세 본문에서만 켬) */
+  showDepartureSwitcher?: boolean;
 };
 
 /**
  * 출발/도착 항공편 카드 (여행 오버뷰 위에 별도 배치)
- * - 데이터 없으면 렌더하지 않음
+ * - 항공 데이터도 출발지 형제도 없으면 렌더하지 않음
  */
 export function FlightSummarySection({
   product,
   compact = false,
   embedded = false,
+  showDepartureSwitcher = false,
 }: FlightSummarySectionProps) {
+  const { siblings } = useProductDepartureSiblings();
   if (!product) return null;
 
   const hasDepart = hasDepartureFlight(product);
   const hasArrival = hasArrivalFlight(product);
-  if (!hasDepart && !hasArrival) return null;
+  const hasSwitcher = showDepartureSwitcher && siblings.length > 1;
+  if (!hasDepart && !hasArrival && !hasSwitcher) return null;
 
   const depFrom = product.departure_from_airport?.trim() || "";
   const depTo = product.departure_to_airport?.trim() || "";
@@ -243,7 +250,16 @@ export function FlightSummarySection({
           항공
         </h2>
         {!compact && <p className="mt-1 text-base text-slate-500">출발·도착 항공편 정보입니다.</p>}
+        {hasSwitcher ? (
+          <div className="mt-3 space-y-1.5">
+            <ProductDepartureCitySwitcher variant="flight" />
+            <p className="text-xs text-slate-500">
+              출발지를 바꾸면 항공편·일정·요금이 그 출발지 기준으로 함께 바뀝니다.
+            </p>
+          </div>
+        ) : null}
         <div className={compact ? "mt-3 space-y-3" : "mt-6 space-y-4"}>
+          {hasDepart || hasArrival ? (
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 md:hidden">
             {hasDepart ? (
               <MobileFlightBlock
@@ -275,6 +291,9 @@ export function FlightSummarySection({
               />
             ) : null}
           </div>
+          ) : (
+            <p className="text-sm text-slate-500">항공편 정보는 상담 시 안내해 드립니다.</p>
+          )}
 
           <div className="hidden space-y-4 md:block">
             {hasDepart && (

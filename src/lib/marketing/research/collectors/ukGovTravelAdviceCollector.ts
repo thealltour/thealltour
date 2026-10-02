@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import {
-  UK_GOV_TRAVEL_FEED_URL,
-  UK_GOV_TRAVEL_SOURCE_ID,
-} from "@/lib/marketing/research/collectors/config";
+  UK_GOV_TRAVEL_SOURCE,
+  type ExternalResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { fetchResearchDocument } from "@/lib/marketing/research/collectors/httpClient";
 import { parseFeedFromXml } from "@/lib/marketing/research/collectors/feedParser";
 import {
-  conservativeClaim,
   extractDestinationFromTitle,
   inferOfficialSignalType,
   inferTopics,
@@ -18,30 +17,30 @@ import type {
   ResearchCollector,
 } from "@/lib/marketing/research/collectors/types";
 
-export const UK_GOV_TRAVEL_COLLECTOR_ID = "uk-gov-travel-advice";
-
 export type UkGovTravelAdviceCollectorDeps = {
   fetchImpl?: typeof fetch;
 };
 
+/** `uk_gov_travel_advice` mapper profile: keeps the full summary as claim (no 240-char cut). */
 export function createUkGovTravelAdviceCollector(
   deps: UkGovTravelAdviceCollectorDeps = {},
+  source: ExternalResearchSourceDefinition = UK_GOV_TRAVEL_SOURCE,
 ): ResearchCollector {
   return {
-    collectorId: UK_GOV_TRAVEL_COLLECTOR_ID,
-    sourceType: "official_government",
+    collectorId: source.key,
+    sourceId: source.id,
+    sourceType: source.sourceType,
     async collect(context: CollectorContext): Promise<RawResearchItem[]> {
       const observedAt = context.now.toISOString();
       const { body } = await fetchResearchDocument({
-        url: UK_GOV_TRAVEL_FEED_URL,
+        url: source.feedUrl,
         fetchImpl: deps.fetchImpl,
       });
-      const items = await parseFeedFromXml(body, UK_GOV_TRAVEL_FEED_URL);
+      const items = await parseFeedFromXml(body, source.feedUrl);
       const limit = context.maxItems ?? 25;
 
       return items.slice(0, limit).map((item) => {
         const summary = item.summary.trim();
-        const claim = conservativeClaim(summary, item.title);
         const destinations = extractDestinationFromTitle(item.title);
         const topics = inferTopics(item.title, summary);
 
@@ -53,14 +52,14 @@ export function createUkGovTravelAdviceCollector(
           canonicalUrl: item.link,
           publishedAt: item.publishedAt,
           observedAt,
-          locale: "en-GB",
-          language: "en",
+          locale: source.locale,
+          language: null,
           destinationHints: destinations,
           topicHints: topics,
           evidence: [
             {
               id: randomUUID(),
-              sourceId: context.sourceId || UK_GOV_TRAVEL_SOURCE_ID,
+              sourceId: context.sourceId || source.id,
               url: item.link,
               title: item.title,
               excerpt: summary,
@@ -70,9 +69,13 @@ export function createUkGovTravelAdviceCollector(
             },
           ],
           metadata: {
-            collectorId: UK_GOV_TRAVEL_COLLECTOR_ID,
-            signalTypeHint: inferOfficialSignalType(item.title, summary),
-            feedUrl: UK_GOV_TRAVEL_FEED_URL,
+            collectorId: source.key,
+            signalTypeHint: inferOfficialSignalType(
+              item.title,
+              summary,
+              source.semantics.classification.defaultSignalType,
+            ),
+            feedUrl: source.feedUrl,
           },
         };
       });
@@ -89,6 +92,7 @@ export function mapUkGovItemToRawResearchItem(
     publishedAt: string | null;
   },
   context: { sourceId: string; observedAt: string },
+  source: ExternalResearchSourceDefinition = UK_GOV_TRAVEL_SOURCE,
 ): RawResearchItem | null {
   const title = item.title?.trim();
   if (!title) return null;
@@ -103,8 +107,8 @@ export function mapUkGovItemToRawResearchItem(
     canonicalUrl: item.link,
     publishedAt: item.publishedAt,
     observedAt: context.observedAt,
-    locale: "en-GB",
-    language: "en",
+    locale: source.locale,
+    language: null,
     destinationHints: extractDestinationFromTitle(title),
     topicHints: inferTopics(title, summary),
     evidence: [
@@ -120,8 +124,8 @@ export function mapUkGovItemToRawResearchItem(
       },
     ],
     metadata: {
-      collectorId: UK_GOV_TRAVEL_COLLECTOR_ID,
-      signalTypeHint: inferOfficialSignalType(title, summary),
+      collectorId: source.key,
+      signalTypeHint: inferOfficialSignalType(title, summary, source.semantics.classification.defaultSignalType),
     },
   };
 }

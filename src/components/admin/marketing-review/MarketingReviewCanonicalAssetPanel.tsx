@@ -17,6 +17,7 @@ type Props = {
   onBusy: (busy: boolean) => void;
   onMessage: (message: string) => void;
   onReload: () => void | Promise<void>;
+  showResearchHandoff?: boolean;
 };
 
 export function MarketingReviewCanonicalAssetPanel({
@@ -27,6 +28,7 @@ export function MarketingReviewCanonicalAssetPanel({
   onBusy,
   onMessage,
   onReload,
+  showResearchHandoff = true,
 }: Props) {
   const [titleKo, setTitleKo] = useState(asset.titleKo);
   const [openingHookKo, setOpeningHookKo] = useState(asset.openingHookKo);
@@ -180,7 +182,7 @@ export function MarketingReviewCanonicalAssetPanel({
 
   async function copyResearchEditorialHandoff() {
     if (!isCurrentVersionApproved) {
-      onMessage("현재 버전이 승인된 공통 원문만 Research Editorial JSON으로 복사할 수 있습니다.");
+      onMessage("현재 버전이 승인된 공통 원문만 Research 검증용 JSON으로 복사할 수 있습니다.");
       return;
     }
     onBusy(true);
@@ -196,13 +198,13 @@ export function MarketingReviewCanonicalAssetPanel({
       );
       const json = (await res.json().catch(() => ({}))) as { text?: string; message?: string };
       if (!res.ok || typeof json.text !== "string") {
-        onMessage(json.message ?? "Research Editorial JSON을 만들지 못했습니다.");
+        onMessage(json.message ?? "Research 검증용 JSON을 만들지 못했습니다.");
         return;
       }
       await navigator.clipboard.writeText(json.text);
-      onMessage(`복사 완료 — ${json.message ?? "Research Editorial용 JSON을 만들었습니다."}`);
+      onMessage(`복사 완료 — ${json.message ?? "Research 검증용 JSON을 만들었습니다."}`);
     } catch {
-      onMessage("Research Editorial JSON 복사에 실패했습니다.");
+      onMessage("Research 검증용 JSON 복사에 실패했습니다.");
     } finally {
       onBusy(false);
     }
@@ -445,6 +447,7 @@ export function MarketingReviewCanonicalAssetPanel({
         >
           ChatGPT용 원문 복사
         </button>
+        {showResearchHandoff ? (
         <button
           type="button"
           disabled={busy || !canEdit || !isCurrentVersionApproved}
@@ -456,8 +459,9 @@ export function MarketingReviewCanonicalAssetPanel({
           }
           className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
-          Research Editorial용 JSON 복사
+          Research 검증용 JSON 복사 (research만)
         </button>
+        ) : null}
       </div>
 
       <details className="rounded-lg border border-[var(--border)] p-3">

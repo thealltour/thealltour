@@ -14,7 +14,7 @@ import { performanceSnapshotExternalId } from "@/lib/marketing/performance/const
 import { loadPerformanceFeedbackSignals } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
 import { createUkGovTravelAdviceCollector } from "@/lib/marketing/research/collectors/ukGovTravelAdviceCollector";
 import { UK_GOV_ATOM_SAMPLE } from "@/lib/marketing/research/__tests__/feedFixtures";
-import { UK_GOV_TRAVEL_FEED_URL } from "@/lib/marketing/research/collectors/config";
+import { UK_GOV_TRAVEL_SOURCE } from "@/lib/marketing/research/sources/sourceRegistry";
 
 const NOW = new Date("2026-09-02T08:00:00.000Z");
 
@@ -158,7 +158,7 @@ describe("performance feedback research wiring", () => {
     await bootstrapResearchSources(repo, NOW);
 
     const fetchImpl = async (url: string | URL) => {
-      if (String(url) === UK_GOV_TRAVEL_FEED_URL) {
+      if (String(url) === UK_GOV_TRAVEL_SOURCE.feedUrl) {
         const encoded = new TextEncoder().encode(UK_GOV_ATOM_SAMPLE);
         return {
           ok: true,

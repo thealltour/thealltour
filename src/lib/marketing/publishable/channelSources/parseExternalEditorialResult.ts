@@ -15,7 +15,7 @@ import {
   type ResearchFindingSupportLevel,
   type ResearchOutputStatus,
 } from "@/lib/marketing/editorialDirector/researchHandoff/contracts";
-import { EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER } from "@/lib/marketing/editorialDirector/researchHandoff/outputContract";
+import { EDITORIAL_RESEARCH_RESULT_ACCEPTED_KEYS } from "@/lib/marketing/editorialDirector/researchHandoff/outputContract";
 import { CHANNEL_SOURCE_MESSAGES_KO } from "@/lib/marketing/publishable/channelSources/contracts";
 
 export type ExternalResearchFinding = {
@@ -235,7 +235,7 @@ export function parseExternalEditorialResult(input: {
     );
   }
 
-  const allowedKeys = new Set<string>(EDITORIAL_RESEARCH_TOP_LEVEL_KEY_ORDER);
+  const allowedKeys = new Set<string>(EDITORIAL_RESEARCH_RESULT_ACCEPTED_KEYS);
   const unknownKeys = Object.keys(result).filter((k) => !allowedKeys.has(k));
   if (unknownKeys.length > 0) {
     return fail("unknown_top_level_key", CHANNEL_SOURCE_MESSAGES_KO.unknownTopLevelKey, unknownKeys);

@@ -11,9 +11,9 @@ import {
   UK_GOV_ATOM_SAMPLE,
 } from "@/lib/marketing/research/__tests__/feedFixtures";
 import {
-  NYT_TRAVEL_FEED_URL,
-  UK_GOV_TRAVEL_FEED_URL,
-} from "@/lib/marketing/research/collectors/config";
+  NYT_TRAVEL_SOURCE,
+  UK_GOV_TRAVEL_SOURCE,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { createNytTravelRssCollector } from "@/lib/marketing/research/collectors/nytTravelRssCollector";
 import { createUkGovTravelAdviceCollector } from "@/lib/marketing/research/collectors/ukGovTravelAdviceCollector";
 import { createInMemoryResearchRepository } from "@/lib/marketing/research/repository/inMemoryResearchRepository";
@@ -59,8 +59,8 @@ describe("research collection cycle", () => {
   it("runs end-to-end synthetic integration with mocked feeds", async () => {
     const repo = createInMemoryResearchRepository();
     const fetchImpl = mockFetch({
-      [UK_GOV_TRAVEL_FEED_URL]: UK_GOV_ATOM_SAMPLE,
-      [NYT_TRAVEL_FEED_URL]: NYT_TRAVEL_RSS_SAMPLE,
+      [UK_GOV_TRAVEL_SOURCE.feedUrl]: UK_GOV_ATOM_SAMPLE,
+      [NYT_TRAVEL_SOURCE.feedUrl]: NYT_TRAVEL_RSS_SAMPLE,
     });
 
     const result = await runResearchCollectionCycle({
@@ -85,7 +85,7 @@ describe("research collection cycle", () => {
     await bootstrapResearchSources(repo, NOW);
 
     const fetchImpl = vi.fn(async (url: string | URL) => {
-      if (String(url) === UK_GOV_TRAVEL_FEED_URL) {
+      if (String(url) === UK_GOV_TRAVEL_SOURCE.feedUrl) {
         const encoded = new TextEncoder().encode(UK_GOV_ATOM_SAMPLE);
         return {
           ok: true,

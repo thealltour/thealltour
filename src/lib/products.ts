@@ -28,6 +28,11 @@ import {
   deriveDeparturesFromSchedules,
   normalizeDepartureSchedulesFromUnknown,
 } from "@/lib/products/normalizeDepartureSchedules";
+import {
+  DEPARTURE_SIBLINGS_SELECT,
+  buildDepartureSiblings,
+  type ProductDepartureSibling,
+} from "@/lib/products/departureSiblings";
 
 const FALLBACK_IMAGE = "https://picsum.photos/seed/thealltour-product/900/560";
 
@@ -124,9 +129,16 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
           ? `${row.duration_days}일`
           : undefined,
     departure:
-      typeof row.departure === "string" && row.departure.trim() !== ""
-        ? row.departure.trim()
+      typeof row.departure_city === "string" && row.departure_city.trim() !== ""
+        ? row.departure_city.trim()
+        : typeof row.departure === "string" && row.departure.trim() !== ""
+          ? row.departure.trim()
+          : undefined,
+    departure_city:
+      typeof row.departure_city === "string" && row.departure_city.trim() !== ""
+        ? row.departure_city.trim()
         : undefined,
+    departure_group_id: safeUuidOrNull(row.departure_group_id),
     airline:
       typeof row.airline === "string" && row.airline.trim() !== ""
         ? row.airline.trim()
@@ -701,6 +713,23 @@ export async function getProductByIdFresh(id: string) {
 
   const p = normalizeProduct(data as Record<string, unknown>);
   return hydrateProductsWithCampaignCardMeta([p], campaignTaxonomies)[0]!;
+}
+
+/** 상세 출발지 전환 칩용: 같은 묶음의 노출 중인 형제 상품 (현재 상품 포함). 없으면 빈 배열 */
+export async function getDepartureSiblings(
+  product: Pick<Product, "id" | "departure_group_id">,
+): Promise<ProductDepartureSibling[]> {
+  if (!product.departure_group_id) return [];
+  const { data, error } = await supabase
+    .from("products")
+    .select(DEPARTURE_SIBLINGS_SELECT)
+    .eq("departure_group_id", product.departure_group_id)
+    .eq("is_active", true);
+  if (error || !data) {
+    if (error) console.warn("[products] departure siblings query failed:", error.message);
+    return [];
+  }
+  return buildDepartureSiblings(data as Array<Record<string, unknown>>, product.id);
 }
 
 const getProductByIdCached = unstable_cache(

@@ -61,8 +61,8 @@ export async function POST(request: Request, context: RouteContext) {
       sourceRevision: payload.sourceRevision,
       researchContextAvailable: payload.researchContext.available,
       message: payload.researchContext.available
-        ? "Research Editorial용 JSON을 만들었습니다."
-        : "Research Editorial용 JSON을 만들었습니다. 연결된 내부 리서치가 없어 researchContext는 비어 있습니다.",
+        ? "Research 검증용 JSON을 만들었습니다. ChatGPT에는 research 결과만 요청합니다."
+        : "Research 검증용 JSON을 만들었습니다. 연결된 내부 리서치가 없어 researchContext는 비어 있습니다.",
     });
   } catch (error) {
     return humanReviewErrorResponse(error);

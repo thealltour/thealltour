@@ -1,3 +1,4 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type { ResearchSignal } from "@/lib/marketing/research/types/researchSignal";
 
@@ -40,7 +41,7 @@ export function scoreCorroboration(input: {
 
   const hasOfficial = [...input.clusterSignals].some((signal) => {
     const source = input.sources.get(signal.sourceId);
-    return source?.isOfficial || source?.sourceType === "official_government";
+    return isOfficialResearchSource(source);
   });
   const hasNews = [...input.clusterSignals].some((signal) => {
     const source = input.sources.get(signal.sourceId);

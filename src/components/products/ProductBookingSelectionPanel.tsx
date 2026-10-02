@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { Minus, Plus } from "lucide-react";
 import { OptionGroup } from "@/components/products/OptionGroup";
 import { ProductDepartureCalendarPanel } from "@/components/products/ProductDepartureCalendarPanel";
+import { ProductDepartureCitySwitcher } from "@/components/products/ProductDepartureCitySwitcher";
+import { useProductDepartureSiblings } from "@/components/products/ProductDepartureSiblingsContext";
 import {
   MAX_TRAVELER_COUNT,
   MIN_TRAVELER_COUNT,
@@ -60,6 +62,7 @@ function panelSectionIds(variant: ProductBookingSelectionPanelVariant) {
   if (variant === "sheet") {
     return {
       panel: "product-booking-sheet",
+      departureCity: "product-sheet-departure-city-section",
       departure: "product-sheet-departure-section",
       traveler: "product-sheet-traveler-section",
       options: "product-sheet-options-section",
@@ -67,10 +70,16 @@ function panelSectionIds(variant: ProductBookingSelectionPanelVariant) {
   }
   return {
     panel: "product-booking-panel",
+    departureCity: "product-departure-city-section",
     departure: "product-departure-section",
     traveler: "product-traveler-section",
     options: "product-options-section",
   };
+}
+
+function formatCarriedYmd(ymd: string): string {
+  const [, month, day] = ymd.split("-").map(Number);
+  return month && day ? `${month}/${day}` : ymd;
 }
 
 function buildDepartureOptions(
@@ -137,6 +146,11 @@ export function ProductBookingSelectionPanel({
 }: ProductBookingSelectionPanelProps) {
   const compact = variant !== "page";
   const ids = panelSectionIds(variant);
+  const {
+    siblings: departureSiblings,
+    current: currentDeparture,
+    missingCarriedYmd,
+  } = useProductDepartureSiblings();
   const departureOptions = useMemo(
     () => buildDepartureOptions(schedules, departures),
     [schedules, departures],
@@ -159,7 +173,8 @@ export function ProductBookingSelectionPanel({
     sortedOptionGroups.length === 1 && sortedOptionGroups[0]?.type === "multi";
   const optionsSectionTitle = "추가 옵션·할증 선택";
 
-  if (!hasDepartures && !hasOptions && !showCalendarDeparture) return null;
+  const hasDepartureCitySwitcher = departureSiblings.length > 1;
+  if (!hasDepartures && !hasOptions && !showCalendarDeparture && !hasDepartureCitySwitcher) return null;
 
   const showDepartureSection = hasDepartures || showCalendarDeparture;
   const canDecrease = travelerCount > MIN_TRAVELER_COUNT;
@@ -249,12 +264,29 @@ export function ProductBookingSelectionPanel({
       )}
       aria-label="출발일 및 옵션 선택"
     >
+      {hasDepartureCitySwitcher ? (
+        <>
+          <div id={ids.departureCity} className="space-y-2 scroll-mt-24">
+            <h3 className={cn("font-bold text-[#0f172a]", compact ? "text-sm" : "text-base")}>
+              출발지 선택
+            </h3>
+            <ProductDepartureCitySwitcher variant="rail" />
+          </div>
+          <hr className={cn("border-[var(--divider)]", compact ? "my-3" : "my-5")} />
+        </>
+      ) : null}
+
       {showDepartureSection ? (
         <div id={ids.departure} className="space-y-2 scroll-mt-24">
           <h3 className={cn("font-bold text-[#0f172a]", compact ? "text-sm" : "text-base")}>
             출발일 선택
           </h3>
-          {!hasDepartureSelection ? (
+          {missingCarriedYmd && !hasDepartureSelection && currentDeparture ? (
+            <p className="text-xs font-medium text-[var(--warning)]" role="status">
+              {currentDeparture.departureCity}출발에는 {formatCarriedYmd(missingCarriedYmd)} 출발이 없습니다.
+              출발일을 다시 선택해 주세요.
+            </p>
+          ) : !hasDepartureSelection ? (
             <p className="text-xs font-medium text-[var(--warning)]">
               원하시는 출발일을 1개 선택해 주세요.
             </p>

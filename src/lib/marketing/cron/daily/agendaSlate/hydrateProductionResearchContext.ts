@@ -1,3 +1,4 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import "server-only";
 
 import { truncateBotText } from "@/lib/marketing/bot/sanitize";
@@ -50,7 +51,7 @@ function mapEvidenceRef(
     sourceId: evidence.sourceId,
     sourceType: source?.sourceType ?? null,
     sourceName: source?.name ?? null,
-    isOfficial: Boolean(source?.isOfficial || source?.sourceType === "official_government"),
+    isOfficial: isOfficialResearchSource(source),
     evidenceType: evidence.evidenceType,
     url: evidence.url ?? null,
     reference: evidence.reference ?? null,

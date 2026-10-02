@@ -4,13 +4,13 @@ import { createBandImportStagingUploadTarget } from "@/lib/admin/bandImport/band
 import { getFilenameExt, isBandImportImageExt } from "@/lib/admin/bandImport/bandImportImageConstants";
 
 function isAllowedStagingExt(ext: string): boolean {
-  return ext === "zip" || isBandImportImageExt(ext);
+  return ext === "zip" || ext === "hwp" || ext === "hwpx" || isBandImportImageExt(ext);
 }
 
 /**
- * 밴드 상품 등록 사진 업로드용 signed upload URL 발급.
+ * 밴드 상품 등록 사진·한글 문서 업로드용 signed upload URL 발급.
  * 이 요청 본문은 파일명만 담긴 JSON이라 Vercel의 4.5MB 함수 본문 제한과 무관하며,
- * 실제 zip/사진 바이트는 이 응답의 path/token으로 브라우저가 Supabase Storage에 직접 올린다.
+ * 실제 zip/사진/HWP 바이트는 이 응답의 path/token으로 브라우저가 Supabase Storage에 직접 올린다.
  */
 export async function POST(request: NextRequest) {
   const auth = await requireAdminSessionForPath("/api/admin/products/import-band/upload-url");
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   const ext = getFilenameExt(filename);
   if (!isAllowedStagingExt(ext)) {
     return NextResponse.json(
-      { message: "사진(jpg/jpeg/png/webp) 또는 zip 파일만 업로드할 수 있습니다." },
+      { message: "사진(jpg/jpeg/png/webp), zip 또는 한글 문서(hwp/hwpx)만 업로드할 수 있습니다." },
       { status: 400 },
     );
   }

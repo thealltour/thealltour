@@ -2,20 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import { bootstrapResearchSources } from "@/lib/marketing/research/collection/bootstrapSources";
 import {
-  NYT_TRAVEL_SOURCE_ID,
-  TRAVELDAILY_SOURCE_ID,
-  TRAVELTIMES_SOURCE_ID,
-  TRAVIE_SOURCE_ID,
-  UK_GOV_TRAVEL_SOURCE_ID,
-  VIETNAM_TRAVEL_SOURCE_ID,
   isCollectorEnabled,
   isResearchCollectionEnabled,
 } from "@/lib/marketing/research/collectors/config";
 import { mapRawResearchItemToSignalInput } from "@/lib/marketing/research/collectors/mapRawItemToSignalInput";
 import {
-  NYT_TRAVEL_COLLECTOR_ID,
-  UK_GOV_TRAVEL_COLLECTOR_ID,
-} from "@/lib/marketing/research/collectors";
+  PERFORMANCE_MEMORY_SOURCE_DEFINITION,
+  RESEARCH_SOURCE_REGISTRY,
+  projectResearchSource,
+  type ResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import type {
   CollectorRunResult,
   ResearchCollectionCycleResult,
@@ -24,20 +20,77 @@ import type {
 import { createDefaultResearchCollectors } from "@/lib/marketing/research/collectors";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import { runResearchPipeline } from "@/lib/marketing/research/services/pipeline";
+import {
+  canCollectResearchSource,
+  resolveSourceLifecycleStatus,
+  SOURCE_LIFECYCLE_INACTIVE,
+} from "@/lib/marketing/research/sourceLifecycle";
 import type { RawResearchSignalInput } from "@/lib/marketing/research/types/researchSignal";
 import { ResearchHttpError } from "@/lib/marketing/research/collectors/httpClient";
 import { loadPerformanceFeedbackSignals } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
 import type { PerformanceFeedbackLoadResult } from "@/lib/marketing/research/collection/loadPerformanceFeedbackSignals";
 import type { ContentPerformanceRepository } from "@/lib/marketing/performance/repository/contracts";
 
-const COLLECTOR_SOURCE_ID: Record<string, string> = {
-  [UK_GOV_TRAVEL_COLLECTOR_ID]: UK_GOV_TRAVEL_SOURCE_ID,
-  [NYT_TRAVEL_COLLECTOR_ID]: NYT_TRAVEL_SOURCE_ID,
-  "traveltimes-rss": TRAVELTIMES_SOURCE_ID,
-  "travie-rss": TRAVIE_SOURCE_ID,
-  "traveldaily-rss": TRAVELDAILY_SOURCE_ID,
-  "vietnam-travel-rss": VIETNAM_TRAVEL_SOURCE_ID,
-};
+export const COLLECTOR_IDENTITY_MISSING = "collector_identity_missing";
+export const COLLECTOR_SOURCE_UNREGISTERED = "collector_source_unregistered";
+
+type CollectorIdentityCheck =
+  | { ok: true; sourceId: string; definition: ResearchSourceDefinition }
+  | { ok: false; sourceId: string | null; error: { code: string; message: string } };
+
+/** Injected collectors bypass the registry factories, so their identity is checked at run time. */
+function checkCollectorIdentity(
+  collector: ResearchCollector,
+  sources: readonly ResearchSourceDefinition[],
+): CollectorIdentityCheck {
+  const raw: unknown = collector.sourceId;
+  const sourceId = typeof raw === "string" ? raw.trim() : "";
+  if (!sourceId) {
+    return {
+      ok: false,
+      sourceId: null,
+      error: {
+        code: COLLECTOR_IDENTITY_MISSING,
+        message: `collector ${collector.collectorId} has no sourceId`,
+      },
+    };
+  }
+  const definition = sources.find((source) => source.id === sourceId);
+  if (!definition) {
+    return {
+      ok: false,
+      sourceId,
+      error: {
+        code: COLLECTOR_SOURCE_UNREGISTERED,
+        message: `collector ${collector.collectorId} sourceId ${sourceId} is not in the research source registry`,
+      },
+    };
+  }
+  return { ok: true, sourceId, definition };
+}
+
+function lifecycleSkippedResult(
+  input: { collectorId: string; source: ResearchSourceDefinition; now: Date },
+): CollectorRunResult {
+  const status = resolveSourceLifecycleStatus(input.source);
+  return {
+    collectorId: input.collectorId,
+    sourceId: input.source.id,
+    startedAt: input.now.toISOString(),
+    completedAt: new Date().toISOString(),
+    status: "skipped",
+    itemsObserved: 0,
+    itemsAccepted: 0,
+    itemsRejected: 0,
+    duplicates: 0,
+    errors: [
+      {
+        code: SOURCE_LIFECYCLE_INACTIVE,
+        message: `source ${input.source.id} lifecycle is ${status}; collection skipped`,
+      },
+    ],
+  };
+}
 
 export type RunResearchCollectionCycleInput = {
   repo: ResearchRepository;
@@ -47,6 +100,8 @@ export type RunResearchCollectionCycleInput = {
   now?: Date;
   maxItemsPerCollector?: number;
   env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
+  /** Source catalog (identity + lifecycle authority); defaults to the registry. */
+  sources?: readonly ResearchSourceDefinition[];
 };
 
 function logResearchEvent(event: Record<string, unknown>): void {
@@ -63,7 +118,7 @@ async function runCollector(
 ): Promise<{ result: CollectorRunResult; rawItems: RawResearchSignalInput[] }> {
   const startedAt = input.now.toISOString();
   const errors: CollectorRunResult["errors"] = [];
-  let rawItems: RawResearchSignalInput[] = [];
+  const rawItems: RawResearchSignalInput[] = [];
   let itemsObserved = 0;
   let itemsAccepted = 0;
   let itemsRejected = 0;
@@ -152,9 +207,10 @@ export async function runResearchCollectionCycle(
   }
 
   logResearchEvent({ cycleId, phase: "bootstrap", startedAt });
-  await bootstrapResearchSources(input.repo, now);
+  const sources = input.sources ?? RESEARCH_SOURCE_REGISTRY;
+  await bootstrapResearchSources(input.repo, now, input.sources);
 
-  const collectors = input.collectors ?? createDefaultResearchCollectors();
+  const collectors = input.collectors ?? createDefaultResearchCollectors(undefined, sources);
   const collectorResults: CollectorRunResult[] = [];
   const allRawSignals: RawResearchSignalInput[] = [];
   let performanceFeedback: PerformanceFeedbackLoadResult = {
@@ -164,10 +220,49 @@ export async function runResearchCollectionCycle(
   };
 
   for (const collector of collectors) {
+    const identity = checkCollectorIdentity(collector, sources);
+    if (!identity.ok) {
+      const failed: CollectorRunResult = {
+        collectorId: collector.collectorId,
+        sourceId: identity.sourceId,
+        startedAt: now.toISOString(),
+        completedAt: new Date().toISOString(),
+        status: "failed",
+        itemsObserved: 0,
+        itemsAccepted: 0,
+        itemsRejected: 0,
+        duplicates: 0,
+        errors: [identity.error],
+      };
+      collectorResults.push(failed);
+      logResearchEvent({
+        cycleId,
+        collectorId: collector.collectorId,
+        sourceId: identity.sourceId,
+        status: failed.status,
+        errors: failed.errors,
+      });
+      continue;
+    }
+    const { sourceId, definition } = identity;
+
+    if (!canCollectResearchSource(definition)) {
+      const skipped = lifecycleSkippedResult({ collectorId: collector.collectorId, source: definition, now });
+      collectorResults.push(skipped);
+      logResearchEvent({
+        cycleId,
+        collectorId: collector.collectorId,
+        sourceId,
+        status: skipped.status,
+        errors: skipped.errors,
+      });
+      continue;
+    }
+
     if (!isCollectorEnabled(collector.collectorId, env)) {
       collectorResults.push({
         collectorId: collector.collectorId,
-        sourceId: COLLECTOR_SOURCE_ID[collector.collectorId] ?? "unknown",
+        sourceId,
         startedAt: now.toISOString(),
         completedAt: new Date().toISOString(),
         status: "skipped",
@@ -179,9 +274,6 @@ export async function runResearchCollectionCycle(
       });
       continue;
     }
-
-    const sourceId = COLLECTOR_SOURCE_ID[collector.collectorId];
-    if (!sourceId) continue;
 
     const started = Date.now();
     const { result, rawItems } = await runCollector(collector, {
@@ -207,18 +299,30 @@ export async function runResearchCollectionCycle(
 
   const lookbackHours = input.performanceLookbackHours ?? 24 * 14;
   const performanceSince = new Date(now.getTime() - lookbackHours * 60 * 60 * 1000).toISOString();
-  if (input.performanceRepo) {
+  const performanceSource =
+    sources.find((source) => source.id === PERFORMANCE_MEMORY_SOURCE_DEFINITION.id) ??
+    PERFORMANCE_MEMORY_SOURCE_DEFINITION;
+  if (input.performanceRepo && !canCollectResearchSource(performanceSource)) {
+    const skipped = lifecycleSkippedResult({
+      collectorId: PERFORMANCE_MEMORY_SOURCE_DEFINITION.key,
+      source: performanceSource,
+      now,
+    });
+    collectorResults.push(skipped);
+    logResearchEvent({ cycleId, phase: "performance_feedback", status: skipped.status, errors: skipped.errors });
+  } else if (input.performanceRepo) {
     performanceFeedback = await loadPerformanceFeedbackSignals({
       repo: input.repo,
       performanceRepo: input.performanceRepo,
       since: performanceSince,
       now,
+      ...(input.sources ? { source: projectResearchSource(performanceSource) } : {}),
     });
     if (performanceFeedback.signals.length > 0) {
       allRawSignals.push(...performanceFeedback.signals);
       collectorResults.push({
-        collectorId: "performance-feedback",
-        sourceId: "44444444-4444-4444-8444-444444444444",
+        collectorId: PERFORMANCE_MEMORY_SOURCE_DEFINITION.key,
+        sourceId: PERFORMANCE_MEMORY_SOURCE_DEFINITION.id,
         startedAt: now.toISOString(),
         completedAt: new Date().toISOString(),
         status: performanceFeedback.status === "degraded" ? "partial" : "success",
@@ -233,8 +337,8 @@ export async function runResearchCollectionCycle(
       });
     } else if (performanceFeedback.status === "degraded") {
       collectorResults.push({
-        collectorId: "performance-feedback",
-        sourceId: "44444444-4444-4444-8444-444444444444",
+        collectorId: PERFORMANCE_MEMORY_SOURCE_DEFINITION.key,
+        sourceId: PERFORMANCE_MEMORY_SOURCE_DEFINITION.id,
         startedAt: now.toISOString(),
         completedAt: new Date().toISOString(),
         status: "partial",

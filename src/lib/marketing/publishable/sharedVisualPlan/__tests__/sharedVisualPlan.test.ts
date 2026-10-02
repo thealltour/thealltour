@@ -533,11 +533,31 @@ describe("Shared Visual Planner v1", () => {
     expect(isSharedVisualPlanStale({ planFingerprint: plan.sourceVisualPlanFingerprint, bundle: base })).toBe(
       false,
     );
+    // The plan serves Instagram cardnews only: Threads visual hints never stale it.
     expect(
       isSharedVisualPlanStale({
         planFingerprint: plan.sourceVisualPlanFingerprint,
         bundle: visualChanged,
       }),
+    ).toBe(false);
+    expect(
+      isSharedVisualPlanStale({ planFingerprint: plan.sourceVisualPlanFingerprint, bundle: bodyOnly }),
+    ).toBe(false);
+
+    const instagramCardChanged = bundle({
+      threadsMediaPlan: base.threads.mediaPlan,
+      instagramCardPlan: [
+        {
+          ...base.instagram!.instagramMeta!.cardPlan![0]!,
+          visual: {
+            ...base.instagram!.instagramMeta!.cardPlan![0]!.visual!,
+            visualIntent: "CHANGED — coastal resort establishing instead",
+          },
+        },
+      ],
+    });
+    expect(
+      isSharedVisualPlanStale({ planFingerprint: plan.sourceVisualPlanFingerprint, bundle: instagramCardChanged }),
     ).toBe(true);
   });
 

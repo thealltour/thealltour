@@ -1,4 +1,5 @@
 import type { ResearchScoreComponents } from "@/lib/marketing/research/services/scoringPolicy";
+import type { ResearchSourceCommercialBias } from "@/lib/marketing/research/types/sourceSemantics";
 
 export const MARKETING_RESEARCH_CONTEXT_CONTRACT = "marketing-research-context-v1" as const;
 
@@ -85,6 +86,49 @@ export type MarketingResearchDegradedState = {
   reason: string | null;
 };
 
+/** Agenda candidate pre-pool read: rows scanned vs unique source articles kept. */
+export type MarketingResearchArticlePrePool = {
+  mode: "unique_article_pages" | "legacy_row_limit";
+  targetUniqueArticles: number;
+  fetchedCandidateRows: number;
+  uniqueArticleCandidates: number;
+  duplicateRowsDropped: number;
+  pagesRead: number;
+  lookbackExhausted: boolean;
+  maxPagesReached: boolean;
+};
+
+/** How the final MM curation input was filled (diversify passes) and its source/family mix. */
+export type MarketingResearchCurationDiversityFill = {
+  pass1Picked: number;
+  pass1bPicked: number;
+  stagedFillPicked: number;
+  maxRelaxedCapUsed: number | null;
+  unrestrictedFillPicked: number;
+  weakFallbackPicked: number;
+  sourceCounts: Record<string, number>;
+  familyCounts: Record<string, number>;
+};
+
+/** Final-rank agenda seed attenuated by source commercial bias; composite and Korean outbound are unaffected. */
+export type MarketingResearchAgendaSeedAttenuation = {
+  /** Compatibility name: rank-input candidates whose seed was lowered, before final selection. */
+  attenuatedRankedCount: number;
+  /**
+   * Always equal to `attenuatedRankedCount`: counts attenuated rank-input candidates, so it can exceed
+   * `candidates.length`.
+   */
+  attenuatedCandidateCount: number;
+  /** Returned candidates whose rank seed was lowered. */
+  candidates: Array<{
+    agendaCandidateId: string;
+    commercialBias: ResearchSourceCommercialBias | null;
+    rawAgendaSeedWeight: number;
+    biasAdjustedAgendaSeedWeight: number;
+    seedSourceId: string | null;
+  }>;
+};
+
 export type MarketingResearchObservability = {
   requestedAt: string;
   candidateCount: number;
@@ -93,6 +137,9 @@ export type MarketingResearchObservability = {
   degraded: boolean;
   staleExcludedCount: number;
   duplicateExcludedCount: number;
+  articlePrePool?: MarketingResearchArticlePrePool;
+  curationDiversityFill?: MarketingResearchCurationDiversityFill;
+  agendaSeedAttenuation?: MarketingResearchAgendaSeedAttenuation;
 };
 
 export type MarketingResearchContext = {
@@ -118,4 +165,9 @@ export type GetMarketingManagerResearchContextOptions = {
   topic?: string;
   destination?: string;
   now?: Date;
+  /**
+   * Identities to drop before diversification and the `limit` cut (produced, rejected,
+   * or already shown on an earlier slate), so exclusions do not shrink the MM pool.
+   */
+  excludeResearchIdentities?: import("@/lib/marketing/cron/daily/researchIdentityCooldown").ResearchIdentitySet;
 };

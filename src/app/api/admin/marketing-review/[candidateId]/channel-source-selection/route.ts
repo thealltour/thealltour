@@ -60,6 +60,7 @@ export async function GET(_request: Request, context: RouteContext) {
         importId: c.importId,
         importedAt: c.importedAt,
         importedBy: c.importedBy,
+        resultContract: c.resultContract,
         canonicalVersion: c.canonicalVersion,
         warnings: c.warnings,
         channelReadiness: c.channelReadiness,
@@ -129,6 +130,10 @@ export async function POST(request: Request, context: RouteContext) {
       updatedReview = await repo.update(result.review);
     }
 
+    const visualNote =
+      parsed.data.channel === "instagram"
+        ? " Instagram 카드 문구를 다시 검토·승인한 뒤 Shared Visual Plan을 확인하세요."
+        : "";
     return Response.json({
       review: updatedReview,
       channel: parsed.data.channel,
@@ -137,8 +142,8 @@ export async function POST(request: Request, context: RouteContext) {
       warnings: result.warnings,
       message: result.changed
         ? parsed.data.source === "external_editorial"
-          ? "외부 편집 결과로 전환했습니다. 시각 계획(SVP/VRA)은 stale 상태가 됩니다."
-          : "Hermes Auto 결과로 복원했습니다. 시각 계획(SVP/VRA)은 stale 상태가 됩니다."
+          ? `외부 편집 결과로 전환했습니다.${visualNote}`
+          : `Hermes Auto 결과로 복원했습니다.${visualNote}`
         : "이미 Hermes Auto 결과가 적용되어 있습니다.",
     });
   } catch (error) {

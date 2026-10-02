@@ -3,9 +3,18 @@
  * Item failures must never block the 09:00 Agenda pipeline.
  */
 
+import {
+  META_AI_TREND_SOURCE_DEFINITION,
+  type PushResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import {
+  canCollectResearchSource,
+  SOURCE_LIFECYCLE_INACTIVE,
+} from "@/lib/marketing/research/sourceLifecycle";
+import {
   adaptTrendSignalToResearch,
+  buildMetaAiTrendSource,
   persistAdaptedTrend,
 } from "@/lib/marketing/trends/adapter/trendSourceAdapter";
 import type { TravelTrendsStagingRepository } from "@/lib/marketing/trends/staging/types";
@@ -25,8 +34,10 @@ export async function processNewTrendStagingObservations(input: {
   researchRepo: ResearchRepository;
   limit?: number;
   now?: Date;
+  metaSource?: PushResearchSourceDefinition;
 }): Promise<TrendStagingProcessDiagnostics> {
   const now = input.now ?? new Date();
+  const metaSource = input.metaSource ?? META_AI_TREND_SOURCE_DEFINITION;
   const diagnostics: TrendStagingProcessDiagnostics = {
     availableTrendCount: 0,
     adaptedTrendCount: 0,
@@ -51,13 +62,26 @@ export async function processNewTrendStagingObservations(input: {
     return diagnostics;
   }
 
+  // Paused/retired: rows stay NEW (nothing ingested or discarded); only the catalog row is refreshed.
+  if (!canCollectResearchSource(metaSource)) {
+    try {
+      await input.researchRepo.upsertSource(buildMetaAiTrendSource(now, metaSource));
+    } catch {
+      // Catalog refresh is best-effort; must not block the agenda pipeline.
+    }
+    diagnostics.degradeReason = SOURCE_LIFECYCLE_INACTIVE;
+    return diagnostics;
+  }
+
   for (const row of rows) {
     try {
-      const adapted = adaptTrendSignalToResearch(row.payload, now);
+      const adapted = adaptTrendSignalToResearch(row.payload, now, metaSource);
       const persisted = await persistAdaptedTrend(adapted, input.researchRepo);
       await input.stagingRepo.markTrendObservationIngested(row.id, now.toISOString());
       diagnostics.adaptedTrendCount += 1;
-      diagnostics.researchBriefIds.push(persisted.brief.id);
+      if (persisted.persisted.agendaCandidate) {
+        diagnostics.researchBriefIds.push(persisted.brief.id);
+      }
     } catch (error) {
       diagnostics.failedCount += 1;
       const reason = error instanceof Error ? error.message : "adapt_or_persist_failed";

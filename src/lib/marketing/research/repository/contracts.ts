@@ -28,10 +28,30 @@ export interface ResearchBriefRepository {
   deleteBriefById?(id: string): Promise<void>;
 }
 
+/** Source-article identity inputs for one agenda candidate (brief → primary signal). */
+export type AgendaCandidateArticleRef = {
+  signalId: string | null;
+  canonicalUrl: string | null;
+  sourceId: string | null;
+};
+
 export interface AgendaCandidateRepository {
   upsertAgendaCandidate(candidate: AgendaCandidate): Promise<AgendaCandidate>;
   findAgendaCandidateById(id: string): Promise<AgendaCandidate | null>;
   findRecentAgendaCandidates(input: { since: string; limit?: number }): Promise<AgendaCandidate[]>;
+  /**
+   * One read-only page in `findRecentAgendaCandidates` order with an `id DESC` tie-breaker
+   * (composite DESC, created_at DESC, id DESC).
+   */
+  findRecentAgendaCandidatesPage?(input: {
+    since: string;
+    limit: number;
+    offset: number;
+  }): Promise<AgendaCandidate[]>;
+  /** Read-only article identity lookup keyed by agenda candidate id. */
+  findAgendaCandidateArticleRefs?(
+    candidates: Array<Pick<AgendaCandidate, "id" | "researchBriefId">>,
+  ): Promise<Map<string, AgendaCandidateArticleRef>>;
   /** Best-effort delete for trend persist rollback (orphans). */
   deleteAgendaCandidateById?(id: string): Promise<void>;
 }

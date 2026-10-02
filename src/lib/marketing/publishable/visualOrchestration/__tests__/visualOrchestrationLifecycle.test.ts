@@ -199,7 +199,7 @@ const MOCK_PLANNER_JSON = JSON.stringify({
 });
 
 describe("visual orchestration lifecycle", () => {
-  it("A. channel bundle change marks existing plan stale without deleting", () => {
+  it("A. Instagram card change marks existing plan stale without deleting; other channels do not", () => {
     const dir = mkdtempSync(join(tmpdir(), "vo-a-"));
     try {
       const b1 = daoBundle();
@@ -207,7 +207,7 @@ describe("visual orchestration lifecycle", () => {
       persistSharedVisualPlan({ packageRoot: dir, plan });
       expect(resolveSharedVisualPlanLifecycle({ plan, bundle: b1 })).toBe("fresh");
 
-      const b2 = daoBundle({
+      const threadsRegenerated = daoBundle({
         threads: channel({
           channel: "threads",
           body: "재생성이후 본문",
@@ -217,7 +217,19 @@ describe("visual orchestration lifecycle", () => {
       });
       const disk = readSharedVisualPlan(dir);
       expect(disk).not.toBeNull();
-      expect(resolveSharedVisualPlanLifecycle({ plan: disk, bundle: b2 })).toBe("stale");
+      expect(resolveSharedVisualPlanLifecycle({ plan: disk, bundle: threadsRegenerated })).toBe("fresh");
+
+      const cards = b1.instagram!.instagramMeta!.cardPlan!;
+      const cardChanged = daoBundle({
+        instagram: {
+          ...b1.instagram!,
+          instagramMeta: {
+            ...b1.instagram!.instagramMeta!,
+            cardPlan: [cards[0]!, { ...cards[1]!, visualIntent: "market street detail" }, cards[2]!],
+          },
+        },
+      });
+      expect(resolveSharedVisualPlanLifecycle({ plan: disk, bundle: cardChanged })).toBe("stale");
       expect(existsSync(join(dir, SHARED_VISUAL_PLAN_RELATIVE_PATH))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -287,8 +299,7 @@ describe("visual orchestration lifecycle", () => {
         expect(result.plan.sourceChannelSnapshot).toBeTruthy();
         // Must NOT mechanically equal Threads imageCount=1
         expect(result.plan.visuals.length).not.toBe(1);
-        expect(result.plan.visuals[0]!.usages.some((u) => u.channel === "threads")).toBe(true);
-        expect(result.plan.visuals[0]!.usages.some((u) => u.channel === "instagram")).toBe(true);
+        expect(result.plan.visuals[0]!.usages).toEqual([{ channel: "instagram", cardId: "card-01" }]);
         expect(isGenericVisualIntent(result.plan.visuals[0]!.visualIntent)).toBe(false);
       }
     } finally {
@@ -364,7 +375,7 @@ describe("visual orchestration lifecycle", () => {
     ).toThrow(/too generic|generic_visual_intent/);
   });
 
-  it("Planner drops invent Blog usages; validates IG cardId", () => {
+  it("Planner drops Threads and invented Blog usages; validates IG cardId", () => {
     const bundle = daoBundle();
     const { plan, warnings } = materializeSharedVisualPlanFromLlm({
       bundle,
@@ -388,11 +399,8 @@ describe("visual orchestration lifecycle", () => {
       },
     });
     expect(plan.visuals).toHaveLength(1);
-    expect(plan.visuals[0]!.usages).toEqual([
-      { channel: "threads", slotIndex: 0 },
-      { channel: "instagram", cardId: "card-01" },
-    ]);
-    expect(warnings.some((w) => w.includes("usage_dropped"))).toBe(true);
+    expect(plan.visuals[0]!.usages).toEqual([{ channel: "instagram", cardId: "card-01" }]);
+    expect(warnings.filter((w) => w.includes("usage_dropped"))).toHaveLength(3);
   });
 
   it("Handoff writer rejects extra visual / id change", () => {

@@ -1,4 +1,7 @@
-import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
+import type {
+  AgendaCandidateArticleRef,
+  ResearchRepository,
+} from "@/lib/marketing/research/repository/contracts";
 import type { AgendaCandidate, ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type { ResearchEvidence, ResearchSignal } from "@/lib/marketing/research/types/researchSignal";
@@ -134,6 +137,42 @@ export class InMemoryResearchRepository implements ResearchRepository {
           b.createdAt.localeCompare(a.createdAt),
       )
       .slice(0, input.limit ?? 100);
+  }
+
+  async findRecentAgendaCandidatesPage(input: {
+    since: string;
+    limit: number;
+    offset: number;
+  }): Promise<AgendaCandidate[]> {
+    const sinceMs = new Date(input.since).getTime();
+    const offset = Math.max(0, Math.floor(input.offset));
+    const limit = Math.max(1, Math.floor(input.limit));
+    return [...this.candidates.values()]
+      .filter((c) => new Date(c.createdAt).getTime() >= sinceMs)
+      .sort(
+        (a, b) =>
+          b.compositeResearchScore - a.compositeResearchScore ||
+          b.createdAt.localeCompare(a.createdAt) ||
+          (a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
+      )
+      .slice(offset, offset + limit);
+  }
+
+  async findAgendaCandidateArticleRefs(
+    candidates: Array<Pick<AgendaCandidate, "id" | "researchBriefId">>,
+  ): Promise<Map<string, AgendaCandidateArticleRef>> {
+    const refs = new Map<string, AgendaCandidateArticleRef>();
+    for (const candidate of candidates) {
+      const brief = this.briefs.get(candidate.researchBriefId);
+      const signalId = brief?.primarySignalId ?? brief?.signalIds[0] ?? null;
+      const signal = signalId ? this.signals.get(signalId) : undefined;
+      refs.set(candidate.id, {
+        signalId,
+        canonicalUrl: signal?.canonicalUrl ?? null,
+        sourceId: signal?.sourceId ?? null,
+      });
+    }
+    return refs;
   }
 
   async deleteAgendaCandidateById(id: string): Promise<void> {

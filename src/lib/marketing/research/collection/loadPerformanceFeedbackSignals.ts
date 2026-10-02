@@ -2,6 +2,7 @@ import type { ContentPerformanceRepository } from "@/lib/marketing/performance/r
 import { createPerformanceSignalAdapter } from "@/lib/marketing/performance/research/performanceSignalAdapter";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import { PERFORMANCE_MEMORY_SOURCE } from "@/lib/marketing/performance/constants";
+import type { ResearchSourceRow } from "@/lib/marketing/research/sources/sourceRegistry";
 import type { RawResearchSignalInput } from "@/lib/marketing/research/types/researchSignal";
 
 export type PerformanceFeedbackLoadResult = {
@@ -16,13 +17,19 @@ export type LoadPerformanceFeedbackSignalsInput = {
   performanceRepo: ContentPerformanceRepository;
   since: string;
   now?: Date;
+  /** Projected Performance source row; defaults to the registry projection. */
+  source?: ResearchSourceRow;
 };
 
-async function ensurePerformanceSource(repo: ResearchRepository, now: Date): Promise<void> {
-  const existing = await repo.getSourceById(PERFORMANCE_MEMORY_SOURCE.id);
+async function ensurePerformanceSource(
+  repo: ResearchRepository,
+  now: Date,
+  source: ResearchSourceRow,
+): Promise<void> {
+  const existing = await repo.getSourceById(source.id);
   const timestamp = now.toISOString();
   await repo.upsertSource({
-    ...PERFORMANCE_MEMORY_SOURCE,
+    ...source,
     createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp,
   });
@@ -33,7 +40,7 @@ export async function loadPerformanceFeedbackSignals(
 ): Promise<PerformanceFeedbackLoadResult> {
   const now = input.now ?? new Date();
   try {
-    await ensurePerformanceSource(input.repo, now);
+    await ensurePerformanceSource(input.repo, now, input.source ?? PERFORMANCE_MEMORY_SOURCE);
     const adapter = createPerformanceSignalAdapter(input.performanceRepo);
     const signals = await adapter.loadNormalizedSignals({ since: input.since });
     if (signals.length === 0) {

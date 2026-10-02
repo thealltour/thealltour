@@ -69,9 +69,9 @@ export class CardNewsNotApplicableError extends Error {
 export class CardNewsRenderOverflowError extends Error {
   readonly code = "cardnews_render_overflow" as const;
   readonly cardId: string;
-  readonly field: "headline" | "body";
+  readonly field: "headline" | "body" | "kicker" | "microcopy";
 
-  constructor(input: { cardId: string; field: "headline" | "body"; message: string }) {
+  constructor(input: { cardId: string; field: "headline" | "body" | "kicker" | "microcopy"; message: string }) {
     super(input.message);
     this.name = "CardNewsRenderOverflowError";
     this.cardId = input.cardId;

@@ -130,6 +130,13 @@ export type RenderCardNewsPackageInput = {
   presentationPlan?: CardPresentationPlan | null;
   /** Editorial carousel roles by cardId — preferred Presentation input when present. */
   editorialRolesByCardId?: Record<string, string>;
+  /** Render-only approved copy. Never serialized into the public media-brief contract. */
+  editorialCopyByCardId?: Record<string, {
+    headline: string;
+    body: string | null;
+    kicker: string | null;
+    microcopy: string | null;
+  }>;
   /** Persist presentation plan to package when rendering (default true when package writable). */
   persistPresentationPlan?: boolean;
   /**
@@ -431,7 +438,11 @@ export async function renderCardNewsPackage(
     }
     specs.push(
       buildResolvedCardRenderSpec({
-        card,
+        card: input.editorialCopyByCardId?.[card.cardId]
+          ? { ...card, headline: input.editorialCopyByCardId[card.cardId].headline, body: input.editorialCopyByCardId[card.cardId].body ?? "" }
+          : card,
+        editorialKicker: input.editorialCopyByCardId?.[card.cardId]?.kicker,
+        editorialMicrocopy: input.editorialCopyByCardId?.[card.cardId]?.microcopy,
         index: offset + 1,
         total: cards.length,
         presentation,

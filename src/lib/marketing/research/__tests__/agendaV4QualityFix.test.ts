@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { classifyTravelDirection } from "@/lib/marketing/research/services/travelDirection";
 import { scoreKoreanOutboundRelevance } from "@/lib/marketing/research/services/koreanOutboundRelevanceScorer";
 import { resolveSourceRoleWeights } from "@/lib/marketing/research/portfolio/sourcePortfolioRoles";
+import { MVP_RESEARCH_SOURCES } from "@/lib/marketing/research/collectors/config";
 import {
-  MVP_RESEARCH_SOURCES,
-  TRAVELTIMES_SOURCE_ID,
-  UK_GOV_TRAVEL_SOURCE_ID,
-  VIETNAM_TRAVEL_SOURCE_ID,
-} from "@/lib/marketing/research/collectors/config";
+  TRAVELTIMES_SOURCE,
+  UK_GOV_TRAVEL_SOURCE,
+  VIETNAM_TRAVEL_SOURCE,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { buildDailyAgendaSlate } from "@/lib/marketing/cron/daily/agendaSlate/buildDailyAgendaSlate";
 import { parseManagerAgendaSlateCuration } from "@/lib/marketing/cron/daily/agendaSlate/curateManagerAgendaSlate";
 import {
@@ -21,9 +21,9 @@ import {
 import type { CompactManagerAgendaCandidate } from "@/lib/marketing/research/manager/types";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 
-const KR_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === TRAVELTIMES_SOURCE_ID)!;
-const VN_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === VIETNAM_TRAVEL_SOURCE_ID)!;
-const FCDO = MVP_RESEARCH_SOURCES.find((s) => s.id === UK_GOV_TRAVEL_SOURCE_ID)!;
+const KR_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === TRAVELTIMES_SOURCE.id)!;
+const VN_SOURCE = MVP_RESEARCH_SOURCES.find((s) => s.id === VIETNAM_TRAVEL_SOURCE.id)!;
+const FCDO = MVP_RESEARCH_SOURCES.find((s) => s.id === UK_GOV_TRAVEL_SOURCE.id)!;
 
 function role(source: Omit<ResearchSource, "createdAt" | "updatedAt"> | ResearchSource) {
   return resolveSourceRoleWeights(source);
@@ -150,7 +150,9 @@ describe("STEP R-3 travelDirection / audienceIntent", () => {
 
   it("11. FCDO remains high-authority evidence despite low agenda-seed value", () => {
     const weights = role(FCDO);
-    expect(weights.evidenceAuthorityWeight).toBeGreaterThan(0.9);
+    expect(FCDO.isOfficial).toBe(true);
+    expect(FCDO.authorityLevel).toBe("official");
+    expect(FCDO.defaultCredibility).toBeGreaterThan(0.85);
     expect(weights.agendaSeedWeight).toBeLessThan(0.3);
   });
 });

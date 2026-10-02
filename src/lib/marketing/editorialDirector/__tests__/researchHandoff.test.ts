@@ -314,9 +314,9 @@ describe("editorial research handoff — sections", () => {
     expect(buildOk().terminology.canonicalLockedTerms).toEqual([]);
   });
 
-  it("requests research first plus every channel artifact", () => {
+  it("requests research only", () => {
     const payload = buildOk();
-    expect(payload.requestedArtifacts[0]).toBe("research");
+    expect([...payload.requestedArtifacts]).toEqual(["research"]);
     expect([...payload.requestedArtifacts]).toEqual([...EDITORIAL_RESEARCH_REQUESTED_ARTIFACTS]);
   });
 });
@@ -374,23 +374,20 @@ describe("editorial research handoff — researchContext projection", () => {
 });
 
 describe("editorial research handoff — outputContract", () => {
-  it("requires a top-level research object before narrative/channel artifacts", () => {
+  it("asks for the identity echo and a research object only", () => {
     const { outputContract } = buildOk();
     expect(outputContract.researchRequired).toBe(true);
-    const order = outputContract.topLevelKeyOrder;
-    const researchIdx = order.indexOf("research");
-    expect(researchIdx).toBeGreaterThan(-1);
-    for (const key of ["narrative", "threads", "instagram", "naverBlog", "naverBand", "kakao", "shortform"]) {
-      expect(order.indexOf(key)).toBeGreaterThan(researchIdx);
-    }
-    expect(outputContract.rulesKo.join("\n")).toMatch(/research.*필수/);
-  });
-
-  it("always asks for every channel and does not let the Canonical gate channel writing", () => {
-    const rules = buildOk().outputContract.rulesKo.join("\n");
-    expect(rules).toMatch(/research\.status와 관계없이/);
-    expect(rules).not.toMatch(/null로 둡니다/);
-    expect(rules).not.toMatch(/forbiddenClaimsKo에 해당하는 주장은/);
+    expect([...outputContract.topLevelKeyOrder]).toEqual([
+      "contract",
+      "candidateId",
+      "assetId",
+      "canonicalVersion",
+      "sourceRevision",
+      "research",
+    ]);
+    const rules = outputContract.rulesKo.join("\n");
+    expect(rules).toMatch(/research 객체만 작성/);
+    expect(rules).toMatch(/이 단계에서 작성하지 않습니다/);
   });
 
   it("defines research schema with status, questions, findings, sources, unresolved, conflicts", () => {
@@ -415,22 +412,9 @@ describe("editorial research handoff — outputContract", () => {
     expect(source.date).toMatch(/null/);
   });
 
-  it("includes every narrative/channel result schema", () => {
+  it("carries no narrative or channel schema", () => {
     const { schema } = buildOk().outputContract;
-    expect(schema.narrative).toBeTruthy();
-    expect(schema.threads).toBeTruthy();
-    expect(schema.instagram.carouselPlan).toBeTruthy();
-    expect(schema.instagram.cardCopy).toBeTruthy();
-    expect(schema.instagram.caption).toBeTruthy();
-    expect(schema.naverBlog.structure).toBeTruthy();
-    expect(schema.naverBlog.copy).toBeTruthy();
-    expect(schema.naverBand).toBeTruthy();
-    expect(schema.kakao).toBeTruthy();
-    expect(schema.shortform).toBeTruthy();
-    const channelKeys = collectKeys({ ...schema, research: undefined });
-    for (const serverOwned of ["contract", "fingerprint", "provenance", "narrativeFingerprint"]) {
-      expect(channelKeys.has(serverOwned)).toBe(false);
-    }
+    expect(Object.keys(schema)).toEqual(["research"]);
   });
 });
 

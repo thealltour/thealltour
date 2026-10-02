@@ -19,6 +19,11 @@ import {
 } from "@/lib/marketing/research/services/semanticDeduplicator";
 import { groupSignalsByCluster } from "@/lib/marketing/research/services/researchCluster";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
+import {
+  canCollectResearchSource,
+  canSourceParticipateInCandidates,
+  sourceLifecycleRejectionReason,
+} from "@/lib/marketing/research/sourceLifecycle";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type { AgendaCandidate, ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
 import type {
@@ -77,6 +82,10 @@ export async function runResearchPipeline(input: {
       rejected.push({ reason: "unknown_source", input: raw });
       continue;
     }
+    if (!canCollectResearchSource(source)) {
+      rejected.push({ reason: sourceLifecycleRejectionReason(source), input: raw });
+      continue;
+    }
     const result: NormalizeSignalResult = normalizeResearchSignal(raw, source, now);
     if (!result.ok) {
       rejected.push({ reason: result.reason, input: raw });
@@ -96,7 +105,19 @@ export async function runResearchPipeline(input: {
     enrichedPreDedup.push(enrichResearchSignal(signal, source, now));
   }
 
-  const { unique: l2Unique, duplicates: l2Duplicates } = deduplicateSignals(enrichedPreDedup);
+  // Shadow-source signals stay persisted but leave before dedup/clustering so they can
+  // neither merge into nor score against candidate-eligible signals.
+  const candidateInputs: ResearchSignal[] = [];
+  for (const signal of enrichedPreDedup) {
+    const source = sourceCache.get(signal.sourceId);
+    if (canSourceParticipateInCandidates(source)) {
+      candidateInputs.push(signal);
+      continue;
+    }
+    await input.repo.upsertSignal(signal);
+  }
+
+  const { unique: l2Unique, duplicates: l2Duplicates } = deduplicateSignals(candidateInputs);
   const allDuplicates: ResearchSignal[] = [...l2Duplicates];
 
   const semanticResult = await runSemanticDedup({

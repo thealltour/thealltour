@@ -45,13 +45,14 @@ function fileUrl(candidateId: string, relativePath: string, disposition: "inline
   return `/api/admin/marketing-review/${encodeURIComponent(candidateId)}/assets/file?${params.toString()}`;
 }
 
-export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
-  const { candidateId } = props;
+export function MarketingReviewAssetsPanel(props: { candidateId: string; refreshKey?: number; onStatusChange?: () => void }) {
+  const { candidateId, refreshKey = 0 } = props;
   const [assets, setAssets] = useState<AssetsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [renderBusy, setRenderBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [previewRatio, setPreviewRatio] = useState<"1:1" | "4:5">("1:1");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,7 +79,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   async function exportToHdd() {
     setBusy(true);
@@ -109,6 +110,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
           ? `HDD 패키지를 저장했습니다${data.relativePackagePath ? ` (${data.relativePackagePath})` : ""}.`
           : "HDD보내기를 완료했습니다.";
       await load();
+      props.onStatusChange?.();
       setMessage(data.note ? `${base} ${data.note}` : base);
     } catch {
       setMessage("HDD보내기에 실패했습니다.");
@@ -139,6 +141,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
         return;
       }
       await load();
+      props.onStatusChange?.();
       setMessage(
         data.note ?? (data.status === "skipped" ? "렌더를 건너뛰었습니다." : "렌더를 완료했습니다."),
       );
@@ -150,7 +153,9 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
   }
 
   const imageArtifacts =
-    assets?.artifacts.filter((item) => item.mediaType.startsWith("image/")) ?? [];
+    assets?.artifacts.filter((item) => item.mediaType.startsWith("image/") && item.relativePath.startsWith("cardnews/")) ?? [];
+  const previewImages = imageArtifacts.filter((item) => previewRatio === "1:1"
+    ? item.relativePath.startsWith("cardnews/1x1/") : /^cardnews\/[^/]+\.png$/u.test(item.relativePath));
   const videoArtifacts =
     assets?.artifacts.filter(
       (item) =>
@@ -169,10 +174,9 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
     <AdminCard className="space-y-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">제작 산출물 (HDD)</h2>
+          <h2 className="text-base font-semibold">카드뉴스 렌더·결과 확인</h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            CompletedMarketingCandidate를 로컬 패키지로 보내고 미리보기/다운로드합니다. SNS 게시는
-            하지 않습니다.
+            카드뉴스를 렌더한 뒤 비율별로 확인하고 다운로드합니다.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -254,8 +258,13 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
           </div>
 
           {imageArtifacts.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex gap-2" aria-label="카드뉴스 미리보기 비율">
+                {(["1:1", "4:5"] as const).map((ratio) => <button type="button" key={ratio} aria-pressed={previewRatio === ratio}
+                  className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs" onClick={() => setPreviewRatio(ratio)}>{ratio}</button>)}
+              </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {imageArtifacts.map((item) => (
+              {previewImages.map((item) => (
                 <a
                   key={item.artifactId}
                   href={fileUrl(candidateId, item.relativePath, "attachment")}
@@ -274,9 +283,12 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
                 </a>
               ))}
             </div>
+              {previewImages.length === 0 ? <p className="text-xs text-[var(--text-secondary)]">이 비율로 렌더된 이미지가 없습니다.</p> : null}
+            </div>
           ) : null}
 
           {videoArtifacts.length > 0 ? (
+            <details><summary className="cursor-pointer text-sm font-medium">영상 산출물 보기</summary>
             <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
               {videoArtifacts.map((item) => (
                 <div
@@ -301,8 +313,10 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
                 </div>
               ))}
             </div>
+            </details>
           ) : null}
 
+          <details><summary className="cursor-pointer text-sm font-medium">전체 파일 목록·다운로드</summary>
           <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
             {assets.artifacts.map((item) => (
               <li
@@ -358,6 +372,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string }) {
               </div>
             </li>
           </ul>
+          </details>
         </div>
       )}
 

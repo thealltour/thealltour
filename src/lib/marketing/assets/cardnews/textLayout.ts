@@ -7,6 +7,23 @@ import { CardNewsRenderOverflowError } from "@/lib/marketing/assets/errors";
 import { TYPOGRAPHY_LINE_HEIGHT } from "@/lib/marketing/assets/cardnews/typographyTokens";
 
 const HANGUL = /[\uAC00-\uD7A3]/u;
+const graphemeSegmenter = new Intl.Segmenter("ko", { granularity: "grapheme" });
+export function textGraphemes(text: string): string[] {
+  return [...graphemeSegmenter.segment(text)].map((part) => part.segment);
+}
+export function isEmojiGrapheme(text: string): boolean {
+  return !text.includes("\uFE0E") && /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u.test(text);
+}
+
+/** Render-only editorial breaks. URLs and non-Korean comma usages stay literal. */
+export function normalizeCardnewsRenderText(text: string): string {
+  return text.replace(/\r\n?/gu, "\n").replace(/\S+/gu, (token) => {
+    if (/(?:[a-z][a-z0-9+.-]*:\/\/|www\.|mailto:|[a-z\d][\w.-]*\.[a-z]{2,}(?:[\/?#:]|$))/iu.test(token)) return token;
+    return token.replace(/(?<=[\uAC00-\uD7A3]),(?=[\uAC00-\uD7A3])/gu, "\n");
+  });
+}
+
+export type CardnewsTextField = "headline" | "body" | "kicker" | "microcopy";
 /**
  * Latin + Vietnamese letters (incl. horn ư/ơ in Extended-B and precomposed tones).
  * Combining marks kept so NFD forms stay one token.
@@ -30,10 +47,12 @@ export function measureGlyph(glyph: string, fontSize: number): number {
 }
 
 export function measureTextWidth(text: string, fontSize: number): number {
-  return [...text].reduce((sum, glyph) => sum + measureGlyph(glyph, fontSize), 0);
+  return textGraphemes(text).reduce((sum, cluster) => sum + (
+    isEmojiGrapheme(cluster) ? fontSize * 1.25 : [...cluster].reduce((width, glyph) => width + measureGlyph(glyph, fontSize), 0)
+  ), 0);
 }
 
-export function lineHeightFor(fontSize: number, role: "headline" | "body" = "body"): number {
+export function lineHeightFor(fontSize: number, role: CardnewsTextField = "body"): number {
   const mult = role === "headline" ? TYPOGRAPHY_LINE_HEIGHT.headline : TYPOGRAPHY_LINE_HEIGHT.body;
   return Math.round(fontSize * mult);
 }
@@ -279,7 +298,7 @@ export function splitOverlongToken(
   // Latin/Viet or mixed: character-level last resort
   const parts: string[] = [];
   let current = "";
-  for (const ch of [...token]) {
+  for (const ch of textGraphemes(token)) {
     const next = current + ch;
     if (current && measureTextWidth(next, fontSize) > maxWidth) {
       parts.push(current);
@@ -303,7 +322,7 @@ export function wrapTextDetailed(
   maxWidth: number,
   options: { balanceDanglingTail?: boolean } = {},
 ): WrapTextResult {
-  const paragraphs = text.replaceAll("\r\n", "\n").split("\n");
+  const paragraphs = normalizeCardnewsRenderText(text).split("\n");
   const lines: string[] = [];
   /** Per line: broke at whitespace, so the next line may be re-joined with a space. */
   const spaceBreaks: boolean[] = [];
@@ -466,10 +485,10 @@ export function fitText(input: {
   maxLines: number;
   overflow: "error" | "ellipsis";
   cardId: string;
-  field: "headline" | "body";
+  field: CardnewsTextField;
 }): FittedText {
-  const source = input.text.trim();
-  if (!source) {
+  const source = input.text;
+  if (!source.trim()) {
     return {
       fontSize: input.preferredFontSize,
       lines: [],
@@ -481,8 +500,9 @@ export function fitText(input: {
     };
   }
 
-  const safeMin =
-    input.field === "body" ? CARDNEWS_SAFE.minBodyPx : CARDNEWS_SAFE.minHeadlinePx;
+  const safeMin = input.field === "headline" ? CARDNEWS_SAFE.minHeadlinePx
+    : input.field === "body" ? CARDNEWS_SAFE.minBodyPx
+    : input.field === "kicker" ? CARDNEWS_SAFE.minLabelPx : CARDNEWS_SAFE.minSourcePx;
   const effectiveMin = Math.max(input.minFontSize, safeMin);
   const startSize = Math.max(input.preferredFontSize, effectiveMin);
   const headline = input.field === "headline";

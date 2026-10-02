@@ -1,12 +1,6 @@
+import { isOfficialResearchSource } from "@/lib/marketing/research/sourceAuthority";
 import type { ResearchSource } from "@/lib/marketing/research/types/researchSource";
 import type { ResearchSignal } from "@/lib/marketing/research/types/researchSignal";
-
-const OFFICIAL_TYPES = new Set([
-  "official_government",
-  "tourism_board",
-  "airline",
-  "airport",
-]);
 
 function anchorMs(signal: ResearchSignal): number {
   const raw = signal.publishedAt ?? signal.observedAt;
@@ -26,9 +20,9 @@ export function selectPrimarySignal(
     const sourceA = sources.get(a.sourceId);
     const sourceB = sources.get(b.sourceId);
     const officialA =
-      sourceA?.isOfficial || (sourceA && OFFICIAL_TYPES.has(sourceA.sourceType)) ? 1 : 0;
+      isOfficialResearchSource(sourceA) ? 1 : 0;
     const officialB =
-      sourceB?.isOfficial || (sourceB && OFFICIAL_TYPES.has(sourceB.sourceType)) ? 1 : 0;
+      isOfficialResearchSource(sourceB) ? 1 : 0;
     if (officialA !== officialB) return officialB - officialA;
 
     const credDiff = (b.credibility?.score ?? 0) - (a.credibility?.score ?? 0);

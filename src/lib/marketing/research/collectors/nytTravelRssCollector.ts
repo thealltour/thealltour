@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import {
-  NYT_TRAVEL_FEED_URL,
-  NYT_TRAVEL_SOURCE_ID,
-} from "@/lib/marketing/research/collectors/config";
+  NYT_TRAVEL_SOURCE,
+  type ExternalResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import { fetchResearchDocument } from "@/lib/marketing/research/collectors/httpClient";
 import { parseFeedFromXml } from "@/lib/marketing/research/collectors/feedParser";
 import {
@@ -18,33 +18,35 @@ import type {
   ResearchCollector,
 } from "@/lib/marketing/research/collectors/types";
 
-export const NYT_TRAVEL_COLLECTOR_ID = "nyt-travel-rss";
-
 export type NytTravelRssCollectorDeps = {
   fetchImpl?: typeof fetch;
 };
 
+/** `nyt_travel` mapper profile: 12-char summary floor, always `direct_source` evidence. */
 export function createNytTravelRssCollector(
   deps: NytTravelRssCollectorDeps = {},
+  source: ExternalResearchSourceDefinition = NYT_TRAVEL_SOURCE,
 ): ResearchCollector {
   return {
-    collectorId: NYT_TRAVEL_COLLECTOR_ID,
-    sourceType: "news",
+    collectorId: source.key,
+    sourceId: source.id,
+    sourceType: source.sourceType,
     async collect(context: CollectorContext): Promise<RawResearchItem[]> {
       const observedAt = context.now.toISOString();
       const { body } = await fetchResearchDocument({
-        url: NYT_TRAVEL_FEED_URL,
+        url: source.feedUrl,
         fetchImpl: deps.fetchImpl,
       });
-      const items = await parseFeedFromXml(body, NYT_TRAVEL_FEED_URL);
+      const items = await parseFeedFromXml(body, source.feedUrl);
       const limit = context.maxItems ?? 25;
 
       return items
         .slice(0, limit)
-        .map((item) => mapNytItemToRawResearchItem(item, {
-          sourceId: context.sourceId || NYT_TRAVEL_SOURCE_ID,
-          observedAt,
-        }))
+        .map((item) => mapNytItemToRawResearchItem(
+          item,
+          { sourceId: context.sourceId || source.id, observedAt },
+          source,
+        ))
         .filter((item): item is RawResearchItem => item !== null);
     },
   };
@@ -59,6 +61,7 @@ export function mapNytItemToRawResearchItem(
     publishedAt: string | null;
   },
   context: { sourceId: string; observedAt: string },
+  source: ExternalResearchSourceDefinition = NYT_TRAVEL_SOURCE,
 ): RawResearchItem | null {
   const title = item.title?.trim();
   if (!title) return null;
@@ -78,8 +81,8 @@ export function mapNytItemToRawResearchItem(
     canonicalUrl: item.link,
     publishedAt: item.publishedAt,
     observedAt: context.observedAt,
-    locale: "en-US",
-    language: "en",
+    locale: source.locale,
+    language: null,
     destinationHints: destinations,
     topicHints: topics,
     evidence: [
@@ -95,10 +98,10 @@ export function mapNytItemToRawResearchItem(
       },
     ],
     metadata: {
-      collectorId: NYT_TRAVEL_COLLECTOR_ID,
-      signalTypeHint: inferNewsSignalType(title, summary),
+      collectorId: source.key,
+      signalTypeHint: inferNewsSignalType(title, summary, source.semantics.classification.defaultSignalType),
       claimSource: "source",
-      feedUrl: NYT_TRAVEL_FEED_URL,
+      feedUrl: source.feedUrl,
     },
   };
 }

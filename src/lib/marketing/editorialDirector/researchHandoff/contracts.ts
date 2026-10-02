@@ -1,14 +1,15 @@
 /**
- * External Editorial Research handoff — approved Canonical → ChatGPT research-editorial bundle.
+ * External Editorial Research handoff — approved Canonical → ChatGPT research (verify and expand).
  * Separate from canonical-marketing-asset-chatgpt-edit-v1 (Canonical surface edit/import).
- * Export only; returned research/editorial results are not imported or stored by this contract.
+ * Channel copy is not requested here; Instagram cardnews copy has its own handoff
+ * (instagram-cardnews-chatgpt-handoff-v1) once the Canonical is confirmed.
  */
 
 export const EDITORIAL_RESEARCH_BUNDLE_CHATGPT_HANDOFF_CONTRACT =
   "editorial-research-bundle-chatgpt-handoff-v1" as const;
 export const EDITORIAL_RESEARCH_BUNDLE_CHATGPT_HANDOFF_CONTRACT_VERSION = 1 as const;
 
-/** Identity the external model must echo on its returned JSON (import not implemented yet). */
+/** Identity the external model must echo on its returned JSON. */
 export const EDITORIAL_RESEARCH_BUNDLE_CHATGPT_RESULT_CONTRACT =
   "editorial-research-bundle-chatgpt-result-v1" as const;
 
@@ -36,19 +37,7 @@ export const RESEARCH_SOURCE_TIERS = [
 ] as const;
 export type ResearchSourceTier = (typeof RESEARCH_SOURCE_TIERS)[number];
 
-export const EDITORIAL_RESEARCH_REQUESTED_ARTIFACTS = [
-  "research",
-  "narrative",
-  "threads",
-  "instagram.carouselPlan",
-  "instagram.cardCopy",
-  "instagram.caption",
-  "naverBlog.structure",
-  "naverBlog.copy",
-  "naverBand",
-  "kakao",
-  "shortform",
-] as const;
+export const EDITORIAL_RESEARCH_REQUESTED_ARTIFACTS = ["research"] as const;
 export type EditorialResearchRequestedArtifact =
   (typeof EDITORIAL_RESEARCH_REQUESTED_ARTIFACTS)[number];
 
@@ -182,20 +171,6 @@ export type ResearchHandoffOutputContract = {
   rulesKo: string[];
   schema: {
     research: ResearchHandoffSchemaSpec;
-    narrative: ResearchHandoffSchemaSpec;
-    threads: ResearchHandoffSchemaSpec;
-    instagram: {
-      carouselPlan: ResearchHandoffSchemaSpec;
-      cardCopy: ResearchHandoffSchemaSpec;
-      caption: ResearchHandoffSchemaSpec;
-    };
-    naverBlog: {
-      structure: ResearchHandoffSchemaSpec;
-      copy: ResearchHandoffSchemaSpec;
-    };
-    naverBand: ResearchHandoffSchemaSpec;
-    kakao: ResearchHandoffSchemaSpec;
-    shortform: ResearchHandoffSchemaSpec;
   };
 };
 

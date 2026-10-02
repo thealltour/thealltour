@@ -27,6 +27,7 @@ export class AgendaSlateActionError extends Error {
 const ACTION_TO_STATE: Record<AgendaSlateAction, AgendaSlateCandidateState> = {
   select_today: "SELECTED_TODAY",
   defer: "DEFERRED",
+  keep_in_pool: "KEPT_IN_POOL",
   reject: "REJECTED",
   reset_available: "AVAILABLE",
 };
@@ -35,6 +36,7 @@ function recount(candidates: AgendaSlateCandidate[]): DailyAgendaSlate["observab
   return {
     organicCount: candidates.filter((c) => c.origin === "organic_research").length,
     deferredCarryoverCount: candidates.filter((c) => c.origin === "deferred_carryover").length,
+    agendaPoolCount: candidates.filter((c) => c.origin === "agenda_pool").length,
     availableCount: candidates.filter((c) => c.state === "AVAILABLE").length,
     selectedTodayCount: candidates.filter((c) => c.state === "SELECTED_TODAY").length,
   };
@@ -48,7 +50,12 @@ function assertLegalTransition(
   if (from === target) return;
 
   if (action === "reset_available") {
-    if (from !== "SELECTED_TODAY" && from !== "DEFERRED" && from !== "REJECTED") {
+    if (
+      from !== "SELECTED_TODAY" &&
+      from !== "DEFERRED" &&
+      from !== "KEPT_IN_POOL" &&
+      from !== "REJECTED"
+    ) {
       throw new AgendaSlateActionError("cannot reset state", "ILLEGAL_TRANSITION");
     }
     return;
@@ -114,6 +121,13 @@ export function applyAgendaSlateAction(input: {
         deferredFromSlateItemId: item.slateItemId,
       };
     }
+    if (input.action === "keep_in_pool") {
+      return {
+        ...item,
+        state: "KEPT_IN_POOL" as const,
+        poolKeptFromBusinessDateKst: item.poolKeptFromBusinessDateKst ?? input.slate.businessDateKst,
+      };
+    }
     if (input.action === "reset_available") {
       return {
         ...item,
@@ -123,6 +137,8 @@ export function applyAgendaSlateAction(input: {
           item.origin === "deferred_carryover" ? item.deferredFromBusinessDateKst : null,
         deferredFromSlateItemId:
           item.origin === "deferred_carryover" ? item.deferredFromSlateItemId : null,
+        poolKeptFromBusinessDateKst:
+          item.origin === "agenda_pool" ? (item.poolKeptFromBusinessDateKst ?? null) : null,
       };
     }
     return { ...item, state: target };

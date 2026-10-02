@@ -720,7 +720,7 @@ export default function ProductDetailV2({
           </div>
         </Card>
 
-        <FlightSummarySection product={product ?? null} compact embedded />
+        <FlightSummarySection product={product ?? null} compact embedded showDepartureSwitcher />
 
         {hasSummaryData && (
           <div className="mt-6">

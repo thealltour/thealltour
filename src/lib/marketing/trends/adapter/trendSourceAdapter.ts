@@ -12,12 +12,21 @@
 
 import { randomUUID } from "node:crypto";
 
+import {
+  META_AI_TREND_SOURCE_DEFINITION,
+  projectResearchSource,
+  type PushResearchSourceDefinition,
+} from "@/lib/marketing/research/sources/sourceRegistry";
 import type { ResearchRepository } from "@/lib/marketing/research/repository/contracts";
 import {
   toResearchUtcDatetime,
   toResearchUtcDatetimeOrNull,
 } from "@/lib/marketing/research/datetime";
 import { ResearchValidationError } from "@/lib/marketing/research/repository/errors";
+import {
+  canCollectResearchSource,
+  canSourceParticipateInCandidates,
+} from "@/lib/marketing/research/sourceLifecycle";
 import { buildAgendaCandidateFromBrief } from "@/lib/marketing/research/services/agendaCandidateBuilder";
 import type { AgendaCandidate, ResearchBrief } from "@/lib/marketing/research/types/researchBrief";
 import type {
@@ -35,8 +44,7 @@ import {
 } from "@/lib/marketing/research/validation";
 import type { TrendSignalPayloadV1 } from "@/lib/marketing/trends/types";
 
-/** Deterministic Meta AI research source id (valid UUID, not a secret). */
-export const META_AI_TREND_SOURCE_ID = "a1000000-0000-4000-8000-000000000001";
+export const META_AI_TREND_SOURCE_ID = META_AI_TREND_SOURCE_DEFINITION.id;
 
 /**
  * Meta trend freshness horizon for Research MM eligibility.
@@ -86,7 +94,11 @@ export type AdaptTrendSignalResult = {
   agendaCandidate: AgendaCandidate;
 };
 
-function mapTrendTypeToSignalType(trendType: string): ResearchSignal["signalType"] {
+/** `fallback` (source `defaultSignalType`) applies only to trend types with no explicit mapping. */
+function mapTrendTypeToSignalType(
+  trendType: string,
+  fallback: ResearchSignal["signalType"],
+): ResearchSignal["signalType"] {
   switch (trendType) {
     case "fare_price_signal":
       return "airfare";
@@ -110,8 +122,9 @@ function mapTrendTypeToSignalType(trendType: string): ResearchSignal["signalType
     case "content_format_trend":
     case "audience_question":
     case "travel_pain_point":
-    default:
       return "destination_trend";
+    default:
+      return fallback;
   }
 }
 
@@ -171,25 +184,13 @@ export function adaptTrendLayers(payload: TrendSignalPayloadV1): AdaptedTrendLay
   };
 }
 
-export function buildMetaAiTrendSource(now = new Date()): ResearchSource {
+export function buildMetaAiTrendSource(
+  now = new Date(),
+  definition: PushResearchSourceDefinition = META_AI_TREND_SOURCE_DEFINITION,
+): ResearchSource {
   const iso = now.toISOString();
   return {
-    id: META_AI_TREND_SOURCE_ID,
-    sourceType: "social",
-    name: "Meta AI Trend Discovery",
-    canonicalUrl: null,
-    provider: "meta_ai",
-    authorityLevel: "community",
-    defaultCredibility: 0.35,
-    locale: "ko-KR",
-    country: "KR",
-    language: "ko",
-    isOfficial: false,
-    isEnabled: true,
-    metadata: {
-      role: "trend_discovery_editorial_intelligence_provider",
-      neverAccesses: ["agenda_finalize", "cmc", "hmr", "publication", "sns"],
-    },
+    ...projectResearchSource(definition),
     createdAt: iso,
     updatedAt: iso,
   };
@@ -203,9 +204,10 @@ export function buildMetaAiTrendSource(now = new Date()): ResearchSource {
 export function adaptTrendSignalToResearch(
   payload: TrendSignalPayloadV1,
   now = new Date(),
+  definition: PushResearchSourceDefinition = META_AI_TREND_SOURCE_DEFINITION,
 ): AdaptTrendSignalResult {
   const layers = adaptTrendLayers(payload);
-  const source = buildMetaAiTrendSource(now);
+  const source = buildMetaAiTrendSource(now, definition);
   const signalId = randomUUID();
   const briefId = randomUUID();
   const evidenceId = randomUUID();
@@ -252,7 +254,10 @@ export function adaptTrendSignalToResearch(
     id: signalId,
     sourceId: source.id,
     sourceType: source.sourceType,
-    signalType: mapTrendTypeToSignalType(payload.trend_type),
+    signalType: mapTrendTypeToSignalType(
+      payload.trend_type,
+      definition.semantics.classification.defaultSignalType,
+    ),
     title: payload.topic,
     summary: payload.summary,
     claim: claims[0] ?? null,
@@ -409,15 +414,22 @@ async function rollbackPartialTrendPersist(
   }
 }
 
+export type PersistAdaptedTrendResult = AdaptTrendSignalResult & {
+  /** Which rows were written; source lifecycle decides how far the write goes. */
+  persisted: { signal: boolean; brief: boolean; agendaCandidate: boolean };
+};
+
 /**
  * Persist adapted trend atomically from the caller's POV:
  * validate first → write → on failure compensate deletes so no orphan durable rows remain.
  * Meta source upsert is idempotent shared identity and is not rolled back.
+ * Source lifecycle (`adapted.source.metadata.semantics`): paused/retired write the source row only;
+ * shadow also writes the signal but no brief/candidate.
  */
 export async function persistAdaptedTrend(
   adapted: AdaptTrendSignalResult,
   repo: ResearchRepository,
-): Promise<AdaptTrendSignalResult> {
+): Promise<PersistAdaptedTrendResult> {
   assertAdaptedTrendPersistable(adapted);
 
   let signalId: string | undefined;
@@ -426,8 +438,14 @@ export async function persistAdaptedTrend(
 
   try {
     await repo.upsertSource(adapted.source);
+    if (!canCollectResearchSource(adapted.source)) {
+      return { ...adapted, persisted: { signal: false, brief: false, agendaCandidate: false } };
+    }
     const signal = await repo.upsertSignal(adapted.signal);
     signalId = signal.id;
+    if (!canSourceParticipateInCandidates(adapted.source)) {
+      return { ...adapted, signal, persisted: { signal: true, brief: false, agendaCandidate: false } };
+    }
     const brief = await repo.upsertBrief({
       ...adapted.brief,
       signalIds: [signal.id],
@@ -439,7 +457,13 @@ export async function persistAdaptedTrend(
       researchBriefId: brief.id,
     });
     candidateId = agendaCandidate.id;
-    return { ...adapted, signal, brief, agendaCandidate };
+    return {
+      ...adapted,
+      signal,
+      brief,
+      agendaCandidate,
+      persisted: { signal: true, brief: true, agendaCandidate: true },
+    };
   } catch (error) {
     await rollbackPartialTrendPersist(repo, {
       candidateId,

@@ -5,6 +5,7 @@ import {
   type CardNewsGeometry,
 } from "@/lib/marketing/assets/cardnews/brand";
 import { withCardNewsFonts } from "@/lib/marketing/assets/cardnews/fonts";
+import { prepareColorEmojiSvg } from "@/lib/marketing/assets/cardnews/colorEmoji";
 
 export async function rasterizeCardNewsSvg(
   svg: string,
@@ -12,7 +13,8 @@ export async function rasterizeCardNewsSvg(
 ): Promise<Buffer> {
   const geo = geometry ?? resolveCardNewsGeometry();
   return withCardNewsFonts(async () => {
-    return sharp(Buffer.from(svg), { density: 72 })
+    const preparedSvg = await prepareColorEmojiSvg(svg, geo);
+    return sharp(Buffer.from(preparedSvg), { density: 72 })
       .resize(geo.width, geo.height, { fit: "fill" })
       .png({
         compressionLevel: 9,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { MarketingTeamSubnav } from "@/components/admin/ai-marketing/MarketingTeamSubnav";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -16,6 +16,13 @@ import { MarketingReviewChannelTabs } from "@/components/admin/marketing-review/
 import { MarketingReviewCanonicalAssetPanel } from "@/components/admin/marketing-review/MarketingReviewCanonicalAssetPanel";
 import { MarketingReviewExternalEditorialPanel } from "@/components/admin/marketing-review/MarketingReviewExternalEditorialPanel";
 import { MarketingReviewInstagramCardCopyPanel } from "@/components/admin/marketing-review/MarketingReviewInstagramCardCopyPanel";
+import { MarketingReviewNarrationPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationPanel";
+import { MarketingReviewNarrationScenesPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationScenesPanel";
+import { MarketingReviewNarrationInstagramPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationInstagramPanel";
+import { MarketingReviewNarrationShortformPanel } from "@/components/admin/marketing-review/MarketingReviewNarrationShortformPanel";
+import { MarketingReviewInstagramCardnewsHandoffPanel } from "@/components/admin/marketing-review/MarketingReviewInstagramCardnewsHandoffPanel";
+import { MarketingReviewWorkflowNav, MarketingReviewWorkflowStage, type ReviewWorkflowStepId } from "@/components/admin/marketing-review/MarketingReviewWorkflowNav";
+import { MarketingReviewResearchHandoffButton } from "@/components/admin/marketing-review/MarketingReviewResearchHandoffButton";
 import type { MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
 import { sanitizeTextForDisplay } from "@/lib/marketing/review/textDisplay";
 
@@ -65,6 +72,27 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
     (context.channelReviews ?? [])[0]?.channel ?? context.draft.channel ?? "threads",
   );
   const [artifactRefreshKey, setArtifactRefreshKey] = useState(0);
+  const [activeStep, setActiveStep] = useState<ReviewWorkflowStepId>(1);
+  const [workflowRefreshKey, setWorkflowRefreshKey] = useState(0);
+  const [cardCopyDirty, setCardCopyDirty] = useState(false);
+  const refreshWorkflow = useCallback(() => setWorkflowRefreshKey((key) => key + 1), []);
+  const workflowStorageKey = `marketing-review-step:${candidate.candidateId}`;
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(workflowStorageKey));
+      setActiveStep(saved >= 1 && saved <= 10 && Number.isInteger(saved) ? saved as ReviewWorkflowStepId : 1);
+    } catch { setActiveStep(1); }
+  }, [workflowStorageKey]);
+  function selectStep(step: ReviewWorkflowStepId) {
+    setActiveStep(step);
+    try { localStorage.setItem(workflowStorageKey, String(step)); } catch { /* Storage can be unavailable. */ }
+  }
+  const canonicalAsset = context.canonicalAsset;
+  const canonicalApproved =
+    canonicalAsset.present &&
+    canonicalAsset.status === "approved" &&
+    canonicalAsset.version != null &&
+    canonicalAsset.approvedVersion === canonicalAsset.version;
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +190,12 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           <span className="text-[var(--text-secondary)]">거버넌스 {context.governance.decision ?? "—"}</span>
         </div>
 
+        <MarketingReviewWorkflowNav candidateId={candidate.candidateId} canonicalApproved={canonicalApproved}
+          cardCopyDirty={cardCopyDirty}
+          refreshKey={artifactRefreshKey + workflowRefreshKey} activeStep={activeStep} onSelect={selectStep}
+          channelStatus={(context.channelReviews ?? []).some((channel) => channel.stale) ? "재검토 필요" : (context.channelReviews ?? []).length > 0 && context.channelReviews!.every((channel) => ["approved", "skipped"].includes(channel.status)) ? "검토 완료" : "작업 필요"} />
+        {message ? <p role="status" className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+
         {context.identity.isVerificationFixture ? (
           <AdminCard className={cn("p-4 text-sm", adminToneBorderBg.warning)}>
             이 레코드는 검증(verification) fixture입니다. 일반 운영 검토와 구분하세요.
@@ -241,8 +275,10 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </AdminCard>
         ) : null}
 
+        <MarketingReviewWorkflowStage step={1} activeStep={activeStep}>
         <MarketingReviewCanonicalAssetPanel
           candidateId={candidate.candidateId}
+          showResearchHandoff={false}
           asset={context.canonicalAsset}
           canEdit={detail.canEdit}
           busy={busy}
@@ -251,17 +287,113 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           onReload={reloadContext}
         />
 
-        <MarketingReviewExternalEditorialPanel
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={2} activeStep={activeStep}>
+          <MarketingReviewResearchHandoffButton candidateId={candidate.candidateId} approved={canonicalApproved}
+            canEdit={detail.canEdit} busy={busy} onBusy={setBusy} onMessage={setMessage} />
+        <MarketingReviewExternalEditorialPanel mode="research"
           candidateId={candidate.candidateId}
           canEdit={detail.canEdit}
           busy={busy}
           onBusy={setBusy}
           onMessage={setMessage}
           onReload={reloadContext}
+          refreshKey={artifactRefreshKey}
         />
 
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={7} activeStep={activeStep}>
+          <MarketingReviewNarrationPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={8} activeStep={activeStep}>
+          <MarketingReviewNarrationScenesPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={10} activeStep={activeStep}>
+          <MarketingReviewNarrationShortformPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={9} activeStep={activeStep}>
+          <MarketingReviewNarrationInstagramPanel key={candidate.candidateId} candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onChanged={refreshWorkflow} />
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={3} activeStep={activeStep}>
+        <MarketingReviewInstagramCardnewsHandoffPanel
+          candidateId={candidate.candidateId}
+          canEdit={detail.canEdit}
+          canonicalApproved={canonicalApproved}
+          busy={busy}
+          onBusy={setBusy}
+          onImported={async () => {
+            try {
+              await reloadContext();
+            } catch {
+              setArtifactRefreshKey((k) => k + 1);
+            }
+          }}
+        />
+
+        <MarketingReviewInstagramCardCopyPanel
+          onStatusChange={refreshWorkflow}
+          onDirtyChange={setCardCopyDirty}
+          candidateId={candidate.candidateId}
+          canEdit={detail.canEdit}
+          refreshKey={artifactRefreshKey}
+        />
+
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={4} activeStep={activeStep}>
+        <MarketingReviewAstraHandoffPanel showRenderActions={false} onStatusChange={refreshWorkflow}
+          candidateId={candidate.candidateId}
+          refreshKey={artifactRefreshKey + workflowRefreshKey}
+        />
+
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={5} activeStep={activeStep}>
+        <MarketingReviewAssetsPanel candidateId={candidate.candidateId} refreshKey={artifactRefreshKey + workflowRefreshKey} onStatusChange={refreshWorkflow} />
+        <p className="text-xs text-[var(--text-secondary)]">문구나 이미지를 수정했다면 다시 렌더한 뒤 결과를 확인하세요. 단계 메뉴의 ‘결과 있음’은 저장된 PNG가 있다는 뜻입니다.</p>
+        </MarketingReviewWorkflowStage>
+        <MarketingReviewWorkflowStage step={6} activeStep={activeStep}>
+        <MarketingReviewExternalEditorialPanel mode="channels" candidateId={candidate.candidateId} canEdit={detail.canEdit}
+          busy={busy} onBusy={setBusy} onMessage={setMessage} onReload={reloadContext} refreshKey={artifactRefreshKey} />
+
+        <AdminCard className="space-y-3 p-4">
+          <h2 className="text-base font-semibold">채널별 검토</h2>
+          <p className="text-xs text-[var(--text-secondary)]">
+            전 채널 탭을 표시합니다. 미생성 채널은 채널 탭의 [생성]으로 개별 생성하세요. 채널
+            저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다. Instagram 카드뉴스 비주얼은 다른
+            채널의 생성 여부와 관계없이 위 카드 문구 기준으로 진행됩니다.
+          </p>
+          <MarketingReviewChannelChecklist
+            context={context}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            onSelectChannel={setSelectedChannel}
+          />
+          <MarketingReviewChannelTabs
+            context={context}
+            canEdit={detail.canEdit}
+            busy={busy}
+            onBusy={setBusy}
+            onMessage={setMessage}
+            onReload={reloadContext}
+            selectedChannel={selectedChannel}
+            onSelectChannel={setSelectedChannel}
+          />
+          <label className="block text-sm">
+            <span className="mb-1 block text-[var(--text-secondary)]">검토 메모 (후보 공통)</span>
+            <textarea
+              value={humanNotes}
+              onChange={(e) => setHumanNotes(e.target.value)}
+              disabled={busy}
+              rows={3}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+            />
+          </label>
+          {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
+        </AdminCard>
+
         <AdminCard className="space-y-4 p-4">
-          <h2 className="text-base font-semibold">1. 인간 검토 / 조치</h2>
+          <h2 className="text-base font-semibold">인간 검토 / 조치 (게시 승인)</h2>
           <p className="text-sm text-[var(--text-secondary)]">
             현재 상태: <strong>{context.humanAction.label}</strong>
             {context.governance.decision === "ALLOW" ? (
@@ -394,6 +526,12 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
         </AdminCard>
 
+        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
+        </MarketingReviewWorkflowStage>
+
+        <details className="rounded-lg border border-[var(--border)] p-4">
+          <summary className="cursor-pointer text-sm font-medium">배경·근거·거버넌스·성과 확인</summary>
+          <div className="mt-4 space-y-4">
         <AdminCard className="space-y-3 p-4">
           <details>
             <summary className="cursor-pointer text-base font-semibold">연구 / 전략 요약</summary>
@@ -432,60 +570,10 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           </details>
         </AdminCard>
 
-        <AdminCard className="space-y-3 p-4">
-          <h2 className="text-base font-semibold">2. 채널별 검토</h2>
-          <p className="text-xs text-[var(--text-secondary)]">
-            전 채널 탭을 표시합니다. 미생성 채널은 채널 탭의 [생성]으로 개별 생성하세요. 채널
-            저장/승인/Skip은 서로 독립이며, 사람 수정본이 AI 초안보다 우선합니다.
-          </p>
-          <MarketingReviewChannelChecklist
-            context={context}
-            busy={busy}
-            onBusy={setBusy}
-            onMessage={setMessage}
-            onReload={reloadContext}
-            onSelectChannel={setSelectedChannel}
-          />
-          <MarketingReviewChannelTabs
-            context={context}
-            canEdit={detail.canEdit}
-            busy={busy}
-            onBusy={setBusy}
-            onMessage={setMessage}
-            onReload={reloadContext}
-            selectedChannel={selectedChannel}
-            onSelectChannel={setSelectedChannel}
-          />
-          <label className="block text-sm">
-            <span className="mb-1 block text-[var(--text-secondary)]">검토 메모 (후보 공통)</span>
-            <textarea
-              value={humanNotes}
-              onChange={(e) => setHumanNotes(e.target.value)}
-              disabled={busy}
-              rows={3}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-            />
-          </label>
-          {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
-        </AdminCard>
-
-        <MarketingReviewInstagramCardCopyPanel
-          candidateId={candidate.candidateId}
-          canEdit={detail.canEdit}
-        />
-
-        <MarketingReviewAssetsPanel candidateId={candidate.candidateId} />
-
-        <MarketingReviewAstraHandoffPanel
-          candidateId={candidate.candidateId}
-          refreshKey={artifactRefreshKey}
-        />
-
-        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">3. 왜 오늘 이 콘텐츠인가</summary>
+            <summary className="cursor-pointer text-base font-semibold">왜 오늘 이 콘텐츠인가</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm">{sanitizeTextForDisplay(context.agenda.summary)}</p>
           <div className="grid gap-2 text-sm text-[var(--text-secondary)] md:grid-cols-2">
@@ -506,7 +594,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">4. 근거 / 사실 지원</summary>
+            <summary className="cursor-pointer text-base font-semibold">근거 / 사실 지원</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">{context.evidence.message}</p>
           {context.evidence.claims.length === 0 ? (
@@ -561,7 +649,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">5. 거버넌스</summary>
+            <summary className="cursor-pointer text-base font-semibold">거버넌스</summary>
             <div className="mt-3">
           {context.governance.decision ? (
             <div className="space-y-2 text-sm">
@@ -595,7 +683,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         <AdminCard className="space-y-3 p-4">
           <details>
-            <summary className="cursor-pointer text-base font-semibold">6. 성과 맥락</summary>
+            <summary className="cursor-pointer text-base font-semibold">성과 맥락</summary>
             <div className="mt-3 space-y-3">
           <p className="text-sm text-[var(--text-secondary)]">{context.performance.message}</p>
           {context.performance.absent ? null : (
@@ -629,7 +717,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
 
         {context.operations.notice ? (
           <AdminCard className={cn("space-y-2 p-4", adminToneBorderBg.warning)}>
-            <h2 className="text-base font-semibold">7. 운영 메타데이터</h2>
+            <h2 className="text-base font-semibold">운영 메타데이터</h2>
             <p className="text-sm">{context.operations.notice}</p>
             <div className="text-xs text-[var(--text-secondary)]">
               Run {context.operations.runStatus ?? "—"} · attempt {context.operations.executionAttempt ?? "—"} · prior
@@ -637,6 +725,8 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
             </div>
           </AdminCard>
         ) : null}
+          </div>
+        </details>
       </main>
     </div>
   );

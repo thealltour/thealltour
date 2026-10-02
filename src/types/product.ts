@@ -330,6 +330,10 @@ export type Product = {
   booking_conditions_template_type?: string | null;
   terms_template_type?: string;
   product_source_url?: string;
+  /** 출발지 라벨 (예: 인천, 부산). DB departure_city */
+  departure_city?: string;
+  /** 출발지별로 나눠 등록한 같은 상품 묶음 id. null이면 단독 상품 */
+  departure_group_id?: string | null;
   departure_from_airport?: string;
   departure_from_date?: string;
   departure_from_time?: string;

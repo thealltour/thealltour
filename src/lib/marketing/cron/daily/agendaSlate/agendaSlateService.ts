@@ -1,4 +1,5 @@
 import { formatKstBusinessDate } from "@/lib/marketing/cron/daily/kstBusinessDate";
+import { summarizeAgendaSlateDay } from "./daySummary";
 import {
   applyAgendaSlateAction,
   AgendaSlateActionError,
@@ -183,16 +184,12 @@ export async function createAgendaSlateService(deps: {
           : row.updatedAt > prev.updatedAt);
       if (replace) bestByDate.set(row.businessDateKst, row);
     }
-    return [...bestByDate.values()]
+    const days = [...bestByDate.values()]
       .sort((a, b) => b.businessDateKst.localeCompare(a.businessDateKst))
-      .slice(0, limit)
-      .map((row) => ({
-        businessDateKst: row.businessDateKst,
-        status: row.status,
-        candidateCount: row.candidates.length,
-        selectedTodayCount: row.candidates.filter((c) => c.state === "SELECTED_TODAY").length,
-        slateId: row.slateId,
-      }));
+      .slice(0, limit);
+    return Promise.all(days.map(async (row) => summarizeAgendaSlateDay(
+      row, (await productionRequestRepo.listByBusinessDate(row.businessDateKst)).length,
+    )));
   }
 
   async function applyAction(input: {

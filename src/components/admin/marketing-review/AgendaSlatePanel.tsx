@@ -13,6 +13,7 @@ import type {
   DailyAgendaSlate,
 } from "@/lib/marketing/cron/daily/agendaSlate/types";
 import { MAX_SELECTED_TODAY } from "@/lib/marketing/cron/daily/agendaSlate/types";
+import { agendaSlateDayProgressLabel, summarizeAgendaSlateDay } from "@/lib/marketing/cron/daily/agendaSlate/daySummary";
 import type { MarketingProductionRequest } from "@/lib/marketing/cron/daily/agendaSlate/productionRequestTypes";
 import { cn } from "@/lib/cn";
 
@@ -264,19 +265,6 @@ function countByStatus(requests: MarketingProductionRequest[]) {
     completed: requests.filter((r) => r.status === "COMPLETED").length,
     failed: requests.filter((r) => r.status === "FAILED").length,
   };
-}
-
-function slateStatusLabel(status: DailyAgendaSlate["status"] | undefined): string {
-  switch (status) {
-    case "ready_for_human_selection":
-      return "선택 대기";
-    case "empty_deferred":
-      return "후보 없음";
-    case "superseded":
-      return "대체됨";
-    default:
-      return status ?? "";
-  }
 }
 
 function ProductionPipelineBanner(props: {
@@ -940,6 +928,8 @@ export function AgendaSlatePanel({
   const dayOptions = useMemo(() => {
     const byDate = new Map<string, AgendaSlateDaySummary>();
     for (const day of recentDays) byDate.set(day.businessDateKst, day);
+    // Reflect action responses immediately instead of waiting for the next full reload.
+    if (slate) byDate.set(slate.businessDateKst, summarizeAgendaSlateDay(slate, productionRequests.length));
     if (todayBusinessDateKst && !byDate.has(todayBusinessDateKst)) {
       byDate.set(todayBusinessDateKst, {
         businessDateKst: todayBusinessDateKst,
@@ -961,7 +951,7 @@ export function AgendaSlatePanel({
     return [...byDate.values()].sort((a, b) =>
       b.businessDateKst.localeCompare(a.businessDateKst),
     );
-  }, [recentDays, todayBusinessDateKst, selectedDate]);
+  }, [recentDays, todayBusinessDateKst, selectedDate, slate, productionRequests]);
 
   const applySlatePayload = useCallback((data: SlateApiResponse) => {
     setSlate(data.slate);
@@ -1444,7 +1434,7 @@ export function AgendaSlatePanel({
                     day.businessDateKst,
                     isToday ? "오늘" : null,
                     day.slateId
-                      ? `${day.candidateCount}후보 · ${slateStatusLabel(day.status)}`
+                      ? `${day.candidateCount}후보 · ${agendaSlateDayProgressLabel(day)}`
                       : "슬레이트 없음",
                   ]
                     .filter(Boolean)
@@ -1467,7 +1457,7 @@ export function AgendaSlatePanel({
                 표시 중: <span className="font-medium text-[var(--text-primary)]">{effectiveDate}</span>
                 {isHistorical ? " (과거 날짜)" : " (오늘)"}
                 {selectedSummary?.slateId
-                  ? ` · ${selectedSummary.candidateCount}후보 · selected ${selectedTodayCount}/${MAX_SELECTED_TODAY}`
+                  ? ` · ${selectedSummary.candidateCount}후보 · ${agendaSlateDayProgressLabel(selectedSummary)}`
                   : null}
               </>
             ) : (
@@ -1482,6 +1472,14 @@ export function AgendaSlatePanel({
               className="min-h-11 w-full rounded-lg border border-violet-700/40 bg-violet-700/10 px-3 py-2 text-sm font-medium text-violet-950 disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
             >
               ChatGPT용 Slate 복사 (선택 {exportSelectedIds.length}건)
+            </button>
+            <button
+              type="button"
+              disabled={busy || !slate || exportSelectedIds.length < 1}
+              onClick={() => setExportSelection(new Set())}
+              className="min-h-11 w-full rounded-lg border border-violet-700/40 px-3 py-2 text-sm text-violet-950 disabled:opacity-50 sm:min-h-0 sm:w-auto sm:py-1.5 sm:text-xs"
+            >
+              ChatGPT 복사 전체 해제
             </button>
             <button
               type="button"

@@ -142,5 +142,11 @@ export type AgendaSlateDaySummary = {
   status: DailyAgendaSlateStatus;
   candidateCount: number;
   selectedTodayCount: number;
+  /** Current candidate states; these are not a historical review-completion flag. */
+  availableCount?: number;
+  keptInPoolCount?: number;
+  deferredCount?: number;
+  rejectedCount?: number;
+  productionRequestCount?: number;
   slateId: string;
 };

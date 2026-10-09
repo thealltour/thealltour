@@ -38,6 +38,9 @@ export type CompletedNarrationSegment = {
   reused: boolean;
 };
 
+/** Runs after the raw WAV is persisted and before probing. Returns run-relative processed paths; raw files stay untouched. */
+export type NarrationSegmentAudioProcessor = (input: { ordinal: number; segmentId: string; rawRelativeAudioPath: string }) => Promise<{ relativeAudioPath: string; relativeGenerationPath: string }>;
+
 export type FailedNarrationSegment = {
   ordinal: number;
   segmentId: string;
@@ -70,6 +73,7 @@ export async function generateNarrationMasterTimeline(input: {
   profile: TtsProfile;
   provider: TtsProvider;
   durationProbe: AudioDurationProbe;
+  processAudio?: NarrationSegmentAudioProcessor;
   now?: Date;
 }): Promise<GenerateNarrationMasterTimelineResult> {
   const candidateId = input.candidateId.trim();
@@ -110,6 +114,7 @@ export async function generateNarrationMasterTimeline(input: {
         profile: input.profile,
         provider: input.provider,
         durationProbe: input.durationProbe,
+        processAudio: input.processAudio,
         generatedAt,
         segment,
       });
@@ -162,16 +167,12 @@ async function generateOrReuseSegment(input: {
   profile: TtsProfile;
   provider: TtsProvider;
   durationProbe: AudioDurationProbe;
+  processAudio?: NarrationSegmentAudioProcessor;
   generatedAt: string;
   segment: { ordinal: number; segmentId: string; text: string };
 }): Promise<CompletedNarrationSegment> {
   const relativeAudioPath = ttsOrderedSegmentAudioRelativePath(input.segment.ordinal);
   const relativeGenerationPath = ttsOrderedSegmentGenerationRelativePath(input.segment.ordinal);
-  const absoluteAudioPath = resolvePackageArtifactPath({
-    packageRoot: input.packageRoot,
-    relativePath: relativeAudioPath,
-  });
-
   const reusable = readReusableSegment({
     packageRoot: input.packageRoot,
     relativeAudioPath,
@@ -198,14 +199,18 @@ async function generateOrReuseSegment(input: {
     });
   }
 
-  const probed = await input.durationProbe.probePersistedWav(absoluteAudioPath);
-  const audioBytes = readFileSync(absoluteAudioPath);
+  const processed = input.processAudio
+    ? await input.processAudio({ ordinal: input.segment.ordinal, segmentId: input.segment.segmentId, rawRelativeAudioPath: relativeAudioPath })
+    : { relativeAudioPath, relativeGenerationPath };
+  const measuredAudioPath = resolvePackageArtifactPath({ packageRoot: input.packageRoot, relativePath: processed.relativeAudioPath });
+  const probed = await input.durationProbe.probePersistedWav(measuredAudioPath);
+  const audioBytes = readFileSync(measuredAudioPath);
   return {
     ordinal: input.segment.ordinal,
     segmentId: input.segment.segmentId,
     text: input.segment.text,
-    relativeAudioPath,
-    relativeGenerationPath,
+    relativeAudioPath: processed.relativeAudioPath,
+    relativeGenerationPath: processed.relativeGenerationPath,
     audioSha256: sha256Buffer(audioBytes),
     durationMs: probed.durationMs,
     reused: Boolean(reusable),

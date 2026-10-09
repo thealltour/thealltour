@@ -6,6 +6,7 @@ import { createHumanMarketingReviewService } from "@/lib/marketing/review/humanM
 import { resolveCandidatePackageRoot } from "@/lib/marketing/editorialDirector/researchHandoff/loadResearchHandoffSource";
 import { readCanonicalAssetFromPackage, resolveCanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/persistence";
 import { mutationSchema } from "@/lib/marketing/publishable/narration/contracts";
+import { buildNarrationHandoff, importNarrationResult, narrationExchangeSchema } from "@/lib/marketing/publishable/narration/handoff";
 import { mutateNarration, narrationGate, narrationLineage, NarrationError, readNarration } from "@/lib/marketing/publishable/narration/persistence";
 
 export const dynamic = "force-dynamic";
@@ -28,13 +29,23 @@ async function handle(request: Request, context: Context, mutate: boolean) {
       if (!asset) throw new NarrationError("공통 원문을 찾을 수 없습니다.", 404);
       return asset;
     };
-    const getLineage = () => narrationLineage(getSource());
+    const getLineage = () => narrationLineage(getSource(), root);
     let narration = readNarration(root, candidateId);
     if (mutate) {
       if (!detail.canEdit) throw new NarrationError("현재 후보는 편집할 수 없습니다.", 403);
-      const parsed = mutationSchema.safeParse(await request.json().catch(() => null));
-      if (!parsed.success) throw new NarrationError("1~16개 문장과 현재 revision 정보를 확인해주세요.", 400);
-      narration = mutateNarration(root, candidateId, parsed.data, getLineage);
+      const body: unknown = await request.json().catch(() => null);
+      const exchange = narrationExchangeSchema.safeParse(body);
+      if (exchange.success) {
+        if (exchange.data.action === "handoff") {
+          const payload = buildNarrationHandoff(root, candidateId, getSource());
+          return Response.json({ text: JSON.stringify(payload, null, 2), payload });
+        }
+        narration = importNarrationResult(root, candidateId, exchange.data.raw, getSource);
+      } else {
+        const parsed = mutationSchema.safeParse(body);
+        if (!parsed.success) throw new NarrationError("1~16개 문장과 현재 revision 정보를 확인해주세요.", 400);
+        narration = mutateNarration(root, candidateId, parsed.data, getLineage);
+      }
     }
     const lineage = getLineage();
     const source = getSource();

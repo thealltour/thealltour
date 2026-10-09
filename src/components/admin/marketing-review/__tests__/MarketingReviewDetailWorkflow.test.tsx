@@ -34,17 +34,20 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 it("puts editing, research, card copy, visuals, render and channels in the agreed order without losing drafts", async () => {
   render(<MarketingReviewDetailBody initialContext={context} unreadNotificationCount={0} />);
   const tabs = screen.getAllByRole("tab");
-  expect(tabs).toHaveLength(10);
-  ["공통 원문", "Research 검증", "Narration", "문장 비주얼", "Shortform", "Instagram 파생", "카드 문구", "공유 비주얼", "카드뉴스 완성", "기타 채널"].forEach((label, index) => expect(tabs[index]).toHaveTextContent(label));
+  expect(tabs).toHaveLength(7);
+  ["공통 원문", "Research 검증", "Narration", "공유 비주얼", "Shortform", "Instagram 파생", "기타 채널"].forEach((label, index) => expect(tabs[index]).toHaveTextContent(label));
   fireEvent.change(screen.getByRole("textbox", { name: "공통 원문 편집" }), { target: { value: "아직 저장 안 함" } });
-  fireEvent.click(tabs[6]!);
+  fireEvent.click(screen.getByText("기존 카드 제작 메뉴 보기"));
+  fireEvent.click(screen.getByRole("tab", { name: /기존 · 카드 문구/ }));
   expect(screen.getByText("카드 문구 영역")).toBeVisible();
   expect(screen.getByText("채널 편집 영역")).not.toBeVisible();
   expect(screen.queryByRole("textbox", { name: "공통 원문 편집" })).toBeNull();
   fireEvent.click(tabs[0]!);
   expect(screen.getByRole("textbox", { name: "공통 원문 편집" })).toHaveValue("아직 저장 안 함");
-  fireEvent.click(tabs[9]!);
+  fireEvent.click(screen.getByRole("tab", { name: /기타 채널/ }));
   expect(screen.getByText("채널 편집 영역")).toBeVisible();
+  expect(screen.getByText("숏폼 소스 영역")).not.toBeVisible();
+  fireEvent.click(screen.getByText("기존 숏폼 소스 선택 · 이전 프로젝트용"));
   expect(screen.getByText("숏폼 소스 영역")).toBeVisible();
   expect(localStorage.getItem("marketing-review-step:workflow-test")).toBe("6");
   await waitFor(() => expect(screen.getByRole("tab", { selected: true }).textContent).toContain("기타 채널"));
@@ -53,6 +56,6 @@ it("puts editing, research, card copy, visuals, render and channels in the agree
 it("restores the last selected stage for this candidate", async () => {
   localStorage.setItem("marketing-review-step:workflow-test", "4");
   render(<MarketingReviewDetailBody initialContext={context} unreadNotificationCount={0} />);
-  await waitFor(() => expect(screen.getByRole("tab", { selected: true }).textContent).toContain("공유 비주얼"));
+  await waitFor(() => expect(screen.getByRole("tab", { selected: true }).textContent).toContain("기존 카드 기준 비주얼"));
   expect(screen.getByText("비주얼 영역")).toBeVisible();
 });

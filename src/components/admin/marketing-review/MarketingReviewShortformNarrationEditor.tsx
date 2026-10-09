@@ -214,13 +214,12 @@ export function MarketingReviewShortformNarrationEditor(props: {
               />
               {edited ? (
                 <div className="text-xs text-[var(--text-secondary)]">
-                  <button
+                  <AdminButton variant="secondary"
                     type="button"
-                    className="underline"
                     onClick={() => setOpenAi((prev) => ({ ...prev, [segment.segmentId]: !prev[segment.segmentId] }))}
                   >
                     {openAi[segment.segmentId] ? "AI 원문 숨기기" : "AI 원문 보기"}
-                  </button>
+                  </AdminButton>
                   {openAi[segment.segmentId] ? (
                     <p className="mt-1 whitespace-pre-wrap">{segment.aiText}</p>
                   ) : null}

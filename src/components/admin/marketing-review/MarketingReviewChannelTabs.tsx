@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useEffect, useMemo, useState } from "react";
 import type { MorningChannelReviewView, MorningMarketingReviewContext } from "@/lib/marketing/review/morningReview/types";
@@ -268,18 +269,13 @@ export function MarketingReviewChannelTabs({
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-2">
         {channels.map((c) => (
-          <button
+          <AdminButton variant={active?.channel === c.channel ? "primary" : "secondary"}
             key={c.channel}
             type="button"
             onClick={() => onSelectChannel(c.channel)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
-              active?.channel === c.channel
-                ? "bg-[var(--primary)] text-white"
-                : "border border-[var(--border)]"
-            }`}
           >
             {c.label}
-          </button>
+          </AdminButton>
         ))}
       </div>
 
@@ -342,14 +338,13 @@ export function MarketingReviewChannelTabs({
                 아직 생성하지 않은 채널입니다. Canonical 승인만으로 자동 생성되지 않습니다. 원할 때
                 Channel Editor로 이 채널만 생성하세요.
               </p>
-              <button
+              <AdminButton variant="primary"
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
                 onClick={() => void regenerate(false)}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 생성
-              </button>
+              </AdminButton>
             </div>
           ) : null}
 
@@ -363,14 +358,13 @@ export function MarketingReviewChannelTabs({
                 외부에서 다듬은 본문이라면 재생성 없이 아래 「채널 승인」으로 사람 판단 승인을 할 수
                 있습니다.
               </p>
-              <button
+              <AdminButton variant="secondary"
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
                 onClick={() => void regenerate(false, { qualityRevision: true })}
-                className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 채널 Body 재생성
-              </button>
+              </AdminButton>
             </div>
           ) : null}
 
@@ -402,25 +396,23 @@ export function MarketingReviewChannelTabs({
               </label>
               {active.blogMeta?.titleCandidates && active.blogMeta.titleCandidates.length > 1 ? (
                 <div>
-                  <button
+                  <AdminButton variant="secondary"
                     type="button"
-                    className="text-xs text-[var(--primary)] underline"
                     onClick={() => setShowTitleCandidates((v) => !v)}
                   >
                     {showTitleCandidates ? "제목 후보 숨기기" : "제목 후보 보기"}
-                  </button>
+                  </AdminButton>
                   {showTitleCandidates ? (
                     <ul className="mt-2 list-disc pl-5 text-xs text-[var(--text-secondary)]">
                       {active.blogMeta.titleCandidates.map((t) => (
                         <li key={t}>
-                          <button
+                          <AdminButton variant="secondary"
                             type="button"
-                            className="text-left hover:underline"
                             disabled={!editable || busy}
                             onClick={() => setTitle(t)}
                           >
                             {t}
-                          </button>
+                          </AdminButton>
                         </li>
                       ))}
                     </ul>
@@ -442,17 +434,15 @@ export function MarketingReviewChannelTabs({
 
           {active.channel === "shortform" ? (
             <div className="space-y-2 text-sm">
-              <p className="text-[var(--text-secondary)]">
-                내레이션은 세그먼트별로 수정할 수 있고, 저장하면 모든 장면 PICK이 끝난 경우 자동으로 다시
-                렌더합니다. 소스 PICK·렌더·미리보기는 아래 Shortform 패널에서 확인하세요. 승인에는 현재 내레이션
-                기준 READY 게이트가 적용됩니다.
-              </p>
+              <p className="text-[var(--text-secondary)]">새 Narration 원고는 Narration 단계에서 수정하고, 공유 비주얼과 Shortform 단계에서 제작합니다.</p>
+              <details><summary className="cursor-pointer">기존 숏폼 원고 편집 · 이전 프로젝트용</summary>
               <MarketingReviewShortformNarrationEditor
                 candidateId={context.identity.candidateId}
                 canEdit={canEdit && !busy}
                 fallbackBody={active.body}
                 onSaved={onReload}
               />
+              </details>
             </div>
           ) : (
             <label className="block text-sm">
@@ -507,58 +497,52 @@ export function MarketingReviewChannelTabs({
 
           <div className="flex flex-wrap gap-2">
             {active.channel !== "shortform" ? (
-              <button
+              <AdminButton variant="primary"
                 type="button"
                 disabled={!editable || busy}
                 onClick={() => void saveChannel()}
-                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 채널 저장
-              </button>
+              </AdminButton>
             ) : null}
-            <button
+            <AdminButton variant="primary"
               type="button"
               disabled={busy || context.governance.decision === "BLOCK"}
               onClick={() => void setStatus("approved")}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               채널 승인
-            </button>
-            <button
+            </AdminButton>
+            <AdminButton variant="secondary"
               type="button"
               disabled={busy}
               onClick={() => void setStatus("skipped")}
-              className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
             >
               채널 Skip
-            </button>
+            </AdminButton>
             {active.channel !== "shortform" && !active.awaitingGeneration ? (
-              <button
+              <AdminButton variant="secondary"
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
                 onClick={() => void regenerate(false)}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 채널만 재생성
-              </button>
+              </AdminButton>
             ) : null}
             {active.channel === "shortform" && !active.awaitingGeneration ? (
-              <button
+              <AdminButton variant="secondary"
                 type="button"
                 disabled={busy || context.governance.decision === "BLOCK"}
                 onClick={() => void regenerate(false)}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 Shortform 나레이션 재생성
-              </button>
+              </AdminButton>
             ) : null}
-            <button
+            <AdminButton variant="secondary"
               type="button"
-              className="text-xs text-[var(--primary)] underline"
               onClick={() => setShowAiOriginal((v) => !v)}
             >
               {showAiOriginal ? "AI 원본 숨기기" : "AI 원본 보기"}
-            </button>
+            </AdminButton>
           </div>
 
           {showAiOriginal ? (

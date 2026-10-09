@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -105,15 +106,14 @@ export function MarketingReviewInstagramCardnewsHandoffPanel({
         적용되고 카드 문구 검토가 처음부터 다시 시작됩니다. 다른 채널은 바뀌지 않습니다.
       </p>
 
-      <button
+      <AdminButton variant="secondary"
         type="button"
         disabled={busy || !canEdit || !canonicalApproved}
         onClick={() => void copyHandoff()}
         title={canonicalApproved ? undefined : "현재 버전이 승인된 공통 원문에서만 사용할 수 있습니다."}
-        className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
       >
         Instagram 카드뉴스용 JSON 복사
-      </button>
+      </AdminButton>
       {!canonicalApproved ? (
         <p className="text-xs text-[var(--text-secondary)]">공통 원문의 현재 버전을 승인하면 복사할 수 있습니다.</p>
       ) : null}
@@ -129,14 +129,13 @@ export function MarketingReviewInstagramCardnewsHandoffPanel({
         placeholder='{"contract":"instagram-cardnews-chatgpt-result-v1", ... }'
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs"
       />
-      <button
+      <AdminButton variant="primary"
         type="button"
         disabled={busy || !canEdit || !raw.trim()}
         onClick={() => void importResult()}
-        className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
       >
         Instagram 카드뉴스 결과 가져오기
-      </button>
+      </AdminButton>
       {feedback ? (
         <p
           className={`whitespace-pre-line text-xs ${

@@ -32,11 +32,18 @@ describe("additive narration review workflow", () => {
     expect(deriveReviewWorkflowStatuses(true, { cardCopy: null, astra: null, sources: null, assets: null }).slice(1)).toEqual(Array(8).fill("확인 불가"));
   });
   it("supports keyboard navigation and only reads existing status APIs", async () => {
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => ({ ok: !init?.method || init.method === "GET", json: async () => url.endsWith("/astra-handoff") ? snapshot.astra : url.endsWith("/assets") ? snapshot.assets : url.endsWith("/channel-source-selection") ? snapshot.sources : snapshot.cardCopy }));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => ({ ok: !init?.method || init.method === "GET", json: async () => url.endsWith("/astra-handoff") ? snapshot.astra : url.endsWith("/narration-scenes") ? snapshot.narrationScenes : url.endsWith("/assets") ? snapshot.assets : url.endsWith("/channel-source-selection") ? snapshot.sources : snapshot.cardCopy }));
     vi.stubGlobal("fetch", fetchMock);
     const select = vi.fn();
     render(<MarketingReviewWorkflowNav candidateId="candidate" canonicalApproved refreshKey={0} activeStep={1} onSelect={select} channelStatus="작업 필요" />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: /8. 공유 비주얼/ }).textContent).toContain("준비 완료"));
+    await waitFor(() => expect(screen.getByRole("tab", { name: /4. 공유 비주얼/ }).textContent).toContain("준비 완료"));
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
+    expect(screen.queryByRole("tab", { name: /기존 카드 기준 비주얼/ })).toBeNull();
+    fireEvent.click(screen.getByText("기존 카드 제작 메뉴 보기"));
+    expect(screen.getAllByRole("tab")).toHaveLength(10);
+    expect(screen.getByRole("tab", { name: /기존 카드 기준 비주얼/ })).toBeVisible();
+    fireEvent.click(screen.getByText("기존 카드 제작 메뉴 접기"));
+    expect(screen.getAllByRole("tab")).toHaveLength(7);
     fireEvent.keyDown(screen.getByRole("tab", { name: /1. 공통 원문/ }), { key: "End" });
     expect(select).toHaveBeenCalledWith(6);
     expect(fetchMock).toHaveBeenCalledTimes(8);

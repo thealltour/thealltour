@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -196,22 +197,20 @@ function CandidateCard(props: {
       </div>
       <div className="mt-auto flex flex-col gap-1">
         {!candidate.generatedPlan ? (
-          <button
+          <AdminButton variant="secondary"
             type="button"
             disabled={busy || blocked}
             onClick={() => onPick(candidate)}
-            className="w-full rounded-md bg-[var(--primary)] px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
           >
             이 장면에 사용
-          </button>
+          </AdminButton>
         ) : (
-          <button
+          <AdminButton variant="primary"
             type="button"
             disabled
-            className="w-full rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--text-secondary)]"
           >
             생성 (준비 중)
-          </button>
+          </AdminButton>
         )}
         {candidate.sourcePageUrl ? (
           <a
@@ -370,14 +369,13 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
             명시적 PICK만 지원합니다.
           </p>
         </div>
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={loading}
           onClick={() => void resolve({ forceRefresh: true })}
-          className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
           {loading ? "검색 중…" : data ? "다시 검색" : "소스 검색"}
-        </button>
+        </AdminButton>
       </div>
 
       {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
@@ -395,13 +393,12 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
                 </span>
               ) : null}
             </div>
-            <button
+            <AdminButton variant="secondary"
               type="button"
-              className="text-xs underline"
               onClick={() => void loadRenderStatus()}
             >
               상태 새로고침
-            </button>
+            </AdminButton>
           </div>
           <p className="text-xs text-[var(--text-secondary)]">
             PICK {renderStatus.pickedSceneCount}/{renderStatus.requiredSceneCount}
@@ -412,14 +409,13 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
               <p className="text-xs text-[var(--danger,#b91c1c)]">
                 {renderStatus.job?.errorSummary ?? renderStatus.job?.errorCode ?? "렌더 실패"}
               </p>
-              <button
+              <AdminButton variant="secondary"
                 type="button"
                 disabled={requeueBusy}
                 onClick={() => void requeueFailed()}
-                className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-50"
               >
                 {requeueBusy ? "재시도 중…" : "실패 작업 재시도 (requeue)"}
-              </button>
+              </AdminButton>
             </div>
           ) : null}
           {renderStatus.uiStatus === "ready" && renderStatus.finalArtifact.exists && renderStatus.finalArtifact.previewPath ? (
@@ -521,9 +517,8 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
 
             {alternatives.length > 0 ? (
               <div className="space-y-2">
-                <button
+                <AdminButton variant="secondary"
                   type="button"
-                  className="text-sm underline"
                   onClick={() =>
                     setExpandedScenes((prev) => ({
                       ...prev,
@@ -532,7 +527,7 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
                   }
                 >
                   {showAlts ? "다른 후보 접기" : `다른 후보 ${alternatives.length}개 보기`}
-                </button>
+                </AdminButton>
                 {!scene.recommended && showAlts ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                     {alternatives.map((candidate) => (

@@ -1,4 +1,6 @@
 "use client";
+import { MarketingReviewNarrationCaptionPanel } from "./MarketingReviewNarrationCaptionPanel";
+import AdminButton from "@/components/admin/ui/AdminButton";
 import { useEffect, useRef, useState } from "react";
 import type { InstagramAdaptation, InstagramCardCopy } from "@/lib/marketing/publishable/narrationInstagram/contracts";
 import type { NarrationScenePlan } from "@/lib/marketing/publishable/narrationScenes/contracts";
@@ -48,6 +50,18 @@ export function MarketingReviewNarrationInstagramPanel({ candidateId, refreshKey
       setMessage(action === "handoff" ? "ChatGPT용 카드 파생 JSON을 만들었습니다." : action === "render" ? "선택한 카드 전체를 렌더했습니다." : action === "approve" ? "현재 카드 구성을 승인했습니다." : "카드 구성을 저장했습니다.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "처리 실패"); } finally { setBusy(false); }
   }
+  async function generateCopy() {
+    if (!view?.plan) return;
+    if (dirty && !window.confirm("작성 중인 문구를 Hermes 초안으로 바꿀까요?")) return;
+    const fingerprint = view.plan.fingerprint;
+    setBusy(true); setMessage("");
+    try {
+      const response = await fetch(`${endpoint}/copy-draft`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planFingerprint: fingerprint, sceneIds: cards.map(c => c.sceneId) }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.message);
+      const current = await fetchView(); if (current.plan?.fingerprint !== fingerprint) throw new Error("생성 중 계획이 변경됐습니다. 다시 불러와주세요.");
+      change(data.cards); setMessage("Narration 기반 카드 카피 초안을 채웠습니다. 검토·저장·승인해주세요.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "카피 생성 실패"); } finally { setBusy(false); }
+  }
   async function reload() { if (dirty && !window.confirm("작성 중인 카드를 버리고 저장본을 불러올까요?")) return; setBusy(true); try { accept(await fetchView()); setMessage(""); } catch (error) { setMessage(error instanceof Error ? error.message : "불러오기 실패"); } finally { setBusy(false); } }
   const editable = !!view?.canEdit && !!view.planReady && !busy;
   const selectionValid = cards.length >= 4 && cards.length <= 10 && cards.every(c => c.headline.trim() && view?.scenes.some(s => s.sceneId === c.sceneId && s.imageReady));
@@ -68,12 +82,14 @@ export function MarketingReviewNarrationInstagramPanel({ candidateId, refreshKey
       </div>;
     })}
     {cards.some(card => !view?.scenes.some(scene => scene.sceneId === card.sceneId)) && <p className="text-sm">이전 카드에 현재 계획에 없는 장면이 있습니다. 새 구성으로 시작해주세요.</p>}
-    <div className="flex flex-wrap gap-4 text-sm"><button type="button" disabled={!editable} onClick={() => { if (!cards.length || window.confirm("현재 선택과 문구를 비우고 새 구성으로 시작할까요?")) change([]); }}>선택·문구 비우기</button><button type="button" disabled={!editable || !selectionValid} onClick={() => void mutate("save")}>구성·문구 저장</button><button type="button" disabled={!editable || dirty || !view?.adaptation || view.gateState === "stale"} onClick={() => void mutate("approve")}>현재 구성 승인</button><button type="button" disabled={!editable || dirty || view?.gateState !== "approved"} onClick={() => void mutate("render")}>선택한 카드 렌더</button><button type="button" disabled={busy} onClick={() => void reload()}>저장본 다시 불러오기</button></div>
-    <details className="space-y-2 text-sm"><summary>ChatGPT 카드 문구 작성·검토</summary><p>승인된 Narration·장면과 공통 원문을 전달합니다. 결과는 별도 파생 계약으로 저장합니다.</p><button type="button" disabled={!editable || dirty || (view?.scenes.length ?? 0) < 4} onClick={() => void mutate("handoff")}>ChatGPT용 JSON 만들기</button>
-      {handoff && <><textarea readOnly value={handoff} className="block h-40 w-full rounded border bg-[var(--bg)] p-2" /><button type="button" onClick={() => void navigator.clipboard.writeText(handoff).then(() => setMessage("JSON을 복사했습니다.")).catch(() => setMessage("JSON을 직접 선택해 복사해주세요."))}>JSON 복사</button></>}
-      <label className="block">결과 JSON<textarea value={resultText} disabled={busy} onChange={e => setResultText(e.target.value)} className="block h-32 w-full rounded border bg-[var(--bg)] p-2" /></label><button type="button" disabled={!editable || !resultText.trim()} onClick={() => void mutate("import")}>결과 가져오기</button>
+    <div className="flex flex-wrap gap-4 text-sm"><AdminButton variant="secondary" type="button" disabled={!editable} onClick={() => { if (!cards.length || window.confirm("현재 선택과 문구를 비우고 새 구성으로 시작할까요?")) change([]); }}>선택·문구 비우기</AdminButton><AdminButton variant="primary" type="button" disabled={!editable || !selectionValid} onClick={() => void mutate("save")}>구성·문구 저장</AdminButton><AdminButton variant="primary" type="button" disabled={!editable || dirty || !view?.adaptation || view.gateState === "stale"} onClick={() => void mutate("approve")}>현재 구성 승인</AdminButton><AdminButton variant="primary" type="button" disabled={!editable || dirty || view?.gateState !== "approved"} onClick={() => void mutate("render")}>선택한 카드 렌더</AdminButton><AdminButton variant="secondary" type="button" disabled={busy} onClick={() => void reload()}>저장본 다시 불러오기</AdminButton></div>
+    <AdminButton type="button" disabled={!editable || cards.length < 4 || cards.length > 10} onClick={() => void generateCopy()}>선택한 장면으로 Hermes 카드 카피 초안 생성</AdminButton>
+    <details className="space-y-2 text-sm"><summary>ChatGPT 카드 문구 작성·검토</summary><p>승인된 Narration·장면과 공통 원문을 전달합니다. 결과는 별도 파생 계약으로 저장합니다.</p><AdminButton variant="secondary" type="button" disabled={!editable || dirty || (view?.scenes.length ?? 0) < 4} onClick={() => void mutate("handoff")}>ChatGPT용 JSON 만들기</AdminButton>
+      {handoff && <><textarea readOnly value={handoff} className="block h-40 w-full rounded border bg-[var(--bg)] p-2" /><AdminButton variant="secondary" type="button" onClick={() => void navigator.clipboard.writeText(handoff).then(() => setMessage("JSON을 복사했습니다.")).catch(() => setMessage("JSON을 직접 선택해 복사해주세요."))}>JSON 복사</AdminButton></>}
+      <label className="block">결과 JSON<textarea value={resultText} disabled={busy} onChange={e => setResultText(e.target.value)} className="block h-32 w-full rounded border bg-[var(--bg)] p-2" /></label><AdminButton variant="primary" type="button" disabled={!editable || !resultText.trim()} onClick={() => void mutate("import")}>결과 가져오기</AdminButton>
     </details>
     {!dirty && view?.gateState === "approved" && view.rendered && <div className="grid grid-cols-2 gap-3">{view.rendered.cards.map(card => <a key={card.cardId} href={`${endpoint}/${card.cardId}?fingerprint=${encodeURIComponent(view.adaptation!.fingerprint)}`} target="_blank" rel="noreferrer"><img alt="렌더된 Instagram 카드" src={`${endpoint}/${card.cardId}?fingerprint=${encodeURIComponent(view.adaptation!.fingerprint)}`} /></a>)}</div>}
+    {view?.adaptation && view.gateState === "approved" && <MarketingReviewNarrationCaptionPanel candidateId={candidateId} adaptationFingerprint={view.adaptation.fingerprint} canEdit={view.canEdit && !busy && !dirty} />}
     {view?.renderError && <p className="text-sm">{view.renderError}</p>}{message && <p role="status" className="text-sm">{message}</p>}
   </div>;
 }

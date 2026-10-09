@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { atomicWriteFile } from "@/lib/marketing/assets/atomicWrite";
 import { readCanonicalAssetFromPackage } from "@/lib/marketing/canonicalAsset/persistence";
 import { readNarration, narrationGate, narrationLineage, NarrationError } from "../narration/persistence";
-import { audioConfigFingerprint, audioJobFresh, readNarrationAudioJob, resolveNarrationAudioProfile } from "../narration/audio";
+import { audioJobFresh, currentAudioConfigFingerprint, readNarrationAudioJob } from "../narration/audio";
 import { parseVoiceStudioConfig } from "@/lib/marketing/tts/voiceStudio/config";
 import { stableFingerprint } from "../narration/fingerprint";
 import { narrationScenePlanSchema, sceneHandoffSchema, sceneAssetsSchema, type NarrationScenePlan, type SceneMutation, type SceneHandoff } from "./contracts";
@@ -25,11 +25,11 @@ export function readScenePlan(root: string): NarrationScenePlan | null {
 export function loadSceneSource(root: string, candidateId: string, audioJobId: string) {
   const canonical = readCanonicalAssetFromPackage(root);
   if (!canonical) throw new NarrationError("저장된 승인 원문을 찾을 수 없습니다.");
-  const lineage = narrationLineage(canonical);
+  const lineage = narrationLineage(canonical, root);
   const narration = readNarration(root, candidateId);
   if (!narration || narrationGate(narration, lineage) !== "approved") throw new NarrationError("현재 Narration을 먼저 승인해주세요.");
   const audio = readNarrationAudioJob(root, audioJobId);
-  const config = audioConfigFingerprint(resolveNarrationAudioProfile(audio.profile.profileId), parseVoiceStudioConfig().baseUrl);
+  const config = currentAudioConfigFingerprint(audio, parseVoiceStudioConfig().baseUrl);
   if (audio.narration.candidateId !== candidateId || audio.status !== "completed" || !audio.timeline || !audioJobFresh(root, audio, lineage, config)) throw new NarrationError("현재 Narration의 최신 음성 작업이 필요합니다.");
   return { narration, timeline: audio.timeline, source: { candidateId, canonical: lineage,
     narrationRevision: narration.revision, narrationFingerprint: narration.fingerprint,
@@ -57,7 +57,8 @@ export function buildSceneHandoff(plan: NarrationScenePlan): SceneHandoff {
   const content = { contract: "narration-astra-handoff-v1" as const, planRevision: plan.revision, planFingerprint: plan.fingerprint,
     source: plan.source, instructions: ["Generate exactly one unique 9:16 image per visualId, in the listed order.",
       "Never merge or split scenes, reuse an image, or change sentence/scene/visual IDs.",
-      "Follow the approved visualPrompt. Narration is context, not a request to invent factual details.",
+      "Follow the approved visualPrompt and Narration, including independently researched developments. Canonical/Research lineage identifies source references; it is not a factual-scope ceiling. Do not require new details to be added to Canonical first.",
+      "Generated visuals are editorial illustrations. Do not present invented details as verified documentary evidence.",
       "Return each image using its expectedFilename. Upload each image to its matching visualId slot."],
     visuals: plan.scenes.map(s => ({ sentenceId: s.sentenceId, sceneId: s.sceneId, visualId: s.visualId, order: s.order,
       sentenceText: s.sentenceText, visualPrompt: s.visualPrompt, aspectRatio: s.aspectRatio,

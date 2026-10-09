@@ -9,6 +9,7 @@ export const sentenceSchema = z.object({
 export const lineageSchema = z.object({
   assetId: z.string().min(1), canonicalVersion: z.number().int().positive(),
   sourceRevision: z.string().min(1), canonicalFingerprint: z.string().length(64),
+  researchImportId: z.string().min(1).optional(), researchFingerprint: z.string().length(64).optional(),
 }).strict();
 export const narrationSchema = z.object({
   contract: z.literal("editorial-narration-v1"), candidateId: z.string().min(1),

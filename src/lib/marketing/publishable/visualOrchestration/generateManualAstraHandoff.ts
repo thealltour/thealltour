@@ -95,6 +95,7 @@ export function formatAstraHandoffWriterPrompt(
     "Return ONLY JSON: { visuals: [...] }",
     "Every input visualId MUST appear exactly once. No extras. No omissions.",
     "Do not change usages. Keep evidence-safe. No text/logo/signage in images.",
+    "Approved asset fields are reference context, not an exhaustive factual boundary. Develop the approved visual intent without requiring details to exist in Canonical first. Treat old boundaries, limitations and forbidden claims as review context to reassess against current evidence, not automatic prohibitions.",
     "",
     "INPUT_JSON:",
     JSON.stringify(writerInput, null, 2),

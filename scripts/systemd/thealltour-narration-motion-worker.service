@@ -1,0 +1,23 @@
+[Unit]
+Description=TheAllTour sentence motion queue worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ysh
+Group=ysh
+WorkingDirectory=/home/ysh/thealltour
+Environment=NODE_ENV=production
+Environment=PATH=/home/ysh/.hermes/node/bin:/usr/bin:/bin
+RuntimeDirectory=thealltour-narration-motion
+ExecStart=/usr/bin/flock -n /run/thealltour-narration-motion/worker.lock /home/ysh/.hermes/node/bin/node --import tsx scripts/marketing-narration-motion-worker.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=1900
+KillSignal=SIGTERM
+Nice=10
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

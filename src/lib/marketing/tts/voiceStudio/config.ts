@@ -1,4 +1,8 @@
 import "server-only";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { resolveRuntimeEnv } from "@/lib/server/loadRuntimeEnv";
 
 import { TtsError } from "@/lib/marketing/tts/errors";
 
@@ -14,6 +18,22 @@ export type VoiceStudioConfig = {
   apiKey: string | null;
   timeoutMs: number;
 };
+
+/** Shared by Next and the detached worker. Credentials never leave the server. */
+export function resolveVoiceStudioEnv(): Record<string, string | undefined> {
+  const env = resolveRuntimeEnv({ syncCompatibility: false });
+  const path = env.VOICESTUDIO_ENV_FILE?.trim() || join(homedir(), ".config/thealltour/voicestudio.env");
+  if (existsSync(path)) {
+    for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+      const match = line.trim().match(/^(?:export\s+)?(VOICESTUDIO_[A-Z_]+|OMNIVOICE_API_KEY|NARRATION_TTS_PROFILE_JSON)=(.*)$/);
+      if (!match || env[match[1]!]?.trim()) continue;
+      let value = match[2]!.trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+      env[match[1]!] = value;
+    }
+  }
+  return env;
+}
 
 function readEnv(
   env: NodeJS.ProcessEnv | Record<string, string | undefined>,
@@ -59,7 +79,7 @@ export function parseVoiceStudioBaseUrl(raw: string | undefined): string {
 }
 
 export function parseVoiceStudioConfig(
-  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+  env: NodeJS.ProcessEnv | Record<string, string | undefined> = resolveVoiceStudioEnv(),
 ): VoiceStudioConfig {
   const baseUrl = parseVoiceStudioBaseUrl(readEnv(env, VOICESTUDIO_BASE_URL_ENV));
   const apiKey = readEnv(env, VOICESTUDIO_API_KEY_ENV) ?? null;

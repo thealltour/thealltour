@@ -496,7 +496,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                   className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm md:col-span-2"
                 />
               </div>
-              <button
+              <AdminButton variant="secondary"
                 type="button"
                 disabled={busy || !manualSocialAccountId.trim() || (!manualUrl.trim() && !manualPostId.trim())}
                 onClick={() =>
@@ -511,10 +511,9 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
                     humanReviewId: review?.reviewId,
                   })
                 }
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 수동 게시 기록
-              </button>
+              </AdminButton>
             </div>
           ) : null}
           {context.humanAction.manuallyPublishedAt ? (
@@ -526,7 +525,7 @@ export function MarketingReviewDetailBody({ initialContext, unreadNotificationCo
           {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
         </AdminCard>
 
-        <MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} />
+        <details className="rounded-lg border border-[var(--border)] p-3"><summary className="cursor-pointer text-sm">기존 숏폼 소스 선택 · 이전 프로젝트용</summary><MarketingReviewShortformSourcesPanel candidateId={candidate.candidateId} /></details>
         </MarketingReviewWorkflowStage>
 
         <details className="rounded-lg border border-[var(--border)] p-4">

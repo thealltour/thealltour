@@ -11,8 +11,9 @@ loadLocalEnv();
 async function main() {
   const args = process.argv.slice(2);
   if (args.length !== 5 || args[0] !== "--package-root" || args[2] !== "--job-id" || args[4] !== "--run" || !isAbsolute(args[1]!)) throw new Error("Usage: --package-root <absolute candidate package path> --job-id <UUID> --run. This explicitly runs FFmpeg.");
-  const { runShortformJob } = await import("@/lib/marketing/publishable/narrationShortform/service");
-  const result = await runShortformJob(args[1]!, args[3]!);
+  const { isMotionShortform } = await import("@/lib/marketing/publishable/narrationShortform/compatible");
+  if (isMotionShortform(args[1]!, args[3]!)) throw new Error("v2/v3 jobs must run through the serialized persistent motion worker.");
+  const result = await (await import("@/lib/marketing/publishable/narrationShortform/service")).runShortformJob(args[1]!, args[3]!);
   console.log(JSON.stringify({ jobId: result.jobId, status: result.status, errorCode: result.errorCode,
     sceneCount: result.plan.scenes.length, totalDurationMs: result.timeline.totalDurationMs, output: result.output }));
   if (result.status !== "completed") process.exitCode = 1;

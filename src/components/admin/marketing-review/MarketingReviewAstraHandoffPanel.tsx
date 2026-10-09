@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -183,14 +184,13 @@ function SlotRow(props: {
             if (file) void onUpload(slot.visualId, file);
           }}
         />
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={uploadDisabled || busy}
           onClick={() => inputRef.current?.click()}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
         >
           {busy ? "업로드 중…" : uploaded ? "교체" : "이미지 업로드"}
-        </button>
+        </AdminButton>
       </div>
     </div>
   );
@@ -506,19 +506,18 @@ export function MarketingReviewAstraHandoffPanel(props: {
           <p className="text-sm text-[var(--text-secondary)]">아직 Plan이 없습니다.</p>
         )}
 
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={planBusy || Boolean(view.cardCopyBlockReason)}
           title={view.cardCopyBlockReason ?? undefined}
           onClick={() => void generatePlan()}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
         >
           {planBusy
             ? "생성 중…"
             : plan.present
               ? "Shared Visual Plan 재생성"
               : "Shared Visual Plan 생성"}
-        </button>
+        </AdminButton>
       </section>
 
       {/* Astra Handoff */}
@@ -556,11 +555,10 @@ export function MarketingReviewAstraHandoffPanel(props: {
           <p className="text-sm text-[var(--warning)]">{view.handoffBlockReason}</p>
         ) : null}
 
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={handoffBusy || !view.canGenerateHandoff}
           onClick={() => void generateHandoff()}
-          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
           title={view.handoffBlockReason ?? undefined}
         >
           {handoffBusy
@@ -568,7 +566,7 @@ export function MarketingReviewAstraHandoffPanel(props: {
             : handoff
               ? "Astra Handoff 재생성"
               : "Astra Handoff 생성"}
-        </button>
+        </AdminButton>
 
         {handoff ? (
           <>
@@ -603,14 +601,13 @@ export function MarketingReviewAstraHandoffPanel(props: {
                   현재 Astra 요청문과 연결되어 있지 않아 카드뉴스에 들어가지 않습니다. 아래 미리보기를
                   확인하고, 그대로 쓸 이미지라면 다시 업로드하지 않고 현재 요청문에 연결할 수 있습니다.
                 </p>
-                <button
+                <AdminButton variant="secondary"
                   type="button"
                   disabled={rebindBusy || busyVisualId !== null}
                   onClick={() => void rebindUploads()}
-                  className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
                 >
                   {rebindBusy ? "연결 중…" : "기존 업로드 이미지를 현재 요청문에 연결"}
-                </button>
+                </AdminButton>
               </div>
             ) : null}
 
@@ -642,25 +639,23 @@ export function MarketingReviewAstraHandoffPanel(props: {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">공유 비주얼 슬롯</h3>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
+                  <AdminButton variant="secondary"
                     type="button"
                     disabled={exportBusy || renderBusy}
                     onClick={() => void exportToHdd()}
-                    className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
                     title="context/copy를 최신 후보로 덮어씁니다. 공유 비주얼 파일은 유지됩니다."
                   >
                     {exportBusy ? "HDD 보내는 중…" : "HDD 다시 보내기"}
-                  </button>
+                  </AdminButton>
 {showRenderActions ? (
-                  <button
+                  <AdminButton variant="primary"
                     type="button"
                     disabled={exportBusy || renderBusy || !view?.packagePresent}
                     onClick={() => void startCardnewsRender()}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] disabled:opacity-40"
                     title="HDD 패키지 기준 Instagram 카드뉴스 PNG 렌더 (Hermes-Pi sharp)"
                   >
                     {renderBusy ? "카드뉴스 렌더 중…" : "카드뉴스 렌더링 시작"}
-                  </button>
+                  </AdminButton>
 ) : null}
                 </div>
               </div>

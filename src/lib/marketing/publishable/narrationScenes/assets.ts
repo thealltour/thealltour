@@ -31,16 +31,31 @@ export function sceneAssetStatus(root: string, plan: NarrationScenePlan) {
   return { manifest, slots, complete: !!plan.approval && slots.every(s => s.ready) };
 }
 export async function uploadSceneAsset(input: { root: string; candidateId: string; visualId: string;
-  planFingerprint: string; handoffFingerprint: string; bytes: Buffer }) {
+  planFingerprint: string; handoffFingerprint: string; bytes: Buffer; fit?: "contain" }) {
   if (!z.string().uuid().safeParse(input.visualId).success) throw new NarrationError("비주얼 ID를 확인해주세요.", 400);
   requireFreshScenePlan(input.root, input.candidateId, input.planFingerprint);
   validateSharedVisualUploadBytes(input.bytes);
-  // Decode/rotate/strip metadata; never crop or silently change the requested ratio.
-  const pipeline = sharp(input.bytes, { limitInputPixels: 40_000_000, animated: false });
-  const metadata = await pipeline.metadata();
-  if ((metadata.pages ?? 1) !== 1) throw new NarrationError("움직이는 이미지 또는 여러 페이지는 사용할 수 없습니다.", 400);
-  const image = await pipeline.rotate().png().toBuffer({ resolveWithObject: true });
-  if (image.info.width * 16 !== image.info.height * 9) throw new NarrationError("9:16 비율의 이미지를 업로드해주세요.", 400);
+  // Normalize only when the operator explicitly chooses padding; never crop the subject.
+  let image: { data: Buffer; info: sharp.OutputInfo };
+  try {
+    const pipeline = sharp(input.bytes, { limitInputPixels: 40_000_000, animated: false });
+    const metadata = await pipeline.metadata();
+    if ((metadata.pages ?? 1) !== 1) throw new NarrationError("움직이는 이미지 또는 여러 페이지는 사용할 수 없습니다.", 400);
+    image = await pipeline.rotate().png().toBuffer({ resolveWithObject: true });
+    const { width, height } = image.info;
+    if (width * 16 !== height * 9) {
+      if (input.fit !== "contain") throw new NarrationError(`원본은 ${width}×${height} 픽셀로 정확한 9:16 비율이 아닙니다. ‘원본 보존 · 9:16 여백 맞춤’을 선택하고 다시 업로드해주세요.`, 400);
+      const unit = Math.ceil(Math.max(width / 9, height / 16));
+      const canvasWidth = unit * 9, canvasHeight = unit * 16;
+      if (canvasWidth * canvasHeight > 40_000_000) throw new NarrationError("9:16 여백을 포함한 이미지가 너무 큽니다. 원본 크기를 줄여주세요.", 400);
+      const left = Math.floor((canvasWidth - width) / 2), top = Math.floor((canvasHeight - height) / 2);
+      image = await sharp(image.data).extend({ left, right: canvasWidth - width - left, top, bottom: canvasHeight - height - top, background: "#111827" }).png().toBuffer({ resolveWithObject: true });
+    }
+  } catch (error) {
+    if (error instanceof NarrationError) throw error;
+    throw new NarrationError("이미지를 읽을 수 없습니다. 손상되지 않은 PNG / JPEG / WEBP 파일을 선택해주세요 (최대 4천만 픽셀).", 400);
+  }
+  const originalDigest = createHash("sha256").update(input.bytes).digest("hex");
   const digest = createHash("sha256").update(image.data).digest("hex");
   return withSceneLock(input.root, () => {
     const plan = requireFreshScenePlan(input.root, input.candidateId, input.planFingerprint);
@@ -50,8 +65,8 @@ export async function uploadSceneAsset(input: { root: string; candidateId: strin
     if (!scene) throw new NarrationError("현재 장면 계획에 없는 비주얼입니다.", 400);
     const ledgerPath = join(sceneDirectory(input.root), "image-ledger.json");
     const ledger = ledgerSchema.parse(existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : {});
-    const previousUse = ledger[digest];
-    if (previousUse && (previousUse.planFingerprint !== plan.fingerprint || previousUse.visualId !== scene.visualId)) throw new NarrationError("다른 장면이나 이전 계획의 이미지를 재사용할 수 없습니다. 새 이미지를 생성해주세요.", 409);
+    const previousUses = [ledger[digest], ledger[originalDigest]].filter(Boolean);
+    if (previousUses.some(use => use.planFingerprint !== plan.fingerprint || use.visualId !== scene.visualId)) throw new NarrationError("다른 장면이나 이전 계획의 이미지를 재사용할 수 없습니다. 새 이미지를 생성해주세요.", 409);
     const relativePath = `media/narration-scenes/${plan.fingerprint}/${scene.visualId}/${digest}.png`;
     const asset = { sentenceId: scene.sentenceId, sceneId: scene.sceneId, visualId: scene.visualId,
       planFingerprint: plan.fingerprint, handoffFingerprint: handoff.fingerprint, relativePath, sha256: digest,
@@ -62,6 +77,7 @@ export async function uploadSceneAsset(input: { root: string; candidateId: strin
         .sort((a, b) => plan.scenes.findIndex(s => s.visualId === a.visualId) - plan.scenes.findIndex(s => s.visualId === b.visualId)) };
     atomicWriteFile(resolvePackageArtifactPath({ packageRoot: input.root, relativePath }), image.data);
     ledger[digest] = { planFingerprint: plan.fingerprint, visualId: scene.visualId };
+    ledger[originalDigest] = { planFingerprint: plan.fingerprint, visualId: scene.visualId };
     // Reserve identity before publishing the mapping; a failed mapping write can be retried in the same slot.
     atomicWriteFile(ledgerPath, JSON.stringify(ledger, null, 2));
     requireFreshScenePlan(input.root, input.candidateId, plan.fingerprint);

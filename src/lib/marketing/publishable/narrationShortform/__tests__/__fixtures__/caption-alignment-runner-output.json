@@ -1,0 +1,3603 @@
+{
+ "runner": {
+  "runnerSha256": "a3f993d1bbf163fc448b4e325622cc441621650039a1a0280794e38006789a57",
+  "modelId": "w11wo/wav2vec2-xls-r-300m-korean@eee56866fdf44037553ec973fd859f7f5f8ec483",
+  "torch": "2.14.1+cpu",
+  "transformers": "5.15.1",
+  "numpy": "2.5.3",
+  "threads": 4,
+  "modelLoadMs": 201,
+  "elapsedMs": 7909,
+  "wallMs": 10668
+ },
+ "rows": [
+  {
+   "name": "ko",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.044,
+   "elapsedMs": 875,
+   "cueOnsetErrorsMs": [
+    0,
+    0,
+    30,
+    10,
+    10
+   ],
+   "text": "제주 동쪽 해안도로는 봄철 주말마다 차량이 많아, 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습니다.",
+   "durationMs": 6660,
+   "audioSha256": "b4c2d829c408529f78bb3deb4b66d5fe8fa5e0fae8895b6376f533a5e39d1f54",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 2,
+     "kind": "hangul",
+     "readings": [
+      "제주"
+     ]
+    },
+    {
+     "cpStart": 3,
+     "cpEnd": 5,
+     "kind": "hangul",
+     "readings": [
+      "동쪽"
+     ]
+    },
+    {
+     "cpStart": 6,
+     "cpEnd": 11,
+     "kind": "hangul",
+     "readings": [
+      "해안도로는"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "봄철"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "주말마다"
+     ]
+    },
+    {
+     "cpStart": 20,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "차량이"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 26,
+     "kind": "hangul",
+     "readings": [
+      "많아"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 30,
+     "kind": "hangul",
+     "readings": [
+      "이른"
+     ]
+    },
+    {
+     "cpStart": 31,
+     "cpEnd": 34,
+     "kind": "hangul",
+     "readings": [
+      "아침에"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "출발하면"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 44,
+     "kind": "hangul",
+     "readings": [
+      "주차장을"
+     ]
+    },
+    {
+     "cpStart": 45,
+     "cpEnd": 47,
+     "kind": "hangul",
+     "readings": [
+      "여유"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 50,
+     "kind": "hangul",
+     "readings": [
+      "있게"
+     ]
+    },
+    {
+     "cpStart": 51,
+     "cpEnd": 54,
+     "kind": "hangul",
+     "readings": [
+      "이용할"
+     ]
+    },
+    {
+     "cpStart": 55,
+     "cpEnd": 56,
+     "kind": "hangul",
+     "readings": [
+      "수"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "있습니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "b19193c0-97cb-4ba0-bccf-80731318cf86",
+    "audioSha256": "b4c2d829c408529f78bb3deb4b66d5fe8fa5e0fae8895b6376f533a5e39d1f54",
+    "sampleRate": 44100,
+    "sampleCount": 293706,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 332,
+    "greedy": "제주 동쪽 해안도로는몸철 주말마다 차량이 많아 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습습니다",
+    "speechFrameRatio": 0.1386,
+    "freeLogProbPerFrame": -0.0189,
+    "forcedLogProbPerFrame": -0.0803,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 100,
+      "endMs": 260,
+      "labelFrames": 2,
+      "onsetsMs": [
+       100,
+       240
+      ],
+      "heard": "제주"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 380,
+      "endMs": 600,
+      "labelFrames": 2,
+      "onsetsMs": [
+       380,
+       580
+      ],
+      "heard": "동쪽"
+     },
+     {
+      "index": 2,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 760,
+      "endMs": 1220,
+      "labelFrames": 5,
+      "onsetsMs": [
+       760,
+       840,
+       980,
+       1080,
+       1200
+      ],
+      "heard": "해안도로는"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1320,
+      "endMs": 1520,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1320,
+       1500
+      ],
+      "heard": "몸철"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1700,
+      "endMs": 2120,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1700,
+       1840,
+       1980,
+       2100
+      ],
+      "heard": "주말마다"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2280,
+      "endMs": 2560,
+      "labelFrames": 3,
+      "onsetsMs": [
+       2280,
+       2420,
+       2540
+      ],
+      "heard": "차량이"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2640,
+      "endMs": 2800,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2640,
+       2780
+      ],
+      "heard": "많아"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3020,
+      "endMs": 3120,
+      "labelFrames": 2,
+      "onsetsMs": [
+       3020,
+       3100
+      ],
+      "heard": "이른"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3220,
+      "endMs": 3520,
+      "labelFrames": 3,
+      "onsetsMs": [
+       3220,
+       3380,
+       3500
+      ],
+      "heard": "아침에"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3600,
+      "endMs": 4080,
+      "labelFrames": 4,
+      "onsetsMs": [
+       3600,
+       3800,
+       3920,
+       4060
+      ],
+      "heard": "출발하면"
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4400,
+      "endMs": 4820,
+      "labelFrames": 4,
+      "onsetsMs": [
+       4400,
+       4520,
+       4660,
+       4800
+      ],
+      "heard": "주차장을"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4920,
+      "endMs": 5080,
+      "labelFrames": 2,
+      "onsetsMs": [
+       4920,
+       5060
+      ],
+      "heard": "여유"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5160,
+      "endMs": 5320,
+      "labelFrames": 2,
+      "onsetsMs": [
+       5160,
+       5300
+      ],
+      "heard": "있게"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5620,
+      "endMs": 5860,
+      "labelFrames": 3,
+      "onsetsMs": [
+       5620,
+       5700,
+       5840
+      ],
+      "heard": "이용할"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5960,
+      "endMs": 5980,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5960
+      ],
+      "heard": "수"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6080,
+      "endMs": 6620,
+      "labelFrames": 4,
+      "onsetsMs": [
+       6080,
+       6560,
+       6580,
+       6600
+      ],
+      "heard": "있습습니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 875
+   },
+   "phrases": [
+    "제주 동쪽 해안도로는",
+    "봄철 주말마다",
+    "차량이 많아,",
+    "이른 아침에 출발하면",
+    "주차장을 여유 있게",
+    "이용할 수 있습니다."
+   ],
+   "truthOnsetsMs": [
+    80,
+    1320,
+    2280,
+    2990,
+    4390,
+    5610
+   ]
+  },
+  {
+   "name": "ko-natural",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.022,
+   "elapsedMs": 1122,
+   "cueOnsetErrorsMs": null,
+   "text": "제주 동쪽 해안도로는 봄철 주말마다 차량이 많아, 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습니다.",
+   "durationMs": 8610,
+   "audioSha256": "2634e524d949b3b195fefe8da662450e8829047c478ae790afe255fb3d76d50b",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 2,
+     "kind": "hangul",
+     "readings": [
+      "제주"
+     ]
+    },
+    {
+     "cpStart": 3,
+     "cpEnd": 5,
+     "kind": "hangul",
+     "readings": [
+      "동쪽"
+     ]
+    },
+    {
+     "cpStart": 6,
+     "cpEnd": 11,
+     "kind": "hangul",
+     "readings": [
+      "해안도로는"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "봄철"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "주말마다"
+     ]
+    },
+    {
+     "cpStart": 20,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "차량이"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 26,
+     "kind": "hangul",
+     "readings": [
+      "많아"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 30,
+     "kind": "hangul",
+     "readings": [
+      "이른"
+     ]
+    },
+    {
+     "cpStart": 31,
+     "cpEnd": 34,
+     "kind": "hangul",
+     "readings": [
+      "아침에"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "출발하면"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 44,
+     "kind": "hangul",
+     "readings": [
+      "주차장을"
+     ]
+    },
+    {
+     "cpStart": 45,
+     "cpEnd": 47,
+     "kind": "hangul",
+     "readings": [
+      "여유"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 50,
+     "kind": "hangul",
+     "readings": [
+      "있게"
+     ]
+    },
+    {
+     "cpStart": 51,
+     "cpEnd": 54,
+     "kind": "hangul",
+     "readings": [
+      "이용할"
+     ]
+    },
+    {
+     "cpStart": 55,
+     "cpEnd": 56,
+     "kind": "hangul",
+     "readings": [
+      "수"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "있습니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "06a9f9a2-db0c-449d-857a-e8d627095d21",
+    "audioSha256": "2634e524d949b3b195fefe8da662450e8829047c478ae790afe255fb3d76d50b",
+    "sampleRate": 44100,
+    "sampleCount": 379701,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 430,
+    "greedy": "제주 동쪽 해안 도로는 몸철 주말마다 차량이 많아 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습니다",
+    "speechFrameRatio": 0.1047,
+    "freeLogProbPerFrame": -0.012,
+    "forcedLogProbPerFrame": -0.0528,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 100,
+      "endMs": 280,
+      "labelFrames": 2,
+      "onsetsMs": [
+       100,
+       260
+      ],
+      "heard": "제주"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 440,
+      "endMs": 760,
+      "labelFrames": 2,
+      "onsetsMs": [
+       440,
+       740
+      ],
+      "heard": "동쪽"
+     },
+     {
+      "index": 2,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1000,
+      "endMs": 1560,
+      "labelFrames": 5,
+      "onsetsMs": [
+       1000,
+       1120,
+       1280,
+       1400,
+       1540
+      ],
+      "heard": "해안 도로는"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1980,
+      "endMs": 2240,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1980,
+       2220
+      ],
+      "heard": "몸철"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2460,
+      "endMs": 2960,
+      "labelFrames": 4,
+      "onsetsMs": [
+       2460,
+       2620,
+       2820,
+       2940
+      ],
+      "heard": "주말마다"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3140,
+      "endMs": 3480,
+      "labelFrames": 3,
+      "onsetsMs": [
+       3140,
+       3340,
+       3460
+      ],
+      "heard": "차량이"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3620,
+      "endMs": 3840,
+      "labelFrames": 2,
+      "onsetsMs": [
+       3620,
+       3820
+      ],
+      "heard": "많아"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4520,
+      "endMs": 4620,
+      "labelFrames": 2,
+      "onsetsMs": [
+       4520,
+       4600
+      ],
+      "heard": "이른"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4740,
+      "endMs": 5080,
+      "labelFrames": 3,
+      "onsetsMs": [
+       4740,
+       4920,
+       5060
+      ],
+      "heard": "아침에"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5180,
+      "endMs": 5700,
+      "labelFrames": 4,
+      "onsetsMs": [
+       5180,
+       5380,
+       5520,
+       5680
+      ],
+      "heard": "출발하면"
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6040,
+      "endMs": 6580,
+      "labelFrames": 4,
+      "onsetsMs": [
+       6040,
+       6240,
+       6400,
+       6560
+      ],
+      "heard": "주차장을"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6780,
+      "endMs": 6960,
+      "labelFrames": 2,
+      "onsetsMs": [
+       6780,
+       6940
+      ],
+      "heard": "여유"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7100,
+      "endMs": 7300,
+      "labelFrames": 2,
+      "onsetsMs": [
+       7100,
+       7280
+      ],
+      "heard": "있게"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7480,
+      "endMs": 7740,
+      "labelFrames": 3,
+      "onsetsMs": [
+       7480,
+       7580,
+       7720
+      ],
+      "heard": "이용할"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7840,
+      "endMs": 7860,
+      "labelFrames": 1,
+      "onsetsMs": [
+       7840
+      ],
+      "heard": "수"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7960,
+      "endMs": 8580,
+      "labelFrames": 4,
+      "onsetsMs": [
+       7960,
+       8520,
+       8540,
+       8560
+      ],
+      "heard": "있습니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 1122
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  },
+  {
+   "name": "mixed",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.033,
+   "elapsedMs": 968,
+   "cueOnsetErrorsMs": [
+    40,
+    50,
+    20
+   ],
+   "text": "Jeju Olle 7코스는 2026년 3월 1일부터 09:00~18:00 운영하며, 입장료는 1,500원입니다!",
+   "durationMs": 7540,
+   "audioSha256": "c84367378bc872c9c25b9113eef5e9c9d2d24efae9e02d7dec5f8d7aae353ed7",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 4,
+     "kind": "latin",
+     "readings": [
+      "*"
+     ]
+    },
+    {
+     "cpStart": 5,
+     "cpEnd": 9,
+     "kind": "latin",
+     "readings": [
+      "*"
+     ]
+    },
+    {
+     "cpStart": 10,
+     "cpEnd": 11,
+     "kind": "number",
+     "readings": [
+      "칠",
+      "일곱",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 11,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "코스는"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "number",
+     "readings": [
+      "이천이십육",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 19,
+     "cpEnd": 20,
+     "kind": "hangul",
+     "readings": [
+      "년"
+     ]
+    },
+    {
+     "cpStart": 21,
+     "cpEnd": 22,
+     "kind": "number",
+     "readings": [
+      "삼",
+      "셋",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 22,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "월"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 25,
+     "kind": "number",
+     "readings": [
+      "일",
+      "하나",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 25,
+     "cpEnd": 28,
+     "kind": "hangul",
+     "readings": [
+      "일부터"
+     ]
+    },
+    {
+     "cpStart": 29,
+     "cpEnd": 34,
+     "kind": "number",
+     "readings": [
+      "아홉시",
+      "아홉시 영분",
+      "아홉시 정각",
+      "구시",
+      "구시 영분",
+      "구시 정각",
+      "영구시",
+      "영구시 영분",
+      "영구시 정각",
+      "공구시",
+      "공구시 영분",
+      "공구시 정각",
+      "영구영영",
+      "공구공공",
+      "영구 영영",
+      "영구 공공",
+      "공구 영영",
+      "공구 공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 34,
+     "cpEnd": 35,
+     "kind": "symbol",
+     "readings": [
+      "",
+      "에서",
+      "부터",
+      "까지",
+      "물결",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 40,
+     "kind": "number",
+     "readings": [
+      "열여덟시",
+      "열여덟시 영분",
+      "열여덟시 정각",
+      "십팔시",
+      "십팔시 영분",
+      "십팔시 정각",
+      "일팔영영",
+      "일팔공공",
+      "일팔 영영",
+      "일팔 공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 41,
+     "cpEnd": 45,
+     "kind": "hangul",
+     "readings": [
+      "운영하며"
+     ]
+    },
+    {
+     "cpStart": 47,
+     "cpEnd": 51,
+     "kind": "hangul",
+     "readings": [
+      "입장료는"
+     ]
+    },
+    {
+     "cpStart": 52,
+     "cpEnd": 57,
+     "kind": "number",
+     "readings": [
+      "천오백",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "원입니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "cc585c3b-5866-4399-a03c-9efabbec7816",
+    "audioSha256": "c84367378bc872c9c25b9113eef5e9c9d2d24efae9e02d7dec5f8d7aae353ed7",
+    "sampleRate": 44100,
+    "sampleCount": 332514,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 376,
+    "greedy": "재슈 올 세북코스는 이천 이십 육 년 삼 월 일 일부터 너 카커리 팔발 운영하며 입장료은 천 오백 원입니다",
+    "speechFrameRatio": 0.109,
+    "freeLogProbPerFrame": -0.0401,
+    "forcedLogProbPerFrame": -0.2688,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 300,
+      "endMs": 320,
+      "labelFrames": 1,
+      "onsetsMs": [
+       300
+      ],
+      "heard": "슈 올"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 620,
+      "endMs": 640,
+      "labelFrames": 1,
+      "onsetsMs": [
+       620
+      ],
+      "heard": "세"
+     },
+     {
+      "index": 2,
+      "reading": 2,
+      "spoken": true,
+      "startMs": 760,
+      "endMs": 780,
+      "labelFrames": 1,
+      "onsetsMs": [
+       760
+      ],
+      "heard": "북"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 920,
+      "endMs": 1220,
+      "labelFrames": 3,
+      "onsetsMs": [
+       920,
+       1080,
+       1200
+      ],
+      "heard": "코스는"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1480,
+      "endMs": 2120,
+      "labelFrames": 5,
+      "onsetsMs": [
+       1480,
+       1600,
+       1840,
+       1940,
+       2100
+      ],
+      "heard": "이천 이십 육"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2240,
+      "endMs": 2260,
+      "labelFrames": 1,
+      "onsetsMs": [
+       2240
+      ],
+      "heard": "년"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2400,
+      "endMs": 2420,
+      "labelFrames": 1,
+      "onsetsMs": [
+       2400
+      ],
+      "heard": "삼"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2580,
+      "endMs": 2600,
+      "labelFrames": 1,
+      "onsetsMs": [
+       2580
+      ],
+      "heard": "월"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2700,
+      "endMs": 2720,
+      "labelFrames": 1,
+      "onsetsMs": [
+       2700
+      ],
+      "heard": "일"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2760,
+      "endMs": 3040,
+      "labelFrames": 3,
+      "onsetsMs": [
+       2760,
+       2900,
+       3020
+      ],
+      "heard": "일부터"
+     },
+     {
+      "index": 10,
+      "reading": 18,
+      "spoken": true,
+      "startMs": 3320,
+      "endMs": 3340,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3320
+      ],
+      "heard": "너"
+     },
+     {
+      "index": 11,
+      "reading": 5,
+      "spoken": true,
+      "startMs": 3660,
+      "endMs": 3680,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3660
+      ],
+      "heard": "카커"
+     },
+     {
+      "index": 12,
+      "reading": 10,
+      "spoken": true,
+      "startMs": 4380,
+      "endMs": 4400,
+      "labelFrames": 1,
+      "onsetsMs": [
+       4380
+      ],
+      "heard": "리 팔발"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5180,
+      "endMs": 5580,
+      "labelFrames": 4,
+      "onsetsMs": [
+       5180,
+       5280,
+       5400,
+       5560
+      ],
+      "heard": "운영하며"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5860,
+      "endMs": 6280,
+      "labelFrames": 4,
+      "onsetsMs": [
+       5860,
+       6000,
+       6160,
+       6260
+      ],
+      "heard": "입장료은"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6480,
+      "endMs": 6840,
+      "labelFrames": 3,
+      "onsetsMs": [
+       6480,
+       6700,
+       6820
+      ],
+      "heard": "천 오백"
+     },
+     {
+      "index": 16,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6940,
+      "endMs": 7500,
+      "labelFrames": 4,
+      "onsetsMs": [
+       6940,
+       7440,
+       7460,
+       7480
+      ],
+      "heard": "원입니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 968
+   },
+   "phrases": [
+    "Jeju Olle 7코스는",
+    "2026년 3월 1일부터",
+    "09:00~18:00 운영하며,",
+    "입장료는 1,500원입니다!"
+   ],
+   "truthOnsetsMs": [
+    80,
+    1440,
+    3270,
+    5840
+   ]
+  },
+  {
+   "name": "mixed-natural",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.067,
+   "elapsedMs": 1317,
+   "cueOnsetErrorsMs": null,
+   "text": "Jeju Olle 7코스는 2026년 3월 1일부터 09:00~18:00 운영하며, 입장료는 1,500원입니다!",
+   "durationMs": 10170,
+   "audioSha256": "59dfc47e37107d9616700d2224c43cf19998fdfc85105eb714bd5a71d8e003ad",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 4,
+     "kind": "latin",
+     "readings": [
+      "*"
+     ]
+    },
+    {
+     "cpStart": 5,
+     "cpEnd": 9,
+     "kind": "latin",
+     "readings": [
+      "*"
+     ]
+    },
+    {
+     "cpStart": 10,
+     "cpEnd": 11,
+     "kind": "number",
+     "readings": [
+      "칠",
+      "일곱",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 11,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "코스는"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "number",
+     "readings": [
+      "이천이십육",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 19,
+     "cpEnd": 20,
+     "kind": "hangul",
+     "readings": [
+      "년"
+     ]
+    },
+    {
+     "cpStart": 21,
+     "cpEnd": 22,
+     "kind": "number",
+     "readings": [
+      "삼",
+      "셋",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 22,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "월"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 25,
+     "kind": "number",
+     "readings": [
+      "일",
+      "하나",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 25,
+     "cpEnd": 28,
+     "kind": "hangul",
+     "readings": [
+      "일부터"
+     ]
+    },
+    {
+     "cpStart": 29,
+     "cpEnd": 34,
+     "kind": "number",
+     "readings": [
+      "아홉시",
+      "아홉시 영분",
+      "아홉시 정각",
+      "구시",
+      "구시 영분",
+      "구시 정각",
+      "영구시",
+      "영구시 영분",
+      "영구시 정각",
+      "공구시",
+      "공구시 영분",
+      "공구시 정각",
+      "영구영영",
+      "공구공공",
+      "영구 영영",
+      "영구 공공",
+      "공구 영영",
+      "공구 공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 34,
+     "cpEnd": 35,
+     "kind": "symbol",
+     "readings": [
+      "",
+      "에서",
+      "부터",
+      "까지",
+      "물결",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 40,
+     "kind": "number",
+     "readings": [
+      "열여덟시",
+      "열여덟시 영분",
+      "열여덟시 정각",
+      "십팔시",
+      "십팔시 영분",
+      "십팔시 정각",
+      "일팔영영",
+      "일팔공공",
+      "일팔 영영",
+      "일팔 공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 41,
+     "cpEnd": 45,
+     "kind": "hangul",
+     "readings": [
+      "운영하며"
+     ]
+    },
+    {
+     "cpStart": 47,
+     "cpEnd": 51,
+     "kind": "hangul",
+     "readings": [
+      "입장료는"
+     ]
+    },
+    {
+     "cpStart": 52,
+     "cpEnd": 57,
+     "kind": "number",
+     "readings": [
+      "천오백",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "원입니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "c34b24d3-de3e-424a-b587-8a3055fa7b23",
+    "audioSha256": "59dfc47e37107d9616700d2224c43cf19998fdfc85105eb714bd5a71d8e003ad",
+    "sampleRate": 44100,
+    "sampleCount": 448497,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 508,
+    "greedy": "재이주 세범코스는 이천 이십 육 년 삼 월 일 일부터 노프와티 팔백 팔 운영하며 입장료는 일 천 오백 원입니다",
+    "speechFrameRatio": 0.0846,
+    "freeLogProbPerFrame": -0.0346,
+    "forcedLogProbPerFrame": -0.2545,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 340,
+      "endMs": 360,
+      "labelFrames": 1,
+      "onsetsMs": [
+       340
+      ],
+      "heard": "주"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 900,
+      "endMs": 920,
+      "labelFrames": 1,
+      "onsetsMs": [
+       900
+      ],
+      "heard": "세"
+     },
+     {
+      "index": 2,
+      "reading": 2,
+      "spoken": true,
+      "startMs": 1060,
+      "endMs": 1080,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1060
+      ],
+      "heard": "범"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1280,
+      "endMs": 1640,
+      "labelFrames": 3,
+      "onsetsMs": [
+       1280,
+       1480,
+       1620
+      ],
+      "heard": "코스는"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2300,
+      "endMs": 3100,
+      "labelFrames": 5,
+      "onsetsMs": [
+       2300,
+       2480,
+       2740,
+       2860,
+       3080
+      ],
+      "heard": "이천 이십 육"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3260,
+      "endMs": 3280,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3260
+      ],
+      "heard": "년"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3440,
+      "endMs": 3460,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3440
+      ],
+      "heard": "삼"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3660,
+      "endMs": 3680,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3660
+      ],
+      "heard": "월"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3920,
+      "endMs": 3940,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3920
+      ],
+      "heard": "일"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4040,
+      "endMs": 4420,
+      "labelFrames": 3,
+      "onsetsMs": [
+       4040,
+       4220,
+       4400
+      ],
+      "heard": "일부터 노"
+     },
+     {
+      "index": 10,
+      "reading": 18,
+      "spoken": true,
+      "startMs": 5340,
+      "endMs": 5360,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5340
+      ],
+      "heard": "프와"
+     },
+     {
+      "index": 11,
+      "reading": 5,
+      "spoken": true,
+      "startMs": 5780,
+      "endMs": 5800,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5780
+      ],
+      "heard": "티 팔백"
+     },
+     {
+      "index": 12,
+      "reading": 10,
+      "spoken": true,
+      "startMs": 6460,
+      "endMs": 6480,
+      "labelFrames": 1,
+      "onsetsMs": [
+       6460
+      ],
+      "heard": "팔"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6760,
+      "endMs": 7200,
+      "labelFrames": 4,
+      "onsetsMs": [
+       6760,
+       6880,
+       7020,
+       7180
+      ],
+      "heard": "운영하며"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7800,
+      "endMs": 8280,
+      "labelFrames": 4,
+      "onsetsMs": [
+       7800,
+       7960,
+       8140,
+       8260
+      ],
+      "heard": "입장료는 일"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 8740,
+      "endMs": 9340,
+      "labelFrames": 3,
+      "onsetsMs": [
+       8740,
+       9100,
+       9320
+      ],
+      "heard": "천 오백"
+     },
+     {
+      "index": 16,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 9480,
+      "endMs": 10140,
+      "labelFrames": 4,
+      "onsetsMs": [
+       9480,
+       10080,
+       10100,
+       10120
+      ],
+      "heard": "원입니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 1317
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  },
+  {
+   "name": "numbers",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.061,
+   "elapsedMs": 822,
+   "cueOnsetErrorsMs": [
+    0,
+    20,
+    20
+   ],
+   "text": "버스는 오전 7시 30분에 출발하고, 왕복 요금은 12,000원, 소요 시간은 약 45분입니다.",
+   "durationMs": 6420,
+   "audioSha256": "2767ec34f91931e10d3d1b57b889330c33564cbad04be6a5992e34e6928a3e5b",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 3,
+     "kind": "hangul",
+     "readings": [
+      "버스는"
+     ]
+    },
+    {
+     "cpStart": 4,
+     "cpEnd": 6,
+     "kind": "hangul",
+     "readings": [
+      "오전"
+     ]
+    },
+    {
+     "cpStart": 7,
+     "cpEnd": 8,
+     "kind": "number",
+     "readings": [
+      "일곱",
+      "칠",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 8,
+     "cpEnd": 9,
+     "kind": "hangul",
+     "readings": [
+      "시"
+     ]
+    },
+    {
+     "cpStart": 10,
+     "cpEnd": 12,
+     "kind": "number",
+     "readings": [
+      "삼십",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "분에"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "출발하고"
+     ]
+    },
+    {
+     "cpStart": 21,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "왕복"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 27,
+     "kind": "hangul",
+     "readings": [
+      "요금은"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 34,
+     "kind": "number",
+     "readings": [
+      "만이천",
+      "일이영영영",
+      "일이공공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 34,
+     "cpEnd": 35,
+     "kind": "hangul",
+     "readings": [
+      "원"
+     ]
+    },
+    {
+     "cpStart": 37,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "소요"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 43,
+     "kind": "hangul",
+     "readings": [
+      "시간은"
+     ]
+    },
+    {
+     "cpStart": 44,
+     "cpEnd": 45,
+     "kind": "hangul",
+     "readings": [
+      "약"
+     ]
+    },
+    {
+     "cpStart": 46,
+     "cpEnd": 48,
+     "kind": "number",
+     "readings": [
+      "사십오",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 52,
+     "kind": "hangul",
+     "readings": [
+      "분입니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "00097436-333d-463d-bbec-d1af2f58e245",
+    "audioSha256": "2767ec34f91931e10d3d1b57b889330c33564cbad04be6a5992e34e6928a3e5b",
+    "sampleRate": 44100,
+    "sampleCount": 283122,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 320,
+    "greedy": "버스은 오전 이육 시 삼십 분에 출발하고 왕복요금은 이 천 원 소유시간은 약 사십 오 분입니다",
+    "speechFrameRatio": 0.1156,
+    "freeLogProbPerFrame": -0.0302,
+    "forcedLogProbPerFrame": -0.1874,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 80,
+      "endMs": 400,
+      "labelFrames": 3,
+      "onsetsMs": [
+       80,
+       280,
+       380
+      ],
+      "heard": "버스은"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 580,
+      "endMs": 700,
+      "labelFrames": 2,
+      "onsetsMs": [
+       580,
+       680
+      ],
+      "heard": "오전"
+     },
+     {
+      "index": 2,
+      "reading": 2,
+      "spoken": true,
+      "startMs": 840,
+      "endMs": 860,
+      "labelFrames": 1,
+      "onsetsMs": [
+       840
+      ],
+      "heard": "이육"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1040,
+      "endMs": 1060,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1040
+      ],
+      "heard": "시"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1160,
+      "endMs": 1340,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1160,
+       1320
+      ],
+      "heard": "삼십"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1480,
+      "endMs": 1640,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1480,
+       1620
+      ],
+      "heard": "분에"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1880,
+      "endMs": 2420,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1880,
+       2080,
+       2220,
+       2400
+      ],
+      "heard": "출발하고"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2720,
+      "endMs": 2940,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2720,
+       2920
+      ],
+      "heard": "왕복"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3100,
+      "endMs": 3360,
+      "labelFrames": 3,
+      "onsetsMs": [
+       3100,
+       3220,
+       3340
+      ],
+      "heard": "요금은"
+     },
+     {
+      "index": 9,
+      "reading": 3,
+      "spoken": true,
+      "startMs": 3640,
+      "endMs": 3660,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3640
+      ],
+      "heard": "이 천"
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4080,
+      "endMs": 4100,
+      "labelFrames": 1,
+      "onsetsMs": [
+       4080
+      ],
+      "heard": "원"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4400,
+      "endMs": 4560,
+      "labelFrames": 2,
+      "onsetsMs": [
+       4400,
+       4540
+      ],
+      "heard": "소유"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4720,
+      "endMs": 4960,
+      "labelFrames": 3,
+      "onsetsMs": [
+       4720,
+       4820,
+       4940
+      ],
+      "heard": "시간은"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5140,
+      "endMs": 5160,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5140
+      ],
+      "heard": "약"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5380,
+      "endMs": 5700,
+      "labelFrames": 3,
+      "onsetsMs": [
+       5380,
+       5520,
+       5680
+      ],
+      "heard": "사십 오"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5820,
+      "endMs": 6380,
+      "labelFrames": 4,
+      "onsetsMs": [
+       5820,
+       6320,
+       6340,
+       6360
+      ],
+      "heard": "분입니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 822
+   },
+   "phrases": [
+    "버스는 오전 7시 30분에",
+    "출발하고,",
+    "왕복 요금은 12,000원,",
+    "소요 시간은 약 45분입니다."
+   ],
+   "truthOnsetsMs": [
+    80,
+    1880,
+    2700,
+    4380
+   ]
+  },
+  {
+   "name": "numbers-natural",
+   "expect": "verified",
+   "status": "verified",
+   "reasons": [],
+   "unitCer": 0.079,
+   "elapsedMs": 1038,
+   "cueOnsetErrorsMs": null,
+   "text": "버스는 오전 7시 30분에 출발하고, 왕복 요금은 12,000원, 소요 시간은 약 45분입니다.",
+   "durationMs": 8000,
+   "audioSha256": "ff9769e9b8fe25ce0738bc9ad37696bc6556dfb5aff185df9ed2e3e43c6e2708",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 3,
+     "kind": "hangul",
+     "readings": [
+      "버스는"
+     ]
+    },
+    {
+     "cpStart": 4,
+     "cpEnd": 6,
+     "kind": "hangul",
+     "readings": [
+      "오전"
+     ]
+    },
+    {
+     "cpStart": 7,
+     "cpEnd": 8,
+     "kind": "number",
+     "readings": [
+      "일곱",
+      "칠",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 8,
+     "cpEnd": 9,
+     "kind": "hangul",
+     "readings": [
+      "시"
+     ]
+    },
+    {
+     "cpStart": 10,
+     "cpEnd": 12,
+     "kind": "number",
+     "readings": [
+      "삼십",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "분에"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "출발하고"
+     ]
+    },
+    {
+     "cpStart": 21,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "왕복"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 27,
+     "kind": "hangul",
+     "readings": [
+      "요금은"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 34,
+     "kind": "number",
+     "readings": [
+      "만이천",
+      "일이영영영",
+      "일이공공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 34,
+     "cpEnd": 35,
+     "kind": "hangul",
+     "readings": [
+      "원"
+     ]
+    },
+    {
+     "cpStart": 37,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "소요"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 43,
+     "kind": "hangul",
+     "readings": [
+      "시간은"
+     ]
+    },
+    {
+     "cpStart": 44,
+     "cpEnd": 45,
+     "kind": "hangul",
+     "readings": [
+      "약"
+     ]
+    },
+    {
+     "cpStart": 46,
+     "cpEnd": 48,
+     "kind": "number",
+     "readings": [
+      "사십오",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 52,
+     "kind": "hangul",
+     "readings": [
+      "분입니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "a2032f5e-e664-419e-9524-bb0117649b10",
+    "audioSha256": "ff9769e9b8fe25ce0738bc9ad37696bc6556dfb5aff185df9ed2e3e43c6e2708",
+    "sampleRate": 44100,
+    "sampleCount": 352800,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 399,
+    "greedy": "버스는 오전 일곱 시 삼십 분에 출바하고 왕복요금은 십 이 천원 소유 시간은 약 사 십 오 분입니다",
+    "speechFrameRatio": 0.0952,
+    "freeLogProbPerFrame": -0.0198,
+    "forcedLogProbPerFrame": -0.2082,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 80,
+      "endMs": 400,
+      "labelFrames": 3,
+      "onsetsMs": [
+       80,
+       260,
+       380
+      ],
+      "heard": "버스는"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 700,
+      "endMs": 860,
+      "labelFrames": 2,
+      "onsetsMs": [
+       700,
+       840
+      ],
+      "heard": "오전"
+     },
+     {
+      "index": 2,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1120,
+      "endMs": 1300,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1120,
+       1280
+      ],
+      "heard": "일곱"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1440,
+      "endMs": 1460,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1440
+      ],
+      "heard": "시"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1620,
+      "endMs": 1880,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1620,
+       1860
+      ],
+      "heard": "삼십"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2100,
+      "endMs": 2220,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2100,
+       2200
+      ],
+      "heard": "분에"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2340,
+      "endMs": 2880,
+      "labelFrames": 4,
+      "onsetsMs": [
+       2340,
+       2560,
+       2680,
+       2860
+      ],
+      "heard": "출바하고"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3480,
+      "endMs": 3720,
+      "labelFrames": 2,
+      "onsetsMs": [
+       3480,
+       3700
+      ],
+      "heard": "왕복"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3920,
+      "endMs": 4240,
+      "labelFrames": 3,
+      "onsetsMs": [
+       3920,
+       4080,
+       4220
+      ],
+      "heard": "요금은"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4480,
+      "endMs": 4900,
+      "labelFrames": 3,
+      "onsetsMs": [
+       4480,
+       4740,
+       4880
+      ],
+      "heard": "십 이 천"
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5020,
+      "endMs": 5040,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5020
+      ],
+      "heard": "원"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5580,
+      "endMs": 5740,
+      "labelFrames": 2,
+      "onsetsMs": [
+       5580,
+       5720
+      ],
+      "heard": "소유"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 5880,
+      "endMs": 6140,
+      "labelFrames": 3,
+      "onsetsMs": [
+       5880,
+       6000,
+       6120
+      ],
+      "heard": "시간은"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6420,
+      "endMs": 6440,
+      "labelFrames": 1,
+      "onsetsMs": [
+       6420
+      ],
+      "heard": "약"
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6780,
+      "endMs": 7180,
+      "labelFrames": 3,
+      "onsetsMs": [
+       6780,
+       6940,
+       7160
+      ],
+      "heard": "사 십 오"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 7320,
+      "endMs": 7960,
+      "labelFrames": 4,
+      "onsetsMs": [
+       7320,
+       7900,
+       7920,
+       7940
+      ],
+      "heard": "분입니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 1038
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  },
+  {
+   "name": "missing",
+   "expect": "not_verified",
+   "status": "review_required",
+   "reasons": [
+    "compressed_speech",
+    "low_alignment_likelihood",
+    "text_audio_mismatch"
+   ],
+   "unitCer": 0.711,
+   "elapsedMs": 415,
+   "cueOnsetErrorsMs": null,
+   "text": "제주 동쪽 해안도로는 봄철 주말마다 차량이 많아, 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습니다.",
+   "durationMs": 3050,
+   "audioSha256": "abbd1d764d99d105f3f94d1c5c04b917373566d324cbac978d8c24767b8d58ac",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 2,
+     "kind": "hangul",
+     "readings": [
+      "제주"
+     ]
+    },
+    {
+     "cpStart": 3,
+     "cpEnd": 5,
+     "kind": "hangul",
+     "readings": [
+      "동쪽"
+     ]
+    },
+    {
+     "cpStart": 6,
+     "cpEnd": 11,
+     "kind": "hangul",
+     "readings": [
+      "해안도로는"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "봄철"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "주말마다"
+     ]
+    },
+    {
+     "cpStart": 20,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "차량이"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 26,
+     "kind": "hangul",
+     "readings": [
+      "많아"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 30,
+     "kind": "hangul",
+     "readings": [
+      "이른"
+     ]
+    },
+    {
+     "cpStart": 31,
+     "cpEnd": 34,
+     "kind": "hangul",
+     "readings": [
+      "아침에"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "출발하면"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 44,
+     "kind": "hangul",
+     "readings": [
+      "주차장을"
+     ]
+    },
+    {
+     "cpStart": 45,
+     "cpEnd": 47,
+     "kind": "hangul",
+     "readings": [
+      "여유"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 50,
+     "kind": "hangul",
+     "readings": [
+      "있게"
+     ]
+    },
+    {
+     "cpStart": 51,
+     "cpEnd": 54,
+     "kind": "hangul",
+     "readings": [
+      "이용할"
+     ]
+    },
+    {
+     "cpStart": 55,
+     "cpEnd": 56,
+     "kind": "hangul",
+     "readings": [
+      "수"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "있습니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "8c2baa30-4f48-4e15-89b0-a059b8957263",
+    "audioSha256": "abbd1d764d99d105f3f94d1c5c04b917373566d324cbac978d8c24767b8d58ac",
+    "sampleRate": 44100,
+    "sampleCount": 134505,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 152,
+    "greedy": "제주 동쪽 해안도로는 몸철 주말마다 차량이 많아",
+    "speechFrameRatio": 0.1316,
+    "freeLogProbPerFrame": -0.0289,
+    "forcedLogProbPerFrame": -3.0261,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 100,
+      "endMs": 260,
+      "labelFrames": 2,
+      "onsetsMs": [
+       100,
+       240
+      ],
+      "heard": "제주"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 380,
+      "endMs": 600,
+      "labelFrames": 2,
+      "onsetsMs": [
+       380,
+       580
+      ],
+      "heard": "동쪽"
+     },
+     {
+      "index": 2,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 760,
+      "endMs": 1220,
+      "labelFrames": 5,
+      "onsetsMs": [
+       760,
+       840,
+       980,
+       1080,
+       1200
+      ],
+      "heard": "해안도로는"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1320,
+      "endMs": 1520,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1320,
+       1500
+      ],
+      "heard": "몸철"
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1700,
+      "endMs": 1900,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1700,
+       1800,
+       1840,
+       1880
+      ],
+      "heard": "주말"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1900,
+      "endMs": 1960,
+      "labelFrames": 3,
+      "onsetsMs": [
+       1900,
+       1920,
+       1940
+      ],
+      "heard": ""
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1980,
+      "endMs": 2060,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1980,
+       2040
+      ],
+      "heard": "마"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2060,
+      "endMs": 2100,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2060,
+       2080
+      ],
+      "heard": ""
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2100,
+      "endMs": 2180,
+      "labelFrames": 3,
+      "onsetsMs": [
+       2100,
+       2140,
+       2160
+      ],
+      "heard": "다"
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2180,
+      "endMs": 2260,
+      "labelFrames": 4,
+      "onsetsMs": [
+       2180,
+       2200,
+       2220,
+       2240
+      ],
+      "heard": ""
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2260,
+      "endMs": 2560,
+      "labelFrames": 4,
+      "onsetsMs": [
+       2260,
+       2280,
+       2420,
+       2540
+      ],
+      "heard": "차량이"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2620,
+      "endMs": 2660,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2620,
+       2640
+      ],
+      "heard": "많"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2780,
+      "endMs": 2880,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2780,
+       2860
+      ],
+      "heard": "아"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2880,
+      "endMs": 2940,
+      "labelFrames": 3,
+      "onsetsMs": [
+       2880,
+       2900,
+       2920
+      ],
+      "heard": ""
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2940,
+      "endMs": 2960,
+      "labelFrames": 1,
+      "onsetsMs": [
+       2940
+      ],
+      "heard": ""
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2960,
+      "endMs": 3040,
+      "labelFrames": 4,
+      "onsetsMs": [
+       2960,
+       2980,
+       3000,
+       3020
+      ],
+      "heard": ""
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 415
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  },
+  {
+   "name": "wrong",
+   "expect": "not_verified",
+   "status": "review_required",
+   "reasons": [
+    "low_alignment_likelihood",
+    "text_audio_mismatch"
+   ],
+   "unitCer": 1.429,
+   "elapsedMs": 855,
+   "cueOnsetErrorsMs": null,
+   "text": "버스는 오전 7시 30분에 출발하고, 왕복 요금은 12,000원, 소요 시간은 약 45분입니다.",
+   "durationMs": 6660,
+   "audioSha256": "b4c2d829c408529f78bb3deb4b66d5fe8fa5e0fae8895b6376f533a5e39d1f54",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 3,
+     "kind": "hangul",
+     "readings": [
+      "버스는"
+     ]
+    },
+    {
+     "cpStart": 4,
+     "cpEnd": 6,
+     "kind": "hangul",
+     "readings": [
+      "오전"
+     ]
+    },
+    {
+     "cpStart": 7,
+     "cpEnd": 8,
+     "kind": "number",
+     "readings": [
+      "일곱",
+      "칠",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 8,
+     "cpEnd": 9,
+     "kind": "hangul",
+     "readings": [
+      "시"
+     ]
+    },
+    {
+     "cpStart": 10,
+     "cpEnd": 12,
+     "kind": "number",
+     "readings": [
+      "삼십",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "분에"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "출발하고"
+     ]
+    },
+    {
+     "cpStart": 21,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "왕복"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 27,
+     "kind": "hangul",
+     "readings": [
+      "요금은"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 34,
+     "kind": "number",
+     "readings": [
+      "만이천",
+      "일이영영영",
+      "일이공공공",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 34,
+     "cpEnd": 35,
+     "kind": "hangul",
+     "readings": [
+      "원"
+     ]
+    },
+    {
+     "cpStart": 37,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "소요"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 43,
+     "kind": "hangul",
+     "readings": [
+      "시간은"
+     ]
+    },
+    {
+     "cpStart": 44,
+     "cpEnd": 45,
+     "kind": "hangul",
+     "readings": [
+      "약"
+     ]
+    },
+    {
+     "cpStart": 46,
+     "cpEnd": 48,
+     "kind": "number",
+     "readings": [
+      "사십오",
+      "*"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 52,
+     "kind": "hangul",
+     "readings": [
+      "분입니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "68e4e4e8-6c8c-4640-9b36-bed3a74be3de",
+    "audioSha256": "b4c2d829c408529f78bb3deb4b66d5fe8fa5e0fae8895b6376f533a5e39d1f54",
+    "sampleRate": 44100,
+    "sampleCount": 293706,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 332,
+    "greedy": "제주 동쪽 해안도로는몸철 주말마다 차량이 많아 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습습니다",
+    "speechFrameRatio": 0.1386,
+    "freeLogProbPerFrame": -0.0189,
+    "forcedLogProbPerFrame": -1.4917,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 100,
+      "endMs": 400,
+      "labelFrames": 3,
+      "onsetsMs": [
+       100,
+       240,
+       380
+      ],
+      "heard": "제주 동쪽"
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 760,
+      "endMs": 860,
+      "labelFrames": 2,
+      "onsetsMs": [
+       760,
+       840
+      ],
+      "heard": "해안"
+     },
+     {
+      "index": 2,
+      "reading": 2,
+      "spoken": true,
+      "startMs": 980,
+      "endMs": 1000,
+      "labelFrames": 1,
+      "onsetsMs": [
+       980
+      ],
+      "heard": "도"
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1080,
+      "endMs": 1100,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1080
+      ],
+      "heard": "로"
+     },
+     {
+      "index": 4,
+      "reading": 1,
+      "spoken": true,
+      "startMs": 1200,
+      "endMs": 1220,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1200
+      ],
+      "heard": "는"
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1320,
+      "endMs": 1520,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1320,
+       1500
+      ],
+      "heard": "몸철"
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1700,
+      "endMs": 2120,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1700,
+       1840,
+       1980,
+       2100
+      ],
+      "heard": "주말마다"
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2280,
+      "endMs": 2440,
+      "labelFrames": 2,
+      "onsetsMs": [
+       2280,
+       2420
+      ],
+      "heard": "차량이"
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 2640,
+      "endMs": 3120,
+      "labelFrames": 3,
+      "onsetsMs": [
+       2640,
+       3020,
+       3100
+      ],
+      "heard": "많아 이른"
+     },
+     {
+      "index": 9,
+      "reading": 3,
+      "spoken": true,
+      "startMs": 3220,
+      "endMs": 3240,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3220
+      ],
+      "heard": "아"
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3380,
+      "endMs": 3400,
+      "labelFrames": 1,
+      "onsetsMs": [
+       3380
+      ],
+      "heard": "침에"
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 3600,
+      "endMs": 3820,
+      "labelFrames": 2,
+      "onsetsMs": [
+       3600,
+       3800
+      ],
+      "heard": "출발하면 주"
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4520,
+      "endMs": 4820,
+      "labelFrames": 3,
+      "onsetsMs": [
+       4520,
+       4660,
+       4800
+      ],
+      "heard": "차장을"
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 4920,
+      "endMs": 4940,
+      "labelFrames": 1,
+      "onsetsMs": [
+       4920
+      ],
+      "heard": "여유 있게 이용할"
+     },
+     {
+      "index": 14,
+      "reading": 1,
+      "spoken": true,
+      "startMs": 5960,
+      "endMs": 5980,
+      "labelFrames": 1,
+      "onsetsMs": [
+       5960
+      ],
+      "heard": "수"
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 6080,
+      "endMs": 6620,
+      "labelFrames": 4,
+      "onsetsMs": [
+       6080,
+       6560,
+       6580,
+       6600
+      ],
+      "heard": "있습습니다"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 855
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  },
+  {
+   "name": "silence",
+   "expect": "failed",
+   "status": "failed",
+   "reasons": [
+    "no_speech"
+   ],
+   "unitCer": null,
+   "elapsedMs": 296,
+   "cueOnsetErrorsMs": null,
+   "text": "제주 동쪽 해안도로는 봄철 주말마다 차량이 많아, 이른 아침에 출발하면 주차장을 여유 있게 이용할 수 있습니다.",
+   "durationMs": 2000,
+   "audioSha256": "cfc6b206e99b298a229480f020e61d2b22a791e08a840fdd40ef62d8bd78b155",
+   "units": [
+    {
+     "cpStart": 0,
+     "cpEnd": 2,
+     "kind": "hangul",
+     "readings": [
+      "제주"
+     ]
+    },
+    {
+     "cpStart": 3,
+     "cpEnd": 5,
+     "kind": "hangul",
+     "readings": [
+      "동쪽"
+     ]
+    },
+    {
+     "cpStart": 6,
+     "cpEnd": 11,
+     "kind": "hangul",
+     "readings": [
+      "해안도로는"
+     ]
+    },
+    {
+     "cpStart": 12,
+     "cpEnd": 14,
+     "kind": "hangul",
+     "readings": [
+      "봄철"
+     ]
+    },
+    {
+     "cpStart": 15,
+     "cpEnd": 19,
+     "kind": "hangul",
+     "readings": [
+      "주말마다"
+     ]
+    },
+    {
+     "cpStart": 20,
+     "cpEnd": 23,
+     "kind": "hangul",
+     "readings": [
+      "차량이"
+     ]
+    },
+    {
+     "cpStart": 24,
+     "cpEnd": 26,
+     "kind": "hangul",
+     "readings": [
+      "많아"
+     ]
+    },
+    {
+     "cpStart": 28,
+     "cpEnd": 30,
+     "kind": "hangul",
+     "readings": [
+      "이른"
+     ]
+    },
+    {
+     "cpStart": 31,
+     "cpEnd": 34,
+     "kind": "hangul",
+     "readings": [
+      "아침에"
+     ]
+    },
+    {
+     "cpStart": 35,
+     "cpEnd": 39,
+     "kind": "hangul",
+     "readings": [
+      "출발하면"
+     ]
+    },
+    {
+     "cpStart": 40,
+     "cpEnd": 44,
+     "kind": "hangul",
+     "readings": [
+      "주차장을"
+     ]
+    },
+    {
+     "cpStart": 45,
+     "cpEnd": 47,
+     "kind": "hangul",
+     "readings": [
+      "여유"
+     ]
+    },
+    {
+     "cpStart": 48,
+     "cpEnd": 50,
+     "kind": "hangul",
+     "readings": [
+      "있게"
+     ]
+    },
+    {
+     "cpStart": 51,
+     "cpEnd": 54,
+     "kind": "hangul",
+     "readings": [
+      "이용할"
+     ]
+    },
+    {
+     "cpStart": 55,
+     "cpEnd": 56,
+     "kind": "hangul",
+     "readings": [
+      "수"
+     ]
+    },
+    {
+     "cpStart": 57,
+     "cpEnd": 61,
+     "kind": "hangul",
+     "readings": [
+      "있습니다"
+     ]
+    }
+   ],
+   "raw": {
+    "sentenceId": "b20a88a9-8d62-436f-b66c-2f794f4e7c89",
+    "audioSha256": "cfc6b206e99b298a229480f020e61d2b22a791e08a840fdd40ef62d8bd78b155",
+    "sampleRate": 44100,
+    "sampleCount": 88200,
+    "frameMs": 20,
+    "status": "aligned",
+    "frames": 99,
+    "greedy": "같이",
+    "speechFrameRatio": 0.0202,
+    "freeLogProbPerFrame": -0.3185,
+    "forcedLogProbPerFrame": -3.5114,
+    "units": [
+     {
+      "index": 0,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 0,
+      "endMs": 40,
+      "labelFrames": 2,
+      "onsetsMs": [
+       0,
+       20
+      ],
+      "heard": ""
+     },
+     {
+      "index": 1,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1080,
+      "endMs": 1120,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1080,
+       1100
+      ],
+      "heard": ""
+     },
+     {
+      "index": 2,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1120,
+      "endMs": 1220,
+      "labelFrames": 5,
+      "onsetsMs": [
+       1120,
+       1140,
+       1160,
+       1180,
+       1200
+      ],
+      "heard": ""
+     },
+     {
+      "index": 3,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1220,
+      "endMs": 1260,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1220,
+       1240
+      ],
+      "heard": ""
+     },
+     {
+      "index": 4,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1260,
+      "endMs": 1340,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1260,
+       1280,
+       1300,
+       1320
+      ],
+      "heard": ""
+     },
+     {
+      "index": 5,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1340,
+      "endMs": 1400,
+      "labelFrames": 3,
+      "onsetsMs": [
+       1340,
+       1360,
+       1380
+      ],
+      "heard": ""
+     },
+     {
+      "index": 6,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1400,
+      "endMs": 1440,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1400,
+       1420
+      ],
+      "heard": ""
+     },
+     {
+      "index": 7,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1440,
+      "endMs": 1480,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1440,
+       1460
+      ],
+      "heard": ""
+     },
+     {
+      "index": 8,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1480,
+      "endMs": 1540,
+      "labelFrames": 3,
+      "onsetsMs": [
+       1480,
+       1500,
+       1520
+      ],
+      "heard": ""
+     },
+     {
+      "index": 9,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1540,
+      "endMs": 1620,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1540,
+       1560,
+       1580,
+       1600
+      ],
+      "heard": ""
+     },
+     {
+      "index": 10,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1620,
+      "endMs": 1700,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1620,
+       1640,
+       1660,
+       1680
+      ],
+      "heard": ""
+     },
+     {
+      "index": 11,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1700,
+      "endMs": 1740,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1700,
+       1720
+      ],
+      "heard": ""
+     },
+     {
+      "index": 12,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1740,
+      "endMs": 1780,
+      "labelFrames": 2,
+      "onsetsMs": [
+       1740,
+       1760
+      ],
+      "heard": ""
+     },
+     {
+      "index": 13,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1780,
+      "endMs": 1840,
+      "labelFrames": 3,
+      "onsetsMs": [
+       1780,
+       1800,
+       1820
+      ],
+      "heard": ""
+     },
+     {
+      "index": 14,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1880,
+      "endMs": 1900,
+      "labelFrames": 1,
+      "onsetsMs": [
+       1880
+      ],
+      "heard": ""
+     },
+     {
+      "index": 15,
+      "reading": 0,
+      "spoken": true,
+      "startMs": 1900,
+      "endMs": 1980,
+      "labelFrames": 4,
+      "onsetsMs": [
+       1900,
+       1920,
+       1940,
+       1960
+      ],
+      "heard": "같이"
+     }
+    ],
+    "oovSyllables": [],
+    "elapsedMs": 296
+   },
+   "phrases": null,
+   "truthOnsetsMs": null
+  }
+ ]
+}

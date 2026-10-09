@@ -76,7 +76,7 @@ export function mutateAdaptation(root: string, candidateId: string, input: Insta
         scenes: plan.scenes.map((scene, i) => ({ sceneId: scene.sceneId, order: scene.order, sentenceText: scene.sentenceText,
           purpose: scene.purpose, imageReady: inventory[i]!.imageSha256 !== null })),
         currentCards: current && adaptationFresh(root, candidateId, current) ? current.cards.map(({ sceneId, kicker, headline, body, microcopy }) => ({ sceneId, kicker, headline, body, microcopy })) : [],
-        instructions: ["Return only narration-instagram-chatgpt-result-v1 JSON with candidateId, source, baseRevision, baseFingerprint, visualInventoryFingerprint and cards.",
+        instructions: ["Develop the approved Narration story into Korean Instagram card copy and caption using selected shared sentence visuals. Narration is the storytelling authority; Canonical and Research are supporting references. Do not request a separate visual plan, add visuals, or change sceneIds. Card count is 4–10 selected scenes, never implicitly five. Caption follows the same story and must not invent facts.","Return only narration-instagram-chatgpt-result-v1 JSON with candidateId, source, baseRevision, baseFingerprint, visualInventoryFingerprint and cards.",
           "Copy identity/source/base/inventory fields exactly. Select 4–10 distinct imageReady scenes, preserving narration order. Never default to five cards.",
           "Each card references exactly one sceneId; never invent a scene, combine visuals, duplicate a scene or alter Canonical.",
           "Write natural Korean copy following the selected narration. Do not pad/truncate narration for card count or duration.",

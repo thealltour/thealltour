@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export const REVIEW_WORKFLOW_STEPS = [
   { id: 1, label: "공통 원문", description: "ChatGPT용 원문 복사 → 수정본 가져오기 → Human 수정·저장·승인" },
   { id: 2, label: "Research 검증", description: "검증용 JSON 복사 → 결과 가져오기 → 충돌 확인·반영" },
   { id: 7, label: "Narration", description: "문장별 이야기 작성 → 순서 검토 → 저장·revision 승인" },
-  { id: 8, label: "문장 비주얼", description: "완료된 음성 불러오기 → 문장별 계획·승인 → Astra 요청문·이미지 업로드" },
+  { id: 8, label: "공유 비주얼", description: "최신 음성 → Hermes 계획 초안·검토·승인 → Astra 요청문·결과 인입 → 공유 이미지 업로드" },
   { id: 10, label: "Shortform", description: "최신 문장·음성·이미지로 영상 작업 요청 → 완료 결과 확인·다운로드" },
   { id: 9, label: "Instagram 파생", description: "문장별 장면에서 4~10장 선택 → 카드 문구 검토·승인 → 카드뉴스 렌더" },
   { id: 3, label: "카드 문구", description: "Instagram 카드뉴스 JSON 복사 → 결과 가져오기 → Human 문구 수정·저장·승인" },
-  { id: 4, label: "공유 비주얼", description: "Shared Visual Plan 작성 → Astra handoff 생성 → 공유 비주얼 슬롯 채우기" },
+  { id: 4, label: "기존 카드 기준 비주얼", description: "Shared Visual Plan 작성 → Astra handoff 생성 → 공유 비주얼 슬롯 채우기" },
   { id: 5, label: "카드뉴스 완성", description: "렌더링 시작 → 생성된 카드뉴스 확인·다운로드" },
   { id: 6, label: "기타 채널", description: "완성된 카드뉴스를 바탕으로 Threads·Instagram 캡션·네이버 블로그 등 생성·검토" },
 ] as const;
@@ -60,6 +60,19 @@ export function MarketingReviewWorkflowNav(props: {
   channelStatus: string;
   cardCopyDirty?: boolean;
 }) {
+  const [showLegacy, setShowLegacy] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  useEffect(() => {
+    const header = navRef.current?.closest("main")?.querySelector<HTMLElement>("[data-admin-subheader]");
+    if (!header) return;
+    const measure = () => setHeaderHeight(header.getBoundingClientRect().height);
+    measure();
+    window.addEventListener("resize", measure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(header);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
   const [snapshot, setSnapshot] = useState<WorkflowSnapshot>({ cardCopy: null, astra: null, sources: null, assets: null });
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const queryKey = `${props.candidateId}:${props.refreshKey}`;
@@ -88,23 +101,26 @@ export function MarketingReviewWorkflowNav(props: {
     return () => { cancelled = true; };
   }, [props.candidateId, props.refreshKey]);
   const statuses = [...deriveReviewWorkflowStatuses(props.canonicalApproved, snapshot), props.channelStatus];
+  const legacyIds: number[] = [3, 4, 5];
+  const visibleSteps = REVIEW_WORKFLOW_STEPS.filter(s => showLegacy || legacyIds.includes(props.activeStep) || !legacyIds.includes(s.id));
   if (props.cardCopyDirty) statuses[6] = "저장 필요";
   return (
-    <div className="sticky top-0 z-20 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 shadow-sm">
+    <div ref={navRef} style={{ top: headerHeight + 8 }} className="sticky z-20 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 shadow-sm">
+      <button type="button" className="mb-1 text-xs underline" onClick={() => { if (legacyIds.includes(props.activeStep)) props.onSelect(7); setShowLegacy(!(showLegacy || legacyIds.includes(props.activeStep))); }}>{showLegacy || legacyIds.includes(props.activeStep) ? "기존 카드 제작 메뉴 접기" : "기존 카드 제작 메뉴 보기"}</button>
       <div role="tablist" aria-label="마케팅 제작 단계" className="grid grid-cols-3 gap-1 md:grid-cols-5">
         {REVIEW_WORKFLOW_STEPS.map((step, index) => (
-          <button key={step.id} type="button" role="tab" id={`workflow-tab-${step.id}`}
+          <button hidden={!visibleSteps.some(s => s.id === step.id)} key={step.id} type="button" role="tab" id={`workflow-tab-${step.id}`}
             aria-selected={props.activeStep === step.id} aria-controls={`workflow-stage-${step.id}`}
             tabIndex={props.activeStep === step.id ? 0 : -1}
             onClick={() => props.onSelect(step.id)}
             onKeyDown={(event) => {
-              const count = REVIEW_WORKFLOW_STEPS.length;
-              const next = event.key === "ArrowRight" ? (index + 1) % count : event.key === "ArrowLeft" ? (index + count - 1) % count : event.key === "Home" ? 0 : event.key === "End" ? count - 1 : null;
-              if (next !== null) { event.preventDefault(); const id = REVIEW_WORKFLOW_STEPS[next]!.id; props.onSelect(id); document.getElementById(`workflow-tab-${id}`)?.focus(); }
+              const count = visibleSteps.length; const visibleIndex = visibleSteps.findIndex(s => s.id === step.id);
+              const next = event.key === "ArrowRight" ? (visibleIndex + 1) % count : event.key === "ArrowLeft" ? (visibleIndex + count - 1) % count : event.key === "Home" ? 0 : event.key === "End" ? count - 1 : null;
+              if (next !== null) { event.preventDefault(); const id = visibleSteps[next]!.id; props.onSelect(id); document.getElementById(`workflow-tab-${id}`)?.focus(); }
             }}
             className={cn("rounded-md px-2 py-2 text-left text-xs", props.activeStep === step.id ? "bg-[var(--primary)] text-white" : "hover:bg-[var(--surface-muted)]")}
           >
-            <span className="block font-semibold">{index + 1}. {step.label}</span>
+            <span className="block font-semibold">{legacyIds.includes(step.id) ? "기존 · " : `${visibleSteps.filter(s => !legacyIds.includes(s.id)).findIndex(s => s.id === step.id) + 1}. `}{step.label}</span>
             <span className="mt-1 block opacity-80">{loading && step.id !== 1 && step.id !== 6 ? "확인 중…" : statuses[index]}</span>
           </button>
         ))}

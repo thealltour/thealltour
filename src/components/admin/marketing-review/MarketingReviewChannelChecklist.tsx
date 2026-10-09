@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useMemo, useState } from "react";
 
@@ -118,22 +119,20 @@ export function MarketingReviewChannelChecklist({
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <AdminButton variant="secondary"
             type="button"
             disabled={busy || selectable.length === 0}
             onClick={() => setSelected(new Set(selectable))}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs disabled:opacity-40"
           >
             승인 가능 전체 선택 ({selectable.length})
-          </button>
-          <button
+          </AdminButton>
+          <AdminButton variant="primary"
             type="button"
             disabled={busy || chosen.length === 0}
             onClick={() => void approveSelected()}
-            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >
             선택 {chosen.length}개 일괄 승인
-          </button>
+          </AdminButton>
         </div>
       </div>
 
@@ -172,13 +171,12 @@ export function MarketingReviewChannelChecklist({
                     />
                   </td>
                   <td className="py-2 pr-3">
-                    <button
+                    <AdminButton variant="secondary"
                       type="button"
-                      className="text-[var(--primary)] underline"
                       onClick={() => onSelectChannel(row.channel)}
                     >
                       {row.label}
-                    </button>
+                    </AdminButton>
                     <div className="text-xs text-[var(--text-secondary)]">
                       {row.source === "human" ? "사람 수정" : "AI 초안"}
                     </div>

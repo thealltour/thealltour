@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -58,21 +59,15 @@ export function CopyToClipboardButton({ label, value, disabled, title }: Props) 
   const empty = !value.trim();
 
   return (
-    <button
+    <AdminButton variant="secondary"
       type="button"
       disabled={disabled || empty}
       onClick={() => void copy()}
       title={title ?? label}
       aria-live="polite"
-      className={`rounded-lg border px-3 py-1.5 text-xs disabled:opacity-40 ${
-        state === "copied"
-          ? "border-emerald-600 text-emerald-700"
-          : state === "failed"
-            ? "border-red-600 text-red-700"
-            : "border-[var(--border)]"
-      }`}
+      size="sm"
     >
       {state === "copied" ? `${label} 복사됨` : state === "failed" ? `${label} 복사 실패` : `${label} 복사`}
-    </button>
+    </AdminButton>
   );
 }

@@ -152,16 +152,19 @@ describe("Manual Astra Handoff Builder v1", () => {
     expect(handoff.copyText).toContain("Threads image 1");
   });
 
-  it("F. evidence boundary constraints without restating forbidden claim positively", () => {
+  it("F. permits developed facts without imposing Canonical boundaries or fabricating documentary proof", () => {
     const handoff = buildManualAstraHandoff({
       sharedVisualPlan: plan(),
       approvedAssetContext: assetCtx,
     });
     expect(handoff.copyText).toMatch(/illustrative editorial material|documentary/i);
-    expect(handoff.copyText).toMatch(/village|마을|location|위치/i);
-    expect(handoff.copyText).toMatch(/tourist activities|체험/i);
+    expect(handoff.copyText).toContain("not an exhaustive factual boundary");
+    expect(handoff.copyText).toContain("no prior Canonical amendment is required");
+    expect(handoff.copyText).not.toContain("Stay within supported claim boundary");
+    expect(handoff.copyText).not.toContain("Do not identify or imply a specific named village/location");
+    expect(handoff.copyText).not.toContain("Do not depict specific tourist activities or offerings as available");
     expect(handoff.copyText).not.toContain("현지인의 삶이 고스란히 담겨 있다");
-    expect(handoff.visuals[0]?.evidenceGuidance.some((g) => /private life|privileged/i.test(g))).toBe(
+    expect(handoff.visuals[0]?.evidenceGuidance.some((g) => /not documentary proof/i.test(g))).toBe(
       true,
     );
   });

@@ -320,6 +320,7 @@ export default function SubHeader({ activeMenu, onTabChange }: SubHeaderProps) {
 
   return (
     <div
+      data-admin-subheader
       className={`sticky top-0 z-30 w-full border-b border-[var(--divider)] bg-[var(--card)] transition-shadow ${
         isScrolled ? "shadow-sm" : ""
       }`}

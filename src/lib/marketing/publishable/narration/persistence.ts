@@ -5,15 +5,18 @@ import type { CanonicalMarketingAsset } from "@/lib/marketing/canonicalAsset/con
 import { isApprovedCanonicalAsset } from "@/lib/marketing/canonicalAsset/validateCanonicalMarketingAsset";
 import { narrationSchema, type Narration, type NarrationLineage, type NarrationMutation } from "./contracts";
 import { stableFingerprint } from "./fingerprint";
+import { readNarrationResearch } from "./researchSource";
 
 export class NarrationError extends Error {
   constructor(message: string, public status = 409) { super(message); }
 }
 const hash = stableFingerprint;
-export function narrationLineage(asset: CanonicalMarketingAsset): NarrationLineage {
+export function narrationLineage(asset: CanonicalMarketingAsset, root?: string): NarrationLineage {
   if (!isApprovedCanonicalAsset(asset)) throw new NarrationError("공통 원문을 먼저 승인해주세요.");
   // Explicit projection excludes audit timestamps and includes factual boundaries.
+  const research = root ? readNarrationResearch(root, asset) : null;
   return { assetId: asset.assetId, canonicalVersion: asset.version, sourceRevision: asset.sourceRevision,
+    ...(research ? { researchImportId: research.candidate.importId, researchFingerprint: research.fingerprint } : {}),
     canonicalFingerprint: hash({ assetId: asset.assetId, version: asset.version, sourceRevision: asset.sourceRevision,
       titleKo: asset.titleKo, dekKo: asset.dekKo, openingHookKo: asset.openingHookKo, bodyKo: asset.bodyKo,
       keyTakeawaysKo: asset.keyTakeawaysKo, decisionGuidanceKo: asset.decisionGuidanceKo,
@@ -45,7 +48,8 @@ export function narrationGate(value: Narration | null, lineage: NarrationLineage
   if (hash(value.lineage) !== hash(lineage)) return "stale" as const;
   return value.approval ? "approved" as const : "draft" as const;
 }
-export function mutateNarration(root: string, candidateId: string, input: NarrationMutation, getLineage: () => NarrationLineage): Narration {
+export function mutateNarration(root: string, candidateId: string, input: NarrationMutation, getLineage: () => NarrationLineage,
+  options: { forceDraft?: boolean } = {}): Narration {
   const directory = join(root, "context/narration");
   mkdirSync(directory, { recursive: true });
   const lock = join(directory, ".mutation-lock");
@@ -69,7 +73,7 @@ export function mutateNarration(root: string, candidateId: string, input: Narrat
       if (new Set(ids).size !== ids.length || ids.some(id => !knownIds.has(id))) throw new NarrationError("문장 ID가 중복되거나 현재 Narration에 속하지 않습니다.", 400);
       const sentences = input.sentences.map((sentence, order) => ({ ...sentence, sentenceId: sentence.sentenceId ?? randomUUID(), order }));
       const fingerprint = contentFingerprint({ candidateId, lineage, sentences });
-      if (current?.fingerprint === fingerprint) return current;
+      if (current?.fingerprint === fingerprint && !(options.forceDraft && current.approval)) return current;
       next = { contract: "editorial-narration-v1", candidateId, revision: (current?.revision ?? 0) + 1,
         fingerprint, lineage, sentences, createdAt: new Date().toISOString(), approval: null };
     }

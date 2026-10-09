@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useCallback, useEffect, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -285,14 +286,13 @@ export function MarketingReviewExternalEditorialPanel({
         placeholder='{"contract":"editorial-research-bundle-chatgpt-result-v1", ... }'
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs"
       />
-      <button
+      <AdminButton variant="primary"
         type="button"
         disabled={busy || !canEdit || !raw.trim()}
         onClick={() => void importResult()}
-        className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
       >
         Research 결과 가져오기
-      </button>
+      </AdminButton>
 
 
       </div>
@@ -411,7 +411,7 @@ export function MarketingReviewExternalEditorialPanel({
                   현재 공통 원문(v{canonical.version})이 승인 상태가 아닙니다. 승인한 뒤에 반영할 수 있습니다.
                 </p>
               ) : null}
-              <button
+              <AdminButton variant="primary"
                 type="button"
                 disabled={
                   busy ||
@@ -421,10 +421,9 @@ export function MarketingReviewExternalEditorialPanel({
                   checkedConflicts.length === 0
                 }
                 onClick={() => void applyResearchConflicts()}
-                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
               >
                 승인본 v{(canonical?.version ?? researchCandidate?.canonicalVersion ?? 0) + 1} 초안 만들기
-              </button>
+              </AdminButton>
             </div>
           ) : null}
         </section>
@@ -467,23 +466,21 @@ export function MarketingReviewExternalEditorialPanel({
                   </span>
                 ) : null}
                 <span className="ml-auto flex gap-2">
-                  <button
+                  <AdminButton variant="secondary"
                     type="button"
                     disabled={busy || !canEdit || view.selectedSource === "hermes_auto"}
                     onClick={() => void selectSource(view.channel, "hermes_auto")}
-                    className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
                   >
                     Hermes 선택
-                  </button>
-                  <button
+                  </AdminButton>
+                  <AdminButton variant="secondary"
                     type="button"
                     disabled={busy || !canEdit || externalDisabledReason !== null}
                     title={externalDisabledReason ?? undefined}
                     onClick={() => void selectSource(view.channel, "external_editorial")}
-                    className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs disabled:opacity-50"
                   >
                     External 선택
-                  </button>
+                  </AdminButton>
                 </span>
               </li>
             );

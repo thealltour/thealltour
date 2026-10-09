@@ -2,13 +2,13 @@ import { createReadStream, readFileSync } from "node:fs";
 import { Readable } from "node:stream";
 import { requireAdminPermission } from "@/lib/apiAuth";
 import { loadSceneApiContext, sceneApiError } from "@/lib/marketing/publishable/narrationScenes/apiContext";
-import { requireFreshShortformOutput } from "@/lib/marketing/publishable/narrationShortform/service";
+import { requireCompatibleShortformOutput } from "@/lib/marketing/publishable/narrationShortform/compatible";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ candidateId: string; jobId: string }> }) {
   const auth = await requireAdminPermission("settings.manage"); if (!auth.ok) return auth.res;
   try {
     const { candidateId, jobId } = await context.params; const { root } = await loadSceneApiContext(candidateId, false);
-    const { videoPath, subtitlesPath, output } = requireFreshShortformOutput(root, candidateId, jobId);
+    const { videoPath, subtitlesPath, output } = requireCompatibleShortformOutput(root, candidateId, jobId);
     if (new URL(request.url).searchParams.get("format") === "srt") return new Response(new Uint8Array(readFileSync(subtitlesPath)), {
       headers: { "Content-Type": "application/x-subrip; charset=utf-8", "Cache-Control": "no-store", "Content-Disposition": 'attachment; filename="narration-subtitles.srt"' },
     });

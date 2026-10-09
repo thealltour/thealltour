@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useCallback, useEffect, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -205,25 +206,23 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string; refresh
               >
                 카드뉴스만 다운로드
               </a>
-              <button
+              <AdminButton variant="primary"
                 type="button"
                 disabled={busy || renderBusy || loading}
                 onClick={() => void startCardnewsRender()}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
                 title="HDD 패키지의 media-brief 기준으로 Instagram 카드뉴스 PNG를 렌더합니다"
               >
                 {renderBusy ? "카드뉴스 렌더 중…" : "카드뉴스 렌더링 시작"}
-              </button>
+              </AdminButton>
             </>
           ) : null}
-          <button
+          <AdminButton variant="primary"
             type="button"
             disabled={busy || renderBusy || loading}
             onClick={() => void exportToHdd()}
-            className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {assets?.status === "present" ? "HDD 다시 보내기" : "HDD로 보내기"}
-          </button>
+          </AdminButton>
         </div>
       </div>
 
@@ -260,8 +259,7 @@ export function MarketingReviewAssetsPanel(props: { candidateId: string; refresh
           {imageArtifacts.length > 0 ? (
             <div className="space-y-3">
               <div className="flex gap-2" aria-label="카드뉴스 미리보기 비율">
-                {(["1:1", "4:5"] as const).map((ratio) => <button type="button" key={ratio} aria-pressed={previewRatio === ratio}
-                  className="rounded-lg border border-[var(--border)] px-3 py-1 text-xs" onClick={() => setPreviewRatio(ratio)}>{ratio}</button>)}
+                {(["1:1", "4:5"] as const).map((ratio) => <AdminButton variant="secondary" type="button" key={ratio} aria-pressed={previewRatio === ratio} onClick={() => setPreviewRatio(ratio)}>{ratio}</AdminButton>)}
               </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {previewImages.map((item) => (

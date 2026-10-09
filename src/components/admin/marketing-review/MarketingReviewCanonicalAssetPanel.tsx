@@ -1,4 +1,5 @@
 "use client";
+import AdminButton from "@/components/admin/ui/AdminButton";
 
 import { useEffect, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
@@ -379,7 +380,7 @@ export function MarketingReviewCanonicalAssetPanel({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={busy || !canEdit || !asset.canEdit}
           onClick={() => {
@@ -392,11 +393,10 @@ export function MarketingReviewCanonicalAssetPanel({
             }
             void postAction({ action: "regenerate" });
           }}
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           새 프롬프트로 다시 작성
-        </button>
-        <button
+        </AdminButton>
+        <AdminButton variant="primary"
           type="button"
           disabled={busy || !canEdit || !asset.canEdit}
           onClick={() =>
@@ -419,36 +419,32 @@ export function MarketingReviewCanonicalAssetPanel({
                 : {}),
             })
           }
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           수정본 저장
-        </button>
-        <button
+        </AdminButton>
+        <AdminButton variant="primary"
           type="button"
           disabled={busy || !canEdit || !asset.canApproveOriginal}
           onClick={() => void postAction({ action: "approve_original" })}
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           AI 원본 승인
-        </button>
-        <button
+        </AdminButton>
+        <AdminButton variant="primary"
           type="button"
           disabled={busy || !canEdit || !asset.canApproveEdited}
           onClick={() => void postAction({ action: "approve_edited" })}
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           수정본 승인
-        </button>
-        <button
+        </AdminButton>
+        <AdminButton variant="secondary"
           type="button"
           disabled={busy || !asset.present || !asset.assetId || !asset.sourceRevision}
           onClick={() => void copyChatGptAsset()}
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           ChatGPT용 원문 복사
-        </button>
+        </AdminButton>
         {showResearchHandoff ? (
-        <button
+        <AdminButton variant="secondary"
           type="button"
           disabled={busy || !canEdit || !isCurrentVersionApproved}
           onClick={() => void copyResearchEditorialHandoff()}
@@ -457,10 +453,9 @@ export function MarketingReviewCanonicalAssetPanel({
               ? undefined
               : "현재 버전이 승인된 공통 원문에서만 사용할 수 있습니다."
           }
-          className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-50"
         >
           Research 검증용 JSON 복사 (research만)
-        </button>
+        </AdminButton>
         ) : null}
       </div>
 
@@ -520,22 +515,20 @@ export function MarketingReviewCanonicalAssetPanel({
           </p>
         ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
-          <button
+          <AdminButton variant="secondary"
             type="button"
             disabled={busy || !importRaw.trim() || !canEdit || !asset.canEdit}
             onClick={() => previewImport()}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
           >
             미리보기
-          </button>
-          <button
+          </AdminButton>
+          <AdminButton variant="secondary"
             type="button"
             disabled={busy || !importRaw.trim() || !canEdit || !asset.canEdit}
             onClick={() => void importAsEdit()}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm disabled:opacity-50"
           >
             수정본으로 인입
-          </button>
+          </AdminButton>
         </div>
       </details>
 

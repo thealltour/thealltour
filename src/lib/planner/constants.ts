@@ -176,3 +176,19 @@ export function appendPlannerQuickRequest(
   const next = `${base}${separator}${trimmedInsert}`;
   return next.slice(0, 1000);
 }
+
+/** Remove a previously inserted quick-request phrase, keeping the rest of the user's text. */
+export function removePlannerQuickRequest(current: string, insertText: string): string {
+  const trimmedInsert = insertText.trim();
+  if (!trimmedInsert) return current;
+  let next = current;
+  let idx = next.indexOf(trimmedInsert);
+  while (idx >= 0) {
+    const before = next.slice(0, idx).replace(/[ \t]+$/, "");
+    const after = next.slice(idx + trimmedInsert.length).replace(/^[ \t]+/, "");
+    const joiner = before && after && !before.endsWith("\n") && !after.startsWith("\n") ? " " : "";
+    next = `${before}${joiner}${after}`;
+    idx = next.indexOf(trimmedInsert);
+  }
+  return next.trim();
+}

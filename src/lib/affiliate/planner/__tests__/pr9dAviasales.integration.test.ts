@@ -73,7 +73,6 @@ describe("PR-9D Aviasales router integration", () => {
     const avia = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget: vi.fn(),
     });
 
@@ -151,7 +150,6 @@ describe("PR-9D Aviasales router integration", () => {
     const avia = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget: async () => ({
         affiliateUrl: "https://tp.media/r?a=avia",
         providerSubId: "tp_aaaaaaaaaaaaaaaaaaaaaaaa",
@@ -188,7 +186,6 @@ describe("PR-9D Aviasales router integration", () => {
     const avia = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
     });
     const { offer, decision } = await routeAffiliateOffer({
       context: flightCtx({ flightOrigin: null }),

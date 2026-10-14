@@ -202,7 +202,6 @@ describe("PR-9F affiliate router controlled rollout", () => {
             createAviasalesAdapter({
               cache: createMemoryAviasalesCache(),
               fetchImpl: mockFetchPrices() as never,
-              getApiToken: () => "tok",
               createCommerceTarget: async () => ({
                 affiliateUrl: "https://tp.media/r?a=avia",
                 providerSubId: "tp_aaaaaaaaaaaaaaaaaaaaaaaa",
@@ -256,7 +255,6 @@ describe("PR-9F affiliate router controlled rollout", () => {
             createAviasalesAdapter({
               cache: createMemoryAviasalesCache(),
               fetchImpl: mockFetchPrices() as never,
-              getApiToken: () => "tok",
             }),
           ],
         ]),
@@ -301,7 +299,6 @@ describe("PR-9F affiliate router controlled rollout", () => {
             createAviasalesAdapter({
               cache: createMemoryAviasalesCache(),
               fetchImpl: fetchImpl as never,
-              getApiToken: () => "tok",
             }),
           ],
         ]),
@@ -372,7 +369,6 @@ describe("PR-9F affiliate router controlled rollout", () => {
             createAviasalesAdapter({
               cache: createMemoryAviasalesCache(),
               fetchImpl: mockFetchPrices() as never,
-              getApiToken: () => "tok",
               createCommerceTarget: async () => {
                 throw Object.assign(new Error("commerce boom"), {
                   code: "commerce_failed",
@@ -409,7 +405,6 @@ describe("PR-9F affiliate router controlled rollout", () => {
             createAviasalesAdapter({
               cache: createMemoryAviasalesCache(),
               fetchImpl: mockFetchPrices() as never,
-              getApiToken: () => "tok",
               createCommerceTarget: async () => ({
                 affiliateUrl: "https://tp.media/r?a=avia",
                 providerSubId: "tp_aaaaaaaaaaaaaaaaaaaaaaaa",

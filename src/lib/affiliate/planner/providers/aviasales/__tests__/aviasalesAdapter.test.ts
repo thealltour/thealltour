@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AVIASALES_OFFER_CTA,
   AVIASALES_OFFER_TITLE,
@@ -24,6 +24,8 @@ function ctx(overrides?: Partial<AffiliateRoutingContext>): AffiliateRoutingCont
   };
 }
 
+const isAutocomplete = (input: unknown) => String(input).includes("autocomplete");
+
 describe("aviasalesAdapter", () => {
   it("requires flight + planner_summary + fixed dates + origin IATA", () => {
     const adapter = createAviasalesAdapter();
@@ -35,12 +37,11 @@ describe("aviasalesAdapter", () => {
     expect(adapter.isEligible(ctx({ flightOrigin: { text: "x", iata: "IC" } }))).toBe(false);
   });
 
-  it("missing origin → no price API call", async () => {
+  it("missing origin → no network call", async () => {
     const fetchImpl = vi.fn();
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget: vi.fn(),
     });
     const offer = await adapter.buildOffer(ctx({ flightOrigin: null }));
@@ -50,8 +51,7 @@ describe("aviasalesAdapter", () => {
 
   it("builds commerce offer with safe copy (no price/airline fields)", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo) => {
-      const url = String(input);
-      if (url.includes("autocomplete")) {
+      if (isAutocomplete(input)) {
         return new Response(
           JSON.stringify([
             { type: "city", code: "OSA", name: "Osaka", country_code: "JP", weight: 100 },
@@ -91,7 +91,6 @@ describe("aviasalesAdapter", () => {
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
@@ -121,47 +120,58 @@ function productionCtx(overrides?: Partial<AffiliateRoutingContext>): AffiliateR
   });
 }
 
+function osakaAutocomplete(): Response {
+  return new Response(
+    JSON.stringify([{ type: "city", code: "OSA", name: "오사카", country_code: "JP", weight: 100 }]),
+    { status: 200 },
+  );
+}
+
+/** Autocomplete answers Osaka; any other URL (the Data API) goes to `prices`. */
+function fetchWithPrices(prices: () => Response | Promise<Response>) {
+  return vi.fn(async (input: RequestInfo) => (isAutocomplete(input) ? osakaAutocomplete() : prices()));
+}
+
 function priceApiFetch() {
-  return vi.fn(async (input: RequestInfo) => {
-    const url = String(input);
-    if (url.includes("autocomplete")) {
-      return new Response(
-        JSON.stringify([
-          { type: "city", code: "OSA", name: "오사카", country_code: "JP", weight: 100 },
-        ]),
+  return fetchWithPrices(
+    () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: [
+            { origin: "SEL", destination: "OSA", price: 240321, airline: "7C", link: FARE_LINK, transfers: 0 },
+          ],
+        }),
         { status: 200 },
-      );
-    }
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: [
-          { origin: "SEL", destination: "OSA", price: 240321, airline: "7C", link: FARE_LINK, transfers: 0 },
-        ],
-      }),
-      { status: 200 },
-    );
-  });
+      ),
+  );
+}
+
+type CommerceTarget = {
+  affiliateUrl: string;
+  providerSubId: string;
+  affiliateNetwork: "travelpayouts";
+  sourceUrlHost: string;
+};
+
+function commerceSpy() {
+  return vi.fn<(input: { sourceUrl: string }) => Promise<CommerceTarget>>(async () => ({
+    affiliateUrl: "https://tp.media/r?avia=1",
+    providerSubId: "tp_ffffffffffffffffffffffff",
+    affiliateNetwork: "travelpayouts",
+    sourceUrlHost: "www.aviasales.com",
+  }));
 }
 
 async function sourceUrlFor(context: AffiliateRoutingContext): Promise<string | null> {
-  const sourceUrls: string[] = [];
+  const createCommerceTarget = commerceSpy();
   const adapter = createAviasalesAdapter({
     cache: createMemoryAviasalesCache(),
     fetchImpl: priceApiFetch() as never,
-    getApiToken: () => "tok",
-    createCommerceTarget: vi.fn(async (input: { sourceUrl: string }) => {
-      sourceUrls.push(input.sourceUrl);
-      return {
-        affiliateUrl: "https://tp.media/r?avia=1",
-        providerSubId: "tp_ffffffffffffffffffffffff",
-        affiliateNetwork: "travelpayouts" as const,
-        sourceUrlHost: "www.aviasales.com",
-      };
-    }),
+    createCommerceTarget,
   });
   const offer = await adapter.buildOffer(context);
-  return offer ? (sourceUrls[0] ?? null) : null;
+  return offer ? (createCommerceTarget.mock.calls[0]?.[0].sourceUrl ?? null) : null;
 }
 
 describe("aviasalesAdapter traveler parity (PR-9AH)", () => {
@@ -181,7 +191,7 @@ describe("aviasalesAdapter traveler parity (PR-9AH)", () => {
     expect(new URL(source!).pathname).toBe("/search/SEL2801OSA01021");
   });
 
-  it("never copies Data API fare-specific query into the target source URL", async () => {
+  it("never carries Data API fare-specific query into the target source URL", async () => {
     const source = new URL((await sourceUrlFor(productionCtx()))!);
     for (const key of [
       "t",
@@ -208,7 +218,6 @@ describe("aviasalesAdapter traveler parity (PR-9AH)", () => {
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
     expect(await adapter.buildOffer(productionCtx({ travelers }))).toBeNull();
@@ -230,41 +239,40 @@ describe("aviasalesAdapter traveler parity (PR-9AH)", () => {
 const CANONICAL_3_ADULTS =
   "https://www.aviasales.com/search/SEL2801OSA01023?locale=ko&currency=krw&market=kr";
 
-function osakaAutocomplete(): Response {
-  return new Response(
-    JSON.stringify([{ type: "city", code: "OSA", name: "오사카", country_code: "JP", weight: 100 }]),
-    { status: 200 },
-  );
-}
+describe("aviasalesAdapter: Data API is off the CTA path (PR-9AK)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
-function fetchWithPrices(prices: () => Response | Promise<Response>) {
-  return vi.fn(async (input: RequestInfo) =>
-    String(input).includes("autocomplete") ? osakaAutocomplete() : prices(),
-  );
-}
+  it("builds offer without calling prices_for_dates", async () => {
+    const prices = vi.fn(() => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }));
+    const fetchImpl = fetchWithPrices(prices);
+    const createCommerceTarget = commerceSpy();
+    const adapter = createAviasalesAdapter({
+      cache: createMemoryAviasalesCache(),
+      fetchImpl: fetchImpl as never,
+      createCommerceTarget,
+    });
 
-type CommerceTarget = {
-  affiliateUrl: string;
-  providerSubId: string;
-  affiliateNetwork: "travelpayouts";
-  sourceUrlHost: string;
-};
+    const offer = await adapter.buildOffer(productionCtx());
 
-function commerceSpy() {
-  return vi.fn<(input: { sourceUrl: string }) => Promise<CommerceTarget>>(async () => ({
-    affiliateUrl: "https://tp.media/r?avia=1",
-    providerSubId: "tp_ffffffffffffffffffffffff",
-    affiliateNetwork: "travelpayouts",
-    sourceUrlHost: "www.aviasales.com",
-  }));
-}
+    expect(prices).toHaveBeenCalledTimes(0);
+    expect(fetchImpl.mock.calls.every(([url]) => isAutocomplete(url))).toBe(true);
+    expect(fetchImpl.mock.calls.some(([url]) => String(url).includes("prices_for_dates"))).toBe(false);
+    expect(createCommerceTarget).toHaveBeenCalledTimes(1);
+    expect(createCommerceTarget.mock.calls[0]![0].sourceUrl).toBe(CANONICAL_3_ADULTS);
+    expect(offer?.providerId).toBe("aviasales");
+    expect(offer?.targetUrl).toBe("https://tp.media/r?avia=1");
+  });
 
-describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", () => {
   it.each([
+    ["rows = []", () => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 })],
     [
-      "rows = []",
-      () => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }),
-      "[aviasales] prices_empty",
+      "8s slow response",
+      () =>
+        new Promise<Response>((resolve) =>
+          setTimeout(() => resolve(new Response(JSON.stringify({ success: true, data: [] }))), 8_000),
+        ),
     ],
     [
       "timeout",
@@ -273,40 +281,40 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
         error.name = "AbortError";
         throw error;
       },
-      "[aviasales] prices_failed",
     ],
-    ["HTTP 429", () => new Response("{}", { status: 429 }), "[aviasales] prices_failed"],
-    ["HTTP 503", () => new Response("{}", { status: 503 }), "[aviasales] prices_failed"],
-    ["invalid response", () => new Response("not json", { status: 200 }), "[aviasales] prices_failed"],
-  ])("%s → canonical flight offer via Partner Links", async (_label, prices, diagnostic) => {
+    ["HTTP 429", () => new Response("{}", { status: 429 })],
+    ["HTTP 503", () => new Response("{}", { status: 503 })],
+    ["invalid response", () => new Response("not json", { status: 200 })],
+  ])("Data API %s → never awaited: price API not called, Partner Links once, offer built", async (_label, impl) => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const prices = vi.fn(impl);
     const createCommerceTarget = commerceSpy();
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchWithPrices(prices) as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
     const offer = await adapter.buildOffer(productionCtx());
 
-    expect(offer?.providerId).toBe("aviasales");
-    expect(offer?.targetUrl).toBe("https://tp.media/r?avia=1");
-    expect(offer?.title).toBe(AVIASALES_OFFER_TITLE);
+    expect(prices).not.toHaveBeenCalled();
     expect(createCommerceTarget).toHaveBeenCalledTimes(1);
     expect(createCommerceTarget.mock.calls[0]![0].sourceUrl).toBe(CANONICAL_3_ADULTS);
-    expect(info).toHaveBeenCalledWith(diagnostic, expect.objectContaining({ providerId: "aviasales" }));
-    expect(info).not.toHaveBeenCalledWith("[aviasales] offer_skipped", expect.anything());
+    expect(offer?.providerId).toBe("aviasales");
+    expect(offer?.title).toBe(AVIASALES_OFFER_TITLE);
+    for (const diagnostic of ["[aviasales] prices_failed", "[aviasales] prices_empty", "[aviasales] prices_available"]) {
+      expect(info).not.toHaveBeenCalledWith(diagnostic, expect.anything());
+    }
     info.mockRestore();
   });
 
-  it("missing Data API token → canonical flight offer, price API never called", async () => {
+  it("missing TRAVELPAYOUTS_API_TOKEN → offer still built (Data API token not needed)", async () => {
+    vi.stubEnv("TRAVELPAYOUTS_API_TOKEN", "");
     const prices = vi.fn(() => new Response("{}", { status: 200 }));
     const createCommerceTarget = commerceSpy();
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchWithPrices(prices) as never,
-      getApiToken: () => null,
       createCommerceTarget,
     });
 
@@ -317,27 +325,11 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
     expect(createCommerceTarget.mock.calls[0]![0].sourceUrl).toBe(CANONICAL_3_ADULTS);
   });
 
-  it("rows present → offer still targets the canonical URL, never the fare link", async () => {
+  it("child parity without Data API (2 adults + 1 child → 21)", async () => {
     const createCommerceTarget = commerceSpy();
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: priceApiFetch() as never,
-      getApiToken: () => "tok",
-      createCommerceTarget,
-    });
-
-    expect(await adapter.buildOffer(productionCtx())).not.toBeNull();
-    expect(createCommerceTarget.mock.calls[0]![0].sourceUrl).toBe(CANONICAL_3_ADULTS);
-  });
-
-  it("empty rows keep child parity (2 adults + 1 child → 21)", async () => {
-    const createCommerceTarget = commerceSpy();
-    const adapter = createAviasalesAdapter({
-      cache: createMemoryAviasalesCache(),
-      fetchImpl: fetchWithPrices(
-        () => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }),
-      ) as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
@@ -347,9 +339,9 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
     );
   });
 
-  it("destination IATA unresolved → no offer, no price call, no Partner Links", async () => {
+  it("destination IATA unresolved → no offer, no Partner Links", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo) =>
-      String(input).includes("autocomplete")
+      isAutocomplete(input)
         ? new Response("[]", { status: 200 })
         : new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }),
     );
@@ -357,22 +349,20 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
     expect(await adapter.buildOffer(productionCtx())).toBeNull();
-    expect(fetchImpl.mock.calls.every(([url]) => String(url).includes("autocomplete"))).toBe(true);
+    expect(fetchImpl.mock.calls.every(([url]) => isAutocomplete(url))).toBe(true);
     expect(createCommerceTarget).not.toHaveBeenCalled();
   });
 
-  it("origin IATA missing → no offer even when the Data API would be fine", async () => {
+  it("origin IATA missing → no offer, no network", async () => {
     const fetchImpl = priceApiFetch();
     const createCommerceTarget = commerceSpy();
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
@@ -386,7 +376,6 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: priceApiFetch() as never,
-      getApiToken: () => "tok",
       createCommerceTarget,
     });
 
@@ -406,10 +395,7 @@ describe("aviasalesAdapter Data API is a soft signal, not a CTA gate (PR-9AI)", 
     });
     const adapter = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
-      fetchImpl: fetchWithPrices(
-        () => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }),
-      ) as never,
-      getApiToken: () => "tok",
+      fetchImpl: priceApiFetch() as never,
       createCommerceTarget,
     });
 

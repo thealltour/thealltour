@@ -4,6 +4,7 @@ import {
   appendPlannerQuickRequest,
   createEmptyPlannerDraftInput,
   PLANNER_POPULAR_DESTINATIONS,
+  removePlannerQuickRequest,
 } from "@/lib/planner/constants";
 import {
   computeDurationDays,
@@ -398,6 +399,20 @@ describe("PR-7C theme / budget / quick request", () => {
     expect(once).toContain(text);
     const twice = appendPlannerQuickRequest(once, text);
     expect(twice).toBe(once);
+  });
+
+  it("quick request removal keeps surrounding free-form text", () => {
+    const night = "밤늦게까지 이어지는 일정은 피해주세요.";
+    const free = "일정 중 자유시간을 충분히 확보해주세요.";
+    const combined = appendPlannerQuickRequest(
+      appendPlannerQuickRequest("온천은 꼭 가고 싶어요.", night),
+      free,
+    );
+    expect(removePlannerQuickRequest(combined, night)).toBe(`온천은 꼭 가고 싶어요. ${free}`);
+    expect(removePlannerQuickRequest(combined, free)).toBe(`온천은 꼭 가고 싶어요. ${night}`);
+    expect(removePlannerQuickRequest(night, night)).toBe("");
+    expect(removePlannerQuickRequest(`첫 줄\n${night}`, night)).toBe("첫 줄");
+    expect(removePlannerQuickRequest("다른 요청", night)).toBe("다른 요청");
   });
 
   it("popular destinations are canonical (no realtime label)", () => {

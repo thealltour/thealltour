@@ -41,6 +41,7 @@ import {
   PLANNER_PACE_OPTIONS,
   PLANNER_POPULAR_DESTINATIONS,
   PLANNER_QUICK_REQUESTS,
+  removePlannerQuickRequest,
 } from "@/lib/planner/constants";
 import {
   getDefaultTravelersForCompanion,
@@ -468,9 +469,12 @@ export function PlannerConversationStep4({
     });
   }
 
-  function applyThemeMood(text: string) {
+  function toggleThemeMood(text: string) {
     const current = draft.themeRequest.trim();
-    if (current.includes(text)) return;
+    if (current.includes(text)) {
+      patchDraft({ themeRequest: removePlannerQuickRequest(draft.themeRequest, text) });
+      return;
+    }
     const next = current ? `${current} ${text}` : text;
     patchDraft({ themeRequest: next.slice(0, 1000) });
   }
@@ -515,7 +519,7 @@ export function PlannerConversationStep4({
                 disabled={disabled}
                 icon={THEME_MOOD_VISUALS[chip.label]?.icon}
                 iconTone={THEME_MOOD_VISUALS[chip.label]?.tone}
-                onClick={() => applyThemeMood(chip.text)}
+                onClick={() => toggleThemeMood(chip.text)}
               >
                 {chip.label}
               </PlannerChoiceChip>
@@ -734,10 +738,9 @@ export function PlannerConversationStep6({
               iconTone={QUICK_REQUEST_VISUALS[chip.id]?.tone}
               onClick={() =>
                 patchDraft({
-                  additionalRequest: appendPlannerQuickRequest(
-                    draft.additionalRequest,
-                    chip.insertText,
-                  ),
+                  additionalRequest: inserted
+                    ? removePlannerQuickRequest(draft.additionalRequest, chip.insertText)
+                    : appendPlannerQuickRequest(draft.additionalRequest, chip.insertText),
                 })
               }
             >

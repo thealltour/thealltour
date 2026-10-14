@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
-import { cn } from "@/lib/cn";
 
 const CREATE_STATUS_LINES = [
   "선택한 여행 속도를 일정에 반영하고 있어요",
@@ -15,6 +14,19 @@ const EDIT_STATUS_LINES = [
   "하루 흐름과 순서를 다시 맞추고 있어요",
   "휴식과 이동 여유를 조정하고 있어요",
 ] as const;
+
+/** Generation reports no server progress; percent is a time-based estimate that never reaches 100 before the response. */
+const PROGRESS_CAP_PERCENT = 95;
+const PROGRESS_TIME_CONSTANT_MS = { create: 45_000, edit: 30_000 } as const;
+
+export function estimatePlannerProgressPercent(
+  elapsedMs: number,
+  mode: "create" | "edit" = "create",
+): number {
+  if (elapsedMs <= 0) return 0;
+  const ratio = 1 - Math.exp(-elapsedMs / PROGRESS_TIME_CONSTANT_MS[mode]);
+  return Math.min(PROGRESS_CAP_PERCENT, Math.floor(PROGRESS_CAP_PERCENT * ratio));
+}
 
 type PlannerGenerationViewProps = {
   destination: string;
@@ -30,8 +42,11 @@ export function PlannerGenerationView({
 }: PlannerGenerationViewProps) {
   const [idx, setIdx] = useState(0);
   const [longWait, setLongWait] = useState(false);
+  const [startedAt] = useState(() => Date.now());
+  const [elapsedMs, setElapsedMs] = useState(0);
   const label = destination.trim() || "여행";
   const lines = mode === "edit" ? EDIT_STATUS_LINES : CREATE_STATUS_LINES;
+  const percent = estimatePlannerProgressPercent(elapsedMs, mode);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -44,6 +59,11 @@ export function PlannerGenerationView({
     const timer = window.setTimeout(() => setLongWait(true), 12_000);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setElapsedMs(Date.now() - startedAt), 1000);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
 
   return (
     <div
@@ -75,16 +95,21 @@ export function PlannerGenerationView({
       ) : null}
 
       <div className="w-full space-y-3">
+        <div className="flex items-baseline justify-between type-caption text-[var(--text-muted)]">
+          <span>진행률</span>
+          <span className="font-semibold tabular-nums text-[var(--foreground)]">{percent}%</span>
+        </div>
         <div
           className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]"
-          aria-hidden
+          role="progressbar"
+          aria-label="일정 생성 진행률"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
         >
           <div
-            className={cn(
-              "absolute inset-y-0 w-1/3 rounded-full bg-[var(--primary)]",
-              "motion-safe:animate-[planner-indeterminate_1.4s_ease-in-out_infinite]",
-              "motion-reduce:left-1/3 motion-reduce:animate-none motion-reduce:opacity-70",
-            )}
+            className="absolute inset-y-0 left-0 rounded-full bg-[var(--primary)] transition-[width] duration-1000 ease-linear motion-reduce:transition-none"
+            style={{ width: `${percent}%` }}
           />
         </div>
 

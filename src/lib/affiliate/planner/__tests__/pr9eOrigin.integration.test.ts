@@ -134,7 +134,6 @@ describe("PR-9E origin + Aviasales wiring", () => {
     const avia = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
       createCommerceTarget: async () => ({
         affiliateUrl: "https://tp.media/r?a=avia",
         providerSubId: "tp_aaaaaaaaaaaaaaaaaaaaaaaa",
@@ -186,7 +185,6 @@ describe("PR-9E origin + Aviasales wiring", () => {
     const avia = createAviasalesAdapter({
       cache: createMemoryAviasalesCache(),
       fetchImpl: fetchImpl as never,
-      getApiToken: () => "tok",
     });
 
     const dto = await buildAffiliateOffersForSession({

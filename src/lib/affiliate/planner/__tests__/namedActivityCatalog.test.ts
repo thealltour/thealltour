@@ -77,5 +77,52 @@ describe("namedActivityCatalog (PR-9AJ)", () => {
   it("normalization collapses spacing/punctuation only", () => {
     expect(normalizeNamedActivityKey(" Universal · Studios・Japan ")).toBe("universalstudiosjapan");
     expect(normalizeNamedActivityKey("ＵＳＪ")).toBe("usj");
+    expect(normalizeNamedActivityKey("유니버설 스튜디오 재팬 (USJ)")).toBe("유니버설스튜디오재팬usj");
+    expect(normalizeNamedActivityKey("유니버설 스튜디오 재팬（USJ）")).toBe("유니버설스튜디오재팬usj");
+  });
+});
+
+describe("namedActivityCatalog name + code combinations (PR-9AK)", () => {
+  it.each([
+    ["유니버설 스튜디오 재팬 (USJ)"],
+    ["유니버설 스튜디오 재팬 USJ"],
+    ["USJ 유니버설 스튜디오 재팬"],
+    ["유니버셜 스튜디오 재팬 (USJ)"],
+    ["유니버설스튜디오재팬(USJ)"],
+    ["Universal Studios Japan (USJ)"],
+    ["USJ Universal Studios Japan"],
+    ["Universal Studios Japan [USJ]"],
+    ["유니버설 스튜디오 재팬（USJ）"],
+  ])("%s → universal_studios_japan", (placeName) => {
+    expect(resolveNamedActivity({ placeName, destination: OSAKA })?.id).toBe("universal_studios_japan");
+  });
+
+  it.each([
+    ["Universal Studios Singapore"],
+    ["USS"],
+    ["Universal Studios Hollywood"],
+    ["Universal Studios Beijing"],
+    ["Universal Studios Beijing USJ"],
+    ["USJ Singapore"],
+    ["USJ Hollywood"],
+    ["universal studios"],
+    ["universal studios USJ"],
+    ["USJ USJ"],
+    ["유니버설 스튜디오 재팬 USJ 입장"],
+    ["Universal Studios Japan Universal Studios Japan"],
+    ["유니버설 스튜디오 재팬 (USJ) 근처 맛집"],
+  ])("%s → no match (only name, code, name+code, code+name)", (placeName) => {
+    expect(resolveNamedActivity({ placeName, destination: OSAKA })).toBeNull();
+  });
+
+  it.each([
+    [null],
+    ["SG"],
+    ["US"],
+    ["CN"],
+  ])("country %s → combined variant never matches", (countryCode) => {
+    for (const placeName of ["유니버설 스튜디오 재팬 (USJ)", "USJ Universal Studios Japan"]) {
+      expect(resolveNamedActivity({ placeName, destination: { text: "여행지", countryCode } })).toBeNull();
+    }
   });
 });

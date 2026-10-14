@@ -619,6 +619,12 @@ describe("PlannerWizard conversation UX", () => {
 
     const romantic = screen.getByRole("button", { name: "감성적인 곳" });
     expect(romantic.querySelector("span.inline-flex.h-6")?.className).toMatch(/bg-rose-50/);
+
+    const moodPressed = mood.getAttribute("aria-pressed");
+    fireEvent.click(mood);
+    expect(mood).toHaveAttribute("aria-pressed", moodPressed === "true" ? "false" : "true");
+    fireEvent.click(mood);
+    expect(mood).toHaveAttribute("aria-pressed", moodPressed ?? "false");
   });
 
   it("shows step 5 pace and budget ChoiceCards with custom amount flow", async () => {
@@ -742,7 +748,7 @@ describe("PlannerWizard conversation UX", () => {
     );
   });
 
-  it("appends new constraint insertText without duplicating on second click", async () => {
+  it("toggles constraint insertText on repeated clicks and keeps free-form text", async () => {
     searchParams.get.mockImplementation((key: string) => (key === "qa" ? "1" : null));
     mockSessionFetch("550e8400-e29b-41d4-a716-446655440032");
 
@@ -758,12 +764,25 @@ describe("PlannerWizard conversation UX", () => {
 
     const night = screen.getByRole("button", { name: "밤늦은 일정 피하기" });
     fireEvent.click(night);
-    fireEvent.click(night);
     expect(textarea.value).toBe("밤늦게까지 이어지는 일정은 피해주세요.");
-    expect(textarea.value.match(/밤늦게까지/g)?.length).toBe(1);
+    expect(night).toHaveAttribute("aria-pressed", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "자유시간 확보" }));
-    expect(textarea.value).toContain("일정 중 자유시간을 충분히 확보해주세요.");
+    fireEvent.click(night);
+    expect(textarea.value).toBe("");
+    expect(night).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.change(textarea, { target: { value: "온천은 꼭 가고 싶어요." } });
+    fireEvent.click(night);
+    const freeTime = screen.getByRole("button", { name: "자유시간 확보" });
+    fireEvent.click(freeTime);
+    expect(textarea.value).toBe(
+      "온천은 꼭 가고 싶어요. 밤늦게까지 이어지는 일정은 피해주세요. 일정 중 자유시간을 충분히 확보해주세요.",
+    );
+
+    fireEvent.click(night);
+    expect(textarea.value).toBe("온천은 꼭 가고 싶어요. 일정 중 자유시간을 충분히 확보해주세요.");
+    expect(night).toHaveAttribute("aria-pressed", "false");
+    expect(freeTime).toHaveAttribute("aria-pressed", "true");
   });
 
   it("does not show collapsed history summary alongside step 7 summary", async () => {

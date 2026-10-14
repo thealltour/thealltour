@@ -1,11 +1,11 @@
 import "server-only";
 
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
-import { isValidIataCode, normalizeIataCode } from "@/lib/affiliate/planner/providers/aviasales/aviasalesAutocompleteClient";
 import {
-  fetchAviasalesPricesForDates,
-  type AviasalesDataClientDeps,
-} from "@/lib/affiliate/planner/providers/aviasales/aviasalesDataClient";
+  isValidIataCode,
+  normalizeIataCode,
+  type AviasalesAutocompleteClientDeps,
+} from "@/lib/affiliate/planner/providers/aviasales/aviasalesAutocompleteClient";
 import { resolveAviasalesDestinationIata } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDestinationResolver";
 import {
   aviasalesPassengerSuffix,
@@ -26,7 +26,11 @@ export const AVIASALES_OFFER_CTA = "항공권 보기";
 export const AVIASALES_OFFER_DESCRIPTION =
   "여행 일정에 맞춰 항공권 검색 결과를 확인해 보세요.";
 
-export type AviasalesAdapterDeps = AviasalesDataClientDeps & {
+/**
+ * The CTA path never calls the Data API (prices_for_dates): its rows are sparse single-passenger
+ * fares and the lookup only added latency. The data client stays for smoke/diagnostics.
+ */
+export type AviasalesAdapterDeps = AviasalesAutocompleteClientDeps & {
   createCommerceTarget?: (
     input: CreateTravelpayoutsCommerceTargetInput,
   ) => ReturnType<typeof createTravelpayoutsCommerceTarget>;
@@ -102,14 +106,6 @@ async function buildAviasalesOffer(
   }
   const sourceUrl = search.url;
 
-  await logAviasalesPriceSignal({
-    origin: originIata,
-    destination: dest.iata,
-    departureAt,
-    returnAt,
-    deps,
-  });
-
   const createCommerce = deps.createCommerceTarget ?? createTravelpayoutsCommerceTarget;
   try {
     const commerce = await createCommerce({
@@ -146,47 +142,5 @@ async function buildAviasalesOffer(
       }),
     );
     return null;
-  }
-}
-
-/**
- * Best-effort Data API lookup, diagnostics only. prices_for_dates holds recently searched fares,
- * so empty rows or errors are routine and must never remove the CTA. Rows are single-passenger
- * fares and their link/query (expected_price*, static_fare_key, itinerary_key, t) never become the target.
- */
-async function logAviasalesPriceSignal(params: {
-  origin: string;
-  destination: string;
-  departureAt: string;
-  returnAt: string | null;
-  deps: AviasalesAdapterDeps;
-}): Promise<void> {
-  try {
-    const prices = await fetchAviasalesPricesForDates({
-      origin: params.origin,
-      destination: params.destination,
-      departureAt: params.departureAt,
-      returnAt: params.returnAt,
-      oneWay: !params.returnAt,
-      deps: params.deps,
-    });
-    if (!prices.ok) {
-      console.info("[aviasales] prices_failed", {
-        providerId: "aviasales",
-        errorCode: prices.errorCode,
-      });
-    } else if (prices.data.length === 0) {
-      console.info("[aviasales] prices_empty", { providerId: "aviasales", rowCount: 0 });
-    } else {
-      console.info("[aviasales] prices_available", {
-        providerId: "aviasales",
-        rowCount: prices.data.length,
-      });
-    }
-  } catch {
-    console.info("[aviasales] prices_failed", {
-      providerId: "aviasales",
-      errorCode: "unexpected",
-    });
   }
 }

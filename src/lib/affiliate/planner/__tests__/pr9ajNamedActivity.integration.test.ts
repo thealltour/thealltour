@@ -136,6 +136,18 @@ describe("PR-9AJ routing: priority + fallback (one CTA per item)", () => {
     expect(decision.rejectedReasons).toContainEqual({ providerId: "klook", reason: "offer_build_failed" });
   });
 
+  it.each([["유니버설 스튜디오 재팬 (USJ)"], ["USJ Universal Studios Japan"]])(
+    "LLM name variant %s → Klook offer with the same clean source",
+    async (placeName) => {
+      const { adapters, klookCommerce } = namedAdapters();
+      const { offer } = await routeAffiliateOffer({ context: usjContext({ placeName }), providers, adapters });
+      expect(offer?.providerId).toBe("klook");
+      expect(klookCommerce.mock.calls[0]![0].sourceUrl).toBe(
+        "https://www.klook.com/en-US/activity/46604-universal-studios-japan-e-ticket-osaka-qr-code-direct-entry/",
+      );
+    },
+  );
+
   it("both fail → no offer", async () => {
     const { adapters } = namedAdapters(true, true);
     const { offer } = await routeAffiliateOffer({ context: usjContext(), providers, adapters });

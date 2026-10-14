@@ -18,7 +18,12 @@ export type NamedActivity = {
   cityEnglish: string;
 };
 
-type NamedActivityDefinition = NamedActivity & { aliases: string[] };
+type NamedActivityDefinition = NamedActivity & {
+  /** Full names (Korean/English spellings). */
+  names: string[];
+  /** Short codes that may stand alone or sit directly before/after a full name. */
+  codes: string[];
+};
 
 const NAMED_ACTIVITY_DEFINITIONS: NamedActivityDefinition[] = [
   {
@@ -26,31 +31,36 @@ const NAMED_ACTIVITY_DEFINITIONS: NamedActivityDefinition[] = [
     titleKo: "유니버설 스튜디오 재팬 입장권",
     countryCode: "JP",
     cityEnglish: "Osaka",
-    aliases: [
-      "유니버설 스튜디오 재팬",
-      "유니버셜 스튜디오 재팬",
-      "Universal Studios Japan",
-      "USJ",
-    ],
+    names: ["유니버설 스튜디오 재팬", "유니버셜 스튜디오 재팬", "Universal Studios Japan"],
+    codes: ["USJ"],
   },
 ];
 
-/** NFKC, lowercase, safe punctuation → space, then whitespace removed (spacing variants match). */
+/** NFKC, lowercase, safe punctuation/brackets → space, then whitespace removed (spacing variants match). */
 export function normalizeNamedActivityKey(raw: string): string {
   return raw
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[·・.,'’"“”\-_/]+/g, " ")
+    .replace(/[·・.,'’"“”\-_/()[\]{}]+/g, " ")
     .replace(/\s+/g, "");
 }
 
+/** Every accepted key is enumerated up front: name, code, name+code, code+name. Lookup is exact. */
 const ALIAS_INDEX = new Map<string, NamedActivityDefinition>();
 for (const def of NAMED_ACTIVITY_DEFINITIONS) {
-  for (const alias of def.aliases) ALIAS_INDEX.set(normalizeNamedActivityKey(alias), def);
+  const codes = def.codes.map(normalizeNamedActivityKey);
+  for (const code of codes) ALIAS_INDEX.set(code, def);
+  for (const name of def.names.map(normalizeNamedActivityKey)) {
+    ALIAS_INDEX.set(name, def);
+    for (const code of codes) {
+      ALIAS_INDEX.set(`${name}${code}`, def);
+      ALIAS_INDEX.set(`${code}${name}`, def);
+    }
+  }
 }
 
 /**
- * Exact alias match guarded by the trip country (never inferred; null country → no match).
+ * Exact key match guarded by the trip country (never inferred; null country → no match).
  * A JP trip based outside Osaka (e.g. Kyoto) still matches: USJ is a common Kansai day trip.
  */
 export function resolveNamedActivity(params: {

@@ -10,6 +10,7 @@ import {
   getProductionAffiliateAdapters,
   getProductionAffiliateProviderDefinitions,
 } from "@/lib/affiliate/planner/registry";
+import { createStay22Adapter } from "@/lib/affiliate/planner/providers/stay22/stay22Adapter";
 import { isSafeHttpsUrl, routeAffiliateOffer } from "@/lib/affiliate/planner/router";
 import { assertPlannerSessionOwnership } from "@/lib/planner/ownership";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
@@ -324,13 +325,23 @@ describe("PR-8/9B Affiliate Router", () => {
     expect(isSafeHttpsUrl("javascript:alert(1)")).toBe(false);
   });
 
-  it("production registry registers airalo+wegotrip+aviasales adapters; aviasales enabled only", () => {
-    const defs = getProductionAffiliateProviderDefinitions();
+  it("production registry registers airalo+wegotrip+aviasales+stay22 adapters; aviasales enabled only", () => {
+    const defs = getProductionAffiliateProviderDefinitions({});
     expect(defs.filter((d) => d.id !== "aviasales").every((d) => d.enabled === false)).toBe(true);
-    expect(getProductionAffiliateAdapters().size).toBe(3);
+    expect(getProductionAffiliateAdapters().size).toBe(4);
     expect(getProductionAffiliateAdapters().has("airalo")).toBe(true);
     expect(getProductionAffiliateAdapters().has("wegotrip")).toBe(true);
     expect(getProductionAffiliateAdapters().has("aviasales")).toBe(true);
+    expect(getProductionAffiliateAdapters().has("stay22")).toBe(true);
+    const stay22 = defs.find((d) => d.id === "stay22");
+    expect(stay22).toMatchObject({
+      enabled: false,
+      categories: ["hotel"],
+      supportedPlacements: ["planner_summary"],
+      supportedDateModes: ["fixed"],
+      priority: 75,
+    });
+    expect(stay22?.network).toBeUndefined();
     const wego = defs.find((d) => d.id === "wegotrip");
     expect(wego).toBeTruthy();
     expect(wego?.enabled).toBe(false);
@@ -339,6 +350,36 @@ describe("PR-8/9B Affiliate Router", () => {
     const avia = defs.find((d) => d.id === "aviasales");
     expect(avia?.enabled).toBe(true);
     expect(avia?.capabilities.api).toBe(true);
+  });
+
+  it("Stay22 enabled → hotel/planner_summary/fixed routes to an exact Allez roam URL", async () => {
+    const { offer, decision } = await routeAffiliateOffer({
+      context: baseContext({ category: "hotel" }),
+      providers: getProductionAffiliateProviderDefinitions({
+        ENABLE_PLANNER_AFFILIATE_STAY22: "true",
+      }),
+      adapters: new Map([
+        ["stay22", createStay22Adapter({ env: { STAY22_AID: "test-aid" } })],
+      ]),
+    });
+    expect(decision.selectedProviderId).toBe("stay22");
+    expect(offer).toMatchObject({ providerId: "stay22", category: "hotel", placement: "planner_summary" });
+    const url = new URL(offer!.targetUrl);
+    expect(url.hostname).toBe("www.stay22.com");
+    expect(url.pathname).toBe("/allez/roam");
+  });
+
+  it("Stay22 disabled by default → hotel adapter never builds", async () => {
+    const onBuild = vi.fn();
+    const { offer } = await routeAffiliateOffer({
+      context: baseContext({ category: "hotel" }),
+      providers: getProductionAffiliateProviderDefinitions({}),
+      adapters: new Map([
+        ["stay22", createFakeAffiliateAdapter({ providerId: "stay22", onBuild })],
+      ]),
+    });
+    expect(offer).toBeNull();
+    expect(onBuild).not.toHaveBeenCalled();
   });
 
   it("feature flag defaults off", () => {

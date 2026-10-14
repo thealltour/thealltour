@@ -21,6 +21,18 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
+    id: "stay22",
+    displayName: "Stay22",
+    categories: ["hotel"],
+    // Off until live smoke; enable via ENABLE_PLANNER_AFFILIATE_STAY22 (+ STAY22_AID).
+    enabled: false,
+    supportedDateModes: ["fixed"],
+    supportedPlacements: ["planner_summary"],
+    priority: 75,
+    // Allez /allez/roam deep link built locally — no API, not a Travelpayouts program.
+    capabilities: { deepLink: true, search: false, api: false, widget: false },
+  },
+  {
     id: "aviasales",
     displayName: "Aviasales",
     categories: ["flight"],
@@ -142,6 +154,7 @@ export const PLANNER_AFFILIATE_PROVIDER_ENV_KEYS: Partial<Record<AffiliateProvid
   aviasales: "ENABLE_PLANNER_AFFILIATE_AVIASALES",
   wegotrip: "ENABLE_PLANNER_AFFILIATE_WEGOTRIP",
   airalo: "ENABLE_PLANNER_AFFILIATE_AIRALO",
+  stay22: "ENABLE_PLANNER_AFFILIATE_STAY22",
 };
 
 export function applyAffiliateProviderEnvOverrides(

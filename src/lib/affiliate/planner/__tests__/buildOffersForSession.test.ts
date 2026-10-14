@@ -9,7 +9,13 @@ import {
   createFakeAffiliateDefinition,
 } from "@/lib/affiliate/planner/__tests__/fixtures";
 import { buildAffiliateOffersForSession } from "@/lib/affiliate/planner/buildOffersForSession";
-import type { AffiliateDestination, AffiliateOffer } from "@/lib/affiliate/planner/types";
+import { createStay22Adapter } from "@/lib/affiliate/planner/providers/stay22/stay22Adapter";
+import { getProductionAffiliateProviderDefinitions } from "@/lib/affiliate/planner/registry";
+import type {
+  AffiliateDestination,
+  AffiliateOffer,
+  AffiliateOfferBuild,
+} from "@/lib/affiliate/planner/types";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
 
@@ -190,6 +196,92 @@ describe("buildAffiliateOffersForSession (PR-9B)", () => {
     expect(result.preparation).toEqual([]);
     expect(result.days["1"]?.map((o) => o.metadata?.itemOrder)).toEqual([1]);
     expect(result.disclosure).toBeTruthy();
+  });
+
+  it("fixed session + Stay22 enabled → summary hotel offer persisted once via existing token path", async () => {
+    const draft = createEmptyPlannerDraftInput("오사카");
+    draft.dates = { mode: "fixed", startDate: "2027-01-28", endDate: "2027-02-01", durationDays: 5 };
+    draft.travelers = { adults: 3, children: 0 };
+    const persist = vi.fn(async ({ build }: { build: AffiliateOfferBuild }) => ({
+      offerId: "hotel-1",
+      providerId: build.providerId,
+      category: build.category,
+      placement: build.placement,
+      title: build.title,
+      description: build.description,
+      ctaLabel: build.ctaLabel,
+      destinationLabel: build.destinationLabel,
+      trackingToken: "11111111-2222-4333-8444-555555555555",
+    }));
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await buildAffiliateOffersForSession({
+      sessionId: "550e8400-e29b-41d4-a716-446655440000",
+      plan: samplePlan(),
+      input: draft,
+      sourceProductId: null,
+      deps: {
+        providers: getProductionAffiliateProviderDefinitions({
+          ENABLE_PLANNER_AFFILIATE_STAY22: "true",
+        }),
+        adapters: new Map([["stay22", createStay22Adapter({ env: { STAY22_AID: "test-aid" } })]]),
+        persist: persist as never,
+        resolveDestination: async () => ({ text: "오사카", countryCode: "JP" }),
+        resolveOriginIata: vi.fn(async () => null),
+      },
+    });
+    vi.unstubAllGlobals();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(persist).toHaveBeenCalledTimes(1);
+    const { build } = persist.mock.calls[0]![0];
+    expect(build).toMatchObject({
+      providerId: "stay22",
+      category: "hotel",
+      placement: "planner_summary",
+      affiliateNetwork: null,
+      affiliateCampaignId: "planner_hotel",
+      sourceUrlHost: "www.stay22.com",
+    });
+    const target = new URL(build.targetUrl);
+    expect(`${target.origin}${target.pathname}`).toBe("https://www.stay22.com/allez/roam");
+    expect(target.searchParams.get("checkin")).toBe("2027-01-28");
+    expect(target.searchParams.get("checkout")).toBe("2027-02-01");
+    expect(target.searchParams.get("adults")).toBe("3");
+
+    expect(result.summary).toHaveLength(1);
+    expect(result.summary[0]).toMatchObject({
+      providerId: "stay22",
+      category: "hotel",
+      placement: "planner_summary",
+    });
+    expect("targetUrl" in result.summary[0]!).toBe(false);
+    expect(result.disclosure).toBeTruthy();
+  });
+
+  it("flexible session + Stay22 enabled → no hotel offer, result still returned", async () => {
+    const draft = createEmptyPlannerDraftInput("오사카");
+    draft.dates = { mode: "flexible", startDate: null, endDate: null, durationDays: 4 };
+    const persist = vi.fn();
+    const result = await buildAffiliateOffersForSession({
+      sessionId: "550e8400-e29b-41d4-a716-446655440000",
+      plan: samplePlan(),
+      input: draft,
+      sourceProductId: null,
+      deps: {
+        providers: getProductionAffiliateProviderDefinitions({
+          ENABLE_PLANNER_AFFILIATE_STAY22: "true",
+        }),
+        adapters: new Map([["stay22", createStay22Adapter({ env: { STAY22_AID: "test-aid" } })]]),
+        persist: persist as never,
+        resolveDestination: async () => ({ text: "오사카", countryCode: "JP" }),
+        resolveOriginIata: vi.fn(async () => null),
+      },
+    });
+    expect(persist).not.toHaveBeenCalled();
+    expect(result.summary).toEqual([]);
+    expect(result.disclosure).toBeNull();
   });
 
   it("skips day item routing when no item is bookingRecommended", async () => {

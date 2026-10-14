@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { PlannerResultView } from "@/components/planner/PlannerResultView";
 import { addDaysToIsoDate } from "@/lib/planner/planSchemas";
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
@@ -293,6 +293,38 @@ describe("PlannerResultView information architecture", () => {
     expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 
+  it("hotel-only offer renders BookingSurface with the disclosure exactly once", () => {
+    offersState.value = {
+      summary: [
+        makeOffer({
+          offerId: "h1",
+          category: "hotel",
+          providerId: "stay22",
+          title: "오사카 숙소",
+          ctaLabel: "숙소 찾아보기",
+        }),
+      ],
+      preparation: [],
+      days: {},
+      disclosure: "제휴 고지",
+    };
+    render(
+      <PlannerResultView
+        plan={makePlan(2)}
+        sessionId="550e8400-e29b-41d4-a716-446655440000"
+        sourceProductId={null}
+        isSaved={false}
+        enrichment={null}
+        onSaved={vi.fn()}
+        onPlanUpdated={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("planner-booking-surface")).toBeInTheDocument();
+    expect(screen.getByText("오사카 숙소")).toBeInTheDocument();
+    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
+    expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
+  });
+
   it("flight + activity offers show the disclosure once (inside BookingSurface)", () => {
     offersState.value = {
       summary: [makeOffer({ offerId: "f1", category: "flight" })],
@@ -421,6 +453,59 @@ describe("PlannerBookingSurface", () => {
     expect(screen.getByText("항공권")).toBeInTheDocument();
     expect(screen.getAllByText("eSIM").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("투어")).not.toBeInTheDocument();
+  });
+
+  it("renders a Stay22 hotel card with trip dates, token-only link and existing tracking", async () => {
+    const { PlannerBookingSurface } = await import(
+      "@/components/planner/PlannerBookingSurface"
+    );
+    const token = "11111111-2222-4333-8444-555555555555";
+    render(
+      <PlannerBookingSurface
+        offers={{
+          summary: [
+            makeOffer({
+              offerId: "h1",
+              category: "hotel",
+              providerId: "stay22",
+              title: "오사카 숙소",
+              description: "여행 일정과 인원에 맞는 숙소 검색 결과를 확인해 보세요.",
+              ctaLabel: "숙소 찾아보기",
+              trackingToken: token,
+            }),
+          ],
+          preparation: [],
+          days: {},
+          disclosure: "제휴 고지",
+        }}
+        sessionId="550e8400-e29b-41d4-a716-446655440000"
+        sourceProductId={null}
+        originText="서울"
+        destinationName="오사카"
+        startDate="2027-01-28"
+        endDate="2027-02-01"
+      />,
+    );
+
+    const surface = screen.getByTestId("planner-booking-surface");
+    expect(within(surface).getByText("숙소")).toBeInTheDocument();
+    expect(within(surface).getByText("오사카 숙소")).toBeInTheDocument();
+    expect(within(surface).getByText("01.28 → 02.01")).toBeInTheDocument();
+    expect(within(surface).queryByText("서울 → 오사카")).not.toBeInTheDocument();
+    const cta = within(surface).getByRole("link", { name: "숙소 찾아보기" });
+    expect(cta).toHaveAttribute("href", `/r/affiliate/${token}`);
+    expect(surface.innerHTML).not.toContain("stay22.com");
+    expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
+
+    const expected = {
+      providerId: "stay22",
+      category: "hotel",
+      placement: "planner_summary",
+      trackingToken: token,
+    };
+    expect(trackImpression).toHaveBeenCalledWith(expect.objectContaining(expected));
+    fireEvent.click(cta);
+    expect(trackClicked).toHaveBeenCalledWith(expect.objectContaining(expected));
   });
 
   it("returns null when empty", async () => {

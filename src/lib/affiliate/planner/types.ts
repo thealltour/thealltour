@@ -38,6 +38,7 @@ export const AFFILIATE_PROVIDER_IDS = [
   "kiwitaxi",
   "toss_shopping",
   "coupang",
+  "stay22",
 ] as const;
 
 export type AffiliateProviderId = (typeof AFFILIATE_PROVIDER_IDS)[number];

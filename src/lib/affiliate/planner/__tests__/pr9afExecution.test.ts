@@ -56,11 +56,27 @@ describe("PR-9AF provider env toggles", () => {
     expect(parseAffiliateEnvToggle(undefined)).toBeNull();
   });
 
-  it("no env → committed catalog defaults (Aviasales ON, WeGoTrip/Airalo OFF)", () => {
+  it("no env → committed catalog defaults (Aviasales ON, WeGoTrip/Airalo/Stay22 OFF)", () => {
     const enabled = enabledOf(getProductionAffiliateProviderDefinitions({}));
     expect(enabled.aviasales).toBe(true);
     expect(enabled.wegotrip).toBe(false);
     expect(enabled.airalo).toBe(false);
+    expect(enabled.stay22).toBe(false);
+  });
+
+  it("ENABLE_PLANNER_AFFILIATE_STAY22: true/1 enable, false/0 disable, invalid keeps default OFF", () => {
+    const stay22 = (raw: string | undefined) =>
+      enabledOf(getProductionAffiliateProviderDefinitions({ ENABLE_PLANNER_AFFILIATE_STAY22: raw }))
+        .stay22;
+    expect(stay22("true")).toBe(true);
+    expect(stay22("1")).toBe(true);
+    expect(stay22("false")).toBe(false);
+    expect(stay22("0")).toBe(false);
+    expect(stay22("yes")).toBe(false);
+    expect(stay22(undefined)).toBe(false);
+    expect(
+      isPlannerAffiliateMasterEnabled({ ENABLE_PLANNER_AFFILIATE_STAY22: "true" }),
+    ).toBe(false);
   });
 
   it("env true enables WeGoTrip/Airalo; env false disables Aviasales", () => {
@@ -106,6 +122,7 @@ describe("PR-9AF provider env toggles", () => {
         ENABLE_PLANNER_AFFILIATE_AVIASALES: "true",
         ENABLE_PLANNER_AFFILIATE_WEGOTRIP: "true",
         ENABLE_PLANNER_AFFILIATE_AIRALO: "true",
+        ENABLE_PLANNER_AFFILIATE_STAY22: "true",
       }),
     ).toBe(false);
   });

@@ -163,6 +163,9 @@ export function PlannerBookingSurface({
                   </p>
                 </div>
               ) : null}
+              {offer.category === "hotel" && dateLabel ? (
+                <p className="mb-2 px-0.5 type-caption text-[var(--text-muted)]">{dateLabel}</p>
+              ) : null}
               <AffiliateOfferCard
                 offer={offer}
                 sessionId={sessionId}

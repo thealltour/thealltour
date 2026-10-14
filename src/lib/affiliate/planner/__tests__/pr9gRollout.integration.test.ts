@@ -142,6 +142,7 @@ describe("PR-9G offers API + redirect canary gates", () => {
     vi.stubEnv("ENABLE_PLANNER_AFFILIATE_AVIASALES", "true");
     vi.stubEnv("ENABLE_PLANNER_AFFILIATE_WEGOTRIP", "true");
     vi.stubEnv("ENABLE_PLANNER_AFFILIATE_AIRALO", "true");
+    vi.stubEnv("ENABLE_PLANNER_AFFILIATE_STAY22", "true");
     const { POST } = await import(
       "@/app/api/planner/sessions/[id]/affiliate-offers/route"
     );

@@ -3,10 +3,12 @@ import "server-only";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import { ZodError } from "zod";
 import {
-  resolveImportAiProvider,
-  withGoogleModelFallback,
-} from "@/lib/admin/ai/importAiModel";
-import { isAiQuotaError, formatQuotaExceededMessage } from "@/lib/admin/ai/importAiErrors";
+  PlannerModelConfigError,
+  resolvePlannerAiProviderSafe,
+  resolvePlannerLanguageModel,
+  resolvePlannerModelIdForAttempt,
+  type PlannerLanguageModelTarget,
+} from "@/lib/planner/modelProvider";
 import {
   assertEditedPlanMatchesContext,
   assertGeneratedPlanMatchesDraft,
@@ -32,15 +34,23 @@ import {
   getPlannerSemanticFallbackModelId,
 } from "@/lib/planner/modelConfig";
 import {
+  classifyPlannerProviderError,
+  extractPlannerFinishReason,
   extractPlannerGenerationDiagnostic,
+  extractPlannerUsage,
+  extractProviderStatusCode,
   type PlannerRootCauseDiagnostic,
   type PlannerSdkFailureType,
   type PlannerUsageDiagnostic,
 } from "@/lib/planner/generationDiagnostics";
 import type { PlannerDraftInput, PlannerGenerationFailureCategory } from "@/types/planner";
 
-const PLANNER_GENERATE_TIMEOUT_MS = 90_000;
+/** Per model call (including one transient retry); the request is aborted when exceeded. */
+export const PLANNER_ATTEMPT_TIMEOUT_MS = 150_000;
+/** Whole generation including semantic retry; leaves headroom under route maxDuration (300s). */
+export const PLANNER_GENERATE_TOTAL_BUDGET_MS = 270_000;
 export const MAX_PLANNER_SEMANTIC_ATTEMPTS = 2;
+const PLANNER_TRANSIENT_RETRY_DELAY_MS = 1_000;
 
 export type PlannerGenerateStage =
   | "provider_call"
@@ -70,6 +80,7 @@ export type PlannerGenerateDiagnostics = {
   causeChain?: string[] | null;
   finishReason?: string | null;
   usage?: PlannerUsageDiagnostic | null;
+  providerStatusCode?: number | null;
   rootCause?: PlannerRootCauseDiagnostic | null;
 };
 
@@ -114,11 +125,16 @@ export type PlannerGenerateDiagnosticEvent =
       modelId?: string | null;
       selectedModelId?: string | null;
       provider?: string | null;
+      finishReason?: string | null;
+      usage?: PlannerUsageDiagnostic | null;
     };
 
 export class PlannerGenerateError extends Error {
   readonly code:
     | "missing_key"
+    | "invalid_config"
+    | "auth"
+    | "rate_limited"
     | "timeout"
     | "invalid_plan"
     | "schema_invalid"
@@ -164,20 +180,23 @@ export class PlannerGenerateError extends Error {
       causeChain: diagnostics?.causeChain ?? null,
       finishReason: diagnostics?.finishReason ?? null,
       usage: diagnostics?.usage ?? null,
+      providerStatusCode: diagnostics?.providerStatusCode ?? null,
       rootCause: diagnostics?.rootCause ?? null,
     };
   }
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
+      controller.abort();
       reject(new PlannerGenerateError("timeout", "AI generation timed out", "provider_failed", {
         stage: "provider_call",
         errorName: "TimeoutError",
       }));
     }, ms);
-    promise.then(
+    run(controller.signal).then(
       (value) => {
         clearTimeout(timer);
         resolve(value);
@@ -188,12 +207,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
-}
-
-function extractModelId(model: unknown): string | null {
-  if (!model || typeof model !== "object") return null;
-  const maybe = model as { modelId?: unknown };
-  return typeof maybe.modelId === "string" ? maybe.modelId : null;
 }
 
 function isZodErrorLike(error: unknown): error is ZodError {
@@ -251,8 +264,31 @@ function attachRootCauseDiagnostics(
     causeChain: base.causeChain ?? rootCause.causeChain,
     finishReason: base.finishReason ?? rootCause.finishReason,
     usage: base.usage ?? rootCause.usage,
+    providerStatusCode: base.providerStatusCode ?? rootCause.providerStatusCode,
     rootCause: base.rootCause ?? rootCause,
   };
+}
+
+function providerCallError(
+  code: PlannerGenerateError["code"],
+  message: string,
+  error: unknown,
+  extras?: Partial<PlannerGenerateDiagnostics>,
+): PlannerGenerateError {
+  return new PlannerGenerateError(
+    code,
+    message,
+    "provider_failed",
+    attachRootCauseDiagnostics(
+      {
+        stage: "provider_call",
+        errorName: error instanceof Error ? error.name : "Error",
+        sdkFailureType: "provider",
+        ...extras,
+      },
+      error,
+    ),
+  );
 }
 
 export function normalizePlannerGenerateError(
@@ -282,9 +318,21 @@ export function normalizePlannerGenerateError(
       causeChain: merged.causeChain ?? rootCause.causeChain,
       finishReason: merged.finishReason ?? rootCause.finishReason,
       usage: merged.usage ?? rootCause.usage,
+      providerStatusCode: merged.providerStatusCode ?? rootCause.providerStatusCode,
       schemaIssuePaths: merged.schemaIssuePaths ?? rootCause.schemaIssuePaths ?? undefined,
       errorName: merged.errorName ?? rootCause.errorName ?? error.name,
     });
+  }
+
+  if (error instanceof PlannerModelConfigError) {
+    return providerCallError(
+      error.code,
+      error.code === "missing_key"
+        ? "Planner AI provider key is not configured"
+        : "Planner AI provider config is invalid",
+      error,
+      extras,
+    );
   }
 
   if (error instanceof PlannerPlanInvariantError) {
@@ -359,36 +407,26 @@ export function normalizePlannerGenerateError(
     );
   }
 
-  if (isAiQuotaError(error)) {
-    return new PlannerGenerateError(
-      "provider",
-      formatQuotaExceededMessage(error),
-      "provider_failed",
-      attachRootCauseDiagnostics(
-        {
-          stage: "provider_call",
-          errorName: error instanceof Error ? error.name : "QuotaError",
-          sdkFailureType: "provider",
-          ...extras,
-        },
-        error,
-      ),
-    );
+  const providerKind = classifyPlannerProviderError(error);
+  if (providerKind === "missing_key") {
+    return providerCallError("missing_key", "AI provider is not configured", error, extras);
+  }
+  if (providerKind === "auth") {
+    return providerCallError("auth", "AI provider authentication failed", error, extras);
+  }
+  if (providerKind === "rate_limited") {
+    return providerCallError("rate_limited", "AI provider rate limited", error, extras);
+  }
+  // Any HTTP-level provider failure (incl. 400 schema rejections) is never semantic-retryable.
+  if (providerKind === "transient" || rootCause.providerStatusCode != null) {
+    return providerCallError("provider", "AI generation failed", error, extras);
   }
 
   const message = error instanceof Error ? error.message : "unknown provider error";
   const errorName = error instanceof Error ? error.name : "Error";
 
   if (/API key|키가 없/i.test(message)) {
-    return new PlannerGenerateError(
-      "missing_key",
-      "AI provider is not configured",
-      "provider_failed",
-      attachRootCauseDiagnostics(
-        { stage: "provider_call", errorName, sdkFailureType: "provider", ...extras },
-        error,
-      ),
-    );
+    return providerCallError("missing_key", "AI provider is not configured", error, extras);
   }
 
   if (/schema|validation|\bZod\b|parse/i.test(message)) {
@@ -414,42 +452,73 @@ export function normalizePlannerGenerateError(
   );
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** One same-model retry for network/5xx only; rate limit, auth and 4xx fail immediately. */
+async function callWithTransientRetry<T>(
+  label: string,
+  target: PlannerLanguageModelTarget,
+  signal: AbortSignal,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (signal.aborted || classifyPlannerProviderError(error) !== "transient") throw error;
+    console.warn("[planner/generate/provider-retry]", {
+      label,
+      provider: target.provider,
+      modelId: target.modelId,
+      errorName: error instanceof Error ? error.name : null,
+      providerStatusCode: extractProviderStatusCode(error),
+    });
+    await sleep(PLANNER_TRANSIENT_RETRY_DELAY_MS);
+    if (signal.aborted) throw error;
+    return await run();
+  }
+}
+
+type PlannerModelCallResult = {
+  plan: PlannerPlan;
+  usage: PlannerUsageDiagnostic | null;
+  finishReason: string | null;
+};
+
 async function runGenerateObject(params: {
   label: string;
   system: string;
   prompt: string;
-  primaryModelId: string;
-  onModelId?: (modelId: string | null) => void;
-}): Promise<PlannerPlan> {
-  const { object } = await withTimeout(
-    withGoogleModelFallback(
-      params.label,
-      async (model) => {
-        params.onModelId?.(extractModelId(model));
-        return generateObject({
-          model,
+  target: PlannerLanguageModelTarget;
+  timeoutMs: number;
+}): Promise<PlannerModelCallResult> {
+  const { target } = params;
+  const result = await withTimeout(
+    (abortSignal) =>
+      callWithTransientRetry(params.label, target, abortSignal, () =>
+        generateObject({
+          model: target.model,
           schema: plannerPlanSchema,
           system: params.system,
           prompt: params.prompt,
           maxRetries: 0,
-        });
-      },
-      { primaryModelId: params.primaryModelId },
-    ),
-    PLANNER_GENERATE_TIMEOUT_MS,
+          abortSignal,
+          ...(target.providerOptions ? { providerOptions: target.providerOptions } : {}),
+        }),
+      ),
+    params.timeoutMs,
   );
+  const usage = extractPlannerUsage(result.usage);
+  const finishReason = extractPlannerFinishReason(result.finishReason);
   try {
-    return plannerPlanSchema.parse(object);
+    return { plan: plannerPlanSchema.parse(result.object), usage, finishReason };
   } catch (error) {
-    throw normalizePlannerGenerateError(error, { stage: "schema_validation" });
-  }
-}
-
-function resolveProviderSafe(): string | null {
-  try {
-    return resolveImportAiProvider();
-  } catch {
-    return null;
+    throw normalizePlannerGenerateError(error, {
+      stage: "schema_validation",
+      usage,
+      finishReason,
+    });
   }
 }
 
@@ -460,13 +529,14 @@ export async function generatePlannerPlan(
   },
 ): Promise<PlannerGenerateResult> {
   const basePrompt = buildPlannerPlanUserPrompt(draft);
-  const provider = resolveProviderSafe();
+  const provider = resolvePlannerAiProviderSafe();
+  const deadline = Date.now() + PLANNER_GENERATE_TOTAL_BUDGET_MS;
   let lastModelId: string | null = null;
   let lastSelectedModelId: string | null = null;
   let lastError: PlannerGenerateError | null = null;
 
   for (let attempt = 1; attempt <= MAX_PLANNER_SEMANTIC_ATTEMPTS; attempt += 1) {
-    const selectedModelId = getPlannerModelIdForSemanticAttempt(attempt);
+    const selectedModelId = resolvePlannerModelIdForAttempt(provider, attempt);
     lastSelectedModelId = selectedModelId;
     const prompt =
       attempt === 1
@@ -476,15 +546,16 @@ export async function generatePlannerPlan(
           });
 
     try {
-      const parsed = await runGenerateObject({
+      const target = resolvePlannerLanguageModel(attempt);
+      lastModelId = target.modelId;
+      const call = await runGenerateObject({
         label: "plannerGeneratePlan",
         system: PLANNER_PLAN_SYSTEM_PROMPT,
         prompt,
-        primaryModelId: selectedModelId,
-        onModelId: (id) => {
-          lastModelId = id;
-        },
+        target,
+        timeoutMs: Math.min(PLANNER_ATTEMPT_TIMEOUT_MS, deadline - Date.now()),
       });
+      const parsed = call.plan;
       try {
         assertGeneratedPlanMatchesDraft(parsed, draft);
       } catch (error) {
@@ -494,6 +565,8 @@ export async function generatePlannerPlan(
           maxAttempts: MAX_PLANNER_SEMANTIC_ATTEMPTS,
           modelId: lastModelId,
           provider,
+          usage: call.usage,
+          finishReason: call.finishReason,
         });
       }
       try {
@@ -505,6 +578,8 @@ export async function generatePlannerPlan(
           maxAttempts: MAX_PLANNER_SEMANTIC_ATTEMPTS,
           modelId: lastModelId,
           provider,
+          usage: call.usage,
+          finishReason: call.finishReason,
         });
       }
 
@@ -515,6 +590,8 @@ export async function generatePlannerPlan(
         modelId: lastModelId,
         selectedModelId,
         provider,
+        finishReason: call.finishReason,
+        usage: call.usage,
       });
 
       return {
@@ -535,7 +612,7 @@ export async function generatePlannerPlan(
       lastError = normalized;
 
       if (isSemanticRetryableFailure(normalized) && attempt < MAX_PLANNER_SEMANTIC_ATTEMPTS) {
-        const nextModelId = getPlannerModelIdForSemanticAttempt(attempt + 1);
+        const nextModelId = resolvePlannerModelIdForAttempt(provider, attempt + 1);
         options?.onDiagnostic?.({
           type: "semantic_retry",
           attempt,
@@ -577,23 +654,29 @@ export async function generatePlannerPlan(
   );
 }
 
-export async function generateEditedPlannerPlan(params: {
-  draft: PlannerDraftInput;
-  currentPlan: PlannerPlan;
-  instruction: string;
-}): Promise<PlannerPlan> {
-  const provider = resolveProviderSafe();
+export async function generateEditedPlannerPlan(
+  params: {
+    draft: PlannerDraftInput;
+    currentPlan: PlannerPlan;
+    instruction: string;
+  },
+  options?: {
+    onDiagnostic?: (event: PlannerGenerateDiagnosticEvent) => void;
+  },
+): Promise<PlannerPlan> {
+  const provider = resolvePlannerAiProviderSafe();
   let lastModelId: string | null = null;
   try {
-    const parsed = await runGenerateObject({
+    const target = resolvePlannerLanguageModel(1);
+    lastModelId = target.modelId;
+    const call = await runGenerateObject({
       label: "plannerEditPlan",
       system: PLANNER_EDIT_SYSTEM_PROMPT,
       prompt: buildPlannerEditUserPrompt(params),
-      primaryModelId: getPlannerPrimaryModelId(),
-      onModelId: (id) => {
-        lastModelId = id;
-      },
+      target,
+      timeoutMs: PLANNER_ATTEMPT_TIMEOUT_MS,
     });
+    const parsed = call.plan;
     try {
       assertEditedPlanMatchesContext(parsed, params.draft, params.currentPlan);
     } catch (error) {
@@ -603,8 +686,20 @@ export async function generateEditedPlannerPlan(params: {
         maxAttempts: 1,
         modelId: lastModelId,
         provider,
+        usage: call.usage,
+        finishReason: call.finishReason,
       });
     }
+    options?.onDiagnostic?.({
+      type: "attempt_success",
+      attempt: 1,
+      maxAttempts: 1,
+      modelId: lastModelId,
+      selectedModelId: lastModelId,
+      provider,
+      finishReason: call.finishReason,
+      usage: call.usage,
+    });
     return parsed;
   } catch (error) {
     throw normalizePlannerGenerateError(error, {
@@ -630,7 +725,7 @@ export function toClientGenerationErrorMessage(error: unknown): string {
     if (error.code === "timeout") {
       return "여행 플랜 생성이 너무 오래 걸렸습니다. 잠시 후 다시 시도해 주세요.";
     }
-    if (error.code === "missing_key") {
+    if (error.code === "missing_key" || error.code === "invalid_config") {
       return "여행 플랜 생성 준비가 아직 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.";
     }
   }
@@ -642,7 +737,7 @@ export function toClientEditErrorMessage(error: unknown): string {
     if (error.code === "timeout") {
       return "일정 수정이 너무 오래 걸렸습니다. 잠시 후 다시 시도해 주세요.";
     }
-    if (error.code === "missing_key") {
+    if (error.code === "missing_key" || error.code === "invalid_config") {
       return "일정 수정 준비가 아직 완료되지 않았습니다. 잠시 후 다시 시도해 주세요.";
     }
     if (error.code === "invariant_failed" || error.code === "invalid_plan") {
@@ -676,6 +771,7 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
   causeChain: string[] | null;
   finishReason: string | null;
   usage: PlannerUsageDiagnostic | null;
+  providerStatusCode: number | null;
 } {
   if (!(error instanceof PlannerGenerateError)) {
     const root = extractPlannerGenerationDiagnostic(error);
@@ -695,6 +791,7 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
       causeChain: root.causeChain,
       finishReason: root.finishReason,
       usage: root.usage,
+      providerStatusCode: root.providerStatusCode,
     };
   }
   const d = error.diagnostics;
@@ -714,5 +811,6 @@ export function getPlannerGenerateSafeLogFields(error: unknown): {
     causeChain: d.causeChain ?? null,
     finishReason: d.finishReason ?? null,
     usage: d.usage ?? null,
+    providerStatusCode: d.providerStatusCode ?? null,
   };
 }

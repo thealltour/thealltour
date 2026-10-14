@@ -8,12 +8,14 @@ import { getPlannerSessionById } from "@/lib/planner/repository";
 import { persistEditedPlannerPlan } from "@/lib/planner/planVersionRepository";
 import {
   generateEditedPlannerPlan,
+  getPlannerGenerateSafeLogFields,
   getPlannerItemDensityStats,
   toClientEditErrorMessage,
+  type PlannerGenerateDiagnosticEvent,
 } from "@/lib/planner/generatePlan";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -88,12 +90,22 @@ export async function POST(request: Request, context: RouteContext) {
   const previousPlan = session!.plan;
   const status = session!.status;
 
+  const outcome: {
+    success: Extract<PlannerGenerateDiagnosticEvent, { type: "attempt_success" }> | null;
+  } = { success: null };
   try {
-    const nextPlan = await generateEditedPlannerPlan({
-      draft: draftParsed.data,
-      currentPlan: previousPlan,
-      instruction,
-    });
+    const nextPlan = await generateEditedPlannerPlan(
+      {
+        draft: draftParsed.data,
+        currentPlan: previousPlan,
+        instruction,
+      },
+      {
+        onDiagnostic: (event) => {
+          if (event.type === "attempt_success") outcome.success = event;
+        },
+      },
+    );
 
     const { versionNumber } = await persistEditedPlannerPlan({
       sessionId: session!.id,
@@ -116,6 +128,10 @@ export async function POST(request: Request, context: RouteContext) {
       minDayItemCount: densityStats.minItemsPerDay,
       maxDayItemCount: densityStats.maxItemsPerDay,
       avgItemsPerDay: densityStats.averageItemsPerDay,
+      provider: outcome.success?.provider ?? null,
+      modelId: outcome.success?.modelId ?? null,
+      finishReason: outcome.success?.finishReason ?? null,
+      usage: outcome.success?.usage ?? null,
     });
 
     return NextResponse.json({
@@ -131,11 +147,18 @@ export async function POST(request: Request, context: RouteContext) {
     });
   } catch (error) {
     const durationMs = Date.now() - startedAt;
+    const safe = getPlannerGenerateSafeLogFields(error);
     console.info("[planner] edit failed", {
       sessionId: session!.id,
       durationMs,
       instructionLength,
       category: error instanceof Error ? error.name : "unknown",
+      errorCode: safe.errorCode,
+      stage: safe.stage,
+      provider: safe.provider,
+      modelId: safe.modelId,
+      providerStatusCode: safe.providerStatusCode,
+      sdkFailureType: safe.sdkFailureType,
     });
     return NextResponse.json(
       { message: toClientEditErrorMessage(error), code: "edit_failed" },

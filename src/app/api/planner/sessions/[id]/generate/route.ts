@@ -18,11 +18,12 @@ import {
   type PlannerGenerateDiagnosticEvent,
   type PlannerGenerateStage,
 } from "@/lib/planner/generatePlan";
+import type { PlannerUsageDiagnostic } from "@/lib/planner/generationDiagnostics";
 import type { PlannerGenerationFailureCategory } from "@/types/planner";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -75,7 +76,8 @@ function logGenerateFailure(params: {
   causeName?: string | null;
   causeChain?: string[] | null;
   finishReason?: string | null;
-  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | null;
+  usage?: PlannerUsageDiagnostic | null;
+  providerStatusCode?: number | null;
 }) {
   console.error("[planner/generate]", {
     sessionId: params.sessionId,
@@ -104,6 +106,7 @@ function logGenerateFailure(params: {
       : null,
     finishReason: params.finishReason ?? null,
     usage: params.usage ?? null,
+    providerStatusCode: params.providerStatusCode ?? null,
     durationMs: params.durationMs,
     ok: false,
   });
@@ -180,10 +183,18 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const startedAt = Date.now();
+  const success: { usage: PlannerUsageDiagnostic | null; finishReason: string | null } = {
+    usage: null,
+    finishReason: null,
+  };
   try {
     const { plan, meta } = await generatePlannerPlan(draftParsed.data, {
       onDiagnostic: (event: PlannerGenerateDiagnosticEvent) => {
-        if (event.type !== "semantic_retry") return;
+        if (event.type === "attempt_success") {
+          success.usage = event.usage ?? null;
+          success.finishReason = event.finishReason ?? null;
+          return;
+        }
         console.warn("[planner/generate/retry]", {
           sessionId: session!.id,
           failureCategory: event.failureCategory,
@@ -284,6 +295,8 @@ export async function POST(request: Request, context: RouteContext) {
       semanticAttempts: meta.semanticAttempts,
       provider: meta.provider,
       modelId: meta.modelId,
+      finishReason: success.finishReason,
+      usage: success.usage,
       ok: true,
     });
     return NextResponse.json({
@@ -312,6 +325,7 @@ export async function POST(request: Request, context: RouteContext) {
       causeChain: safe.causeChain,
       finishReason: safe.finishReason,
       usage: safe.usage,
+      providerStatusCode: safe.providerStatusCode,
     });
     return NextResponse.json(
       {

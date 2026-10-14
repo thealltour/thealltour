@@ -4,7 +4,7 @@
  */
 
 import { NoObjectGeneratedError } from "ai";
-import { JSONParseError, TypeValidationError } from "@ai-sdk/provider";
+import { APICallError, JSONParseError, TypeValidationError } from "@ai-sdk/provider";
 import type { ZodError } from "zod";
 
 export const PLANNER_DIAG_MAX_CAUSE_DEPTH = 4;
@@ -27,6 +27,7 @@ export type PlannerUsageDiagnostic = {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
+  reasoningTokens?: number;
 };
 
 export type PlannerRootCauseDiagnostic = {
@@ -37,7 +38,11 @@ export type PlannerRootCauseDiagnostic = {
   sdkFailureType: PlannerSdkFailureType;
   finishReason: string | null;
   usage: PlannerUsageDiagnostic | null;
+  providerStatusCode: number | null;
 };
+
+/** Provider-neutral classification of provider-call failures (never semantic-retryable). */
+export type PlannerProviderErrorKind = "missing_key" | "auth" | "rate_limited" | "transient";
 
 function errorDisplayName(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
@@ -126,7 +131,11 @@ function extractFinishReason(error: unknown): string | null {
 function extractUsage(error: unknown): PlannerUsageDiagnostic | null {
   if (!error || typeof error !== "object") return null;
   if (!("usage" in error)) return null;
-  const usage = (error as { usage?: unknown }).usage;
+  return extractPlannerUsage((error as { usage?: unknown }).usage);
+}
+
+/** Token counts only — never raw provider usage payloads. */
+export function extractPlannerUsage(usage: unknown): PlannerUsageDiagnostic | null {
   if (!usage || typeof usage !== "object") return null;
 
   const u = usage as Record<string, unknown>;
@@ -147,8 +156,59 @@ function extractUsage(error: unknown): PlannerUsageDiagnostic | null {
   if (out.outputTokens == null && typeof u.completionTokens === "number") {
     out.outputTokens = u.completionTokens;
   }
+  const outputDetails = u.outputTokenDetails;
+  if (outputDetails && typeof outputDetails === "object") {
+    const reasoningTokens = (outputDetails as Record<string, unknown>).reasoningTokens;
+    if (typeof reasoningTokens === "number" && Number.isFinite(reasoningTokens)) {
+      out.reasoningTokens = reasoningTokens;
+    }
+  }
 
   return Object.keys(out).length > 0 ? out : null;
+}
+
+export function extractPlannerFinishReason(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** HTTP status from an AI SDK APICallError anywhere in the cause chain. */
+export function extractProviderStatusCode(error: unknown): number | null {
+  let current: unknown = error;
+  const visited = new Set<unknown>();
+  for (let depth = 0; depth < PLANNER_DIAG_MAX_CAUSE_DEPTH; depth += 1) {
+    if (current == null || visited.has(current)) break;
+    visited.add(current);
+    if (APICallError.isInstance(current) && typeof current.statusCode === "number") {
+      return current.statusCode;
+    }
+    current = getCause(current);
+  }
+  return null;
+}
+
+const RATE_LIMIT_MESSAGE =
+  /rate[ _]limit|too many requests|exceeded your current quota|quota exceeded|resource[_ ]exhausted/i;
+const TRANSIENT_NETWORK_MESSAGE =
+  /fetch failed|econnreset|econnrefused|etimedout|socket hang up|network error/i;
+
+export function classifyPlannerProviderError(error: unknown): PlannerProviderErrorKind | null {
+  const chain = extractCauseChain(error);
+  if (chain.some((name) => /LoadAPIKeyError/i.test(name))) return "missing_key";
+
+  const status = extractProviderStatusCode(error);
+  if (status != null) {
+    if (status === 401 || status === 403) return "auth";
+    if (status === 429) return "rate_limited";
+    if (status === 408 || status === 500 || status === 502 || status === 503 || status === 504) {
+      return "transient";
+    }
+    return null;
+  }
+
+  const message = error instanceof Error ? error.message : "";
+  if (RATE_LIMIT_MESSAGE.test(message)) return "rate_limited";
+  if (TRANSIENT_NETWORK_MESSAGE.test(message)) return "transient";
+  return null;
 }
 
 function classifySdkFailureType(error: unknown, chain: string[]): PlannerSdkFailureType {
@@ -209,6 +269,7 @@ export function extractPlannerGenerationDiagnostic(
     sdkFailureType,
     finishReason,
     usage,
+    providerStatusCode: extractProviderStatusCode(error),
   };
 }
 
@@ -224,6 +285,7 @@ export function toPlannerDiagnosticLogFields(
       schemaIssuePaths: null,
       finishReason: null,
       usage: null,
+      providerStatusCode: null,
     };
   }
   return {
@@ -234,5 +296,6 @@ export function toPlannerDiagnosticLogFields(
     finishReason: diagnostic.finishReason,
     usage: diagnostic.usage,
     errorName: diagnostic.errorName,
+    providerStatusCode: diagnostic.providerStatusCode,
   };
 }

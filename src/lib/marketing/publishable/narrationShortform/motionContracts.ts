@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { shortformJobSchema, shortformOutputSchema } from "./contracts";
 import { captionCueSchema } from "./captionContracts";
+import { stockRenderAssetSchema, visualSourcesRenderSchema } from "../narrationVisualSources/contracts";
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const motionRenderConfigSchema = z.object({ renderer: z.literal("narration-motion-scenes-v2"), width: z.literal(720), height: z.literal(1280), fps: z.literal(30),
   subtitleMode: z.literal("burned_sentence"), fontFamily: z.literal("Noto Sans CJK KR"), fontSha256: hash,
@@ -28,7 +29,7 @@ export const legacyCaptionRenderConfigSchema = z.object({ ...captionRenderConfig
 /** Policy v2: caption/hook sizes are em; the derived ASS FontSize for the pinned font is recorded. */
 export const captionRenderConfigSchema = z.object({ ...captionRenderConfigBase, layoutPolicyId: z.literal("cross-platform-conservative-v2"), fontSizeBasis: z.literal("em"),
   captionAssFontSize: z.number().positive(), hookAssFontSize: z.number().positive() }).strict();
-export const captionShortformJobSchema = motionShortformJobSchema.extend({ contract: z.literal("narration-shortform-render-job-v3"), renderConfig: z.union([captionRenderConfigSchema, legacyCaptionRenderConfigSchema]),
+export const captionShortformJobV3Schema = motionShortformJobSchema.extend({ contract: z.literal("narration-shortform-render-job-v3"), renderConfig: z.union([captionRenderConfigSchema, legacyCaptionRenderConfigSchema]),
   purpose: z.enum(["preview", "final"]),
   captionPlan: z.object({ fingerprint: hash, revision: z.number().int().positive(), approved: z.boolean(), cues: z.array(captionCueSchema).min(1).max(400) }).strict(),
   hook: z.object({ fingerprint: hash, contentFingerprint: hash, revision: z.number().int().positive(), approved: z.boolean(), enabled: z.boolean(), text: z.string().max(80),
@@ -37,4 +38,14 @@ export const captionShortformJobSchema = motionShortformJobSchema.extend({ contr
   audioReview: z.array(z.object({ sentenceId: z.string().uuid(), rawSha256: hash, processedSha256: hash, policyFingerprint: hash }).strict()).max(16),
   output: shortformOutputSchema.extend({ assRelativePath: z.string(), assSha256: hash, layoutCheckedItems: z.number().int().positive() }).strict().nullable(),
 }).strict();
+/**
+ * v4 is written only when at least one scene uses an approved stock clip. Scene assets are either the unchanged motion
+ * asset or a stock clip asset, and the selection fingerprint is part of the input. Jobs without stock stay v3 with
+ * byte-identical inputs and hashes.
+ */
+export const sceneRenderAssetSchema = z.union([motionRenderAssetSchema, stockRenderAssetSchema]);
+export const captionShortformJobV4Schema = captionShortformJobV3Schema.extend({ contract: z.literal("narration-shortform-render-job-v4"),
+  motionAssets: z.array(sceneRenderAssetSchema).min(1).max(16), visualSources: visualSourcesRenderSchema }).strict();
+export const captionShortformJobSchema = z.discriminatedUnion("contract", [captionShortformJobV3Schema, captionShortformJobV4Schema]);
 export type CaptionShortformJob = z.infer<typeof captionShortformJobSchema>;
+export type SceneRenderAsset = z.infer<typeof sceneRenderAssetSchema>;

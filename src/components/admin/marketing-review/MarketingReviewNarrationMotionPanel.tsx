@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import AdminButton from "@/components/admin/ui/AdminButton";
 import type { MotionChoice } from "@/lib/marketing/publishable/narrationMotion/contracts";
 type View = { ready: boolean; workerAvailable: boolean; settingsSaved: boolean; canEdit: boolean; planFingerprint: string | null; settingsFingerprint: string | null;
-  scenes: Array<{ visualId: string; text: string; durationMs: number; imageReady: boolean; choice: MotionChoice;
+  scenes: Array<{ visualId: string; text: string; durationMs: number; imageReady: boolean; source?: "image_motion" | "stock_video"; choice: MotionChoice;
     job: { jobId: string; status: string; approved: boolean; errorCode: string | null; output: { sha256: string } | null } | null }> };
 const labels: Record<string, string> = { queued: "실행 대기", running: "생성 중", completed: "검토 필요", failed: "실패 · 다시 생성 가능", stale: "변경 감지 · 재생성 필요" };
 export function MarketingReviewNarrationMotionPanel({ candidateId, refreshKey, onChanged }: { candidateId: string; refreshKey: number; onChanged: () => void }) {
@@ -41,7 +41,7 @@ export function MarketingReviewNarrationMotionPanel({ candidateId, refreshKey, o
     if (!view?.planFingerprint) return;
     setBusy(true); setMessage("");
     try {
-      const selected = view.scenes.filter(s => !visualId || s.visualId === visualId);
+      const selected = view.scenes.filter(s => visualId ? s.visualId === visualId : s.source !== "stock_video");
       const body = { action, expectedPlanFingerprint: view.planFingerprint, expectedSettingsFingerprint: action === "save" ? baselineRef.current : view.settingsFingerprint,
         ...(action === "save" ? { scenes: choices } : action === "generate" ? { visualIds: selected.filter(s => s.imageReady).map(s => s.visualId) } :
           { jobs: selected.map(s => ({ jobId: s.job?.jobId, expectedOutputSha256: s.job?.output?.sha256 })) }) };
@@ -53,7 +53,8 @@ export function MarketingReviewNarrationMotionPanel({ candidateId, refreshKey, o
   }
   const editable = !!view?.ready && !!view.canEdit && !busy;
   const saved = !dirty && !!view?.settingsFingerprint && !!view.settingsSaved;
-  const allComplete = !!view?.scenes.length && view.scenes.every(s => s.job?.status === "completed" && !!s.job.output);
+  const imageScenes = view?.scenes.filter(s => s.source !== "stock_video") ?? [];
+  const allComplete = !!imageScenes.length && imageScenes.every(s => s.job?.status === "completed" && !!s.job.output);
   return <section className="space-y-4 rounded-lg border border-[var(--border)] p-4">
     <h3 className="font-semibold">문장별 이미지 움직임</h3>
     <p className="text-sm">이미지 한 장에서 움직임을 만들고, 실제 음성 길이에 맞춰 미리봅니다. 어색한 장면은 약하게 조정하거나 정지를 선택해주세요.</p>
@@ -63,6 +64,7 @@ export function MarketingReviewNarrationMotionPanel({ candidateId, refreshKey, o
       const choice = choices.find(s => s.visualId === scene.visualId)?.choice ?? scene.choice;
       return <div key={scene.visualId} className="space-y-3 rounded border border-[var(--border)] p-3">
         <p className="text-sm">{i + 1}. {scene.text} · {(scene.durationMs / 1000).toFixed(2)}초</p>
+        {scene.source === "stock_video" && <p className="text-sm">스톡 영상 사용 중 · 모션 승인 불필요 (구간 클립 승인은 위 &apos;영상 소스&apos;에서 진행). 아래 모션 설정과 기존 결과는 이미지 모션으로 돌아갈 때를 위해 유지됩니다.</p>}
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label>움직임 <select className="rounded border bg-[var(--bg)] p-2" disabled={!editable} value={choice.preset} onChange={e => update(scene.visualId, { preset: e.target.value as MotionChoice["preset"] })}>
             <option value="parallax">시점 이동</option><option value="pan_zoom">확대·이동</option><option value="light_shadow">빛·그림자 (실험)</option><option value="static">정지</option>
@@ -85,8 +87,8 @@ export function MarketingReviewNarrationMotionPanel({ candidateId, refreshKey, o
     <div className="flex flex-wrap gap-2">
       <AdminButton type="button" variant="secondary" disabled={!editable || !choices.length} onClick={() => { const first = choices[0]; if (first) { setChoices(old => old.map(s => ({ ...s, choice: { ...first.choice } }))); dirtyRef.current = true; setDirty(true); } }}>첫 장면 설정을 전체에 적용</AdminButton>
       <AdminButton type="button" variant="primary" disabled={!editable || !choices.length} onClick={() => void mutate("save")}>움직임 설정 저장</AdminButton>
-      <AdminButton type="button" variant="secondary" disabled={!editable || !saved || !view?.workerAvailable || !view.scenes.some(s => s.imageReady)} onClick={() => void mutate("generate")}>전체 미리보기 생성</AdminButton>
-      <AdminButton type="button" variant="primary" disabled={!editable || !saved || !allComplete} onClick={() => void mutate("approve")}>현재 결과 전체 승인</AdminButton>
+      <AdminButton type="button" variant="secondary" disabled={!editable || !saved || !view?.workerAvailable || !imageScenes.some(s => s.imageReady)} onClick={() => void mutate("generate")}>이미지 모션 장면 전체 생성</AdminButton>
+      <AdminButton type="button" variant="primary" disabled={!editable || !saved || !allComplete} onClick={() => void mutate("approve")}>이미지 모션 결과 전체 승인</AdminButton>
       <AdminButton type="button" variant="secondary" disabled={busy} onClick={() => { setBusy(true); void fetchView().then(data => accept(data)).catch(error => setMessage(error instanceof Error ? error.message : "상태 확인 실패")).finally(() => setBusy(false)); }}>상태 새로고침</AdminButton>
     </div>
     <p className="text-sm">모션 승인과 최종 숏폼 렌더는 별도 단계입니다. 이미지·음성 길이·설정 변경 시 관련 결과를 다시 검토해야 합니다.</p>

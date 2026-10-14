@@ -18,6 +18,8 @@ async function main() {
   const { readMotionJob } = await import("@/lib/marketing/publishable/narrationMotion/service");
   const { readMotionShortformJob, runMotionShortform, readCaptionShortformJob, runCaptionShortform } = await import("@/lib/marketing/publishable/narrationShortform/motionService");
   const { readAlignmentJob, runCaptionAlignment } = await import("@/lib/marketing/publishable/narrationShortform/captionAlignment");
+  const { readStockClipJob } = await import("@/lib/marketing/publishable/narrationVisualSources/clips");
+  const { runStockClipJob } = await import("@/lib/marketing/publishable/narrationVisualSources/clipWorker");
   const queue = motionQueueDirectory(); mkdirSync(queue, { recursive: true });
   const health = () => atomicWriteFile(join(queue, "health.json"), JSON.stringify({ heartbeatAt: new Date().toISOString(), pid: process.pid }));
   health(); const heartbeat = setInterval(health, 10_000);
@@ -35,14 +37,14 @@ async function main() {
       try {
         const entry = JSON.parse(readFileSync(path, "utf8")) as { root: string; jobId: string; kind?: string };
         if (filename !== `${entry.jobId}.json`) throw new Error("queue_identity_mismatch");
-        if (entry.kind !== undefined && entry.kind !== "shortform-v2" && entry.kind !== "shortform-v3" && entry.kind !== "caption-align-v1") throw new Error("queue_kind_invalid");
+        if (entry.kind !== undefined && entry.kind !== "shortform-v2" && entry.kind !== "shortform-v3" && entry.kind !== "caption-align-v1" && entry.kind !== "stock-clip-v1") throw new Error("queue_kind_invalid");
         const job = entry.kind === "caption-align-v1" ? readAlignmentJob(entry.root, entry.jobId) : entry.kind === "shortform-v3" ? readCaptionShortformJob(entry.root, entry.jobId)
-          : entry.kind === "shortform-v2" ? readMotionShortformJob(entry.root, entry.jobId) : readMotionJob(entry.root, entry.jobId);
+          : entry.kind === "shortform-v2" ? readMotionShortformJob(entry.root, entry.jobId) : entry.kind === "stock-clip-v1" ? readStockClipJob(entry.root, entry.jobId) : readMotionJob(entry.root, entry.jobId);
         const candidateId = "candidateId" in job ? job.candidateId : job.source.candidateId;
         const current = await loadSceneApiContext(candidateId, true);
         if (resolve(current.root) !== resolve(entry.root)) throw new Error("queue_root_mismatch");
         const result = entry.kind === "caption-align-v1" ? await runCaptionAlignment(entry.root, entry.jobId) : entry.kind === "shortform-v3" ? await runCaptionShortform(entry.root, entry.jobId)
-          : entry.kind === "shortform-v2" ? await runMotionShortform(entry.root, entry.jobId) : await runMotionJob(entry.root, entry.jobId);
+          : entry.kind === "shortform-v2" ? await runMotionShortform(entry.root, entry.jobId) : entry.kind === "stock-clip-v1" ? await runStockClipJob(entry.root, entry.jobId) : await runMotionJob(entry.root, entry.jobId);
         console.log(JSON.stringify({ jobId: result.jobId, status: result.status }));
         rmSync(path, { force: true });
       } catch {

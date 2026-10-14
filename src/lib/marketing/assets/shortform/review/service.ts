@@ -150,6 +150,8 @@ export type ResolveShortformSourcesForReviewInput = {
    * When true, re-run providers (Admin “다시 검색”).
    */
   forceRefresh?: boolean;
+  /** Read the durable resolution only; never call providers (Admin refresh after PICK). */
+  persistedOnly?: boolean;
   /** Package root override for tests. */
   packageRoot?: string | null;
 };
@@ -257,6 +259,13 @@ export async function resolveShortformSourcesForReview(
         sourceLookup,
         catalogAvailable,
       });
+    }
+    if (input.persistedOnly) {
+      throw new ShortformSourceReviewError(
+        "저장된 소스 검색 결과가 없습니다. '소스 검색'을 눌러 검색해주세요.",
+        "SOURCE_RESOLUTION_NOT_FOUND",
+        404,
+      );
     }
   }
 

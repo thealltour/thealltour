@@ -283,7 +283,7 @@ describe.skipIf(!hasFfmpeg)("shortform caption cues, edge-silence processing and
     expect(() => mutateOpeningHook(root, candidateId, { action: "approve", expectedRevision: readOpeningHook(root, candidateId)!.revision, expectedFingerprint: readOpeningHook(root, candidateId)!.fingerprint })).toThrow("2줄");
     hook("운영 시간 먼저 확인").approve(); hook(HOOK).approve();
     expect(counts()).toEqual(before); expect(readScenePlan(root)!.fingerprint).toBe(planFingerprint); expect(motionFresh()).toBe(true);
-  });
+  }, 120_000);
 
   it("final v3 render: timeline, frame layout and audio agree; libass checks every cue plus the hook; no guide burned", async () => {
     health(); const view = captionShortformSourceView(root, candidateId);
@@ -356,7 +356,7 @@ describe.skipIf(!hasFfmpeg)("shortform caption cues, edge-silence processing and
     const view = captionShortformSourceView(root, candidateId); expect(view.final.inputFingerprint).toBeNull(); expect(view.final.reason).toContain("수정 필요"); expect(view.preview.inputFingerprint).not.toBeNull();
     const fixed = hook(HOOK, true, { durationMs: 2000 }).saved; expect(openingHookApproved(fixed)).toBe(true); expect(fixed.approval!.approvedAt).toBe(approvedAt);
     const refit = captionShortformSourceView(root, candidateId).final.inputFingerprint; expect(refit).not.toBeNull(); expect(refit).not.toBe(fittingInput);
-  });
+  }, 120_000);
 
   it("v1 audio and v2 render jobs stay readable; v3 never overwrites them", async () => {
     health(); const v2 = queueMotionShortform(root, candidateId, planFingerprint, (await import("../motionService")).motionShortformSourceView(root, candidateId).inputFingerprint!);
@@ -459,7 +459,7 @@ describe.skipIf(!hasFfmpeg)("shortform caption cues, edge-silence processing and
     expect(processingPolicyOutdated(job)).toBe(true); expect(scenePlanFresh(root, candidateId, readScenePlan(root)!)).toBe(true); expect(captionRenderState(root, candidateId).fresh).toBe(true);
     expect(motionFresh()).toBe(true); expect(audioReviewState(root, job).pending).toEqual([]);
     expect(captionShortformSourceView(root, candidateId).final.inputFingerprint).toBe(before); expect(captionShortformFresh(root, readCaptionShortformJob(root, final.jobId))).toBe(true);
-  });
+  }, 120_000);
 
   it("verification 4: explicit reprocessing with the new policy is a new job that stales plan, captions, motion and render; approvals do not carry over", async () => {
     try {

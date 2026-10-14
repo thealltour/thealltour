@@ -11,6 +11,7 @@ import { verifySceneAsset } from "../narrationScenes/assets";
 import { motionJobSchema, motionSettingsSchema, type MotionJob, type MotionSettings, type MotionChoice } from "./contracts";
 import { resolveMotionConfig } from "./presets";
 import { motionFrameLayout } from "./frameLayout";
+import { choicesForPlan } from "../narrationVisualSources/store";
 
 export const motionDirectory = (root: string) => join(root, "context/narration/motion");
 export const motionQueueDirectory = () => process.env.NARRATION_MOTION_QUEUE_DIR || join(process.cwd(), "data/narration-motion-queue");
@@ -144,6 +145,8 @@ export function motionView(root: string, candidateId: string) {
   const plan = readScenePlan(root); const settings = readMotionSettings(root); const index = readIndex(root);
   let ready = false;
   try { if (plan) { requireFreshScenePlan(root, candidateId, plan.fingerprint); ready = true; } } catch { /* Show stale state without enabling mutation. */ }
+  let sources: Record<string, "image_motion" | "stock_video"> = {};
+  try { if (plan) sources = Object.fromEntries(choicesForPlan(root, plan).choices.map(c => [c.visualId, c.source])); } catch { /* Unreadable selection: render inputs report it. */ }
   const scenes = plan?.source.candidateId === candidateId ? plan.scenes.map(scene => {
     let imageReady = false; try { if (ready) { verifySceneAsset(root, plan, scene.visualId); imageReady = true; } } catch { /* Upload required. */ }
     let job: MotionJob | null = null;
@@ -152,7 +155,7 @@ export function motionView(root: string, candidateId: string) {
       if (job && !motionJobFresh(root, job)) job = { ...job, status: "stale", approval: null, output: null };
       else if (job?.status === "completed") requireMotionOutput(root, candidateId, job.jobId);
     } catch { if (job) job = { ...job, status: "failed", errorCode: "output_invalid", approval: null, output: null }; }
-    return { visualId: scene.visualId, text: scene.sentenceText, durationMs: scene.sceneEndMs - scene.startMs, imageReady,
+    return { visualId: scene.visualId, text: scene.sentenceText, durationMs: scene.sceneEndMs - scene.startMs, imageReady, source: sources[scene.visualId] ?? "image_motion",
       choice: settings?.planFingerprint === plan.fingerprint ? settings.scenes.find(s => s.visualId === scene.visualId)?.choice ?? { preset: "parallax", strength: "standard" } : { preset: "parallax", strength: "standard" },
       job: job ? { jobId: job.jobId, status: job.status, errorCode: job.errorCode, output: job.output, approved: !!job.approval } : null };
   }) : [];

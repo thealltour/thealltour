@@ -3,6 +3,7 @@ import { formatAstraImageRequest } from "@/lib/marketing/publishable/narrationSc
 import { NarrationSceneImageUpload } from "./NarrationSceneImageUpload";
 import AdminButton from "@/components/admin/ui/AdminButton";
 import { MarketingReviewNarrationMotionPanel } from "./MarketingReviewNarrationMotionPanel";
+import { NarrationStockPlanBar, NarrationStockSceneSource, useNarrationVisualSources } from "./NarrationStockSceneSource";
 import { useEffect, useRef, useState } from "react";
 import type { Narration } from "@/lib/marketing/publishable/narration/contracts";
 import type { NarrationScenePlan, SceneHandoff } from "@/lib/marketing/publishable/narrationScenes/contracts";
@@ -21,6 +22,7 @@ export function MarketingReviewNarrationScenesPanel({ candidateId, refreshKey, o
   const [message, setMessage] = useState("");
   const [astraInput, setAstraInput] = useState("");
   const [handoffText, setHandoffText] = useState("");
+  const visualSources = useNarrationVisualSources(candidateId, refreshKey, onChanged);
   function accept(next: View) {
     setView(next); dirtyRef.current = false; setDirty(false); setHandoffText(next.astraRequest ? formatAstraImageRequest(next.astraRequest) : "");
     setAudioJobId(next.source?.source.audioJobId ?? next.plan?.source.audioJobId ?? "");
@@ -91,13 +93,14 @@ export function MarketingReviewNarrationScenesPanel({ candidateId, refreshKey, o
   const selectedSourceMatches = !view?.plan || view.plan.source.audioJobId === view.source?.source.audioJobId;
   return <div className="space-y-4 rounded-lg border border-[var(--border)] p-4">
     <h3 className="font-semibold">공유 비주얼 · Narration 기준 · {prompts.length}장면</h3>
-    <p className="text-sm">승인된 문장마다 비주얼 계획 하나와 9:16 이미지 하나를 연결합니다. Hermes Shared Visual Planner가 계획 초안을 작성하고, 승인 후 Astra Handoff Writer가 이미지 생성 요청문을 만듭니다. 같은 원본 비주얼을 숏폼과 Instagram 카드뉴스에 사용합니다.</p>
+    <p className="text-sm">승인된 문장마다 비주얼 계획 하나와 9:16 이미지 하나를 연결합니다. Hermes Shared Visual Planner가 계획 초안을 작성하고, 승인 후 Astra Handoff Writer가 이미지 생성 요청문을 만듭니다. 같은 원본 비주얼을 숏폼과 Instagram 카드뉴스에 사용합니다. 숏폼에서는 문장별로 이미지 모션 대신 스톡 영상을 고를 수 있으며, 이 경우에도 이미지는 Instagram용으로 유지합니다.</p>
     <ol className="list-decimal space-y-1 pl-5 text-sm text-[var(--text-secondary)]"><li>최신 음성을 불러온 뒤, Hermes로 비주얼 계획 초안을 생성합니다. 필요하면 각 문장의 계획을 직접 수정합니다.</li><li>모든 계획을 저장하고 검토한 뒤 승인합니다.</li><li>Astra Handoff Writer로 이미지 생성 요청문을 만들고 복사해 전달합니다. Astra는 승인된 계획에 맞춰 이미지를 생성합니다.</li><li>요청문을 받은 Astra가 생성한 이미지를 해당 문장 슬롯에 바로 업로드합니다. 결과 JSON 인입은 필요하지 않습니다.</li></ol>
     <div className="flex flex-wrap gap-2 text-sm"><AdminButton variant="secondary" type="button" disabled={busy} onClick={() => void load(true)}>최신 음성 불러오기</AdminButton><label>음성 작업 ID (직접 지정) <input value={audioJobId} disabled={busy} onChange={e => setAudioJobId(e.target.value)} className="rounded border bg-[var(--bg)] p-1" /></label><AdminButton variant="secondary" type="button" disabled={busy} onClick={() => void load()}>지정한 음성·계획 불러오기</AdminButton></div>
     <AdminButton type="button" disabled={!editable || !view?.source} onClick={() => { if (!dirty || window.confirm("수정 중인 계획 대신 Hermes 초안을 새로 생성할까요?")) void mutate("generate"); }}>{busy ? "처리 중…" : "Hermes 비주얼 계획 초안 생성"}</AdminButton>
     <p className="text-sm">상태: {dirty ? "저장 필요" : view?.gateState === "approved" ? "승인됨" : view?.gateState === "stale" ? "변경 감지 · 재검토 필요" : "작성·검토 필요"}{view?.source ? ` · ${(view.source.timeline.totalDurationMs / 1000).toFixed(2)}초` : ""}</p>
     {view?.uploads && <p className="text-sm" role="status">이미지 업로드 완료: {view.uploads.slots.filter(slot => slot.ready).length} / {view.uploads.slots.length}장면</p>}
     {view?.sourceError && <p className="text-sm">{view.sourceError}</p>}
+    {view?.plan?.approval && view.gateState === "approved" && selectedSourceMatches && !dirty && <NarrationStockPlanBar state={visualSources} />}
     {view?.source?.narration.sentences.map((sentence, index) => <div key={sentence.sentenceId} className="space-y-2 rounded border border-[var(--border)] p-3">
       <p className="text-sm">{index + 1}. {sentence.text}</p>
       <label className="block text-sm">비주얼 계획 · 검토·수정<textarea placeholder="이 문장에서 보여줄 장소·피사체·행동·구도·분위기를 적어주세요. 세로 9:16, 자막용 글자는 이미지에 넣지 않습니다." value={prompts[index]?.visualPrompt ?? ""} disabled={!editable} className="mt-1 block min-h-24 w-full rounded border bg-[var(--bg)] p-2" onChange={e => { setPrompts(previous => previous.map((p, i) => i === index ? { ...p, visualPrompt: e.target.value } : p)); dirtyRef.current = true; setDirty(true); setHandoffText(""); }} /></label>
@@ -107,6 +110,7 @@ export function MarketingReviewNarrationScenesPanel({ candidateId, refreshKey, o
           slot={view.uploads?.slots.find(s => s.visualId === sentence.sentenceId) ?? null}
           previewUrl={`${endpoint}/${sentence.sentenceId}?planFingerprint=${encodeURIComponent(view.plan.fingerprint)}&image=${view.uploads?.slots.find(s => s.visualId === sentence.sentenceId)?.asset?.sha256 ?? ""}`}
           onUpload={(file, fit) => upload(sentence.sentenceId, file, fit)} />
+        <NarrationStockSceneSource sentenceId={sentence.sentenceId} state={visualSources} />
       </div>}
     </div>)}
     <div className="flex flex-wrap gap-4 text-sm"><AdminButton variant="primary" type="button" disabled={!editable || !view?.source || !prompts.length || prompts.some(p => !p.visualPrompt.trim())} onClick={() => void mutate("save")}>1. 계획 저장</AdminButton><AdminButton variant="primary" type="button" disabled={!editable || dirty || !view?.plan || !view.source || !selectedSourceMatches || view.gateState === "stale"} onClick={() => void mutate("approve")}>2. 계획 검토·승인</AdminButton><AdminButton variant="secondary" type="button" disabled={!editable || dirty || !selectedSourceMatches || view?.gateState !== "approved"} onClick={() => void mutate("write-handoff")}>3. Astra 이미지 생성 요청문 만들기</AdminButton></div>

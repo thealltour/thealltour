@@ -1,0 +1,271 @@
+{
+  "contract": "narration-stock-scene-search-v1",
+  "visualId": "72fe30e7-23c6-40a7-8c9d-a819664afbfb",
+  "scenePlanFingerprint": "45eeea2ab0495efbe84c6326caa62c5dcd90c27cd4430b6697a18771527440e6",
+  "searchPlanFingerprint": "0b9bf1586953ebfc63ce494738b864ac48742636d95b2add544c73c2e53bf8a4",
+  "sceneSearchKey": "63aa318be72a5d9b2f09f1785e8a0adae62848c245eaffde324c35ebc242e100",
+  "frameCount": 194,
+  "outcome": "candidates",
+  "attempts": [
+    {
+      "provider": "pexels",
+      "query": "people eating seafood plastic stools",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 15,
+      "message": null
+    },
+    {
+      "provider": "pixabay",
+      "query": "people eating seafood plastic stools",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 20,
+      "message": null
+    },
+    {
+      "provider": "pexels",
+      "query": "street seafood dinner Ho Chi Minh",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 15,
+      "message": null
+    },
+    {
+      "provider": "pixabay",
+      "query": "street seafood dinner Ho Chi Minh",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 20,
+      "message": null
+    },
+    {
+      "provider": "pexels",
+      "query": "eating shrimp plastic chairs street",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 15,
+      "message": null
+    },
+    {
+      "provider": "pixabay",
+      "query": "eating shrimp plastic chairs street",
+      "page": 1,
+      "status": "ok",
+      "rawCount": 20,
+      "message": null
+    }
+  ],
+  "candidates": [
+    {
+      "provider": "pexels",
+      "videoId": "12893497",
+      "pageUrl": "https://www.pexels.com/video/woman-eating-at-an-outdoor-table-12893497/",
+      "creatorName": "Mizuno K",
+      "creatorUrl": "https://www.pexels.com/@mizunokozuki",
+      "declaredDurationMs": 10000,
+      "posterUrl": "https://images.pexels.com/videos/12893497/pexels-photo-12893497.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1200&w=630",
+      "previewRendition": {
+        "fileKey": "11291013",
+        "url": "https://videos.pexels.com/video-files/12893497/12893497-sd_360_640_24fps.mp4",
+        "width": 360,
+        "height": 640,
+        "fps": 23.98
+      },
+      "renderRendition": {
+        "fileKey": "11290829",
+        "url": "https://videos.pexels.com/video-files/12893497/12893497-hd_720_1280_24fps.mp4",
+        "width": 720,
+        "height": 1280,
+        "fps": 23.98
+      },
+      "fit": {
+        "scale": 1,
+        "retainedArea": 1,
+        "orientation": "portrait"
+      },
+      "sourceMetadata": {
+        "tags": [],
+        "pageSlug": "woman eating at an outdoor table"
+      },
+      "placeEvidence": null,
+      "metadataMatch": [
+        "eat",
+        "table",
+        "outdoor"
+      ],
+      "foundBy": [
+        {
+          "query": "eating shrimp plastic chairs street",
+          "page": 1,
+          "providerRank": 9
+        }
+      ]
+    },
+    {
+      "provider": "pexels",
+      "videoId": "5794577",
+      "pageUrl": "https://www.pexels.com/video/people-eating-using-chopsticks-5794577/",
+      "creatorName": "Tima Miroshnichenko",
+      "creatorUrl": "https://www.pexels.com/@tima-miroshnichenko",
+      "declaredDurationMs": 23000,
+      "posterUrl": "https://images.pexels.com/videos/5794577/pexels-photo-5794577.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1200&w=630",
+      "previewRendition": {
+        "fileKey": "9807371",
+        "url": "https://videos.pexels.com/video-files/5794577/5794577-sd_360_640_25fps.mp4",
+        "width": 360,
+        "height": 640,
+        "fps": 25
+      },
+      "renderRendition": {
+        "fileKey": "9806804",
+        "url": "https://videos.pexels.com/video-files/5794577/5794577-hd_720_1280_25fps.mp4",
+        "width": 720,
+        "height": 1280,
+        "fps": 25
+      },
+      "fit": {
+        "scale": 1,
+        "retainedArea": 1,
+        "orientation": "portrait"
+      },
+      "sourceMetadata": {
+        "tags": [],
+        "pageSlug": "people eating using chopsticks"
+      },
+      "placeEvidence": null,
+      "metadataMatch": [
+        "people",
+        "eat"
+      ],
+      "foundBy": [
+        {
+          "query": "eating shrimp plastic chairs street",
+          "page": 1,
+          "providerRank": 1
+        }
+      ]
+    },
+    {
+      "provider": "pexels",
+      "videoId": "4881637",
+      "pageUrl": "https://www.pexels.com/video/a-man-and-woman-sitting-on-a-rooftop-eating-pizza-4881637/",
+      "creatorName": "cottonbro studio",
+      "creatorUrl": "https://www.pexels.com/@cottonbro",
+      "declaredDurationMs": 25000,
+      "posterUrl": "https://images.pexels.com/videos/4881637/pexels-photo-4881637.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1200&w=630",
+      "previewRendition": {
+        "fileKey": "9424085",
+        "url": "https://videos.pexels.com/video-files/4881637/4881637-sd_506_960_25fps.mp4",
+        "width": 506,
+        "height": 960,
+        "fps": 25
+      },
+      "renderRendition": {
+        "fileKey": "9422904",
+        "url": "https://videos.pexels.com/video-files/4881637/4881637-hd_720_1366_25fps.mp4",
+        "width": 720,
+        "height": 1366,
+        "fps": 25
+      },
+      "fit": {
+        "scale": 1,
+        "retainedArea": 0.937,
+        "orientation": "portrait"
+      },
+      "sourceMetadata": {
+        "tags": [],
+        "pageSlug": "a man and woman sitting on a rooftop eating pizza"
+      },
+      "placeEvidence": null,
+      "metadataMatch": [
+        "eat",
+        "sit"
+      ],
+      "foundBy": [
+        {
+          "query": "people eating seafood plastic stools",
+          "page": 1,
+          "providerRank": 2
+        }
+      ]
+    },
+    {
+      "provider": "pexels",
+      "videoId": "9485383",
+      "pageUrl": "https://www.pexels.com/video/a-man-sitting-on-a-bench-eating-a-sandwich-9485383/",
+      "creatorName": "Timur Weber",
+      "creatorUrl": "https://www.pexels.com/@timur-weber",
+      "declaredDurationMs": 10000,
+      "posterUrl": "https://images.pexels.com/videos/9485383/pexels-photo-9485383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1200&w=630",
+      "previewRendition": {
+        "fileKey": "11125432",
+        "url": "https://videos.pexels.com/video-files/9485383/9485383-sd_360_640_24fps.mp4",
+        "width": 360,
+        "height": 640,
+        "fps": 23.98
+      },
+      "renderRendition": {
+        "fileKey": "11125478",
+        "url": "https://videos.pexels.com/video-files/9485383/9485383-hd_720_1280_24fps.mp4",
+        "width": 720,
+        "height": 1280,
+        "fps": 23.98
+      },
+      "fit": {
+        "scale": 1,
+        "retainedArea": 1,
+        "orientation": "portrait"
+      },
+      "sourceMetadata": {
+        "tags": [],
+        "pageSlug": "a man sitting on a bench eating a sandwich"
+      },
+      "placeEvidence": null,
+      "metadataMatch": [
+        "eat",
+        "sit"
+      ],
+      "foundBy": [
+        {
+          "query": "eating shrimp plastic chairs street",
+          "page": 1,
+          "providerRank": 2
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "provider": "pixabay",
+      "videoId": "95605",
+      "reasons": [
+        "excessive_crop"
+      ]
+    },
+    {
+      "provider": "pixabay",
+      "videoId": "143874",
+      "reasons": [
+        "excessive_crop"
+      ]
+    },
+    {
+      "provider": "pixabay",
+      "videoId": "218339",
+      "reasons": [
+        "excessive_crop"
+      ]
+    },
+    {
+      "provider": "pexels",
+      "videoId": "29235880",
+      "reasons": [
+        "too_short"
+      ]
+    }
+  ],
+  "shownCount": 3,
+  "pagesFetched": 1,
+  "searchedAt": "2026-10-13T19:33:27.865Z"
+}

@@ -1,7 +1,7 @@
 "use client";
 import AdminButton from "@/components/admin/ui/AdminButton";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
 type CandidateDto = {
@@ -253,7 +253,7 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
     }
   }, [candidateId]);
 
-  const resolve = useCallback(async (opts?: { forceRefresh?: boolean }) => {
+  const resolve = useCallback(async (opts: { forceRefresh: true } | { persistedOnly: true }) => {
     setLoading(true);
     setMessage(null);
     try {
@@ -263,7 +263,7 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
           method: "POST",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ forceRefresh: opts?.forceRefresh === true }),
+          body: JSON.stringify(opts),
         },
       );
       const json = (await res.json()) as ResolveDto;
@@ -284,13 +284,6 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
       setLoading(false);
     }
   }, [candidateId, loadRenderStatus]);
-
-  const autoResolved = useRef(false);
-  useEffect(() => {
-    if (autoResolved.current) return;
-    autoResolved.current = true;
-    void resolve({ forceRefresh: false });
-  }, [resolve]);
 
   async function pick(sceneId: string, candidate: CandidateDto) {
     setBusyKey(`${sceneId}:${candidate.candidateKey}`);
@@ -324,7 +317,7 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
           ? ` · 렌더: ${json.renderEnqueue.reason}`
           : "";
       setMessage((json.message ?? "선택했습니다.") + enqueueNote);
-      await resolve({ forceRefresh: false });
+      await resolve({ persistedOnly: true });
       await loadRenderStatus();
     } catch {
       setMessage("선택에 실패했습니다.");
@@ -365,17 +358,26 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
         <div>
           <h2 className="text-base font-semibold">Shortform Sources</h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            일일 생산 파이프라인이 ShortVideoBrief·소스 검색을 준비합니다. 자동 선택은 하지 않으며, 장면별
-            명시적 PICK만 지원합니다.
+            화면을 열어도 검색하지 않습니다. 버튼을 눌렀을 때만 외부 영상 검색을 실행하며, 자동 선택 없이
+            장면별 명시적 PICK만 지원합니다.
           </p>
         </div>
-        <AdminButton variant="secondary"
-          type="button"
-          disabled={loading}
-          onClick={() => void resolve({ forceRefresh: true })}
-        >
-          {loading ? "검색 중…" : data ? "다시 검색" : "소스 검색"}
-        </AdminButton>
+        <div className="flex flex-wrap gap-2">
+          <AdminButton variant="secondary"
+            type="button"
+            disabled={loading}
+            onClick={() => void resolve({ persistedOnly: true })}
+          >
+            저장된 결과 불러오기
+          </AdminButton>
+          <AdminButton variant="secondary"
+            type="button"
+            disabled={loading}
+            onClick={() => void resolve({ forceRefresh: true })}
+          >
+            {loading ? "검색 중…" : data ? "다시 검색" : "소스 검색"}
+          </AdminButton>
+        </div>
       </div>
 
       {message ? <p className="text-sm text-[var(--text-secondary)]">{message}</p> : null}
@@ -439,7 +441,7 @@ export function MarketingReviewShortformSourcesPanel(props: { candidateId: strin
 
       {!data && !loading ? (
         <p className="text-sm text-[var(--text-secondary)]">
-          ShortVideoBrief가 준비되면 장면별 소스 옵션이 자동으로 표시됩니다. Brief가 없으면 이 후보는
+          저장된 결과를 불러오거나 &lsquo;소스 검색&rsquo;을 누르면 장면별 소스 옵션이 표시됩니다. Brief가 없으면 이 후보는
           shortform 비대상이거나 아직 생성 중입니다.
         </p>
       ) : null}

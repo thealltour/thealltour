@@ -63,9 +63,9 @@ export function MarketingReviewNarrationShortformPanel({ candidateId, refreshKey
   const captions = source?.captions; const canQueue = !busy && !!source?.canEdit && !!captions?.workerAvailable;
   return <div className="space-y-4 rounded-lg border border-[var(--border)] p-4">
     <h3 className="font-semibold">Shortform 영상</h3>
-    <p className="text-sm">승인된 문장별 모션과 무음 정리된 음성을 연결하고, 검토한 자막 cue와 도입 문구를 영상에 입힙니다. 한 문장은 한 장면이며, 자막을 나눠도 장면 수는 바뀌지 않습니다.</p>
-    <p className="text-sm">{captions?.totalDurationMs ? `${captions.sceneCount}장면 · 실제 타임라인 ${(captions.totalDurationMs / 1000).toFixed(2)}초 · 9:16` : "승인된 Narration·음성·장면 계획과 모든 장면의 모션 승인이 필요합니다."}
-      {captions ? ` · 모션 승인 ${captions.approvedCount}/${captions.sceneCount}${!captions.workerAvailable ? " · 영상 실행기 연결 필요" : ""}` : ""}</p>
+    <p className="text-sm">승인된 문장별 장면 영상(이미지 모션 또는 스톡 구간 클립)과 무음 정리된 음성을 연결하고, 검토한 자막 cue와 도입 문구를 영상에 입힙니다. 한 문장은 한 장면이며, 자막을 나눠도 장면 수는 바뀌지 않습니다.</p>
+    <p className="text-sm">{captions?.totalDurationMs ? `${captions.sceneCount}장면 · 실제 타임라인 ${(captions.totalDurationMs / 1000).toFixed(2)}초 · 9:16` : "승인된 Narration·음성·장면 계획과 모든 장면의 영상 소스 승인(모션 또는 스톡 클립)이 필요합니다."}
+      {captions ? ` · 장면 영상 승인 ${captions.approvedCount}/${captions.sceneCount}${!captions.workerAvailable ? " · 영상 실행기 연결 필요" : ""}` : ""}</p>
     <MarketingReviewNarrationCaptionCuesPanel candidateId={candidateId} refreshKey={refreshKey} onChanged={changed} />
     <MarketingReviewNarrationHookPanel candidateId={candidateId} refreshKey={refreshKey} onChanged={changed} />
     <div className="space-y-2">

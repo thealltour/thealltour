@@ -16,7 +16,10 @@ import { motionView, requireMotionOutput, motionQueueDirectory, motionWorkerAvai
 import { openingHookApproved, openingHookRenderState } from "../narration/openingHook";
 import { readNarrationAudioJob } from "../narration/audio";
 import { audioReviewPendingMessage, audioReviewState } from "../narration/audioReview";
-import { motionShortformJobSchema, motionRenderConfigSchema, captionRenderConfigSchema, captionShortformJobSchema, type MotionShortformJob, type CaptionShortformJob } from "./motionContracts";
+import { motionShortformJobSchema, motionRenderConfigSchema, captionRenderConfigSchema, captionShortformJobSchema, type MotionShortformJob, type CaptionShortformJob, type SceneRenderAsset, type captionShortformJobV3Schema } from "./motionContracts";
+import { choicesForPlan, selectionContentFingerprint } from "../narrationVisualSources/store";
+import { currentStockClipJob, requireStockClipOutput } from "../narrationVisualSources/clips";
+import type { VisualSourcesRender } from "../narrationVisualSources/contracts";
 import { buildMotionShortformArgs } from "./motionGraph";
 import { renderMotionAss, renderCaptionAss, renderCaptionSrt } from "./motionSubtitles";
 import { captionApproved, captionFontMetrics, captionRenderState } from "./captionPlan";
@@ -46,17 +49,57 @@ export function readMotionShortformJob(root: string, id: string) {
   return job;
 }
 function save(root: string, job: MotionShortformJob) { atomicWriteFile(jobPath(root, job.jobId), JSON.stringify(motionShortformJobSchema.parse(job), null, 2), 0o600); }
-function motionInputs(root: string, candidateId: string, planFingerprint: string) {
+type MotionAsset = MotionShortformJob["motionAssets"][number];
+const isStockAsset = (asset: SceneRenderAsset): asset is Extract<SceneRenderAsset, { sourceKind: "stock_clip" }> => "sourceKind" in asset;
+/**
+ * Every scene keeps its image (Instagram derivation and the images contract). Each scene's video comes from the selected
+ * source: an approved motion job, or an approved normalized stock clip. A stock choice never falls back to the image silently.
+ */
+function sceneInputs(root: string, candidateId: string, planFingerprint: string, allowStock: boolean) {
   const plan = requireFreshScenePlan(root, candidateId, planFingerprint); const source = loadSceneSource(root, candidateId, plan.source.audioJobId);
   const view = motionView(root, candidateId);
   const images = plan.scenes.map(scene => verifySceneAsset(root, plan, scene.visualId).asset);
-  const motionAssets = plan.scenes.map(scene => {
+  const { selection, matchesPlan, choices } = choicesForPlan(root, plan);
+  const stockSelected = choices.some(choice => choice.source === "stock_video");
+  if (stockSelected && !allowStock) throw new NarrationError("스톡 영상이 선택된 장면이 있어 이 렌더 방식은 사용할 수 없습니다. 자막 cue 렌더를 사용하거나 해당 장면을 이미지 모션으로 바꿔주세요.", 409);
+  if (stockSelected && !matchesPlan) throw new NarrationError("스톡 영상 선택이 이전 장면 계획 기준입니다. 4. 공유 비주얼에서 해당 장면의 구간 클립을 다시 만들거나 이미지 모션으로 바꿔주세요.", 409);
+  const motionAssets: SceneRenderAsset[] = plan.scenes.map((scene, i) => {
+    if (choices[i]!.source === "stock_video") {
+      const current = currentStockClipJob(root, scene.visualId);
+      if (!current || current.status !== "completed" || !current.approval) throw new NarrationError(`${i + 1}번 장면은 스톡 영상이 선택되어 있습니다. 정규화된 구간 클립을 확인·승인하거나, 클립 생성이 실패했다면 '이미지 모션 사용'을 선택해주세요.`, 409);
+      const { job } = requireStockClipOutput(root, candidateId, current.jobId, true);
+      return { sourceKind: "stock_clip" as const, visualId: scene.visualId, jobId: job.jobId, inputFingerprint: job.inputFingerprint, originalSha256: job.original!.sha256,
+        outputSha256: job.output!.sha256, relativePath: job.output!.relativePath, frameCount: job.output!.frameCount };
+    }
     const slot = view.scenes.find(s => s.visualId === scene.visualId);
     if (!slot?.job?.approved || slot.job.status !== "completed") throw new NarrationError("모든 장면의 최신 모션 또는 정지 결과를 먼저 승인해주세요.", 409);
     const { job } = requireMotionOutput(root, candidateId, slot.job.jobId, true);
     return { visualId: scene.visualId, jobId: job.jobId, inputFingerprint: job.inputFingerprint, outputSha256: job.output!.sha256, relativePath: job.output!.relativePath, frameCount: job.output!.frameCount };
   });
-  return { candidateId, plan, timeline: source.timeline, images, motionAssets };
+  const visualSources: VisualSourcesRender | null = stockSelected && selection ? { contract: "narration-visual-source-render-v1", selectionFingerprint: selectionContentFingerprint(selection.scenes),
+    scenes: choices.map(choice => ({ visualId: choice.visualId, source: choice.source })) } : null;
+  return { candidateId, plan, timeline: source.timeline, images, motionAssets, visualSources };
+}
+function onlyMotionAssets(assets: SceneRenderAsset[]): MotionAsset[] {
+  return assets.map(asset => { if (isStockAsset(asset)) throw new NarrationError("스톡 클립은 이 렌더 방식에서 사용할 수 없습니다.", 409); return asset; });
+}
+/** v2 renderer: image motion only, exactly as before. */
+function motionInputs(root: string, candidateId: string, planFingerprint: string) {
+  const { visualSources, motionAssets, ...inputs } = sceneInputs(root, candidateId, planFingerprint, false);
+  void visualSources;
+  return { ...inputs, motionAssets: onlyMotionAssets(motionAssets) };
+}
+/** Scenes whose selected source (motion or stock clip) is approved and intact; used for progress display only. */
+function approvedSourceCount(root: string, candidateId: string, view: ReturnType<typeof motionView>) {
+  try {
+    const plan = view.planFingerprint ? requireFreshScenePlan(root, candidateId, view.planFingerprint) : null; if (!plan) return 0;
+    const { choices } = choicesForPlan(root, plan);
+    return choices.filter(choice => {
+      if (choice.source === "image_motion") { const slot = view.scenes.find(s => s.visualId === choice.visualId); return !!slot?.job?.approved && slot.job.status === "completed"; }
+      const job = currentStockClipJob(root, choice.visualId);
+      try { return !!job?.approval && !!requireStockClipOutput(root, candidateId, job.jobId, true); } catch { return false; }
+    }).length;
+  } catch { return 0; }
 }
 function currentInputs(root: string, candidateId: string, planFingerprint: string) {
   const inputs = motionInputs(root, candidateId, planFingerprint); const renderConfig = motionRenderConfig();
@@ -64,8 +107,11 @@ function currentInputs(root: string, candidateId: string, planFingerprint: strin
   return { ...inputs, renderConfig };
 }
 function copyRenderInputs(root: string, job: MotionShortformJob | CaptionShortformJob, path: (name: string) => string) {
-  const videos = job.motionAssets.map(motion => { const current = requireMotionOutput(root, job.candidateId, motion.jobId, true); const bytes = readFileSync(current.path);
-    if (sha256Buffer(bytes) !== motion.outputSha256) throw new Error("motion_changed"); const target = path(`inputs/${motion.visualId}.mp4`); atomicWriteFile(target, bytes); return target; });
+  const videos = (job.motionAssets as SceneRenderAsset[]).map(asset => {
+    const current = isStockAsset(asset) ? requireStockClipOutput(root, job.candidateId, asset.jobId, true) : requireMotionOutput(root, job.candidateId, asset.jobId, true);
+    if (isStockAsset(asset) && "original" in current.job && current.job.original?.sha256 !== asset.originalSha256) throw new Error("stock_original_changed");
+    const bytes = readFileSync(current.path);
+    if (sha256Buffer(bytes) !== asset.outputSha256) throw new Error("scene_video_changed"); const target = path(`inputs/${asset.visualId}.mp4`); atomicWriteFile(target, bytes); return target; });
   const audio = job.timeline.segments.map(segment => { const bytes = readFileSync(resolvePackageArtifactPath({ packageRoot: root, relativePath: segment.relativeAudioPath }));
     if (sha256Buffer(bytes) !== segment.audioSha256) throw new Error("audio_changed"); const target = path(`inputs/${segment.segmentId}.wav`); atomicWriteFile(target, bytes); return target; });
   return { videos, audio };
@@ -147,15 +193,18 @@ export function captionRenderConfig() {
     autoShrink: false, previewGuideBurned: false, videoCodec: "libx264", audioCodec: "aac", crf: 20, preset: "veryfast", transition: "hard_cut", gapPolicy: "hold_previous_scene", frameBoundary: "round_absolute_endpoints" });
 }
 type CaptionPurpose = CaptionShortformJob["purpose"];
-type CaptionInputs = Pick<CaptionShortformJob, "candidateId" | "plan" | "timeline" | "images" | "motionAssets" | "renderConfig" | "purpose" | "captionPlan" | "hook" | "audioReview">;
+type CaptionInputs = Pick<z.infer<typeof captionShortformJobV3Schema>, "candidateId" | "plan" | "timeline" | "images" | "renderConfig" | "purpose" | "captionPlan" | "hook" | "audioReview">
+  & { motionAssets: SceneRenderAsset[]; visualSources?: VisualSourcesRender | null };
+/** v3 inputs (no stock scene) hash exactly as before; v4 adds the selection identity and is a separate input contract. */
 export function captionShortformFingerprint(job: CaptionInputs) {
-  return sceneHash({ contract: "narration-shortform-input-v3", candidateId: job.candidateId, planFingerprint: job.plan.fingerprint, timeline: job.timeline, images: job.images,
-    motionAssets: job.motionAssets, renderConfig: job.renderConfig, purpose: job.purpose, captionPlan: job.captionPlan, hook: job.hook, audioReview: job.audioReview });
+  const base = { candidateId: job.candidateId, planFingerprint: job.plan.fingerprint, timeline: job.timeline, images: job.images,
+    motionAssets: job.motionAssets, renderConfig: job.renderConfig, purpose: job.purpose, captionPlan: job.captionPlan, hook: job.hook, audioReview: job.audioReview };
+  return job.visualSources ? sceneHash({ contract: "narration-shortform-input-v4", ...base, visualSources: job.visualSources }) : sceneHash({ contract: "narration-shortform-input-v3", ...base });
 }
 const overlayHook = (hook: CaptionShortformJob["hook"]) => hook?.enabled ? { text: hook.text, startMs: 0, endMs: hook.endMs } : null;
 /** Re-run at queue time, at every worker freshness check and when serving output; the UI is never the only gate. */
 function captionInputs(root: string, candidateId: string, planFingerprint: string, purpose: CaptionPurpose): CaptionInputs {
-  const inputs = motionInputs(root, candidateId, planFingerprint); const caption = captionRenderState(root, candidateId);
+  const inputs = sceneInputs(root, candidateId, planFingerprint, true); const caption = captionRenderState(root, candidateId);
   if (!caption.plan || !(purpose === "final" ? caption.finalReady : caption.previewReady)) throw new NarrationError(caption.reason ?? "자막 cue를 확인해주세요.", 409);
   if (caption.plan.lineage.audioJobId !== inputs.plan.source.audioJobId || caption.plan.lineage.audioTimelineFingerprint !== inputs.plan.source.timelineFingerprint) throw new NarrationError("자막 cue와 장면 계획의 음성 기준이 다릅니다.", 409);
   const audio = readNarrationAudioJob(root, inputs.plan.source.audioJobId); const review = audioReviewState(root, audio);
@@ -174,6 +223,8 @@ export function readCaptionShortformJob(root: string, id: string) {
   if (job.jobId !== id || job.candidateId !== job.plan.source.candidateId || job.plan.fingerprint !== scenePlanFingerprint(job.plan) || !job.plan.approval || job.plan.approval.fingerprint !== job.plan.fingerprint ||
     job.plan.approval.revision !== job.plan.revision || job.inputFingerprint !== captionShortformFingerprint(job) || job.rendererFingerprint !== sceneHash(job.renderConfig) || (job.status === "completed") !== !!job.output ||
     (job.purpose === "final" && (!job.captionPlan.approved || job.captionPlan.cues.some(c => !c.reviewed) || !job.hook?.approved))) throw new NarrationError("렌더 작업 연결 정보가 다릅니다.", 409);
+  if (job.contract === "narration-shortform-render-job-v4" && (job.visualSources.scenes.length !== job.motionAssets.length || !job.motionAssets.some(isStockAsset) ||
+    job.motionAssets.some((asset, i) => asset.visualId !== job.visualSources.scenes[i]!.visualId || isStockAsset(asset) !== (job.visualSources.scenes[i]!.source === "stock_video")))) throw new NarrationError("렌더 작업의 영상 소스 연결 정보가 다릅니다.", 409);
   return job;
 }
 function saveCaption(root: string, job: CaptionShortformJob) { atomicWriteFile(jobPath(root, job.jobId), JSON.stringify(captionShortformJobSchema.parse(job), null, 2), 0o600); }
@@ -181,7 +232,7 @@ export function captionShortformFresh(root: string, job: CaptionShortformJob) {
   try { return captionShortformFingerprint(captionInputs(root, job.candidateId, job.plan.fingerprint, job.purpose)) === job.inputFingerprint; } catch { return false; }
 }
 export function captionShortformSourceView(root: string, candidateId: string) {
-  const view = motionView(root, candidateId); const approvedCount = view.scenes.filter(s => s.job?.approved && s.job.status === "completed").length;
+  const view = motionView(root, candidateId); const approvedCount = approvedSourceCount(root, candidateId, view);
   const result = { preview: { inputFingerprint: null as string | null, reason: null as string | null }, final: { inputFingerprint: null as string | null, reason: null as string | null } }; let totalDurationMs: number | null = null;
   for (const purpose of ["preview", "final"] as const) {
     try { if (!view.planFingerprint) throw new NarrationError("승인된 문장 비주얼 계획이 필요합니다."); const input = captionInputs(root, candidateId, view.planFingerprint, purpose);
@@ -207,8 +258,11 @@ export function queueCaptionShortform(root: string, candidateId: string, planFin
         }
       } catch { /* Recover missing/corrupt previous output with a new job. */ }
     }
-    const job: CaptionShortformJob = { contract: "narration-shortform-render-job-v3", jobId: randomUUID(), ...inputs, inputFingerprint: fingerprint,
-      rendererFingerprint: sceneHash(inputs.renderConfig), createdAt: new Date().toISOString(), startedAt: null, heartbeatAt: null, status: "queued", errorCode: null, output: null };
+    const { visualSources, motionAssets, ...rest } = inputs;
+    const common = { jobId: randomUUID(), inputFingerprint: fingerprint, rendererFingerprint: sceneHash(inputs.renderConfig), createdAt: new Date().toISOString(),
+      startedAt: null, heartbeatAt: null, status: "queued" as const, errorCode: null, output: null };
+    const job: CaptionShortformJob = visualSources ? { contract: "narration-shortform-render-job-v4", ...rest, motionAssets, visualSources, ...common }
+      : { contract: "narration-shortform-render-job-v3", ...rest, motionAssets: onlyMotionAssets(motionAssets), ...common };
     saveCaption(root, job); atomicWriteFile(index, JSON.stringify({ jobId: job.jobId }), 0o600); publish(job); return job;
   });
 }

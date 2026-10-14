@@ -1,0 +1,184 @@
+{
+  "contract": "narration-stock-search-plan-v1",
+  "revision": 4,
+  "fingerprint": "0b9bf1586953ebfc63ce494738b864ac48742636d95b2add544c73c2e53bf8a4",
+  "scenePlanFingerprint": "45eeea2ab0495efbe84c6326caa62c5dcd90c27cd4430b6697a18771527440e6",
+  "origin": "hermes_draft",
+  "scenes": [
+    {
+      "visualId": "72fe30e7-23c6-40a7-8c9d-a819664afbfb",
+      "searchEnabled": true,
+      "subject": "people eating seafood at a low plastic table on the street",
+      "visibleAction": "sitting on low plastic stools eating seafood from metal plates",
+      "environment": "outdoor street-level sidewalk dining in Ho Chi Minh City at evening",
+      "mustMatch": [
+        "low plastic stools",
+        "outdoor street setting",
+        "seafood dishes"
+      ],
+      "exclude": [
+        "indoor restaurant",
+        "luxury dining",
+        "empty tables"
+      ],
+      "placeRequirement": "specific_place",
+      "placeName": "Oc Oanh",
+      "misattributionRisk": "Viewer might assume any generic street food stall in Vietnam is Oc Oanh.",
+      "queries": [
+        "people eating seafood plastic stools",
+        "street seafood dinner Ho Chi Minh",
+        "eating shrimp plastic chairs street"
+      ],
+      "humanChecks": [
+        "Confirm the setting shows street-level outdoor dining with low plastic furniture.",
+        "Verify no awards, logos, or signs falsely claim specific Michelin branding."
+      ]
+    },
+    {
+      "visualId": "93e88f87-864e-460d-a206-c43bc3d6879c",
+      "searchEnabled": true,
+      "subject": "people walking along a bustling neighborhood food street",
+      "visibleAction": "walking past outdoor food stalls and low tables on a busy street",
+      "environment": "Vinh Khanh food street in Ho Chi Minh City at night",
+      "mustMatch": [
+        "busy neighborhood street",
+        "outdoor food establishments",
+        "evening lighting"
+      ],
+      "exclude": [
+        "quiet European street",
+        "indoor food court",
+        "daytime daylight"
+      ],
+      "placeRequirement": "specific_place",
+      "placeName": "Vinh Khanh street",
+      "misattributionRisk": "Viewer might mistake any busy Asian night market street for Vinh Khanh.",
+      "queries": [
+        "busy food street plastic tables",
+        "Vinh Khanh street night food",
+        "crowded street dining Vietnam evening"
+      ],
+      "humanChecks": [
+        "Confirm the street atmosphere matches a local food thoroughfare without readable street name signs.",
+        "Verify natural lighting and realistic pedestrian density."
+      ]
+    },
+    {
+      "visualId": "422763bb-e57a-4ea1-98a4-47255258743c",
+      "searchEnabled": true,
+      "subject": "grilled prawns on a metal plate",
+      "visibleAction": "grilling and serving charred prawns on a metal dish",
+      "environment": "close-up tabletop view at a street food eatery",
+      "mustMatch": [
+        "grilled prawns",
+        "metal plate",
+        "charred shell texture"
+      ],
+      "exclude": [
+        "raw seafood",
+        "plated fine dining",
+        "empty plates"
+      ],
+      "placeRequirement": "generic_allowed",
+      "placeName": null,
+      "misattributionRisk": "Could be any grilled shrimp dish globally, not specific to this restaurant.",
+      "queries": [
+        "grilled prawns metal plate street",
+        "shrimp barbecue food close up",
+        "grilled seafood dish Vietnam street"
+      ],
+      "humanChecks": [
+        "Verify the dish clearly shows grilled prawns with charred shells.",
+        "Check that the setting reflects a casual street food table."
+      ]
+    },
+    {
+      "visualId": "f5b0edac-cad1-4f52-a062-0c90e0f99147",
+      "searchEnabled": true,
+      "subject": "sidewalk dining table near moving traffic",
+      "visibleAction": "people eating at a sidewalk table with motorbikes passing by",
+      "environment": "sidewalk edge next to a city street lane",
+      "mustMatch": [
+        "sidewalk table",
+        "passing motorbikes or traffic",
+        "evening street view"
+      ],
+      "exclude": [
+        "pedestrian-only plaza",
+        "interior dining room",
+        "empty street"
+      ],
+      "placeRequirement": "generic_allowed",
+      "placeName": null,
+      "misattributionRisk": "Could be any roadside food stall in Southeast Asia.",
+      "queries": [
+        "sidewalk dining street traffic Vietnam",
+        "eating street food motorbikes passing",
+        "roadside restaurant table evening traffic"
+      ],
+      "humanChecks": [
+        "Confirm the proximity of the dining table to the active street traffic lane.",
+        "Verify realistic evening street lighting and ambient activity."
+      ]
+    },
+    {
+      "visualId": "4267a4d3-089f-4f92-a4ef-507a8c23d278",
+      "searchEnabled": true,
+      "subject": "friends sharing seafood dishes at a low table",
+      "visibleAction": "sharing food and talking across a low plastic table",
+      "environment": "casual outdoor street eatery gathering at night",
+      "mustMatch": [
+        "friends sharing food",
+        "low plastic table",
+        "casual gathering"
+      ],
+      "exclude": [
+        "formal restaurant",
+        "solo diner",
+        "indoor luxury setting"
+      ],
+      "placeRequirement": "generic_allowed",
+      "placeName": null,
+      "misattributionRisk": "Could be any group dining scene in a casual outdoor setting.",
+      "queries": [
+        "friends sharing seafood low table",
+        "eating seafood together plastic chairs",
+        "group dining street food Vietnam"
+      ],
+      "humanChecks": [
+        "Verify the social interaction and shared dining atmosphere.",
+        "Confirm informal outdoor furniture and lighting."
+      ]
+    },
+    {
+      "visualId": "5b925cbd-5abf-43c1-ad96-33ef6a233939",
+      "searchEnabled": true,
+      "subject": "open-air street dining area with electric fans",
+      "visibleAction": "outdoor dining under simple awnings with overhead fans",
+      "environment": "humid open-air street eatery strip at night",
+      "mustMatch": [
+        "open-air street setting",
+        "overhead electric fans",
+        "casual awnings"
+      ],
+      "exclude": [
+        "air-conditioned indoor restaurant",
+        "modern glass building",
+        "daytime bright sun"
+      ],
+      "placeRequirement": "generic_allowed",
+      "placeName": null,
+      "misattributionRisk": "Could be any humid tropical street food venue.",
+      "queries": [
+        "open air street food fans",
+        "outdoor dining ceiling fans Vietnam",
+        "humid street restaurant evening atmosphere"
+      ],
+      "humanChecks": [
+        "Confirm the presence of open-air shelter and practical cooling equipment like fans.",
+        "Check that limitations of open-air dining are visually supported."
+      ]
+    }
+  ],
+  "updatedAt": "2026-10-13T19:30:30.415Z"
+}

@@ -83,12 +83,22 @@ describe("stay22Adapter buildOffer", () => {
     const url = new URL(offer!.targetUrl);
     expect(`${url.origin}${url.pathname}`).toBe("https://www.stay22.com/allez/roam");
     expect(url.searchParams.get("aid")).toBe(TEST_AID);
-    expect(url.searchParams.get("address")).toBe("오사카");
+    expect(url.searchParams.get("address")).toBe("Osaka, Japan");
     expect(url.searchParams.get("checkin")).toBe("2027-01-28");
     expect(url.searchParams.get("checkout")).toBe("2027-02-01");
     expect(url.searchParams.get("adults")).toBe("3");
     expect(url.searchParams.has("children")).toBe(false);
     expect(url.searchParams.get("campaign")).toBe("planner_hotel");
+  });
+
+  it("destination without canonical alias → raw text address, offer kept, Korean UI labels", async () => {
+    const adapter = createStay22Adapter({ env: { STAY22_AID: TEST_AID } });
+    const offer = await Promise.resolve(
+      adapter.buildOffer(ctx({ destination: { text: "가와치나가노", countryCode: "JP" } })),
+    );
+    expect(offer).not.toBeNull();
+    expect(offer).toMatchObject({ title: "가와치나가노 숙소", destinationLabel: "가와치나가노" });
+    expect(new URL(offer!.targetUrl).searchParams.get("address")).toBe("가와치나가노");
   });
 
   it("passes children when present", async () => {

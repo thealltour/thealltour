@@ -153,7 +153,9 @@ describe("PR-9F affiliate router controlled rollout", () => {
     expect(defs.find((d) => d.id === "airalo")?.enabled).toBe(false);
     expect(defs.find((d) => d.id === "wegotrip")?.enabled).toBe(false);
     expect(defs.find((d) => d.id === "stay22")?.enabled).toBe(false);
-    expect(getProductionAffiliateAdapters().size).toBe(4);
+    expect(defs.find((d) => d.id === "klook")?.enabled).toBe(false);
+    expect(defs.find((d) => d.id === "kkday")?.enabled).toBe(false);
+    expect(getProductionAffiliateAdapters().size).toBe(6);
     // PR-9G: no provider.rolloutPercent field
     for (const d of defs) {
       expect(d).not.toHaveProperty("rolloutPercent");

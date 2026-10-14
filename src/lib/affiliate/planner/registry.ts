@@ -7,12 +7,14 @@ import {
 import type { EnvBag } from "@/lib/envBag";
 import { airaloAdapter } from "@/lib/affiliate/planner/providers/airalo/airaloAdapter";
 import { aviasalesAdapter } from "@/lib/affiliate/planner/providers/aviasales/aviasalesAdapter";
+import { kkdayAdapter } from "@/lib/affiliate/planner/providers/kkday/kkdayAdapter";
+import { klookAdapter } from "@/lib/affiliate/planner/providers/klook/klookAdapter";
 import { stay22Adapter } from "@/lib/affiliate/planner/providers/stay22/stay22Adapter";
 import { weGoTripAdapter } from "@/lib/affiliate/planner/providers/wegotrip/weGoTripAdapter";
 import type { AffiliateProviderDefinition } from "@/lib/affiliate/planner/types";
 
 /**
- * Production registry — adapters registered for Airalo + WeGoTrip + Aviasales + Stay22.
+ * Production registry — adapters registered for Airalo + WeGoTrip + Aviasales + Stay22 + Klook + KKday.
  * enabled = catalog default + per-provider env override; map order carries no priority.
  */
 export function getProductionAffiliateProviderDefinitions(
@@ -27,6 +29,8 @@ export function getProductionAffiliateAdapters(): Map<string, AffiliateProviderA
     ["wegotrip", weGoTripAdapter],
     ["aviasales", aviasalesAdapter],
     ["stay22", stay22Adapter],
+    ["klook", klookAdapter],
+    ["kkday", kkdayAdapter],
   ]);
 }
 

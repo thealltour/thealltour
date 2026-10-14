@@ -8,7 +8,8 @@ import {
 } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDataClient";
 import { resolveAviasalesDestinationIata } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDestinationResolver";
 import {
-  selectAviasalesPriceOffer,
+  aviasalesPassengerSuffix,
+  buildAviasalesCanonicalSearchUrl,
 } from "@/lib/affiliate/planner/providers/aviasales/aviasalesSelector";
 import { AVIASALES_ALLOWED_HOSTS } from "@/lib/affiliate/planner/providers/aviasales/aviasalesTypes";
 import type { AffiliateOfferBuild, AffiliateRoutingContext } from "@/lib/affiliate/planner/types";
@@ -59,6 +60,14 @@ async function buildAviasalesOffer(
 ): Promise<AffiliateOfferBuild | null> {
   if (!isAviasalesEligible(context)) return null;
 
+  if (!aviasalesPassengerSuffix(context.travelers)) {
+    console.info(
+      "[aviasales] offer_skipped",
+      travelpayoutsSafeLogMeta({ providerId: "aviasales", errorCode: "unsupported_travelers" }),
+    );
+    return null;
+  }
+
   const originIata = normalizeIataCode(context.flightOrigin!.iata);
   const destinationText = context.destination.text.trim();
   if ([...destinationText].length < 2) return null;
@@ -75,34 +84,36 @@ async function buildAviasalesOffer(
     context.dates.endDate && /^\d{4}-\d{2}-\d{2}$/.test(context.dates.endDate)
       ? context.dates.endDate
       : null;
-  const oneWay = !returnAt;
 
-  const prices = await fetchAviasalesPricesForDates({
+  const search = buildAviasalesCanonicalSearchUrl({
+    originIata,
+    destinationIata: dest.iata,
+    departureDate: departureAt,
+    returnDate: returnAt,
+    adults: context.travelers.adults,
+    children: context.travelers.children,
+  });
+  if (!search.ok) {
+    console.info(
+      "[aviasales] offer_skipped",
+      travelpayoutsSafeLogMeta({ providerId: "aviasales", errorCode: search.reason }),
+    );
+    return null;
+  }
+  const sourceUrl = search.url;
+
+  await logAviasalesPriceSignal({
     origin: originIata,
     destination: dest.iata,
     departureAt,
     returnAt,
-    oneWay,
     deps,
   });
-  if (!prices.ok || prices.data.length === 0) return null;
-
-  const selection = selectAviasalesPriceOffer({ offers: prices.data });
-  if (!selection) {
-    console.info(
-      "[aviasales] commerce_target_pending",
-      travelpayoutsSafeLogMeta({
-        providerId: "aviasales",
-        errorCode: "no_usable_search_link",
-      }),
-    );
-    return null;
-  }
 
   const createCommerce = deps.createCommerceTarget ?? createTravelpayoutsCommerceTarget;
   try {
     const commerce = await createCommerce({
-      sourceUrl: selection.sourceUrl,
+      sourceUrl,
       providerId: "aviasales",
       allowedHosts: [...AVIASALES_ALLOWED_HOSTS],
     });
@@ -119,7 +130,7 @@ async function buildAviasalesOffer(
       providerSubId: commerce.providerSubId,
       affiliateNetwork: commerce.affiliateNetwork,
       affiliateCampaignId: commerce.campaignId ?? null,
-      sourceUrlHost: commerce.sourceUrlHost || safeHostnameFromUrl(selection.sourceUrl),
+      sourceUrlHost: commerce.sourceUrlHost || safeHostnameFromUrl(sourceUrl),
     };
   } catch (error) {
     const code =
@@ -130,10 +141,52 @@ async function buildAviasalesOffer(
       "[aviasales] commerce_failed",
       travelpayoutsSafeLogMeta({
         providerId: "aviasales",
-        hostname: safeHostnameFromUrl(selection.sourceUrl),
+        hostname: safeHostnameFromUrl(sourceUrl),
         errorCode: code,
       }),
     );
     return null;
+  }
+}
+
+/**
+ * Best-effort Data API lookup, diagnostics only. prices_for_dates holds recently searched fares,
+ * so empty rows or errors are routine and must never remove the CTA. Rows are single-passenger
+ * fares and their link/query (expected_price*, static_fare_key, itinerary_key, t) never become the target.
+ */
+async function logAviasalesPriceSignal(params: {
+  origin: string;
+  destination: string;
+  departureAt: string;
+  returnAt: string | null;
+  deps: AviasalesAdapterDeps;
+}): Promise<void> {
+  try {
+    const prices = await fetchAviasalesPricesForDates({
+      origin: params.origin,
+      destination: params.destination,
+      departureAt: params.departureAt,
+      returnAt: params.returnAt,
+      oneWay: !params.returnAt,
+      deps: params.deps,
+    });
+    if (!prices.ok) {
+      console.info("[aviasales] prices_failed", {
+        providerId: "aviasales",
+        errorCode: prices.errorCode,
+      });
+    } else if (prices.data.length === 0) {
+      console.info("[aviasales] prices_empty", { providerId: "aviasales", rowCount: 0 });
+    } else {
+      console.info("[aviasales] prices_available", {
+        providerId: "aviasales",
+        rowCount: prices.data.length,
+      });
+    }
+  } catch {
+    console.info("[aviasales] prices_failed", {
+      providerId: "aviasales",
+      errorCode: "unexpected",
+    });
   }
 }

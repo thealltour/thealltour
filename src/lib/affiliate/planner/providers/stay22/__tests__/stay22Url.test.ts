@@ -11,7 +11,7 @@ const TEST_AID = "test-aid";
 function osaka(overrides?: Partial<Stay22RoamParams>): Stay22RoamParams {
   return {
     aid: TEST_AID,
-    address: "오사카",
+    address: "Osaka, Japan",
     checkin: "2027-01-28",
     checkout: "2027-02-01",
     adults: 3,
@@ -36,7 +36,7 @@ describe("buildStay22RoamUrl", () => {
     expect(url.username).toBe("");
     expect(url.password).toBe("");
     expect(url.searchParams.get("aid")).toBe(TEST_AID);
-    expect(url.searchParams.get("address")).toBe("오사카");
+    expect(url.searchParams.get("address")).toBe("Osaka, Japan");
     expect(url.searchParams.get("checkin")).toBe("2027-01-28");
     expect(url.searchParams.get("checkout")).toBe("2027-02-01");
     expect(url.searchParams.get("adults")).toBe("3");
@@ -56,8 +56,8 @@ describe("buildStay22RoamUrl", () => {
     expect(built({ children: 2 }).searchParams.get("children")).toBe("2");
   });
 
-  it("percent-encodes the Korean destination and never sends SDK push params", () => {
-    const result = buildStay22RoamUrl(osaka());
+  it("percent-encodes a raw-fallback Korean destination and never sends SDK push params", () => {
+    const result = buildStay22RoamUrl(osaka({ address: "오사카" }));
     expect(result.ok).toBe(true);
     const raw = result.ok ? result.url : "";
     expect(raw).toContain(`address=${encodeURIComponent("오사카")}`);
@@ -76,9 +76,9 @@ describe("buildStay22RoamUrl", () => {
   });
 
   it("trims AID and address", () => {
-    const url = built({ aid: `  ${TEST_AID}  `, address: "  오사카  " });
+    const url = built({ aid: `  ${TEST_AID}  `, address: "  Osaka, Japan  " });
     expect(url.searchParams.get("aid")).toBe(TEST_AID);
-    expect(url.searchParams.get("address")).toBe("오사카");
+    expect(url.searchParams.get("address")).toBe("Osaka, Japan");
   });
 
   it.each([[""], ["   "], [null], [undefined]])("empty AID %s → config_missing", (aid) => {

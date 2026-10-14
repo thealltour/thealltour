@@ -168,6 +168,51 @@ describe("itinerary contextual affiliate CTA", () => {
     expect(screen.getByText("USJ 입장권")).toBeInTheDocument();
   });
 
+  it("Klook USJ offer: CTA only inside the USJ item, token redirect only, analytics reuse", () => {
+    const klookOffer: AffiliateOffer = {
+      ...activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 }),
+      providerId: "klook",
+      title: "유니버설 스튜디오 재팬 입장권",
+    };
+    const offers = dto({ "1": [klookOffer] });
+    const { container } = render(
+      <>
+        <PlannerDaySection
+          day={day}
+          sessionId={SESSION_ID}
+          itemOffers={getItemOffersForDay(offers, 1)}
+          sourceProductId={null}
+        />
+        <PlannerAffiliateDaySlot
+          offers={offers}
+          dayNumber={1}
+          sessionId={SESSION_ID}
+          sourceProductId={null}
+        />
+      </>,
+    );
+
+    const items = screen.getAllByRole("listitem");
+    expect(within(items[0]!).queryByRole("link")).not.toBeInTheDocument();
+    const ctas = screen.getAllByRole("link", { name: /이 장소의 투어·티켓 보기/ });
+    expect(ctas).toHaveLength(1);
+    expect(within(items[1]!).getByRole("link")).toHaveAttribute("href", `/r/affiliate/${TOKEN}`);
+    expect(container.innerHTML).not.toMatch(/klook\.com|kkday\.com|tp\.media/);
+    expect(trackImpression).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: "klook",
+        category: "activity",
+        placement: "day_item",
+        dayNumber: 1,
+        itemOrder: 2,
+      }),
+    );
+    fireEvent.click(ctas[0]!);
+    expect(trackClicked).toHaveBeenCalledWith(
+      expect.objectContaining({ providerId: "klook", category: "activity", placement: "day_item" }),
+    );
+  });
+
   it("item-attached offers are not duplicated in the day-level slot", () => {
     const offers = dto({ "1": [activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 })] });
     render(

@@ -262,14 +262,14 @@ describe("PlannerResultView information architecture", () => {
     expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
   });
 
-  it("activity-only offers still show the affiliate disclosure once", () => {
+  it.each(["wegotrip", "klook", "kkday"])("activity-only %s offers still show the affiliate disclosure once", (providerId) => {
     offersState.value = {
       summary: [],
       preparation: [],
       days: {
         "1": [
           {
-            ...makeOffer({ offerId: "a1", category: "activity", providerId: "wegotrip" }),
+            ...makeOffer({ offerId: "a1", category: "activity", providerId }),
             placement: "day_item",
             metadata: { dayNumber: 1, itemOrder: 1 },
           },

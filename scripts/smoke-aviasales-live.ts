@@ -31,6 +31,19 @@ function loadEnvLocal(): void {
   }
 }
 
+/** UTC date-only offset from the run date (prices_for_dates only covers roughly the next year). */
+function utcIsoDatePlusDays(days: number, from = new Date()): string {
+  return new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+const DEPARTURE_DATE = utcIsoDatePlusDays(90);
+const RETURN_DATE = utcIsoDatePlusDays(94);
+const SMOKE_TRAVELERS = { adults: 3, children: 0 };
+
 function maskHost(url: string): string {
   try {
     return new URL(url).hostname;
@@ -72,7 +85,7 @@ async function main() {
   const { fetchAviasalesPricesForDates } = await import(
     "@/lib/affiliate/planner/providers/aviasales/aviasalesDataClient"
   );
-  const { selectAviasalesPriceOffer } = await import(
+  const { buildAviasalesCanonicalSearchUrl, selectAviasalesPriceOffer } = await import(
     "@/lib/affiliate/planner/providers/aviasales/aviasalesSelector"
   );
   const { AVIASALES_ALLOWED_HOSTS } = await import(
@@ -132,74 +145,95 @@ async function main() {
     });
   }
 
-  let selection: ReturnType<typeof selectAviasalesPriceOffer> = null;
+  let sourceUrl: string | null = null;
   try {
     if (!originIata || !destIata) {
       results.push({
-        step: "fetch_prices_2026-10-01_2026-10-05",
+        step: "fetch_prices",
         status: "FAIL",
         error: "skipped_missing_iata",
       });
     } else {
+      // Data API only holds cached fares: an untouched exact date pair can be empty, so the
+      // connectivity check uses month granularity; the target URL still uses the exact dates.
       const prices = await fetchAviasalesPricesForDates({
         origin: originIata,
         destination: destIata,
-        departureAt: "2026-10-01",
-        returnAt: "2026-10-05",
+        departureAt: DEPARTURE_DATE.slice(0, 7),
+        returnAt: RETURN_DATE.slice(0, 7),
         oneWay: false,
         deps,
       });
       if (!prices.ok) {
         results.push({
-          step: "fetch_prices_2026-10-01_2026-10-05",
+          step: "fetch_prices",
           status: "FAIL",
           error: prices.errorCode,
+          detail: { departureDate: DEPARTURE_DATE, returnDate: RETURN_DATE },
         });
       } else if (prices.data.length === 0) {
         results.push({
-          step: "fetch_prices_2026-10-01_2026-10-05",
+          step: "fetch_prices",
           status: "FAIL",
           error: "empty_offers",
-          detail: { originIata, destIata },
+          detail: { originIata, destIata, departureDate: DEPARTURE_DATE, returnDate: RETURN_DATE },
         });
       } else {
         results.push({
-          step: "fetch_prices_2026-10-01_2026-10-05",
+          step: "fetch_prices",
           status: "PASS",
-          detail: { originIata, destIata, offerCount: prices.data.length },
+          detail: {
+            originIata,
+            destIata,
+            departureDate: DEPARTURE_DATE,
+            returnDate: RETURN_DATE,
+            offerCount: prices.data.length,
+          },
         });
-        selection = selectAviasalesPriceOffer({ offers: prices.data });
+        const selection = selectAviasalesPriceOffer({ offers: prices.data });
         results.push({
           step: "select_price_offer",
           status: selection ? "PASS" : "FAIL",
-          detail: selection
-            ? {
-                sourceHost: maskHost(selection.sourceUrl),
-                hasSearchPath: selection.sourceUrl.includes("/search"),
-              }
-            : undefined,
           error: selection ? undefined : "no_usable_search_link",
         });
+        if (selection) {
+          const search = buildAviasalesCanonicalSearchUrl({
+            originIata,
+            destinationIata: destIata,
+            departureDate: DEPARTURE_DATE,
+            returnDate: RETURN_DATE,
+            ...SMOKE_TRAVELERS,
+          });
+          sourceUrl = search.ok ? search.url : null;
+          results.push({
+            step: "build_canonical_search_url",
+            status: search.ok ? "PASS" : "FAIL",
+            detail: search.ok
+              ? { sourceHost: maskHost(search.url), sourcePath: new URL(search.url).pathname }
+              : undefined,
+            error: search.ok ? undefined : search.reason,
+          });
+        }
       }
     }
   } catch (e) {
     results.push({
-      step: "fetch_prices_2026-10-01_2026-10-05",
+      step: "fetch_prices",
       status: "FAIL",
       error: e instanceof Error ? e.message.slice(0, 200) : "unknown",
     });
   }
 
   try {
-    if (!selection) {
+    if (!sourceUrl) {
       results.push({
         step: "create_partner_link",
         status: "FAIL",
-        error: "skipped_no_selection",
+        error: "skipped_no_source_url",
       });
     } else {
       const commerce = await createTravelpayoutsCommerceTarget({
-        sourceUrl: selection.sourceUrl,
+        sourceUrl,
         providerId: "aviasales",
         allowedHosts: [...AVIASALES_ALLOWED_HOSTS],
       });
@@ -236,8 +270,9 @@ async function main() {
   const critical = [
     "resolve_origin_서울",
     "resolve_destination_오사카",
-    "fetch_prices_2026-10-01_2026-10-05",
+    "fetch_prices",
     "select_price_offer",
+    "build_canonical_search_url",
     "create_partner_link",
   ];
   const fullPass = critical.every(

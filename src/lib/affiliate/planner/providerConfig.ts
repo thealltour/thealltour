@@ -54,7 +54,8 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedPlacements: ["day_item", "transport", "planner_summary"],
     priority: 60,
     network: "travelpayouts",
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    // PR-9AJ: static named-activity product pages → Partner Links (no API/search/scraping).
+    capabilities: { deepLink: true, search: false, api: false, widget: false },
   },
   {
     id: "kkday",
@@ -65,7 +66,8 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedPlacements: ["day_item"],
     priority: 55,
     network: "travelpayouts",
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    // PR-9AJ: static named-activity product pages → Partner Links (no API/search/scraping).
+    capabilities: { deepLink: true, search: false, api: false, widget: false },
   },
   {
     id: "tiqets",
@@ -155,6 +157,8 @@ export const PLANNER_AFFILIATE_PROVIDER_ENV_KEYS: Partial<Record<AffiliateProvid
   wegotrip: "ENABLE_PLANNER_AFFILIATE_WEGOTRIP",
   airalo: "ENABLE_PLANNER_AFFILIATE_AIRALO",
   stay22: "ENABLE_PLANNER_AFFILIATE_STAY22",
+  klook: "ENABLE_PLANNER_AFFILIATE_KLOOK",
+  kkday: "ENABLE_PLANNER_AFFILIATE_KKDAY",
 };
 
 export function applyAffiliateProviderEnvOverrides(

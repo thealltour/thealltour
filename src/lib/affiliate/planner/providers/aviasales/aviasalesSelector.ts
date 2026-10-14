@@ -71,6 +71,100 @@ export function applyAviasalesKrPresentation(url: URL): void {
   }
 }
 
+/** Affiliate search code encodes each passenger type as a single digit. */
+export const AVIASALES_MAX_PASSENGERS_PER_TYPE = 9;
+
+export type AviasalesCanonicalSearchInput = {
+  originIata: string;
+  destinationIata: string;
+  /** YYYY-MM-DD */
+  departureDate: string;
+  /** YYYY-MM-DD; null/absent → one-way. */
+  returnDate?: string | null;
+  adults: number;
+  children: number;
+};
+
+export type AviasalesCanonicalSearchFailure =
+  | "invalid_iata"
+  | "invalid_dates"
+  | "unsupported_travelers"
+  | "unsafe_url";
+
+export type AviasalesCanonicalSearchResult =
+  | { ok: true; url: string }
+  | { ok: false; reason: AviasalesCanonicalSearchFailure };
+
+/**
+ * Economy passenger suffix: `[adults][children]` (children omitted when 0).
+ * Out-of-range counts → null (never clamped). Infants are never encoded (not in Planner data).
+ */
+export function aviasalesPassengerSuffix(travelers: {
+  adults: number;
+  children: number;
+}): string | null {
+  const { adults, children } = travelers;
+  if (!Number.isInteger(adults) || adults < 1 || adults > AVIASALES_MAX_PASSENGERS_PER_TYPE) {
+    return null;
+  }
+  if (
+    !Number.isInteger(children) ||
+    children < 0 ||
+    children > AVIASALES_MAX_PASSENGERS_PER_TYPE
+  ) {
+    return null;
+  }
+  return children > 0 ? `${adults}${children}` : `${adults}`;
+}
+
+/** YYYY-MM-DD → DDMM via string parts only (no Date timezone shift). */
+export function toAviasalesDayMonth(isoDate: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const m = Number(month);
+  const d = Number(day);
+  if (m < 1 || m > 12 || d < 1) return null;
+  const daysInMonth = new Date(Date.UTC(Number(year), m, 0)).getUTCDate();
+  if (d > daysInMonth) return null;
+  return `${day}${month}`;
+}
+
+/**
+ * Planner-condition Aviasales search URL (economy):
+ * `/search/{ORIGIN}{DDMM}{DEST}[{DDMM}]{adults}[{children}]` + KR presentation.
+ * Built from Planner input only — never from a Data API fare link or its query.
+ */
+export function buildAviasalesCanonicalSearchUrl(
+  input: AviasalesCanonicalSearchInput,
+): AviasalesCanonicalSearchResult {
+  const origin = input.originIata.trim().toUpperCase();
+  const destination = input.destinationIata.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(origin) || !/^[A-Z]{3}$/.test(destination)) {
+    return { ok: false, reason: "invalid_iata" };
+  }
+
+  const departure = toAviasalesDayMonth(input.departureDate);
+  if (!departure) return { ok: false, reason: "invalid_dates" };
+  const returnDate = input.returnDate?.trim() || null;
+  let returnSegment = "";
+  if (returnDate) {
+    const ret = toAviasalesDayMonth(returnDate);
+    if (!ret || returnDate < input.departureDate.trim()) {
+      return { ok: false, reason: "invalid_dates" };
+    }
+    returnSegment = ret;
+  }
+
+  const passengers = aviasalesPassengerSuffix(input);
+  if (!passengers) return { ok: false, reason: "unsupported_travelers" };
+
+  const url = buildAviasalesSearchUrl(
+    `/search/${origin}${departure}${destination}${returnSegment}${passengers}`,
+  );
+  return url ? { ok: true, url } : { ok: false, reason: "unsafe_url" };
+}
+
 export function canBuildSearchUrl(link: string): boolean {
   const trimmed = link.trim();
   if (!trimmed.startsWith("/search")) return false;

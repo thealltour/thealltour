@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
 import { affiliateCtaLabel, affiliateDefaultTitle } from "@/lib/affiliate/planner/copy";
+import { resolveAffiliateCanonicalDestination } from "@/lib/affiliate/planner/destinationCanonical";
 import {
   buildStay22RoamUrl,
   STAY22_HOST,
@@ -47,10 +48,11 @@ function buildStay22Offer(
   if (!isStay22Eligible(context)) return null;
 
   const env = deps.env ?? process.env;
-  const destinationLabel = context.destination.text.trim();
+  const destination = resolveAffiliateCanonicalDestination(context.destination);
+  const destinationLabel = destination.displayText;
   const result = buildStay22RoamUrl({
     aid: env.STAY22_AID,
-    address: destinationLabel,
+    address: destination.searchText,
     checkin: context.dates.startDate,
     checkout: context.dates.endDate,
     adults: context.travelers.adults,

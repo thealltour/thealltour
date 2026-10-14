@@ -246,6 +246,9 @@ describe("buildAffiliateOffersForSession (PR-9B)", () => {
     });
     const target = new URL(build.targetUrl);
     expect(`${target.origin}${target.pathname}`).toBe("https://www.stay22.com/allez/roam");
+    expect(target.searchParams.get("address")).toBe("Osaka, Japan");
+    expect(build.title).toBe("오사카 숙소");
+    expect(build.destinationLabel).toBe("오사카");
     expect(target.searchParams.get("checkin")).toBe("2027-01-28");
     expect(target.searchParams.get("checkout")).toBe("2027-02-01");
     expect(target.searchParams.get("adults")).toBe("3");

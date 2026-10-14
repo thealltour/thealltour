@@ -29,6 +29,10 @@ export function affiliateDestinationActivityCtaLabel(destinationLabel: string | 
   return dest ? `${dest} 투어·티켓 보기` : "투어·티켓 보기";
 }
 
+/** Description for an exact named-attraction ticket offer (no price/discount/availability claims). */
+export const AFFILIATE_NAMED_ACTIVITY_DESCRIPTION =
+  "여행 일정에 맞춰 입장권 예약 조건을 확인해 보세요.";
+
 export function affiliateDefaultTitle(
   category: AffiliateCategory,
   destinationLabel: string | null,

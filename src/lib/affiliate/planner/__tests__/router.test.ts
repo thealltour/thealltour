@@ -325,10 +325,12 @@ describe("PR-8/9B Affiliate Router", () => {
     expect(isSafeHttpsUrl("javascript:alert(1)")).toBe(false);
   });
 
-  it("production registry registers airalo+wegotrip+aviasales+stay22 adapters; aviasales enabled only", () => {
+  it("production registry registers airalo+wegotrip+aviasales+stay22+klook+kkday adapters; aviasales enabled only", () => {
     const defs = getProductionAffiliateProviderDefinitions({});
     expect(defs.filter((d) => d.id !== "aviasales").every((d) => d.enabled === false)).toBe(true);
-    expect(getProductionAffiliateAdapters().size).toBe(4);
+    expect(getProductionAffiliateAdapters().size).toBe(6);
+    expect(getProductionAffiliateAdapters().has("klook")).toBe(true);
+    expect(getProductionAffiliateAdapters().has("kkday")).toBe(true);
     expect(getProductionAffiliateAdapters().has("airalo")).toBe(true);
     expect(getProductionAffiliateAdapters().has("wegotrip")).toBe(true);
     expect(getProductionAffiliateAdapters().has("aviasales")).toBe(true);

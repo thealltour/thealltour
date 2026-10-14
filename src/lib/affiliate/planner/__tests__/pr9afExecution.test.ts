@@ -109,11 +109,11 @@ describe("PR-9AF provider env toggles", () => {
     const before = enabledOf(PLANNER_AFFILIATE_PROVIDER_CATALOG);
     const after = applyAffiliateProviderEnvOverrides(PLANNER_AFFILIATE_PROVIDER_CATALOG, {
       ENABLE_PLANNER_AFFILIATE_WEGOTRIP: "true",
-      ENABLE_PLANNER_AFFILIATE_KLOOK: "true",
+      ENABLE_PLANNER_AFFILIATE_TIQETS: "true",
     });
     expect(enabledOf(PLANNER_AFFILIATE_PROVIDER_CATALOG)).toEqual(before);
     expect(enabledOf(after).wegotrip).toBe(true);
-    expect(enabledOf(after).klook).toBe(before.klook);
+    expect(enabledOf(after).tiqets).toBe(before.tiqets);
   });
 
   it("provider toggles do not turn on the master switch", () => {

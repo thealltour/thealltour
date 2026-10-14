@@ -136,13 +136,12 @@ export async function buildAffiliateOffersForSession(params: {
       placeName: target.placeName,
     });
 
-  // Activity providers fetch destination-level data (city, catalog) shared by every item:
-  // the first lookup warms those caches, and if it yields nothing the rest would too.
+  // The first lookup runs alone to warm destination-level caches (city, catalog) shared by every
+  // item. Results are item-dependent (named activities), so a miss never skips later targets.
   const routeActivities = async (): Promise<Array<AffiliateOffer | null>> => {
     const [first, ...rest] = activityTargets;
     if (!first) return [];
     const firstOffer = await routeActivity(first);
-    if (!firstOffer) return activityTargets.map(() => null);
     const restOffers = await mapWithConcurrency(rest, ACTIVITY_ROUTE_CONCURRENCY, routeActivity);
     return [firstOffer, ...restOffers];
   };

@@ -5,7 +5,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createMemoryAviasalesCache } from "@/lib/affiliate/planner/providers/aviasales/aviasalesCache";
 import { fetchAviasalesPricesForDates } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDataClient";
 import { resolveAviasalesLocationIata } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDestinationResolver";
-import { selectAviasalesPriceOffer } from "@/lib/affiliate/planner/providers/aviasales/aviasalesSelector";
+import {
+  buildAviasalesCanonicalSearchUrl,
+  selectAviasalesPriceOffer,
+} from "@/lib/affiliate/planner/providers/aviasales/aviasalesSelector";
 import { AVIASALES_ALLOWED_HOSTS } from "@/lib/affiliate/planner/providers/aviasales/aviasalesTypes";
 import { createTravelpayoutsCommerceTarget } from "@/lib/affiliate/travelpayouts/commerceService";
 
@@ -32,6 +35,19 @@ function loadEnvLocal(): void {
     // ignore
   }
 }
+
+/** UTC date-only offset from the run date (prices_for_dates only covers roughly the next year). */
+function utcIsoDatePlusDays(days: number, from = new Date()): string {
+  return new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate() + days),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+const DEPARTURE_DATE = utcIsoDatePlusDays(90);
+const RETURN_DATE = utcIsoDatePlusDays(94);
+const SMOKE_TRAVELERS = { adults: 3, children: 0 };
 
 const live = process.env.LIVE_AVIASALES_SMOKE === "1";
 
@@ -68,30 +84,45 @@ describe.skipIf(!live)("LIVE Aviasales smoke (no booking)", () => {
     console.log(JSON.stringify({ step: "destination", iata: dest!.iata, name: dest!.name, type: dest!.type }));
   }, 20_000);
 
-  it("fetchAviasalesPricesForDates 2026-10-01/05 + select", async () => {
+  it("fetchAviasalesPricesForDates (run-date +90/+94 months) + canonical 3-adult search URL", async () => {
     expect(originIata).toMatch(/^[A-Z]{3}$/);
     expect(destIata).toMatch(/^[A-Z]{3}$/);
+    // Data API only holds cached fares: an untouched exact date pair can be empty, so the
+    // connectivity check uses month granularity; the target URL still uses the exact dates.
     const prices = await fetchAviasalesPricesForDates({
       origin: originIata,
       destination: destIata,
-      departureAt: "2026-10-01",
-      returnAt: "2026-10-05",
+      departureAt: DEPARTURE_DATE.slice(0, 7),
+      returnAt: RETURN_DATE.slice(0, 7),
       oneWay: false,
       deps,
     });
     expect(prices.ok).toBe(true);
     if (!prices.ok) return;
     expect(prices.data.length).toBeGreaterThan(0);
-    const selection = selectAviasalesPriceOffer({ offers: prices.data });
-    expect(selection).not.toBeNull();
-    sourceUrl = selection!.sourceUrl;
+    expect(selectAviasalesPriceOffer({ offers: prices.data })).not.toBeNull();
+
+    const search = buildAviasalesCanonicalSearchUrl({
+      originIata,
+      destinationIata: destIata,
+      departureDate: DEPARTURE_DATE,
+      returnDate: RETURN_DATE,
+      ...SMOKE_TRAVELERS,
+    });
+    expect(search.ok).toBe(true);
+    if (!search.ok) return;
+    sourceUrl = search.url;
+    expect(new URL(sourceUrl).pathname.endsWith("3")).toBe(true);
     console.log(
       JSON.stringify({
         step: "prices",
         originIata,
         destIata,
+        departureDate: DEPARTURE_DATE,
+        returnDate: RETURN_DATE,
         offerCount: prices.data.length,
-        sourceHost: new URL(selection!.sourceUrl).hostname,
+        sourceHost: new URL(sourceUrl).hostname,
+        sourcePath: new URL(sourceUrl).pathname,
       }),
     );
   }, 30_000);

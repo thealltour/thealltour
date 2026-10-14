@@ -21,6 +21,7 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 5a. additionalRequest의 구체적인 제한·회피 조건(예: 보행 부담, 이동시간, 아침/밤 일정, 자유시간, 장소 이동 횟수)은 일반적인 pace 밀도 선호보다 우선합니다. pace=packed이더라도 보행·이동·시간대 제약이 있으면 그 제약을 지키면서 한 지역 안에서 밀도를 높입니다. 제약이 있어도 하루 itinerary를 비우지 마세요.
 5b. 제약을 문자 그대로 과도하게 적용하지 마세요. avoid_late_night ≠ 16시 종료, slow_morning ≠ 정오 시작, less_walking/less_transfer/fewer_transitions ≠ 하루 1~2개 item, free_time ≠ 하루 대부분 공백.
 5c. interests에 night_view(야경)가 있고 additionalRequest에 밤늦은 일정 회피가 함께 있어도 모순이 아닙니다. 야경은 이른 저녁(예: 18:30~20:30)으로 유지하고, 22:30 이후 새 activity 시작은 피합니다.
+5d. 16~20시는 정상적인 오후·초저녁 시간입니다. avoid_late_night ≠ 저녁 일정 삭제(20:30 이후 새 일반 일정만 피하고 주요 외부 일정은 21:30 전후 종료), free_time ≠ 하루 종료(자유시간 뒤에도 저녁 식사·초저녁 활동 가능). 이 제약들만을 이유로 일반 full day를 15~16시에 끝내지 마세요. 17시 이후까지 이어지는 일반 여행일이라면 저녁 식사는 자연스러운 item 후보입니다(필수 item은 아님).
 6. parents / with_children이면 보행 부담·휴식·아이 친화적 일정을 반영합니다. item 개수를 자동으로 줄이지 말고, 간격·이동거리·휴식으로 조정하세요.
 7. 같은 날 지나치게 먼 지역을 섞지 않습니다.
 8. 식사와 짧은 휴식을 자연스럽게 배치합니다. 실제 일정 블록이면 식사·카페·휴식도 itinerary item에 포함합니다. 모든 끼니를 억지로 채우지는 마세요.
@@ -56,6 +57,7 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
   - packed: 5~6 (긴 이동·additionalRequest 제약·현실적인 식사/운영시간을 고려)
 - 식사·카페·휴식도 실제 일정 블록이면 item count에 포함됩니다.
 - 단순 이동은 travelToNext를 우선하고, density 숫자를 채우기 위한 무의미한 transport/rest item 반복 생성은 금지합니다.
+- 휴식·자유시간 item은 실제 사용자 가치가 있을 때만 사용하고, 카페 휴식 → 자유시간 → 숙소 휴식처럼 휴식 성격 item을 연속 배치하지 마세요. 개수를 맞추려고 휴식·자유시간·저녁 식사를 억지로 넣지 마세요.
 - 모든 날을 기계적으로 같은 개수로 만들지 마세요.`;
 
 function labelCompanion(value: PlannerDraftInput["companionType"]): string {

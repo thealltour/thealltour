@@ -57,7 +57,7 @@ function plan(): PlannerPlan {
             description: "d",
             estimatedDurationMinutes: 60,
             travelToNext: null,
-            bookingRecommended: false,
+            bookingRecommended: true,
           },
         ],
         tips: [],
@@ -215,42 +215,43 @@ describe("PR-9C router integration", () => {
     expect(dto.disclosure).toBeNull();
   });
 
-  it("respects day slot limit of 1", async () => {
-    const wego = createWeGoTripAdapter({
-      cache: createMemoryWeGoTripCache(),
-      fetchImpl: vi.fn(async (input: RequestInfo) => {
-        const url = String(input);
-        if (url.includes("/languages/")) return new Response("{}", { status: 404 });
-        if (url.includes("/currencies/")) {
-          return new Response(JSON.stringify({ data: [{ code: "USD" }] }), { status: 200 });
-        }
-        if (url.includes("/search/")) {
-          return new Response(
-            JSON.stringify({
-              data: {
-                results: [{ id: 1853909, name: "Osaka", slug: "osaka", type: "city", available: true }],
-              },
-            }),
-            { status: 200 },
-          );
-        }
+  it("routes bookingRecommended activity items per item with per-day cap and shared lookups", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+      if (url.includes("/languages/")) return new Response("{}", { status: 404 });
+      if (url.includes("/currencies/")) {
+        return new Response(JSON.stringify({ data: [{ code: "USD" }] }), { status: 200 });
+      }
+      if (url.includes("/search/")) {
         return new Response(
           JSON.stringify({
             data: {
-              results: [
-                {
-                  id: 1,
-                  title: "Tour",
-                  slug: "tour",
-                  available: true,
-                  city: { id: 1853909, name: "Osaka", slug: "osaka" },
-                },
-              ],
+              results: [{ id: 1853909, name: "Osaka", slug: "osaka", type: "city", available: true }],
             },
           }),
           { status: 200 },
         );
-      }) as never,
+      }
+      return new Response(
+        JSON.stringify({
+          data: {
+            results: [
+              {
+                id: 1,
+                title: "Tour",
+                slug: "tour",
+                available: true,
+                city: { id: 1853909, name: "Osaka", slug: "osaka" },
+              },
+            ],
+          },
+        }),
+        { status: 200 },
+      );
+    });
+    const wego = createWeGoTripAdapter({
+      cache: createMemoryWeGoTripCache(),
+      fetchImpl: fetchImpl as never,
       createCommerceTarget: async () => ({
         affiliateUrl: "https://tp.media/r?w=1",
         providerSubId: "tp_eeeeeeeeeeeeeeeeeeeeeeee",
@@ -259,18 +260,31 @@ describe("PR-9C router integration", () => {
       }),
     });
 
-    const multiDayPlan = plan();
-    multiDayPlan.days[0]!.items.push({
-      order: 2,
-      time: "14:00",
-      type: "attraction",
-      name: "Second",
+    const item = (
+      order: number,
+      type: PlannerPlan["days"][number]["items"][number]["type"],
+      name: string,
+      bookingRecommended: boolean,
+    ): PlannerPlan["days"][number]["items"][number] => ({
+      order,
+      time: null,
+      type,
+      name,
       area: null,
       description: "d",
       estimatedDurationMinutes: 60,
       travelToNext: null,
-      bookingRecommended: false,
+      bookingRecommended,
     });
+
+    const multiDayPlan = plan();
+    multiDayPlan.days[0]!.items = [
+      item(1, "food", "Lunch", true),
+      item(2, "attraction", "Universal Studios Japan", true),
+      item(3, "attraction", "Shrine", false),
+      item(4, "activity", "River Cruise", true),
+      item(5, "attraction", "Tower", true),
+    ];
 
     const dto = await buildAffiliateOffersForSession({
       sessionId: "550e8400-e29b-41d4-a716-446655440000",
@@ -302,6 +316,8 @@ describe("PR-9C router integration", () => {
       },
     });
 
-    expect(dto.days["1"]).toHaveLength(1);
+    expect(dto.days["1"]?.map((o) => o.offerId)).toEqual(["id-2", "id-4"]);
+    const searchCalls = fetchImpl.mock.calls.filter(([url]) => String(url).includes("/search/"));
+    expect(searchCalls).toHaveLength(1);
   });
 });

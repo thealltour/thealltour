@@ -3,7 +3,10 @@ import "server-only";
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
 import { AFFILIATE_DISCLOSURE_KO, affiliateCtaLabel, affiliateDefaultTitle } from "@/lib/affiliate/planner/copy";
 import { resolveAffiliateDestination } from "@/lib/affiliate/planner/destinationResolver";
-import { itemTypeToAffiliateCategory } from "@/lib/affiliate/planner/eligibility";
+import {
+  selectActivityItemTargets,
+  type ActivityItemTarget,
+} from "@/lib/affiliate/planner/eligibility";
 import { persistAffiliateOfferToken } from "@/lib/affiliate/planner/offerRepository";
 import type { AffiliateDestinationOverride } from "@/lib/affiliate/planner/providerConfig";
 import {
@@ -25,12 +28,14 @@ import type {
 import type { PlannerPlan } from "@/lib/planner/planSchemas";
 import type { PlannerDraftInput } from "@/types/planner";
 import { normalizePlannerDraftInput } from "@/lib/planner/normalizeDraftInput";
+import { mapWithConcurrency } from "@/lib/planner/placesClient";
 
 const SUMMARY_CATEGORIES: AffiliateCategory[] = ["flight", "hotel"];
 const PREPARATION_CATEGORIES: AffiliateCategory[] = ["esim", "insurance", "travel_goods"];
 const SUMMARY_MAX = 2;
 const PREPARATION_MAX = 3;
-const DAY_MAX = 1;
+/** Parallel item-level activity lookups after the first (one wave for the trip cap). */
+const ACTIVITY_ROUTE_CONCURRENCY = 5;
 
 export type BuildAffiliateOffersDeps = {
   providers?: AffiliateProviderDefinition[];
@@ -70,12 +75,6 @@ export async function buildAffiliateOffersForSession(params: {
     input: draft,
   });
 
-  const flightOrigin = await resolveFlightOriginOnce({
-    draft,
-    providers,
-    resolveOriginIata,
-  });
-
   const baseContext = {
     plannerSessionId: params.sessionId,
     destination,
@@ -90,18 +89,12 @@ export async function buildAffiliateOffersForSession(params: {
     interests: draft?.interests ?? [],
     pace: draft?.pace ?? "balanced",
     sourceProductId: params.sourceProductId,
-    flightOrigin,
+    flightOrigin: null as AffiliateFlightOrigin | null,
   };
 
-  const summary: AffiliateOffer[] = [];
-  for (const category of SUMMARY_CATEGORIES) {
-    if (summary.length >= SUMMARY_MAX) break;
-    const offer = await routeAndPersist({
-      context: {
-        ...baseContext,
-        placement: "planner_summary",
-        category,
-      },
+  const route = (context: AffiliateRoutingContext) =>
+    routeAndPersist({
+      context,
       providers,
       adapters,
       overrides,
@@ -109,59 +102,64 @@ export async function buildAffiliateOffersForSession(params: {
       sessionId: params.sessionId,
       destination: destination.text,
       sourceProductId: params.sourceProductId,
-    });
-    if (offer) summary.push(offer);
-  }
+    }).catch(() => null);
 
-  const preparation: AffiliateOffer[] = [];
-  for (const category of PREPARATION_CATEGORIES) {
-    if (preparation.length >= PREPARATION_MAX) break;
-    const offer = await routeAndPersist({
-      context: {
-        ...baseContext,
-        placement: "preparation",
-        category,
-      },
-      providers,
-      adapters,
-      overrides,
-      persist,
-      sessionId: params.sessionId,
-      destination: destination.text,
-      sourceProductId: params.sourceProductId,
+  const routeGroup = async (
+    categories: AffiliateCategory[],
+    placement: AffiliatePlacement,
+    max: number,
+    flightOrigin: AffiliateFlightOrigin | null = null,
+  ): Promise<AffiliateOffer[]> => {
+    const out: AffiliateOffer[] = [];
+    for (const category of categories) {
+      if (out.length >= max) break;
+      const offer = await route({ ...baseContext, flightOrigin, placement, category });
+      if (offer) out.push(offer);
+    }
+    return out;
+  };
+
+  const routeSummary = async (): Promise<AffiliateOffer[]> => {
+    const flightOrigin = await resolveFlightOriginOnce({ draft, providers, resolveOriginIata });
+    return routeGroup(SUMMARY_CATEGORIES, "planner_summary", SUMMARY_MAX, flightOrigin);
+  };
+
+  const activityTargets = selectActivityItemTargets(params.plan.days);
+  const routeActivity = (target: ActivityItemTarget) =>
+    route({
+      ...baseContext,
+      placement: "day_item",
+      category: "activity",
+      dayNumber: target.dayNumber,
+      itemOrder: target.itemOrder,
+      itemType: target.itemType,
+      placeName: target.placeName,
     });
-    if (offer) preparation.push(offer);
-  }
+
+  // Activity providers fetch destination-level data (city, catalog) shared by every item:
+  // the first lookup warms those caches, and if it yields nothing the rest would too.
+  const routeActivities = async (): Promise<Array<AffiliateOffer | null>> => {
+    const [first, ...rest] = activityTargets;
+    if (!first) return [];
+    const firstOffer = await routeActivity(first);
+    if (!firstOffer) return activityTargets.map(() => null);
+    const restOffers = await mapWithConcurrency(rest, ACTIVITY_ROUTE_CONCURRENCY, routeActivity);
+    return [firstOffer, ...restOffers];
+  };
+
+  const [summary, preparation, activityOffers] = await Promise.all([
+    routeSummary(),
+    routeGroup(PREPARATION_CATEGORIES, "preparation", PREPARATION_MAX),
+    routeActivities(),
+  ]);
 
   const days: Record<string, AffiliateOffer[]> = {};
-  for (const day of params.plan.days) {
-    const dayOffers: AffiliateOffer[] = [];
-    for (const item of day.items) {
-      if (dayOffers.length >= DAY_MAX) break;
-      const mapped = itemTypeToAffiliateCategory(item.type);
-      if (!mapped) continue;
-      const offer = await routeAndPersist({
-        context: {
-          ...baseContext,
-          placement: "day_item",
-          category: mapped,
-          dayNumber: day.day,
-          itemOrder: item.order,
-          itemType: item.type,
-          placeName: item.name,
-        },
-        providers,
-        adapters,
-        overrides,
-        persist,
-        sessionId: params.sessionId,
-        destination: destination.text,
-        sourceProductId: params.sourceProductId,
-      });
-      if (offer) dayOffers.push(offer);
-    }
-    if (dayOffers.length > 0) days[String(day.day)] = dayOffers;
-  }
+  activityTargets.forEach((target, index) => {
+    const offer = activityOffers[index];
+    if (!offer) return;
+    const key = String(target.dayNumber);
+    (days[key] ??= []).push(offer);
+  });
 
   const hasAny =
     summary.length > 0 || preparation.length > 0 || Object.keys(days).length > 0;

@@ -1,7 +1,10 @@
 import "server-only";
 
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
-import { affiliateCtaLabel } from "@/lib/affiliate/planner/copy";
+import {
+  affiliateCtaLabel,
+  affiliateDestinationActivityCtaLabel,
+} from "@/lib/affiliate/planner/copy";
 import {
   fetchWeGoTripPopularProducts,
   loadWeGoTripCapabilities,
@@ -91,7 +94,9 @@ async function buildWeGoTripOffer(
       placement: "day_item",
       title,
       description: "여행 일정과 함께 예약 가능한 투어를 확인해 보세요.",
-      ctaLabel: affiliateCtaLabel("activity"),
+      ctaLabel: selection.placeMatched
+        ? affiliateCtaLabel("activity")
+        : affiliateDestinationActivityCtaLabel(destinationLabel),
       destinationLabel,
       targetUrl: commerce.affiliateUrl,
       dayNumber: context.dayNumber ?? null,

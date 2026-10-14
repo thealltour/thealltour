@@ -53,7 +53,7 @@ function samplePlan(): PlannerPlan {
             description: "d",
             estimatedDurationMinutes: 60,
             travelToNext: null,
-            bookingRecommended: false,
+            bookingRecommended: true,
           },
         ],
         tips: [],
@@ -147,7 +147,74 @@ describe("buildAffiliateOffersForSession (PR-9B)", () => {
     expect(result.summary.length).toBe(2);
     expect(result.days["1"]?.length).toBe(1);
     expect(persist.mock.calls.length).toBe(3);
+    const dayBuild = persist.mock.calls
+      .map(([call]) => (call as { build: { placement: string; dayNumber?: number | null; itemOrder?: number | null } }).build)
+      .find((build) => build.placement === "day_item");
+    expect(dayBuild).toMatchObject({ dayNumber: 1, itemOrder: 2 });
     expect(result.disclosure).toBeTruthy();
+  });
+
+  it("activity-only result still carries disclosure; one activity failure does not drop the others", async () => {
+    const activityDef = createFakeAffiliateDefinition({
+      id: "wegotrip",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+      priority: 70,
+    });
+    const plan = samplePlan();
+    plan.days[0]!.items = plan.days[0]!.items.map((item) => ({ ...item, bookingRecommended: true }));
+    const persist = vi.fn(async ({ build }: { build: { itemOrder?: number | null } }) => {
+      if (build.itemOrder === 2) throw new Error("persist boom");
+      return {
+        ...offerFromBuild({
+          build: { providerId: "wegotrip", category: "activity", placement: "day_item" },
+        }),
+        metadata: { dayNumber: 1, itemOrder: build.itemOrder ?? undefined },
+      };
+    });
+
+    const result = await buildAffiliateOffersForSession({
+      sessionId: "550e8400-e29b-41d4-a716-446655440000",
+      plan,
+      input: createEmptyPlannerDraftInput("오사카"),
+      sourceProductId: null,
+      deps: {
+        providers: [activityDef],
+        adapters: new Map([["wegotrip", createFakeAffiliateAdapter({ providerId: "wegotrip", async: true })]]),
+        persist: persist as never,
+        resolveDestination: async () => ({ text: "오사카", countryCode: "JP" }),
+      },
+    });
+
+    expect(result.summary).toEqual([]);
+    expect(result.preparation).toEqual([]);
+    expect(result.days["1"]?.map((o) => o.metadata?.itemOrder)).toEqual([1]);
+    expect(result.disclosure).toBeTruthy();
+  });
+
+  it("skips day item routing when no item is bookingRecommended", async () => {
+    const activityDef = createFakeAffiliateDefinition({
+      id: "wegotrip",
+      categories: ["activity"],
+      supportedPlacements: ["day_item"],
+    });
+    const plan = samplePlan();
+    plan.days[0]!.items = plan.days[0]!.items.map((item) => ({ ...item, bookingRecommended: false }));
+    const onBuild = vi.fn();
+    const result = await buildAffiliateOffersForSession({
+      sessionId: "550e8400-e29b-41d4-a716-446655440000",
+      plan,
+      input: createEmptyPlannerDraftInput("오사카"),
+      sourceProductId: null,
+      deps: {
+        providers: [activityDef],
+        adapters: new Map([["wegotrip", createFakeAffiliateAdapter({ providerId: "wegotrip", onBuild })]]),
+        persist: vi.fn() as never,
+        resolveDestination: async () => ({ text: "오사카", countryCode: "JP" }),
+      },
+    });
+    expect(onBuild).not.toHaveBeenCalled();
+    expect(result.days).toEqual({});
   });
 
   it("does not persist when build returns null", async () => {

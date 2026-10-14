@@ -1,9 +1,12 @@
-import type { AffiliateProviderDefinition } from "@/lib/affiliate/planner/types";
+import { parseAffiliateEnvToggle } from "@/config/affiliateRollout";
+import type { EnvBag } from "@/lib/envBag";
+import type { AffiliateProviderDefinition, AffiliateProviderId } from "@/lib/affiliate/planner/types";
 
 /**
- * Static provider catalog foundation.
+ * Static provider catalog foundation (committed defaults).
  * Airalo/WeGoTrip adapters exist (PR-9C) but stay enabled:false until live
- * feed/API + Partner Links verification. Do not invent capabilities.
+ * feed/API + Partner Links verification; enable per environment via
+ * PLANNER_AFFILIATE_PROVIDER_ENV_KEYS. Do not invent capabilities.
  */
 export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] = [
   {
@@ -130,6 +133,29 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
 ];
+
+/**
+ * Per-provider runtime toggles (below MASTER + rollout gates).
+ * "true"/"1" or "false"/"0" override the catalog default; missing/invalid keeps the catalog default.
+ */
+export const PLANNER_AFFILIATE_PROVIDER_ENV_KEYS: Partial<Record<AffiliateProviderId, string>> = {
+  aviasales: "ENABLE_PLANNER_AFFILIATE_AVIASALES",
+  wegotrip: "ENABLE_PLANNER_AFFILIATE_WEGOTRIP",
+  airalo: "ENABLE_PLANNER_AFFILIATE_AIRALO",
+};
+
+export function applyAffiliateProviderEnvOverrides(
+  catalog: AffiliateProviderDefinition[],
+  env: EnvBag = process.env,
+): AffiliateProviderDefinition[] {
+  return catalog.map((def) => {
+    const key = PLANNER_AFFILIATE_PROVIDER_ENV_KEYS[def.id];
+    if (!key) return def;
+    const override = parseAffiliateEnvToggle(env[key]);
+    if (override === null || override === def.enabled) return def;
+    return { ...def, enabled: override };
+  });
+}
 
 /** Optional destination overrides — structure only; empty until real providers. */
 export type AffiliateDestinationOverride = {

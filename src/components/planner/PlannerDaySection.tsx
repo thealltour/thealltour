@@ -1,8 +1,10 @@
 "use client";
 
+import { AffiliateItemCta } from "@/components/planner/AffiliateItemCta";
 import { PlannerDayMap, type PlannerMapMarker } from "@/components/planner/PlannerDayMap";
 import { getPlannerIconToneClasses } from "@/components/planner/conversation/plannerConversationIcons";
 import { ITEM_TYPE_VISUALS } from "@/components/planner/plannerResultVisuals";
+import type { AffiliateOffer } from "@/lib/affiliate/planner/types";
 import type { PlannerPlanDay, PlannerPlanItem } from "@/lib/planner/planSchemas";
 import type {
   PlannerPlaceEnrichmentItem,
@@ -91,6 +93,9 @@ type PlannerDaySectionProps = {
   placeByOrder?: Map<number, PlannerPlaceEnrichmentItem>;
   routeByFromOrder?: Map<number, PlannerRouteEnrichment>;
   weatherDay?: PlannerWeatherDay;
+  /** Contextual affiliate offers keyed by item order (this day only). */
+  itemOffers?: Map<number, AffiliateOffer>;
+  sourceProductId?: string | null;
 };
 
 export function PlannerDaySection({
@@ -99,6 +104,8 @@ export function PlannerDaySection({
   placeByOrder,
   routeByFromOrder,
   weatherDay,
+  itemOffers,
+  sourceProductId,
 }: PlannerDaySectionProps) {
   const weatherText = weatherLine(weatherDay);
   const dateText = formatDateKo(day.date);
@@ -147,6 +154,7 @@ export function PlannerDaySection({
           const visual = ITEM_TYPE_VISUALS[item.type];
           const Icon = visual.icon;
           const tone = getPlannerIconToneClasses(visual.tone);
+          const itemOffer = itemOffers?.get(item.order);
           const hasSecondary =
             Boolean(item.area) ||
             (enrichment?.status === "resolved" && Boolean(enrichment.formattedAddress)) ||
@@ -203,6 +211,13 @@ export function PlannerDaySection({
                     <p className="mt-1.5 type-caption text-[var(--text-muted)]">
                       약 {item.estimatedDurationMinutes}분
                     </p>
+                  ) : null}
+                  {itemOffer ? (
+                    <AffiliateItemCta
+                      offer={itemOffer}
+                      sessionId={sessionId}
+                      sourceProductId={sourceProductId}
+                    />
                   ) : null}
                 </div>
               </div>

@@ -114,6 +114,14 @@ describe("weGoTripAdapter", () => {
       /^https:\/\/wegotrip\.com\/osaka-d1853909\/historic-highlights-of-osaka-p10677\/$/,
     );
     expect(JSON.stringify(offer)).not.toContain("10677");
+    expect(offer?.ctaLabel).toBe("이 장소의 투어·티켓 보기");
+
+    const unmatched = await adapter.buildOffer(
+      ctx({ itemOrder: 2, placeName: "Universal Studios Japan" }),
+    );
+    expect(unmatched?.itemOrder).toBe(2);
+    expect(unmatched?.title).toBe("Osaka에서 즐길 수 있는 투어");
+    expect(unmatched?.ctaLabel).toBe("Osaka 투어·티켓 보기");
   });
 
   it("returns null when no products", async () => {

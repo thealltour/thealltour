@@ -259,6 +259,69 @@ describe("PlannerResultView information architecture", () => {
       />,
     );
     expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
+  });
+
+  it("activity-only offers still show the affiliate disclosure once", () => {
+    offersState.value = {
+      summary: [],
+      preparation: [],
+      days: {
+        "1": [
+          {
+            ...makeOffer({ offerId: "a1", category: "activity", providerId: "wegotrip" }),
+            placement: "day_item",
+            metadata: { dayNumber: 1, itemOrder: 1 },
+          },
+        ],
+      },
+      disclosure: "제휴 고지",
+    };
+    render(
+      <PlannerResultView
+        plan={makePlan(2)}
+        sessionId="550e8400-e29b-41d4-a716-446655440000"
+        sourceProductId={null}
+        isSaved={false}
+        enrichment={null}
+        onSaved={vi.fn()}
+        onPlanUpdated={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+    expect(screen.getByTestId("planner-affiliate-disclosure")).toHaveTextContent("제휴 고지");
+    expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
+  });
+
+  it("flight + activity offers show the disclosure once (inside BookingSurface)", () => {
+    offersState.value = {
+      summary: [makeOffer({ offerId: "f1", category: "flight" })],
+      preparation: [],
+      days: {
+        "1": [
+          {
+            ...makeOffer({ offerId: "a1", category: "activity", providerId: "wegotrip" }),
+            placement: "day_item",
+            metadata: { dayNumber: 1, itemOrder: 1 },
+          },
+        ],
+      },
+      disclosure: "제휴 고지",
+    };
+    render(
+      <PlannerResultView
+        plan={makePlan(2)}
+        sessionId="550e8400-e29b-41d4-a716-446655440000"
+        sourceProductId={null}
+        isSaved={false}
+        enrichment={null}
+        onSaved={vi.fn()}
+        onPlanUpdated={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("planner-booking-surface")).toBeInTheDocument();
+    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
+    expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 
   it("keeps compact result actions in a two-column grid", () => {

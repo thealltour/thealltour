@@ -54,6 +54,7 @@ type PlannerResultLoaderProps = {
 
 export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   const [plan, setPlan] = useState<PlannerPlan | null>(null);
+  const [planRevision, setPlanRevision] = useState(0);
   const [originText, setOriginText] = useState<string | null>(null);
   const [pace, setPace] = useState<PlannerPace | null>(null);
   const [sourceProductId, setSourceProductId] = useState<string | null>(null);
@@ -234,8 +235,10 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       originText={originText}
       pace={pace}
       onSaved={() => setIsSaved(true)}
+      planRevision={planRevision}
       onPlanUpdated={(next) => {
         setPlan(next);
+        setPlanRevision((revision) => revision + 1);
         setEnrichment(null);
         enrichTracked.current = false;
         void loadEnrichment();

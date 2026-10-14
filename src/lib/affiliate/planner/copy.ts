@@ -23,6 +23,12 @@ export function affiliateCtaLabel(category: AffiliateCategory): string {
   }
 }
 
+/** Activity CTA when the provider result is destination-level, not matched to the itinerary place. */
+export function affiliateDestinationActivityCtaLabel(destinationLabel: string | null): string {
+  const dest = destinationLabel?.trim();
+  return dest ? `${dest} 투어·티켓 보기` : "투어·티켓 보기";
+}
+
 export function affiliateDefaultTitle(
   category: AffiliateCategory,
   destinationLabel: string | null,

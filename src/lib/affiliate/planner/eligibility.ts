@@ -67,3 +67,51 @@ export function itemTypeToAffiliateCategory(
   if (itemType === "activity" || itemType === "attraction") return "activity";
   return null;
 }
+
+/** Per-day cap for item-level activity CTAs (avoid flooding every attraction). */
+export const DAY_ACTIVITY_ITEM_MAX = 2;
+/** Per-trip cap for item-level activity CTAs (bounds provider calls per Result). */
+export const TRIP_ACTIVITY_ITEM_MAX = 6;
+
+type ActivityCandidateDay = {
+  day: number;
+  items: Array<{ order: number; type: string; name: string; bookingRecommended: boolean }>;
+};
+
+export type ActivityItemTarget = {
+  dayNumber: number;
+  itemOrder: number;
+  itemType: string;
+  placeName: string;
+};
+
+/**
+ * Items that get an item-level activity offer: activity/attraction items the plan marks
+ * bookingRecommended, in day/order sequence, capped per day and per trip.
+ */
+export function selectActivityItemTargets(
+  days: ActivityCandidateDay[],
+  limits: { perDay?: number; perTrip?: number } = {},
+): ActivityItemTarget[] {
+  const perDay = limits.perDay ?? DAY_ACTIVITY_ITEM_MAX;
+  const perTrip = limits.perTrip ?? TRIP_ACTIVITY_ITEM_MAX;
+  const targets: ActivityItemTarget[] = [];
+  for (const day of days) {
+    let dayCount = 0;
+    const items = [...day.items].sort((a, b) => a.order - b.order);
+    for (const item of items) {
+      if (targets.length >= perTrip) return targets;
+      if (dayCount >= perDay) break;
+      if (!item.bookingRecommended) continue;
+      if (itemTypeToAffiliateCategory(item.type) !== "activity") continue;
+      targets.push({
+        dayNumber: day.day,
+        itemOrder: item.order,
+        itemType: item.type,
+        placeName: item.name,
+      });
+      dayCount += 1;
+    }
+  }
+  return targets;
+}

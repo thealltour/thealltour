@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { buttonVariants } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import {
-  trackAffiliateClicked,
-  trackAffiliateImpression,
-} from "@/lib/analytics/trackPlannerEvents";
+import { useAffiliateOfferTracking } from "@/components/planner/useAffiliateOfferTracking";
 import type { AffiliateOffer } from "@/lib/affiliate/planner/types";
 
 type AffiliateOfferCardProps = {
@@ -20,34 +16,7 @@ export function AffiliateOfferCard({
   sessionId,
   sourceProductId,
 }: AffiliateOfferCardProps) {
-  const impressed = useRef(false);
-
-  useEffect(() => {
-    if (impressed.current) return;
-    impressed.current = true;
-
-    trackAffiliateImpression({
-      sessionId,
-      providerId: offer.providerId,
-      category: offer.category,
-      placement: offer.placement,
-      destination: offer.destinationLabel,
-      sourceProductId,
-      dayNumber: offer.metadata?.dayNumber,
-      itemOrder: offer.metadata?.itemOrder,
-      trackingToken: offer.trackingToken,
-    });
-
-    void fetch("/api/affiliate/impression", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trackingToken: offer.trackingToken }),
-    }).catch(() => {
-      /* soft fail */
-    });
-  }, [offer, sessionId, sourceProductId]);
-
-  const href = `/r/affiliate/${encodeURIComponent(offer.trackingToken)}`;
+  const { href, onClick } = useAffiliateOfferTracking({ offer, sessionId, sourceProductId });
 
   return (
     <Card className="p-4">
@@ -62,19 +31,7 @@ export function AffiliateOfferCard({
           target="_blank"
           rel="noopener noreferrer"
           className={buttonVariants({ variant: "secondary", size: "sm", className: "mt-1" })}
-          onClick={() => {
-            trackAffiliateClicked({
-              sessionId,
-              providerId: offer.providerId,
-              category: offer.category,
-              placement: offer.placement,
-              destination: offer.destinationLabel,
-              sourceProductId,
-              dayNumber: offer.metadata?.dayNumber,
-              itemOrder: offer.metadata?.itemOrder,
-              trackingToken: offer.trackingToken,
-            });
-          }}
+          onClick={onClick}
         >
           {offer.ctaLabel}
         </a>

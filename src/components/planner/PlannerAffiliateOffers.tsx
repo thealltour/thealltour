@@ -2,12 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { AffiliateOfferSlot } from "@/components/planner/AffiliateOfferSlot";
+import { getUnattachedDayOffers } from "@/lib/affiliate/planner/contextualOffers";
 import { getOrCreatePlannerAnonymousKey } from "@/lib/planner/anonymousKey";
 import type { PlannerAffiliateOffersDto } from "@/lib/affiliate/planner/types";
 
 type PlannerAffiliateOffersProps = {
   sessionId: string;
   sourceProductId: string | null;
+  /** Bumped when the plan changes (e.g. AI edit); triggers one re-fetch per change. */
+  planRevision?: number;
   children: (offers: PlannerAffiliateOffersDto) => ReactNode;
 };
 
@@ -19,21 +22,25 @@ const EMPTY: PlannerAffiliateOffersDto = {
 };
 
 /**
- * Loads affiliate offers once per Result view (progressive enhancement).
+ * Loads affiliate offers once per Result view and once per plan revision (progressive enhancement).
  * Always soft-fetches; server master/rollout gates visibility.
  * Client compile-time flag must not block local/dev env override QA.
  */
 export function PlannerAffiliateOffersProvider({
   sessionId,
   sourceProductId: _ignoredSourceProductId,
+  planRevision = 0,
   children,
 }: PlannerAffiliateOffersProps) {
   void _ignoredSourceProductId;
-  const [offers, setOffers] = useState<PlannerAffiliateOffersDto>(EMPTY);
+  const requestKey = `${sessionId}:${planRevision}`;
+  const [loaded, setLoaded] = useState<{ key: string; offers: PlannerAffiliateOffersDto } | null>(
+    null,
+  );
+  const offers = loaded?.key === requestKey ? loaded.offers : EMPTY;
 
   useEffect(() => {
     let cancelled = false;
-    setOffers(EMPTY);
 
     void (async () => {
       try {
@@ -52,7 +59,7 @@ export function PlannerAffiliateOffersProvider({
           offers?: PlannerAffiliateOffersDto;
         } | null;
         if (!cancelled && data?.offers) {
-          setOffers(data.offers);
+          setLoaded({ key: requestKey, offers: data.offers });
         }
       } catch {
         /* soft fail */
@@ -62,7 +69,7 @@ export function PlannerAffiliateOffersProvider({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, requestKey]);
 
   return <>{children(offers)}</>;
 }
@@ -103,13 +110,14 @@ export function PlannerAffiliatePreparationSlot(props: {
   );
 }
 
+/** Day-level offers not tied to a specific item (item offers render inside PlannerDaySection). */
 export function PlannerAffiliateDaySlot(props: {
   offers: PlannerAffiliateOffersDto;
   dayNumber: number;
   sessionId: string;
   sourceProductId: string | null;
 }) {
-  const dayOffers = props.offers.days[String(props.dayNumber)] ?? [];
+  const dayOffers = getUnattachedDayOffers(props.offers, props.dayNumber);
   return (
     <AffiliateOfferSlot
       offers={dayOffers}

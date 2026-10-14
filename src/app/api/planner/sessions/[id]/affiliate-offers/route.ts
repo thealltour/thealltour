@@ -15,6 +15,9 @@ import { getPlannerSessionById } from "@/lib/planner/repository";
 import type { PlannerAffiliateOffersDto } from "@/lib/affiliate/planner/types";
 
 export const dynamic = "force-dynamic";
+// All-timeouts worst case ≈ 48s: summary (origin 8s + flight 8s + Partner Links 10s) ‖
+// preparation (Airalo feed 10s + Partner Links 10s) ‖ activities (first item ≈ 38s, rest one wave ≈ 10s).
+export const maxDuration = 60;
 
 type RouteContext = { params: Promise<{ id: string }> };
 

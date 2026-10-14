@@ -4,7 +4,10 @@ import {
   PlannerAffiliateDaySlot,
   PlannerAffiliateOffersProvider,
 } from "@/components/planner/PlannerAffiliateOffers";
-import { PlannerBookingSurface } from "@/components/planner/PlannerBookingSurface";
+import {
+  collectBookingSurfaceOffers,
+  PlannerBookingSurface,
+} from "@/components/planner/PlannerBookingSurface";
 import { PlannerDayNavigation } from "@/components/planner/PlannerDayNavigation";
 import { PlannerDaySection } from "@/components/planner/PlannerDaySection";
 import { PlannerEditPanel } from "@/components/planner/PlannerEditPanel";
@@ -14,6 +17,7 @@ import {
   usePlannerDayScrollSpy,
   usePrefersReducedMotion,
 } from "@/components/planner/usePlannerDayScrollSpy";
+import { getItemOffersForDay } from "@/lib/affiliate/planner/contextualOffers";
 import { trackPlannerDayNavigationClick } from "@/lib/analytics/trackPlannerEvents";
 import type {
   PlannerEnrichmentDto,
@@ -35,6 +39,8 @@ type PlannerResultViewProps = {
   pace?: PlannerPace | null;
   onSaved: () => void;
   onPlanUpdated: (plan: PlannerPlan) => void;
+  /** Incremented by the loader on every plan update; refreshes affiliate offers. */
+  planRevision?: number;
 };
 
 export function PlannerResultView({
@@ -47,6 +53,7 @@ export function PlannerResultView({
   pace,
   onSaved,
   onPlanUpdated,
+  planRevision = 0,
 }: PlannerResultViewProps) {
   const dayNumbers = useMemo(() => plan.days.map((d) => d.day), [plan.days]);
   const firstDay = dayNumbers[0] ?? 1;
@@ -148,7 +155,11 @@ export function PlannerResultView({
   }, [enrichment]);
 
   return (
-    <PlannerAffiliateOffersProvider sessionId={sessionId} sourceProductId={sourceProductId}>
+    <PlannerAffiliateOffersProvider
+      sessionId={sessionId}
+      sourceProductId={sourceProductId}
+      planRevision={planRevision}
+    >
       {(affiliateOffers) => (
         <div
           className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:space-y-6 sm:px-0 sm:py-10"
@@ -207,6 +218,8 @@ export function PlannerResultView({
                   placeByOrder={placesByDay.get(day.day)}
                   routeByFromOrder={routesByDay.get(day.day)}
                   weatherDay={day.date ? weatherByDate.get(day.date) : undefined}
+                  itemOffers={getItemOffersForDay(affiliateOffers, day.day)}
+                  sourceProductId={sourceProductId}
                 />
                 <PlannerAffiliateDaySlot
                   offers={affiliateOffers}
@@ -227,6 +240,16 @@ export function PlannerResultView({
             startDate={plan.tripOverview.startDate}
             endDate={plan.tripOverview.endDate}
           />
+
+          {affiliateOffers.disclosure &&
+          collectBookingSurfaceOffers(affiliateOffers).length === 0 ? (
+            <p
+              className="type-caption text-[var(--text-muted)]"
+              data-testid="planner-affiliate-disclosure"
+            >
+              {affiliateOffers.disclosure}
+            </p>
+          ) : null}
 
           <section
             className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"

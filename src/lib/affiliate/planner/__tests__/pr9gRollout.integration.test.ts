@@ -136,6 +136,27 @@ describe("PR-9G offers API + redirect canary gates", () => {
     vi.unstubAllEnvs();
   });
 
+  it("provider env toggles ON do not bypass master false (still 404)", async () => {
+    vi.stubEnv("ENABLE_PLANNER_AFFILIATE_ROUTER", "false");
+    vi.stubEnv("PLANNER_AFFILIATE_ROLLOUT_PERCENT", "100");
+    vi.stubEnv("ENABLE_PLANNER_AFFILIATE_AVIASALES", "true");
+    vi.stubEnv("ENABLE_PLANNER_AFFILIATE_WEGOTRIP", "true");
+    vi.stubEnv("ENABLE_PLANNER_AFFILIATE_AIRALO", "true");
+    const { POST } = await import(
+      "@/app/api/planner/sessions/[id]/affiliate-offers/route"
+    );
+    const res = await POST(
+      new Request("http://localhost/api", {
+        method: "POST",
+        body: JSON.stringify({ anonymousKey: "anon-included-key-zzzz" }),
+      }),
+      { params: Promise.resolve({ id: session().id }) },
+    );
+    expect(res.status).toBe(404);
+    expect(buildAffiliateOffersForSession).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
   it("master true + excluded percent → empty DTO 200, no network/build", async () => {
     // Find a key that is excluded at 5%
     let excludedKey = "anon-excluded-0";

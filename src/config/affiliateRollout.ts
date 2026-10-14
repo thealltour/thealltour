@@ -11,14 +11,21 @@ import {
  * No Math.random(). No new deps. Invalid percent never treated as 100.
  */
 
+/** "true"/"1" → true, "false"/"0" → false, anything else → null (caller keeps its committed default). */
+export function parseAffiliateEnvToggle(raw: string | undefined): boolean | null {
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  return null;
+}
+
 /** MASTER kill switch. Env overrides committed constant for server canary/smoke. */
 export function isPlannerAffiliateMasterEnabled(
   env: EnvBag = process.env,
 ): boolean {
-  const raw = env.ENABLE_PLANNER_AFFILIATE_ROUTER;
-  if (raw === "true" || raw === "1") return true;
-  if (raw === "false" || raw === "0") return false;
-  return ENABLE_PLANNER_AFFILIATE_ROUTER;
+  return (
+    parseAffiliateEnvToggle(env.ENABLE_PLANNER_AFFILIATE_ROUTER) ??
+    ENABLE_PLANNER_AFFILIATE_ROUTER
+  );
 }
 
 /**

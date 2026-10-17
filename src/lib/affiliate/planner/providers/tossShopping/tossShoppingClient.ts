@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getTossSharelinkAccessToken } from "@/lib/affiliate/planner/providers/tossShopping/tossShoppingAuth";
 import {
   getDefaultTossShoppingCache,
   tossSharelinkCacheKey,
@@ -15,8 +14,8 @@ import {
   TOSS_CATEGORY_BEST_SIZE,
   TOSS_CATEGORY_BEST_TTL_MS,
   TOSS_SHARELINK_ALLOWED_HOSTS,
-  TOSS_SHARELINK_BASE_URL,
   TOSS_SHARELINK_TTL_MS,
+  TOSS_SHOPPING_PROXY_BASE_URL,
   TOSS_SHOPPING_TIMEOUT_MS,
 } from "@/lib/affiliate/planner/providers/tossShopping/tossShoppingTypes";
 import {
@@ -27,10 +26,13 @@ import type { EnvBag } from "@/lib/envBag";
 
 export type TossShoppingClientDeps = {
   fetchImpl?: typeof fetch;
-  getAccessToken?: () => Promise<string | null>;
   cache?: TossShoppingCacheStore;
   timeoutMs?: number;
   env?: EnvBag;
+  /** Test / override: proxy shared secret (default: THEALLTOUR_PROXY_SECRET). */
+  proxySecret?: string;
+  /** Test / override: proxy origin (default: TOSS_SHOPPING_PROXY_BASE_URL). */
+  proxyBaseUrl?: string;
   /** When false, skip one Retry-After retry on 429 (default: allow a single retry). */
   retryOn429?: boolean;
 };
@@ -39,32 +41,45 @@ type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; errorCode: string };
 
-function publisherIdFromEnv(env: EnvBag): string | null {
-  const id = env.TOSS_SHARELINK_PUBLISHER_ID?.trim() ?? "";
-  return id || null;
+function proxySecretFromEnv(env: EnvBag): string | null {
+  const secret = env.THEALLTOUR_PROXY_SECRET?.trim() ?? "";
+  return secret || null;
 }
 
-async function tossFetch(params: {
+function resolveProxyBaseUrl(deps: TossShoppingClientDeps): string {
+  const raw = deps.proxyBaseUrl?.trim() || TOSS_SHOPPING_PROXY_BASE_URL;
+  return raw.replace(/\/+$/, "");
+}
+
+async function tossProxyFetch(params: {
   path: string;
   method: "GET" | "POST";
   body?: unknown;
   deps: TossShoppingClientDeps;
   retried?: boolean;
+  /** /health is unauthenticated on the proxy. */
+  requireAuth?: boolean;
 }): Promise<ApiResult<unknown>> {
-  const getToken = params.deps.getAccessToken ?? getTossSharelinkAccessToken;
-  const token = await getToken();
-  if (!token) return { ok: false, errorCode: "auth_failed" };
+  const requireAuth = params.requireAuth !== false;
+  let secret: string | null = null;
+  if (requireAuth) {
+    secret =
+      params.deps.proxySecret?.trim() ||
+      proxySecretFromEnv(params.deps.env ?? process.env);
+    if (!secret) return { ok: false, errorCode: "proxy_auth_missing" };
+  }
 
   const timeoutMs = params.deps.timeoutMs ?? TOSS_SHOPPING_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const fetchImpl = params.deps.fetchImpl ?? fetch;
-    const res = await fetchImpl(`${TOSS_SHARELINK_BASE_URL}${params.path}`, {
+    const base = resolveProxyBaseUrl(params.deps);
+    const res = await fetchImpl(`${base}${params.path}`, {
       method: params.method,
       headers: {
-        Authorization: `Bearer ${token}`,
         Accept: "application/json",
+        ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
         ...(params.body != null ? { "Content-Type": "application/json" } : {}),
       },
       body: params.body != null ? JSON.stringify(params.body) : undefined,
@@ -78,26 +93,15 @@ async function tossFetch(params: {
       // Cap wait inside a Planner request — never stall for long Retry-After values.
       const waitMs = Math.min(Math.max(retryAfterSec, 0) * 1000, 500);
       if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
-      return tossFetch({ ...params, retried: true });
+      return tossProxyFetch({ ...params, retried: true });
     }
 
     if (!res.ok) {
       return { ok: false, errorCode: `http_${res.status}` };
     }
 
-    const json = (await res.json()) as {
-      resultType?: unknown;
-      success?: unknown;
-      error?: { errorCode?: unknown };
-    };
-    if (json.resultType === "FAIL") {
-      const code =
-        json.error && typeof json.error === "object" && typeof json.error.errorCode === "string"
-          ? json.error.errorCode
-          : "api_fail";
-      return { ok: false, errorCode: code };
-    }
-    return { ok: true, data: json.success ?? json };
+    const json = (await res.json()) as unknown;
+    return { ok: true, data: json };
   } catch (error) {
     const code =
       error instanceof Error && error.name === "AbortError" ? "timeout" : "network_failed";
@@ -169,8 +173,8 @@ export async function fetchTossCategoryBest(
   const cached = await cache.readCategoryBest(categoryId);
   if (cached) return cached;
 
-  const result = await tossFetch({
-    path: `/products/best-categories/${categoryId}?size=${TOSS_CATEGORY_BEST_SIZE}`,
+  const result = await tossProxyFetch({
+    path: `/v1/category-best/${categoryId}?size=${TOSS_CATEGORY_BEST_SIZE}`,
     method: "GET",
     deps,
   });
@@ -199,9 +203,10 @@ export async function fetchTossProductDetails(
   const ids = [...new Set(tacaItemIds.filter((id) => Number.isFinite(id) && id > 0))].slice(0, 30);
   if (ids.length === 0) return [];
 
-  const result = await tossFetch({
-    path: `/products/detail?tacaItemIds=${ids.join(",")}`,
-    method: "GET",
+  const result = await tossProxyFetch({
+    path: "/v1/products/detail",
+    method: "POST",
+    body: { tacaItemIds: ids.map(String) },
     deps,
   });
   if (!result.ok) {
@@ -218,25 +223,16 @@ export async function fetchTossProductDetails(
 }
 
 /**
- * Issue or reuse a PRODUCT Sharelink. Prefer shortUrl when host-allowlisted.
- * Never returns productUrl (non-affiliate). Caches by tacaItemId+publisherId.
+ * Issue or reuse a PRODUCT Sharelink via the fixed-IP proxy.
+ * Prefer proxy targetUrl when host-allowlisted. Never returns productUrl (non-affiliate).
+ * Caches by tacaItemId (publisher lives on VPS only).
  */
 export async function createOrReuseTossSharelink(
   tacaItemId: number,
   deps: TossShoppingClientDeps = {},
 ): Promise<TossSharelinkResult | null> {
-  const env = deps.env ?? process.env;
-  const publisherId = publisherIdFromEnv(env);
-  if (!publisherId) {
-    console.info("[toss_shopping] sharelink_skipped", {
-      providerId: "toss_shopping",
-      errorCode: "missing_publisher_id",
-    });
-    return null;
-  }
-
   const cache = deps.cache ?? getDefaultTossShoppingCache();
-  const cacheKey = tossSharelinkCacheKey(tacaItemId, publisherId);
+  const cacheKey = tossSharelinkCacheKey(tacaItemId);
   const cachedUrl = await cache.readSharelink(cacheKey);
   if (cachedUrl) {
     const validated = validateTossSharelinkUrl(cachedUrl);
@@ -245,14 +241,10 @@ export async function createOrReuseTossSharelink(
     }
   }
 
-  const result = await tossFetch({
-    path: "/links",
+  const result = await tossProxyFetch({
+    path: "/v1/sharelinks",
     method: "POST",
-    body: {
-      landingType: "PRODUCT",
-      tacaItemId,
-      publisherId,
-    },
+    body: { tacaItemId },
     deps,
   });
   if (!result.ok) {
@@ -263,10 +255,16 @@ export async function createOrReuseTossSharelink(
     return null;
   }
 
-  const success = result.data as { shortUrl?: unknown; originUrl?: unknown };
+  const success = result.data as {
+    shortUrl?: unknown;
+    originUrl?: unknown;
+    targetUrl?: unknown;
+  };
   const shortUrl = asString(success.shortUrl);
   const originUrl = asString(success.originUrl);
+  const proxyTarget = asString(success.targetUrl);
   const targetUrl =
+    (proxyTarget && validateTossSharelinkUrl(proxyTarget)) ||
     (shortUrl && validateTossSharelinkUrl(shortUrl)) ||
     (originUrl && validateTossSharelinkUrl(originUrl)) ||
     null;
@@ -276,6 +274,7 @@ export async function createOrReuseTossSharelink(
       errorCode: "host_not_allowed",
       shortHost: shortUrl ? safeHostnameFromUrl(shortUrl) : null,
       originHost: originUrl ? safeHostnameFromUrl(originUrl) : null,
+      targetHost: proxyTarget ? safeHostnameFromUrl(proxyTarget) : null,
     });
     return null;
   }
@@ -292,7 +291,15 @@ export function validateTossSharelinkUrl(raw: string): string | null {
   return validated.ok ? validated.url.toString() : null;
 }
 
+/** Diagnostic only — not a hard dependency of offer build. */
 export async function fetchTossHealth(deps: TossShoppingClientDeps = {}): Promise<boolean> {
-  const result = await tossFetch({ path: "/health", method: "GET", deps });
-  return result.ok;
+  const result = await tossProxyFetch({
+    path: "/health",
+    method: "GET",
+    deps,
+    requireAuth: false,
+  });
+  if (!result.ok) return false;
+  const body = result.data as { status?: unknown };
+  return body?.status === "ok";
 }

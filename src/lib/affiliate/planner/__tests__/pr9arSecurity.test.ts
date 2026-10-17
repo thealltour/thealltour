@@ -38,8 +38,35 @@ describe("PR-9AR security surface", () => {
     );
     for (const src of [card, surface]) {
       expect(src).not.toMatch(/TOSS_SHARELINK_(ACCESS|SECRET)_KEY/);
+      expect(src).not.toMatch(/THEALLTOUR_PROXY_SECRET/);
       expect(src).not.toMatch(/NEXT_PUBLIC_TOSS/);
       expect(src).not.toMatch(/Bearer /);
     }
+  });
+
+  it("Toss runtime client no longer depends on direct Toss OAuth/API hosts or Vercel Toss keys", () => {
+    const client = readFileSync(
+      join(
+        process.cwd(),
+        "src/lib/affiliate/planner/providers/tossShopping/tossShoppingClient.ts",
+      ),
+      "utf8",
+    );
+    const types = readFileSync(
+      join(
+        process.cwd(),
+        "src/lib/affiliate/planner/providers/tossShopping/tossShoppingTypes.ts",
+      ),
+      "utf8",
+    );
+    for (const src of [client, types]) {
+      expect(src).not.toContain("oauth2.cert.toss.im");
+      expect(src).not.toContain("sharelink.toss.im/openapi");
+      expect(src).not.toContain("TOSS_SHARELINK_ACCESS_KEY");
+      expect(src).not.toContain("TOSS_SHARELINK_SECRET_KEY");
+      expect(src).not.toContain("TOSS_SHARELINK_PUBLISHER_ID");
+    }
+    expect(client).toContain("THEALLTOUR_PROXY_SECRET");
+    expect(types).toContain("https://toss-api.thealltour.com");
   });
 });

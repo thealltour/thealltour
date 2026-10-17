@@ -1,16 +1,13 @@
 /**
- * Toss Shopping Sharelink Partner API — curated travel_goods (PR-9AR).
- * Server-only types/constants. No keyword search; category-best only.
+ * Toss Shopping Sharelink — curated travel_goods (PR-9AR).
+ * Server-only types/constants. Network boundary: Gabia fixed-IP proxy.
+ * No keyword search; category-best only.
  */
 
 export const TOSS_SHOPPING_PROVIDER_ID = "toss_shopping" as const;
 
-export const TOSS_OAUTH_TOKEN_URL = "https://oauth2.cert.toss.im/token";
-export const TOSS_SHARELINK_BASE_URL = "https://sharelink.toss.im/openapi";
-export const TOSS_OAUTH_SCOPE = "sharelink:read sharelink:write";
-
-/** Live TTL ≈ 3599s; refresh ~90s before expiry. */
-export const TOSS_AUTH_REFRESH_SKEW_MS = 90_000;
+/** Production VPS HTTPS proxy (server-only client). Not NEXT_PUBLIC. */
+export const TOSS_SHOPPING_PROXY_BASE_URL = "https://toss-api.thealltour.com";
 
 /** Per-request network budget (aligned with other planner providers). */
 export const TOSS_SHOPPING_TIMEOUT_MS = 6_000;
@@ -18,7 +15,7 @@ export const TOSS_SHOPPING_TIMEOUT_MS = 6_000;
 /** Category-best rankings refresh roughly hourly — do not poll faster. */
 export const TOSS_CATEGORY_BEST_TTL_MS = 60 * 60 * 1000;
 
-/** Sharelink reuse is stable for the same product+publisher; keep long. */
+/** Sharelink reuse is stable for the same product; keep long. */
 export const TOSS_SHARELINK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Bounded parallel intent fetches (max 3 intents / trip). */

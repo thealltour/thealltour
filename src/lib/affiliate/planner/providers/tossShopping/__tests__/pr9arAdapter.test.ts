@@ -112,33 +112,26 @@ function mockTossApi(params: {
 
   params.fetchImpl.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.includes("/products/best-categories/")) {
-      return new Response(JSON.stringify({ resultType: "SUCCESS", success: { items: products } }), {
-        status: 200,
-      });
+    if (url.includes("/v1/category-best/")) {
+      return new Response(JSON.stringify({ items: products }), { status: 200 });
     }
-    if (url.includes("/products/detail")) {
+    if (url.includes("/v1/products/detail") && init?.method === "POST") {
       return new Response(
         JSON.stringify({
-          resultType: "SUCCESS",
-          success: {
-            items: products.map((p) => ({
-              ...p,
-              isSoldOut: params.detailSoldOut ?? false,
-            })),
-          },
+          items: products.map((p) => ({
+            ...p,
+            isSoldOut: params.detailSoldOut ?? false,
+          })),
         }),
         { status: 200 },
       );
     }
-    if (url.includes("/links") && init?.method === "POST") {
+    if (url.includes("/v1/sharelinks") && init?.method === "POST") {
       return new Response(
         JSON.stringify({
-          resultType: "SUCCESS",
-          success: {
-            shortUrl: "https://toss.shopping/_m/testLink",
-            originUrl: "https://toss.shopping/t/1001?k=x",
-          },
+          shortUrl: "https://toss.shopping/_m/testLink",
+          originUrl: "https://toss.shopping/t/1001?k=x",
+          targetUrl: "https://toss.shopping/_m/testLink",
         }),
         { status: 200 },
       );
@@ -157,9 +150,9 @@ describe("PR-9AR Toss adapter build", () => {
       hasRentalCarOffer: false,
       deps: {
         fetchImpl: fetchImpl as unknown as typeof fetch,
-        getAccessToken: async () => "bearer",
+        proxySecret: "proxy_secret",
+        proxyBaseUrl: "https://proxy.test",
         cache: createMemoryTossShoppingCache(),
-        env: { TOSS_SHARELINK_PUBLISHER_ID: "pub" } as unknown as NodeJS.ProcessEnv,
       },
     });
     expect(builds.length).toBeGreaterThan(0);
@@ -182,9 +175,9 @@ describe("PR-9AR Toss adapter build", () => {
       hasRentalCarOffer: false,
       deps: {
         fetchImpl: fetchImpl as unknown as typeof fetch,
-        getAccessToken: async () => "bearer",
+        proxySecret: "proxy_secret",
+        proxyBaseUrl: "https://proxy.test",
         cache: createMemoryTossShoppingCache(),
-        env: { TOSS_SHARELINK_PUBLISHER_ID: "pub" } as unknown as NodeJS.ProcessEnv,
         selectIntents: () => ["power_bank"],
       },
     });
@@ -199,9 +192,9 @@ describe("PR-9AR Toss adapter build", () => {
       hasRentalCarOffer: false,
       deps: {
         fetchImpl: vi.fn(async () => new Response("err", { status: 500 })) as unknown as typeof fetch,
-        getAccessToken: async () => "bearer",
+        proxySecret: "proxy_secret",
+        proxyBaseUrl: "https://proxy.test",
         cache: createMemoryTossShoppingCache(),
-        env: { TOSS_SHARELINK_PUBLISHER_ID: "pub" } as unknown as NodeJS.ProcessEnv,
         selectIntents: () => ["power_bank"],
       },
     });

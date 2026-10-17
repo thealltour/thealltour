@@ -20,8 +20,9 @@ export type TossShoppingCacheStore = {
   writeSharelink: (key: string, targetUrl: string, ttlMs?: number) => Promise<void>;
 };
 
-export function tossSharelinkCacheKey(tacaItemId: number, publisherId: string): string {
-  return `sharelink:${publisherId}:${tacaItemId}`;
+/** Publisher-independent key (publisher lives only on the VPS proxy). */
+export function tossSharelinkCacheKey(tacaItemId: number): string {
+  return `sharelink:v2:${tacaItemId}`;
 }
 
 export function createMemoryTossShoppingCache(): TossShoppingCacheStore {

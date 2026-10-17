@@ -1,0 +1,100 @@
+# Upsert Production AIRALO_FEED_URL on Vercel (no deploy).
+# Usage:
+#   gh workflow run set-airalo-feed-url.yml -f feed_url='https://.../airalo/product-catalog.xml'
+#
+# Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+# Never logs the feed URL value — only key name, length, and HTTP status.
+
+name: Set Airalo Feed URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      feed_url:
+        description: "Public HTTPS URL for AIRALO_FEED_URL (Production)"
+        required: true
+        type: string
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Normalize secrets + upsert AIRALO_FEED_URL
+        env:
+          FEED_URL: ${{ inputs.feed_url }}
+        run: |
+          set -euo pipefail
+          VERCEL_TOKEN=$(printf '%s' "$VERCEL_TOKEN" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          VERCEL_ORG_ID=$(printf '%s' "$VERCEL_ORG_ID" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+          VERCEL_PROJECT_ID=$(printf '%s' "$VERCEL_PROJECT_ID" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/^"//;s/"$//')
+          FEED_URL=$(printf '%s' "$FEED_URL" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          missing=""
+          [ -n "$VERCEL_TOKEN" ] || missing="$missing VERCEL_TOKEN"
+          [ -n "$VERCEL_ORG_ID" ] || missing="$missing VERCEL_ORG_ID"
+          [ -n "$VERCEL_PROJECT_ID" ] || missing="$missing VERCEL_PROJECT_ID"
+          [ -n "$FEED_URL" ] || missing="$missing feed_url"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required values:$missing"
+            exit 1
+          fi
+
+          case "$FEED_URL" in
+            https://*) ;;
+            *)
+              echo "::error::feed_url must be https://"
+              exit 1
+              ;;
+          esac
+
+          echo "Upserting AIRALO_FEED_URL for Production (value length=${#FEED_URL})"
+
+          team_qs=""
+          case "$VERCEL_ORG_ID" in
+            team_*) team_qs="&teamId=${VERCEL_ORG_ID}" ;;
+          esac
+
+          payload=$(FEED_URL="$FEED_URL" node -e '
+            const value = process.env.FEED_URL;
+            process.stdout.write(JSON.stringify({
+              key: "AIRALO_FEED_URL",
+              value,
+              type: "encrypted",
+              target: ["production"],
+            }));
+          ')
+
+          code=$(curl -sS -o /tmp/vercel-env-upsert.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?upsert=true${team_qs}" \
+            -d "$payload")
+
+          echo "Vercel env upsert HTTP ${code}"
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "::error::Vercel env upsert failed"
+            # Safe snippet only (no full value dump)
+            node -e '
+              const fs = require("fs");
+              try {
+                const j = JSON.parse(fs.readFileSync("/tmp/vercel-env-upsert.json","utf8"));
+                console.log(JSON.stringify({
+                  error: j.error || null,
+                  code: j.code || null,
+                  message: typeof j.message === "string" ? j.message.slice(0,160) : null,
+                  keys: Object.keys(j).slice(0,12),
+                }));
+              } catch {
+                console.log("non-json response length=" + fs.statSync("/tmp/vercel-env-upsert.json").size);
+              }
+            '
+            exit 1
+          fi
+
+          echo "OK: AIRALO_FEED_URL upserted for Production."
+          echo "Next: rerun Deploy (prebuilt) so the new env is pulled into production."

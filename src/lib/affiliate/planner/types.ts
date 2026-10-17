@@ -3,6 +3,8 @@
  * No provider-specific UI coupling; no ML/BGE ranking.
  */
 
+import type { PlannerActivityDiscoveryDto } from "@/lib/affiliate/planner/discovery/types";
+
 export const AFFILIATE_CATEGORIES = [
   "flight",
   "hotel",
@@ -39,11 +41,12 @@ export const AFFILIATE_PROVIDER_IDS = [
   "toss_shopping",
   "coupang",
   "stay22",
+  "localrent",
 ] as const;
 
 export type AffiliateProviderId = (typeof AFFILIATE_PROVIDER_IDS)[number];
 
-export type AffiliateNetwork = "travelpayouts";
+export type AffiliateNetwork = "travelpayouts" | "toss";
 
 /** Higher number = higher priority. Ties break by providerId lexical ascending. */
 export type AffiliateProviderDefinition = {
@@ -117,6 +120,18 @@ export type AffiliateRoutingContext = {
   flightOrigin?: AffiliateFlightOrigin | null;
 };
 
+/** Plan facts for an eSIM card. Prices are intentionally never sent to the client. */
+export type AffiliateOfferEsimMetadata = {
+  dataLabel?: string | null;
+  validityDays?: number | null;
+};
+
+/** Curated travel goods card facts (PR-9AR). Prices are never included. */
+export type AffiliateOfferTravelGoodsMetadata = {
+  intent: string;
+  imageUrl?: string | null;
+};
+
 /** Client-safe offer — never includes target URL or provider secrets. */
 export type AffiliateOffer = {
   offerId: string;
@@ -131,6 +146,8 @@ export type AffiliateOffer = {
   metadata?: {
     dayNumber?: number;
     itemOrder?: number;
+    esim?: AffiliateOfferEsimMetadata;
+    travelGoods?: AffiliateOfferTravelGoodsMetadata;
   };
 };
 
@@ -153,6 +170,11 @@ export type AffiliateOfferBuild = {
   affiliateCampaignId?: string | null;
   /** Hostname only of pre-affiliate brand URL. */
   sourceUrlHost?: string | null;
+  /** Client-safe build-time metadata; returned in the DTO, not stored on the token row. */
+  metadata?: {
+    esim?: AffiliateOfferEsimMetadata | null;
+    travelGoods?: AffiliateOfferTravelGoodsMetadata | null;
+  } | null;
 };
 
 export type AffiliateRoutingDecision = {
@@ -168,4 +190,6 @@ export type PlannerAffiliateOffersDto = {
   preparation: AffiliateOffer[];
   days: Record<string, AffiliateOffer[]>;
   disclosure: string | null;
+  /** Additive (PR-9AM): widget descriptors; null when no discovery applies. Older clients ignore it. */
+  activityDiscovery?: PlannerActivityDiscoveryDto | null;
 };

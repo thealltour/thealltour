@@ -56,7 +56,7 @@ describe("PR-9D Aviasales router integration", () => {
   it("production registers aviasales enabled after live PASS", () => {
     const adapters = getProductionAffiliateAdapters();
     expect(adapters.has("aviasales")).toBe(true);
-    expect(adapters.size).toBe(6);
+    expect(adapters.size).toBe(8);
     const def = getProductionAffiliateProviderDefinitions().find((d) => d.id === "aviasales");
     expect(def?.enabled).toBe(true);
     expect(def?.supportedDateModes).toEqual(["fixed"]);

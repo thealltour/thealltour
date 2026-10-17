@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { MapPinned, Pencil } from "lucide-react";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
@@ -62,6 +62,12 @@ import {
   parseWonInput,
 } from "@/lib/planner/conversationCopy";
 import { computeDurationDays, formatPlannerDatesSummary } from "@/lib/planner/dates";
+import {
+  formatPlannerMustDoText,
+  parsePlannerMustDoText,
+  PLANNER_MUST_DO_ITEM_MAX_LENGTH,
+  PLANNER_MUST_DO_MAX_ITEMS,
+} from "@/lib/planner/mustDo";
 import type {
   PlannerBudgetStyle,
   PlannerDraftInput,
@@ -541,7 +547,65 @@ export function PlannerConversationStep4({
           onChange={(themeRequest) => patchDraft({ themeRequest })}
         />
       </div>
+
+      <div className="space-y-2" role="group" aria-label="꼭 가고 싶은 곳 · 체험">
+        <p className="type-small font-medium text-[var(--text-secondary)]">
+          꼭 가고 싶거나 해보고 싶은 게 있나요?
+        </p>
+        <PlannerMustDoInput
+          value={draft.mustDo}
+          disabled={disabled}
+          onChange={(mustDo) => patchDraft({ mustDo })}
+        />
+      </div>
     </div>
+  );
+}
+
+function sameStringList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+/**
+ * Free text (newline/comma separated) ↔ draft.mustDo string[].
+ * Typed text is kept verbatim locally; it is only replaced when draft.mustDo changes from outside.
+ */
+function PlannerMustDoInput({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string[];
+  disabled?: boolean;
+  onChange: (mustDo: string[]) => void;
+}) {
+  const [text, setText] = useState(() => formatPlannerMustDoText(value));
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (syncedValue !== value) {
+    setSyncedValue(value);
+    if (!sameStringList(parsePlannerMustDoText(text), value)) {
+      setText(formatPlannerMustDoText(value));
+    }
+  }
+
+  return (
+    <PlannerCustomInput
+      label="꼭 가고 싶은 곳 · 체험"
+      helper={`선택 사항입니다. 장소나 체험을 최대 ${PLANNER_MUST_DO_MAX_ITEMS}개까지 적어 주세요.`}
+      value={text}
+      disabled={disabled}
+      multiline
+      rows={3}
+      maxLength={PLANNER_MUST_DO_MAX_ITEMS * (PLANNER_MUST_DO_ITEM_MAX_LENGTH + 1)}
+      placeholder="예: USJ, 오사카성, 온천, 야경 크루즈"
+      expandLabel="직접 입력하기"
+      expandIcon={MapPinned}
+      expandIconTone="emerald"
+      onChange={(next) => {
+        setText(next);
+        onChange(parsePlannerMustDoText(next));
+      }}
+    />
   );
 }
 
@@ -824,6 +888,16 @@ export function PlannerConversationSummary({ draft, disabled, onEditSection }: S
           onEdit={() => onEditSection("themes")}
           disabled={disabled}
         />
+        {draft.mustDo.length > 0 ? (
+          <SummaryEditRow
+            label="꼭 가고 싶은 곳 · 체험"
+            value={draft.mustDo.join(" · ")}
+            icon={MapPinned}
+            tone="emerald"
+            onEdit={() => onEditSection("themes")}
+            disabled={disabled}
+          />
+        ) : null}
         <SummaryEditRow
           label="속도 · 예산"
           value={`${paceLabel(draft.pace)} · ${budgetSummary(draft)}`}

@@ -158,7 +158,7 @@ describe("PlannerResultView day navigation", () => {
     expect(document.getElementById("planner-day-2")).toBeTruthy();
     expect(document.getElementById("planner-day-3")).toBeTruthy();
     expect(screen.getByTestId("day-section-inner-1")).toBeInTheDocument();
-    expect(screen.getByTestId("affiliate-day-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("affiliate-day-1")).not.toBeInTheDocument();
   });
 
   it("shows day navigation for multi-day plans", () => {
@@ -194,7 +194,7 @@ describe("PlannerResultView day navigation", () => {
 });
 
 describe("PlannerResultView information architecture", () => {
-  it("orders summary → actions → days → booking → preparation → notices", () => {
+  it("orders summary → actions → preparation hub → days → preparation tips → notices", () => {
     offersState.value = {
       summary: [makeOffer({ offerId: "f1", category: "flight" })],
       preparation: [],
@@ -226,9 +226,9 @@ describe("PlannerResultView information architecture", () => {
     const order = [
       screen.getByTestId("plan-summary"),
       screen.getByTestId("planner-result-actions"),
+      screen.getByTestId("planner-preparation-hub"),
       screen.getByText("일정"),
       screen.getByTestId("planner-day-section-1"),
-      screen.getByTestId("planner-booking-surface"),
       screen.getByTestId("planner-result-preparation"),
       screen.getByTestId("planner-result-notices"),
     ];
@@ -237,16 +237,15 @@ describe("PlannerResultView information architecture", () => {
         order[i]!.compareDocumentPosition(order[i + 1]!) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    expect(within(root).queryByTestId("legacy-summary-slot")).not.toBeInTheDocument();
-    expect(within(root).queryByTestId("legacy-prep-slot")).not.toBeInTheDocument();
+    expect(within(root).queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+    expect(within(root).queryByTestId("planner-activity-discovery")).not.toBeInTheDocument();
     expect(screen.queryByText("AI 초안 안내")).not.toBeInTheDocument();
-    expect(screen.queryByText("일자별 일정")).not.toBeInTheDocument();
     expect(screen.getByText(/AI가 입력하신 여행 조건/)).toBeInTheDocument();
     expect(screen.getByText(/일부 장소 정보를 확인하지 못했습니다/)).toBeInTheDocument();
     expect(screen.getByText(/여행일이 가까워지면 최신 날씨/)).toBeInTheDocument();
   });
 
-  it("omits BookingSurface when no global offers", () => {
+  it("omits Preparation Hub when no affiliate offers", () => {
     render(
       <PlannerResultView
         plan={makePlan(2)}
@@ -258,11 +257,12 @@ describe("PlannerResultView information architecture", () => {
         onPlanUpdated={vi.fn()}
       />,
     );
-    expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("planner-preparation-hub")).not.toBeInTheDocument();
     expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
   });
 
-  it.each(["wegotrip", "klook", "kkday"])("activity-only %s offers still show the affiliate disclosure once", (providerId) => {
+  it.each(["wegotrip", "klook", "kkday"])("activity-only %s offers open hub with disclosure once", async (providerId) => {
+    const user = (await import("@testing-library/user-event")).default.setup();
     offersState.value = {
       summary: [],
       preparation: [],
@@ -289,11 +289,14 @@ describe("PlannerResultView information architecture", () => {
       />,
     );
     expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
-    expect(screen.getByTestId("planner-affiliate-disclosure")).toHaveTextContent("제휴 고지");
+    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /여행 준비하기/ })[0]!);
+    expect(screen.getByTestId("planner-preparation-hub-disclosure")).toHaveTextContent("제휴 고지");
     expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 
-  it("hotel-only offer renders BookingSurface with the disclosure exactly once", () => {
+  it("hotel-only offer shows hub CTA; disclosure only after open", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
     offersState.value = {
       summary: [
         makeOffer({
@@ -319,13 +322,16 @@ describe("PlannerResultView information architecture", () => {
         onPlanUpdated={vi.fn()}
       />,
     );
-    expect(screen.getByTestId("planner-booking-surface")).toBeInTheDocument();
+    expect(screen.getByTestId("planner-preparation-hub")).toBeInTheDocument();
+    expect(screen.queryByText("오사카 숙소")).not.toBeInTheDocument();
+    expect(screen.queryByText("제휴 고지")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /여행 준비하기/ })[0]!);
     expect(screen.getByText("오사카 숙소")).toBeInTheDocument();
-    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
     expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 
-  it("flight + activity offers show the disclosure once (inside BookingSurface)", () => {
+  it("flight + activity offers show disclosure once inside hub", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
     offersState.value = {
       summary: [makeOffer({ offerId: "f1", category: "flight" })],
       preparation: [],
@@ -351,8 +357,8 @@ describe("PlannerResultView information architecture", () => {
         onPlanUpdated={vi.fn()}
       />,
     );
-    expect(screen.getByTestId("planner-booking-surface")).toBeInTheDocument();
-    expect(screen.queryByTestId("planner-affiliate-disclosure")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /여행 준비하기/ })[0]!);
     expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 

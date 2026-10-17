@@ -50,6 +50,8 @@ export type PlannerDraftInput = {
   interests: PlannerInterest[];
   /** Style / mood preferences (optional free text). */
   themeRequest: string;
+  /** Places or activities explicitly requested by the traveler. */
+  mustDo: string[];
   pace: PlannerPace;
   budget: {
     style: PlannerBudgetStyle | null;

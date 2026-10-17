@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  PlannerAffiliateDaySlot,
-  PlannerAffiliateOffersProvider,
-} from "@/components/planner/PlannerAffiliateOffers";
-import {
-  collectBookingSurfaceOffers,
-  PlannerBookingSurface,
-} from "@/components/planner/PlannerBookingSurface";
+import { PlannerAffiliateOffersProvider } from "@/components/planner/PlannerAffiliateOffers";
 import { PlannerDayNavigation } from "@/components/planner/PlannerDayNavigation";
 import { PlannerDaySection } from "@/components/planner/PlannerDaySection";
 import { PlannerEditPanel } from "@/components/planner/PlannerEditPanel";
 import { PlannerPlanSummary } from "@/components/planner/PlannerPlanSummary";
+import { PlannerPreparationHub } from "@/components/planner/PlannerPreparationHub";
 import { PlannerSavePanel } from "@/components/planner/PlannerSavePanel";
 import {
   usePlannerDayScrollSpy,
@@ -162,7 +156,7 @@ export function PlannerResultView({
     >
       {(affiliateOffers) => (
         <div
-          className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:space-y-6 sm:px-0 sm:py-10"
+          className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] sm:space-y-6 sm:px-0 sm:py-10 lg:pb-10"
           data-testid="planner-result-view"
         >
           <PlannerPlanSummary plan={plan} originText={originText} pace={pace} />
@@ -188,6 +182,16 @@ export function PlannerResultView({
               compact
             />
           </div>
+
+          <PlannerPreparationHub
+            offers={affiliateOffers}
+            sessionId={sessionId}
+            sourceProductId={sourceProductId}
+            originText={originText}
+            destinationName={plan.destination.name}
+            startDate={plan.tripOverview.startDate}
+            endDate={plan.tripOverview.endDate}
+          />
 
           <div className="space-y-4">
             <div>
@@ -221,35 +225,9 @@ export function PlannerResultView({
                   itemOffers={getItemOffersForDay(affiliateOffers, day.day)}
                   sourceProductId={sourceProductId}
                 />
-                <PlannerAffiliateDaySlot
-                  offers={affiliateOffers}
-                  dayNumber={day.day}
-                  sessionId={sessionId}
-                  sourceProductId={sourceProductId}
-                />
               </section>
             ))}
           </div>
-
-          <PlannerBookingSurface
-            offers={affiliateOffers}
-            sessionId={sessionId}
-            sourceProductId={sourceProductId}
-            originText={originText}
-            destinationName={plan.destination.name}
-            startDate={plan.tripOverview.startDate}
-            endDate={plan.tripOverview.endDate}
-          />
-
-          {affiliateOffers.disclosure &&
-          collectBookingSurfaceOffers(affiliateOffers).length === 0 ? (
-            <p
-              className="type-caption text-[var(--text-muted)]"
-              data-testid="planner-affiliate-disclosure"
-            >
-              {affiliateOffers.disclosure}
-            </p>
-          ) : null}
 
           <section
             className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"

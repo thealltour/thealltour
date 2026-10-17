@@ -5,6 +5,13 @@ import {
   computeDurationDays,
   isIsoDateYmd,
 } from "@/lib/planner/dates";
+import {
+  dedupePlannerMustDo,
+  PLANNER_MUST_DO_ITEM_LENGTH_MESSAGE,
+  PLANNER_MUST_DO_ITEM_MAX_LENGTH,
+  PLANNER_MUST_DO_MAX_ITEMS,
+  PLANNER_MUST_DO_MAX_ITEMS_MESSAGE,
+} from "@/lib/planner/mustDo";
 import { getCompanionTravelersConsistencyError } from "@/lib/planner/travelers";
 
 export const PLANNER_SESSION_STATUSES = ["draft", "generated", "saved"] as const;
@@ -158,6 +165,20 @@ export const plannerDraftDatesSchema = z
     }
   });
 
+/** Optional for clients/rows predating the field; defaults to []. */
+const plannerMustDoSchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, "꼭 가고 싶은 곳·체험 항목이 비어 있습니다.")
+      .max(PLANNER_MUST_DO_ITEM_MAX_LENGTH, PLANNER_MUST_DO_ITEM_LENGTH_MESSAGE),
+  )
+  .max(PLANNER_MUST_DO_MAX_ITEMS, PLANNER_MUST_DO_MAX_ITEMS_MESSAGE)
+  .transform((items) => dedupePlannerMustDo(items))
+  .optional()
+  .default([]);
+
 export const plannerDraftInputSchema = z
   .object({
     origin: z.object({
@@ -189,6 +210,7 @@ export const plannerDraftInputSchema = z
       .string()
       .trim()
       .max(1000, "여행 분위기 요청은 1000자 이내로 입력해 주세요."),
+    mustDo: plannerMustDoSchema,
     pace: plannerPaceSchema,
     budget: z.object({
       style: plannerBudgetStyleSchema.nullable(),
@@ -248,6 +270,7 @@ export const plannerDraftInputProgressSchema = z
     companionType: plannerCompanionTypeSchema,
     interests: z.array(plannerInterestSchema).max(PLANNER_INTERESTS.length),
     themeRequest: z.string().trim().max(1000),
+    mustDo: plannerMustDoSchema,
     pace: plannerPaceSchema,
     budget: z.object({
       style: plannerBudgetStyleSchema.nullable(),
@@ -357,6 +380,11 @@ export function validatePlannerStep(
     if (input.interests.length < 1) return "여행 취향을 1개 이상 선택해 주세요.";
     if (input.themeRequest.length > 1000) {
       return "여행 분위기 요청은 1000자 이내로 입력해 주세요.";
+    }
+    const mustDo = input.mustDo ?? [];
+    if (mustDo.length > PLANNER_MUST_DO_MAX_ITEMS) return PLANNER_MUST_DO_MAX_ITEMS_MESSAGE;
+    if (mustDo.some((item) => item.trim().length > PLANNER_MUST_DO_ITEM_MAX_LENGTH)) {
+      return PLANNER_MUST_DO_ITEM_LENGTH_MESSAGE;
     }
     return null;
   }

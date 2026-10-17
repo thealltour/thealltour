@@ -86,14 +86,16 @@ function baseCtx(overrides?: Partial<AffiliateRoutingContext>): AffiliateRouting
 describe("PR-9C router integration", () => {
   it("production registers adapters but keeps providers disabled", () => {
     const adapters = getProductionAffiliateAdapters();
-    expect(adapters.size).toBe(6);
+    expect(adapters.size).toBe(8);
     expect(adapters.has("airalo")).toBe(true);
     expect(adapters.has("wegotrip")).toBe(true);
     expect(adapters.has("aviasales")).toBe(true);
     expect(adapters.has("stay22")).toBe(true);
     expect(adapters.has("klook")).toBe(true);
     expect(adapters.has("kkday")).toBe(true);
+    expect(adapters.has("localrent")).toBe(true);
     const defs = getProductionAffiliateProviderDefinitions();
+    expect(defs.find((d) => d.id === "localrent")?.enabled).toBe(false);
     expect(defs.find((d) => d.id === "airalo")?.enabled).toBe(false);
     expect(defs.find((d) => d.id === "wegotrip")?.enabled).toBe(false);
     expect(defs.find((d) => d.id === "stay22")?.enabled).toBe(false);

@@ -22,6 +22,22 @@ export const supabaseAiraloCatalogCache: AiraloCatalogCacheStore = {
       return null;
     }
   },
+  async readFreshEntry(cacheKey) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("airalo_esim_catalog_cache")
+        .select("records_json, expires_at")
+        .eq("cache_key", cacheKey)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (error || !data) return null;
+      const expiresAt = Date.parse(String(data.expires_at));
+      if (!Number.isFinite(expiresAt) || !isAiraloRecordArray(data.records_json)) return null;
+      return { records: data.records_json, expiresAt };
+    } catch {
+      return null;
+    }
+  },
   async readStale(cacheKey) {
     try {
       const { data, error } = await supabaseAdmin

@@ -191,6 +191,7 @@ describe("PR-9G offers API + redirect canary gates", () => {
       preparation: [],
       days: {},
       disclosure: null,
+      activityDiscovery: null,
     });
     expect(buildAffiliateOffersForSession).not.toHaveBeenCalled();
     vi.unstubAllEnvs();

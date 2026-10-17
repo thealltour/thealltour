@@ -9,12 +9,15 @@ import { airaloAdapter } from "@/lib/affiliate/planner/providers/airalo/airaloAd
 import { aviasalesAdapter } from "@/lib/affiliate/planner/providers/aviasales/aviasalesAdapter";
 import { kkdayAdapter } from "@/lib/affiliate/planner/providers/kkday/kkdayAdapter";
 import { klookAdapter } from "@/lib/affiliate/planner/providers/klook/klookAdapter";
+import { localrentAdapter } from "@/lib/affiliate/planner/providers/localrent/localrentAdapter";
 import { stay22Adapter } from "@/lib/affiliate/planner/providers/stay22/stay22Adapter";
+import { tossShoppingAdapter } from "@/lib/affiliate/planner/providers/tossShopping/tossShoppingAdapter";
 import { weGoTripAdapter } from "@/lib/affiliate/planner/providers/wegotrip/weGoTripAdapter";
 import type { AffiliateProviderDefinition } from "@/lib/affiliate/planner/types";
 
 /**
- * Production registry — adapters registered for Airalo + WeGoTrip + Aviasales + Stay22 + Klook + KKday.
+ * Production registry — adapters registered for Airalo + WeGoTrip + Aviasales + Stay22 + Klook + KKday
+ * + Localrent + Toss Shopping.
  * enabled = catalog default + per-provider env override; map order carries no priority.
  */
 export function getProductionAffiliateProviderDefinitions(
@@ -31,6 +34,8 @@ export function getProductionAffiliateAdapters(): Map<string, AffiliateProviderA
     ["stay22", stay22Adapter],
     ["klook", klookAdapter],
     ["kkday", kkdayAdapter],
+    ["localrent", localrentAdapter],
+    ["toss_shopping", tossShoppingAdapter],
   ]);
 }
 

@@ -11,9 +11,9 @@ const contentSecurityPolicy = `
   img-src 'self' data: blob: https:;
   font-src 'self' data: https:;
   style-src 'self' 'unsafe-inline' https://emrldtp.com https://*.emrldtp.com https://fonts.googleapis.com;
-  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://www.travelpayouts.com https://*.travelpayouts.com https://maps.googleapis.com https://maps.gstatic.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://t1.daumcdn.net https://vercel.live https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://www.travelpayouts.com https://*.travelpayouts.com https://tpwdgt.com https://widgets.tiqets.com https://cdn.klook.com https://maps.googleapis.com https://maps.gstatic.com;
   connect-src 'self' https: ws: wss: https://api.portone.io https://*.iamport.kr https://*.iamport.co;
-  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.portone.io https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://checkout-service.prod.iamport.co https://*.toss.im https://*.inicis.com https://*.kcp.co.kr https://*.kakaopay.com https://*.naver.com https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://*.travelpayouts.com;
+  frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.portone.io https://cdn.portone.io https://*.iamport.kr https://*.iamport.co https://checkout-service.prod.iamport.co https://*.toss.im https://*.inicis.com https://*.kcp.co.kr https://*.kakaopay.com https://*.naver.com https://ads-partners.coupang.com https://emrldtp.com https://*.emrldtp.com https://*.travelpayouts.com https://www.tiqets.com https://affiliate.klook.com;
 `
   .replace(/\s{2,}/g, " ")
   .trim();
@@ -94,6 +94,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "images.kiwi.com",
+      },
+      {
+        protocol: "https",
+        hostname: "shopping.toss.im",
       },
       {
         protocol: "https",

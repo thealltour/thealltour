@@ -19,6 +19,7 @@ const EMPTY: PlannerAffiliateOffersDto = {
   preparation: [],
   days: {},
   disclosure: null,
+  activityDiscovery: null,
 };
 
 /**

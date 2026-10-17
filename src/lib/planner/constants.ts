@@ -156,6 +156,7 @@ export function createEmptyPlannerDraftInput(
     companionType: "friends",
     interests: [],
     themeRequest: "",
+    mustDo: [],
     pace: "balanced",
     budget: { style: null, amount: null, scope: "per_person", currency: "KRW" },
     additionalRequest: "",

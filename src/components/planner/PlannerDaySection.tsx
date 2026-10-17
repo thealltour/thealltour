@@ -1,6 +1,5 @@
 "use client";
 
-import { AffiliateItemCta } from "@/components/planner/AffiliateItemCta";
 import { PlannerDayMap, type PlannerMapMarker } from "@/components/planner/PlannerDayMap";
 import { getPlannerIconToneClasses } from "@/components/planner/conversation/plannerConversationIcons";
 import { ITEM_TYPE_VISUALS } from "@/components/planner/plannerResultVisuals";
@@ -105,8 +104,9 @@ export function PlannerDaySection({
   routeByFromOrder,
   weatherDay,
   itemOffers,
-  sourceProductId,
+  sourceProductId: _sourceProductId,
 }: PlannerDaySectionProps) {
+  void _sourceProductId;
   const weatherText = weatherLine(weatherDay);
   const dateText = formatDateKo(day.date);
   const metaBits = [dateText, weatherText].filter(Boolean).join(" · ");
@@ -155,12 +155,15 @@ export function PlannerDaySection({
           const Icon = visual.icon;
           const tone = getPlannerIconToneClasses(visual.tone);
           const itemOffer = itemOffers?.get(item.order);
+          const showReservableBadge = Boolean(itemOffer);
+          const showRecommendedBadge = !showReservableBadge && item.bookingRecommended;
           const hasSecondary =
             Boolean(item.area) ||
             (enrichment?.status === "resolved" && Boolean(enrichment.formattedAddress)) ||
             enrichment?.status === "ambiguous" ||
             (enrichment?.status === "resolved" && Boolean(enrichment.googleMapsUri)) ||
-            item.bookingRecommended;
+            showReservableBadge ||
+            showRecommendedBadge;
 
           return (
             <li key={`${day.day}-${item.order}`} className="relative">
@@ -195,7 +198,15 @@ export function PlannerDaySection({
                     <span className="type-caption text-[var(--text-muted)]">
                       {ITEM_TYPE_LABEL[item.type]}
                     </span>
-                    {item.bookingRecommended ? (
+                    {showReservableBadge ? (
+                      <span
+                        className="rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 type-caption text-[var(--text-subtle)]"
+                        data-testid={`planner-item-reservable-${day.day}-${item.order}`}
+                      >
+                        예약 가능
+                      </span>
+                    ) : null}
+                    {showRecommendedBadge ? (
                       <span className="rounded-md bg-[var(--surface-muted)] px-1.5 py-0.5 type-caption text-[var(--text-subtle)]">
                         예약 권장
                       </span>
@@ -211,13 +222,6 @@ export function PlannerDaySection({
                     <p className="mt-1.5 type-caption text-[var(--text-muted)]">
                       약 {item.estimatedDurationMinutes}분
                     </p>
-                  ) : null}
-                  {itemOffer ? (
-                    <AffiliateItemCta
-                      offer={itemOffer}
-                      sessionId={sessionId}
-                      sourceProductId={sourceProductId}
-                    />
                   ) : null}
                 </div>
               </div>

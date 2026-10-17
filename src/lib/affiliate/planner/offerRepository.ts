@@ -1,6 +1,10 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  sanitizeAffiliateEsimMetadata,
+  sanitizeAffiliateTravelGoodsMetadata,
+} from "@/lib/affiliate/planner/offerMetadata";
 import type { AffiliateOffer, AffiliateOfferBuild } from "@/lib/affiliate/planner/types";
 
 type TokenRow = {
@@ -84,14 +88,25 @@ export async function persistAffiliateOfferToken(params: {
     ctaLabel: row.cta_label,
     destinationLabel: row.destination,
     trackingToken: row.id,
-    metadata:
-      row.day_number != null || row.item_order != null
-        ? {
-            dayNumber: row.day_number ?? undefined,
-            itemOrder: row.item_order ?? undefined,
-          }
-        : undefined,
+    metadata: buildOfferDtoMetadata(row, build),
   };
+}
+
+function buildOfferDtoMetadata(
+  row: { day_number: number | null; item_order: number | null },
+  build: AffiliateOfferBuild,
+): AffiliateOffer["metadata"] {
+  const metadata: NonNullable<AffiliateOffer["metadata"]> = {};
+  if (row.day_number != null || row.item_order != null) {
+    metadata.dayNumber = row.day_number ?? undefined;
+    metadata.itemOrder = row.item_order ?? undefined;
+  }
+  // Build-time only: the token row has no column for it and the redirect never needs it.
+  const esim = sanitizeAffiliateEsimMetadata(build.metadata?.esim);
+  if (esim) metadata.esim = esim;
+  const travelGoods = sanitizeAffiliateTravelGoodsMetadata(build.metadata?.travelGoods);
+  if (travelGoods) metadata.travelGoods = travelGoods;
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
 export async function getAffiliateOfferTokenById(

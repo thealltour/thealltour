@@ -32,6 +32,7 @@ const EMPTY_OFFERS: PlannerAffiliateOffersDto = {
   preparation: [],
   days: {},
   disclosure: null,
+  activityDiscovery: null,
 };
 
 /**

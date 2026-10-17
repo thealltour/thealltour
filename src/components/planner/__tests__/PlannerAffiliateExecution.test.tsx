@@ -91,8 +91,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("itinerary contextual affiliate CTA", () => {
-  it("renders the compact CTA on the exact matched item only", () => {
+describe("itinerary contextual affiliate (PR-9AS badge)", () => {
+  it("renders reservable badge on the exact matched item only (no external CTA)", () => {
     const offers = dto({ "1": [activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 })] });
     render(
       <PlannerDaySection
@@ -104,26 +104,15 @@ describe("itinerary contextual affiliate CTA", () => {
     );
 
     const items = screen.getAllByRole("listitem");
-    expect(within(items[0]!).queryByText("이 장소의 투어·티켓 보기")).not.toBeInTheDocument();
-    const cta = within(items[1]!).getByRole("link", { name: /이 장소의 투어·티켓 보기/ });
-    expect(cta).toHaveAttribute("href", `/r/affiliate/${TOKEN}`);
-    expect(cta).toHaveAttribute("target", "_blank");
-    expect(cta.getAttribute("rel")).toContain("noopener");
-    expect(within(items[1]!).getByText("제휴 링크")).toBeInTheDocument();
-    expect(screen.getByTestId("planner-item-affiliate-1-2")).toBeInTheDocument();
+    expect(within(items[0]!).queryByText("예약 가능")).not.toBeInTheDocument();
+    expect(within(items[1]!).getByText("예약 가능")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /이 장소의 투어·티켓 보기/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId("planner-item-reservable-1-2")).toBeInTheDocument();
   });
 
-  it("tracks impression once (analytics + impression API with token only) and click", () => {
+  it("does not fire affiliate impression from Day item badges", () => {
     const offers = dto({ "1": [activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 })] });
-    const { rerender } = render(
-      <PlannerDaySection
-        day={day}
-        sessionId={SESSION_ID}
-        itemOffers={getItemOffersForDay(offers, 1)}
-        sourceProductId={null}
-      />,
-    );
-    rerender(
+    render(
       <PlannerDaySection
         day={day}
         sessionId={SESSION_ID}
@@ -132,43 +121,24 @@ describe("itinerary contextual affiliate CTA", () => {
       />,
     );
 
-    expect(trackImpression).toHaveBeenCalledTimes(1);
-    expect(trackImpression).toHaveBeenCalledWith(
-      expect.objectContaining({ trackingToken: TOKEN, dayNumber: 1, itemOrder: 2 }),
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe("/api/affiliate/impression");
-    expect(JSON.parse(String((init as RequestInit).body))).toEqual({ trackingToken: TOKEN });
-
-    fireEvent.click(screen.getByRole("link", { name: /이 장소의 투어·티켓 보기/ }));
-    expect(trackClicked).toHaveBeenCalledWith(
-      expect.objectContaining({ trackingToken: TOKEN, itemOrder: 2 }),
-    );
+    expect(trackImpression).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("offers without itemOrder are not attached to items; they render as day-level cards", () => {
+  it("offers without itemOrder are not attached to items", () => {
     const offers = dto({ "1": [activityOffer(TOKEN, { dayNumber: 1 })] });
     render(
-      <>
-        <PlannerDaySection
-          day={day}
-          sessionId={SESSION_ID}
-          itemOffers={getItemOffersForDay(offers, 1)}
-        />
-        <PlannerAffiliateDaySlot
-          offers={offers}
-          dayNumber={1}
-          sessionId={SESSION_ID}
-          sourceProductId={null}
-        />
-      </>,
+      <PlannerDaySection
+        day={day}
+        sessionId={SESSION_ID}
+        itemOffers={getItemOffersForDay(offers, 1)}
+      />,
     );
-    expect(screen.queryByTestId(/planner-item-affiliate-/)).not.toBeInTheDocument();
-    expect(screen.getByText("USJ 입장권")).toBeInTheDocument();
+    expect(screen.queryByTestId(/planner-item-reservable-/)).not.toBeInTheDocument();
+    expect(screen.queryByText("USJ 입장권")).not.toBeInTheDocument();
   });
 
-  it("Klook USJ offer: CTA only inside the USJ item, token redirect only, analytics reuse", () => {
+  it("Klook USJ offer: badge only inside the USJ item, no raw affiliate URL", () => {
     const klookOffer: AffiliateOffer = {
       ...activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 }),
       providerId: "klook",
@@ -193,27 +163,14 @@ describe("itinerary contextual affiliate CTA", () => {
     );
 
     const items = screen.getAllByRole("listitem");
-    expect(within(items[0]!).queryByRole("link")).not.toBeInTheDocument();
-    const ctas = screen.getAllByRole("link", { name: /이 장소의 투어·티켓 보기/ });
-    expect(ctas).toHaveLength(1);
-    expect(within(items[1]!).getByRole("link")).toHaveAttribute("href", `/r/affiliate/${TOKEN}`);
+    expect(within(items[0]!).queryByText("예약 가능")).not.toBeInTheDocument();
+    expect(within(items[1]!).getByText("예약 가능")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /이 장소의 투어·티켓 보기/ })).not.toBeInTheDocument();
     expect(container.innerHTML).not.toMatch(/klook\.com|kkday\.com|tp\.media/);
-    expect(trackImpression).toHaveBeenCalledWith(
-      expect.objectContaining({
-        providerId: "klook",
-        category: "activity",
-        placement: "day_item",
-        dayNumber: 1,
-        itemOrder: 2,
-      }),
-    );
-    fireEvent.click(ctas[0]!);
-    expect(trackClicked).toHaveBeenCalledWith(
-      expect.objectContaining({ providerId: "klook", category: "activity", placement: "day_item" }),
-    );
+    expect(trackImpression).not.toHaveBeenCalled();
   });
 
-  it("item-attached offers are not duplicated in the day-level slot", () => {
+  it("item-attached offers are not duplicated in the day-level slot helper", () => {
     const offers = dto({ "1": [activityOffer(TOKEN, { dayNumber: 1, itemOrder: 2 })] });
     render(
       <PlannerAffiliateDaySlot

@@ -19,6 +19,7 @@ import {
   type PlannerGenerateStage,
 } from "@/lib/planner/generatePlan";
 import type { PlannerUsageDiagnostic } from "@/lib/planner/generationDiagnostics";
+import { countPlannerMustDoCoverage } from "@/lib/planner/mustDo";
 import type { PlannerGenerationFailureCategory } from "@/types/planner";
 import { z } from "zod";
 
@@ -228,6 +229,20 @@ export async function POST(request: Request, context: RouteContext) {
         });
       },
     });
+
+    if (draftParsed.data.mustDo.length > 0) {
+      const coverage = countPlannerMustDoCoverage(
+        draftParsed.data.mustDo,
+        plan.days.flatMap((day) => day.items.map((item) => item.name)),
+      );
+      if (coverage.unmatchedCount > 0) {
+        console.warn("[planner/generate/must_do_unmatched]", {
+          sessionId: session!.id,
+          matchedCount: coverage.matchedCount,
+          unmatchedCount: coverage.unmatchedCount,
+        });
+      }
+    }
 
     let saved;
     try {

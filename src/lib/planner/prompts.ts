@@ -15,7 +15,7 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 규칙:
 1. 반드시 지정된 JSON schema만 출력합니다.
 2. 한국어로 작성합니다.
-3. 입력된 origin/destination/date/party/interests/themeRequest/pace/budget/additionalRequest를 우선 반영합니다.
+3. 입력된 origin/destination/date/party/interests/themeRequest/mustDo/pace/budget/additionalRequest를 우선 반영합니다.
 4. 하루 일정은 이동을 고려해 과도하게 채우지 않습니다. target 범위 안에서 현실적인 이동시간을 지키되, 개수만 맞추기 위해 무리하게 추가하지 마세요.
 5. Itinerary item은 실제 사용자에게 보여지는 일정 단위입니다(관광·식사·카페·쇼핑·액티비티·휴식·필요한 transport). "장소 수(명소 방문 수)"와 itinerary item 수는 다릅니다. 예: 관광 장소 2곳 + 점심 + 카페 = 장소 2곳이지만 item 4개.
 5a. additionalRequest의 구체적인 제한·회피 조건(예: 보행 부담, 이동시간, 아침/밤 일정, 자유시간, 장소 이동 횟수)은 일반적인 pace 밀도 선호보다 우선합니다. pace=packed이더라도 보행·이동·시간대 제약이 있으면 그 제약을 지키면서 한 지역 안에서 밀도를 높입니다. 제약이 있어도 하루 itinerary를 비우지 마세요.
@@ -39,7 +39,7 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 17. fixed 모드: day.date는 startDate부터 하루씩 증가. flexible 모드: day.date와 tripOverview.startDate/endDate는 반드시 null. 가짜 달력 날짜를 만들지 마세요.
 18. 각 day.items[].order는 1부터 연속이어야 합니다.
 19. travelToNext는 AI 추정이며 실시간 교통 검증값이 아닙니다. estimatedMinutes는 null이거나 1 이상의 정수만 허용합니다. 0을 넣지 마세요(모르면 null). 단순 장소 간 이동은 travelToNext를 우선하고, 숫자를 채우기 위한 transport/rest item 생성은 금지합니다. transport item은 사용자에게 독립적으로 의미 있는 이동(예: 도착 후 숙소 이동, 출국 준비 이동)에만 사용하세요.
-20. themeRequest는 분위기/스타일, additionalRequest는 반드시 지킬 구체 요구로 구분합니다. user prompt에 [일정 제약 해석]이 있으면 그 canonical rules를 additionalRequest 자연어보다 우선 해석 기준으로 사용합니다.
+20. themeRequest는 분위기/스타일, mustDo는 사용자가 직접 지정한 장소·체험, additionalRequest는 반드시 지킬 구체 요구(시간·이동·일정 운영)로 구분합니다. user prompt에 [일정 제약 해석]이 있으면 그 canonical rules를 additionalRequest 자연어보다 우선 해석 기준으로 사용합니다.
 21. attraction/shopping/activity 및 특정 식당·카페를 제안할 때 name은 지도에서 검색 가능한 단일 장소명으로 작성합니다. 한 item에 여러 장소를 "또는/및/&"로 묶지 마세요.
 22. 실제 상호·명소가 확실하지 않으면 임의의 식당/가게 이름을 지어내지 마세요. 그 경우 generic 일정(예: 지역명 + 식사/카페)으로 두고 구체 상호는 비워 두세요.
 23. estimatedDurationMinutes도 null이거나 1 이상의 정수만 허용합니다. 0 금지.
@@ -47,6 +47,10 @@ export const PLANNER_PLAN_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 25. 첫날(Day 1)은 목적지 도착일입니다. 이동·체크인·휴식 여유를 두고 일정을 과도하게 채우지 마세요. 실제 항공편 시간이 입력되지 않았다면 구체적인 도착 시각을 사실처럼 가정하지 마세요. 도착 후 숙소 이동·체크인 같은 transport 항목은 허용하되, 입력 없는 특정 공항명·도착 시각은 만들지 마세요.
 26. 마지막 날은 귀국 또는 다음 이동일입니다. 공항·터미널 이동 여유를 확보하고 일정을 가볍게 구성하세요. 실제 교통편 출발 시각이 입력되지 않았다면 구체적인 출발 시각을 사실처럼 만들지 마세요. 공항 이동·출국 준비 같은 transport 항목은 허용하되, 입력 없는 특정 공항명·출발 시각은 만들지 마세요.
 27. fixed·flexible 모두 위 출발지·첫날·마지막날 규칙을 적용합니다. flexible는 여행 일수 기준 첫 day/마지막 day에 적용합니다.
+28. [꼭 방문/체험](mustDo)은 사용자가 직접 지정한 장소·체험으로, interests보다 높은 우선순위의 강한 선호입니다. 목적지·기간·현실적인 이동과 명백히 충돌하지 않는 한 일정에 우선 반영합니다.
+28a. 장소라면 지도에서 검색 가능한 단일 장소명을 item.name으로 사용합니다. 체험이라면 가장 자연스러운 attraction/activity item으로 배치합니다.
+28b. 사전 예약이 유리한 항목이면 bookingRecommended=true로 판단합니다. 같은 요청을 여러 item으로 불필요하게 중복하지 마세요.
+28c. 존재하지 않는 장소·상품·체험을 만들어내지 마세요. 목적지와 명백히 충돌하거나 현실적으로 수행이 불가능한 항목은 억지로 포함하지 않습니다.
 
 [일정 밀도 기준 — itinerary item 수]
 - itinerary item count 기준입니다. 명소 "장소 수"와 동일하지 않습니다.
@@ -137,6 +141,7 @@ export function buildPlannerPlanUserPrompt(draft: PlannerDraftInput): string {
     `[동행] ${labelCompanion(draft.companionType)} (${draft.companionType})`,
     `[취향] ${labelInterests(draft.interests) || "없음"}`,
     `[여행 분위기] ${draft.themeRequest.trim() || "없음"}`,
+    `[꼭 방문/체험] ${draft.mustDo.length > 0 ? draft.mustDo.join(" | ") : "없음"}`,
     `[속도] ${labelPace(draft.pace)} (${draft.pace})`,
     `[예산 신호] ${budgetLine}`,
     `[추가 요청] ${draft.additionalRequest.trim() || "없음"}`,
@@ -196,7 +201,8 @@ export const PLANNER_EDIT_SYSTEM_PROMPT = `당신은 더올투어 자유여행 �
 11. travelToNext는 AI 추정이며 실시간 교통 검증값이 아닙니다.
 12. bookingRecommended는 예약이 유리할 가능성이 높은 활동에만 true입니다.
 13. 출발지는 이동 기준 위치일 뿐이며, 관광·식사·활동은 목적지 중심으로 유지하고 출발지 도시 관광을 추가하지 마세요.
-14. 첫날은 목적지 도착일, 마지막 날은 귀국/이동일 맥락을 유지하되 일정을 과도하게 채우지 마세요.`;
+14. 첫날은 목적지 도착일, 마지막 날은 귀국/이동일 맥락을 유지하되 일정을 과도하게 채우지 마세요.
+15. [사용자 지정 방문/체험]은 사용자가 수정 요청에서 삭제·대체를 요구하지 않는 한 가능한 유지합니다. 수정 요청과 명시적으로 충돌하면(예: "USJ는 빼줘") 최신 수정 요청이 우선합니다.`;
 
 export function buildPlannerEditUserPrompt(params: {
   draft: PlannerDraftInput;
@@ -220,6 +226,9 @@ export function buildPlannerEditUserPrompt(params: {
     `themeRequest: ${draft.themeRequest.trim() || "없음"}`,
     `pace: ${draft.pace}`,
     `additionalRequest: ${draft.additionalRequest.trim() || "없음"}`,
+    "",
+    "[사용자 지정 방문/체험]",
+    ...(draft.mustDo.length > 0 ? draft.mustDo.map((item) => `- ${item}`) : ["없음"]),
     "",
     "[현재 일정 JSON]",
     JSON.stringify(currentPlan),

@@ -74,6 +74,21 @@ const EXTRA_ENGLISH_ALIASES_TO_ISO: Record<string, string> = {
   "england": "GB",
 };
 
+/** First Korean name listed per ISO code (e.g. JP → 일본, AU → 호주). */
+const ISO_TO_KOREAN_COUNTRY_LABEL: Record<string, string> = Object.entries(
+  KOREAN_COUNTRY_NAME_TO_ISO,
+).reduce<Record<string, string>>((acc, [name, iso]) => {
+  acc[iso] ??= name;
+  return acc;
+}, {});
+
+/** Korean country display label for an ISO alpha-2 code; unknown → null. */
+export function koreanCountryLabelFromIso(iso: string | null | undefined): string | null {
+  const code = iso?.trim().toUpperCase() ?? "";
+  if (!/^[A-Z]{2}$/.test(code)) return null;
+  return ISO_TO_KOREAN_COUNTRY_LABEL[code] ?? null;
+}
+
 function compactKorean(raw: string): string {
   return raw.replace(/\s+/g, "");
 }

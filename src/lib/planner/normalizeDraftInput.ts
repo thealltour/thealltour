@@ -5,6 +5,7 @@ import {
   PLANNER_DURATION_DAYS_MAX,
   PLANNER_DURATION_DAYS_MIN,
 } from "@/lib/planner/dates";
+import { normalizeStoredPlannerMustDo } from "@/lib/planner/mustDo";
 import {
   PLANNER_BUDGET_STYLES,
   PLANNER_COMPANION_TYPES,
@@ -137,6 +138,8 @@ export function normalizePlannerDraftInput(raw: unknown): PlannerDraftInput {
   } else if (typeof o.preferencesNote === "string") {
     base.themeRequest = o.preferencesNote.trim().slice(0, 1000);
   }
+
+  base.mustDo = normalizeStoredPlannerMustDo(o.mustDo);
 
   const pace = asPace(o.pace);
   if (pace) base.pace = pace;

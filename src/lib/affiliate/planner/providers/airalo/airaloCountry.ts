@@ -148,9 +148,16 @@ const ISO_TO_CANONICAL_ENGLISH: Record<string, string> = {
 const NAME_ALIASES_TO_ISO: Record<string, string> = {
   bosnia: "BA",
   czechia: "CZ",
+  "hong kong sar": "HK",
   "hong kong sar china": "HK",
+  macao: "MO",
+  "macao sar": "MO",
+  "macau sar": "MO",
   "macao sar china": "MO",
   korea: "KR",
+  "korea republic of": "KR",
+  "republic of korea": "KR",
+  "viet nam": "VN",
   turkiye: "TR",
   uae: "AE",
   uk: "GB",
@@ -260,6 +267,66 @@ export function parseAiraloProductTypeRegionSegment(
   if (root !== "esim" && root !== "esims") return null;
   const region = normalizeCountryToken(parts[1]!);
   return region || null;
+}
+
+export type AiraloPlanDetails = {
+  /** "10GB" / "500MB" / "Unlimited"; null when no VOLUME segment parses. */
+  dataLabel: string | null;
+  /** Comparable size; Infinity for unlimited. */
+  dataMb: number | null;
+  validityDays: number | null;
+};
+
+const AIRALO_MAX_VALIDITY_DAYS = 365;
+
+/**
+ * VOLUME / DAYS from product_type (`esim > REGION > COUNTRY > DATA TYPE > VOLUME > DAYS`).
+ * Scans the segments after COUNTRY so a missing DATA TYPE segment does not shift parsing;
+ * anything unrecognised stays null (the record itself is kept).
+ */
+export function parseAiraloProductTypePlanDetails(
+  productType: string | null | undefined,
+): AiraloPlanDetails {
+  const empty: AiraloPlanDetails = { dataLabel: null, dataMb: null, validityDays: null };
+  if (!productType) return empty;
+  const parts = productType
+    .split(/>/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length < 4) return empty;
+  const root = normalizeCountryToken(parts[0]!);
+  if (root !== "esim" && root !== "esims") return empty;
+
+  let data: { label: string; mb: number } | null = null;
+  let validityDays: number | null = null;
+  for (const segment of parts.slice(3)) {
+    const token = segment.toLowerCase().replace(/\s+/g, " ");
+    data ??= parseVolumeToken(token);
+    validityDays ??= parseDaysToken(token);
+  }
+  return {
+    dataLabel: data?.label ?? null,
+    dataMb: data?.mb ?? null,
+    validityDays,
+  };
+}
+
+function parseVolumeToken(token: string): { label: string; mb: number } | null {
+  if (token === "unlimited") return { label: "Unlimited", mb: Number.POSITIVE_INFINITY };
+  const m = token.match(/^(\d+(?:[.,]\d+)?) ?(gb|mb)$/);
+  if (!m) return null;
+  const amount = Number(m[1]!.replace(",", "."));
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = m[2] === "gb" ? "GB" : "MB";
+  return { label: `${amount}${unit}`, mb: unit === "GB" ? amount * 1024 : amount };
+}
+
+function parseDaysToken(token: string): number | null {
+  const m = token.match(/^(\d{1,3}) ?days?$/);
+  if (!m) return null;
+  const days = Number(m[1]);
+  if (!Number.isInteger(days) || days < 1 || days > AIRALO_MAX_VALIDITY_DAYS) return null;
+  return days;
 }
 
 /**

@@ -6,6 +6,10 @@ import {
 
 export type AiraloCatalogCacheStore = {
   readFresh: (cacheKey: string) => Promise<AiraloOfferRecord[] | null>;
+  /** Fresh records plus their store expiry (epoch ms), so an in-process layer can honour it. */
+  readFreshEntry?: (
+    cacheKey: string,
+  ) => Promise<{ records: AiraloOfferRecord[]; expiresAt: number } | null>;
   readStale: (cacheKey: string) => Promise<AiraloOfferRecord[] | null>;
   write: (
     cacheKey: string,
@@ -36,6 +40,11 @@ export function createMemoryAiraloCatalogCache(): AiraloCatalogCacheStore {
       const hit = map.get(cacheKey);
       if (!hit || hit.expiresAt <= Date.now()) return null;
       return hit.records;
+    },
+    async readFreshEntry(cacheKey) {
+      const hit = map.get(cacheKey);
+      if (!hit || hit.expiresAt <= Date.now()) return null;
+      return { records: hit.records, expiresAt: hit.expiresAt };
     },
     async readStale(cacheKey) {
       return map.get(cacheKey)?.records ?? null;

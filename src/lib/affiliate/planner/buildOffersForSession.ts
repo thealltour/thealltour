@@ -3,6 +3,7 @@ import "server-only";
 import type { AffiliateProviderAdapter } from "@/lib/affiliate/planner/adapters/types";
 import { AFFILIATE_DISCLOSURE_KO, affiliateCtaLabel, affiliateDefaultTitle } from "@/lib/affiliate/planner/copy";
 import { resolveAffiliateDestination } from "@/lib/affiliate/planner/destinationResolver";
+import { buildActivityDiscovery } from "@/lib/affiliate/planner/discovery/buildActivityDiscovery";
 import {
   selectActivityItemTargets,
   type ActivityItemTarget,
@@ -15,11 +16,16 @@ import {
   getProductionDestinationOverrides,
 } from "@/lib/affiliate/planner/registry";
 import { resolveAviasalesLocationIata } from "@/lib/affiliate/planner/providers/aviasales/aviasalesDestinationResolver";
+import {
+  buildTossTravelGoodsOfferBuilds,
+  type TossShoppingAdapterDeps,
+} from "@/lib/affiliate/planner/providers/tossShopping/tossShoppingAdapter";
 import { routeAffiliateOffer } from "@/lib/affiliate/planner/router";
 import type {
   AffiliateCategory,
   AffiliateFlightOrigin,
   AffiliateOffer,
+  AffiliateOfferBuild,
   AffiliatePlacement,
   AffiliateProviderDefinition,
   AffiliateRoutingContext,
@@ -31,7 +37,8 @@ import { normalizePlannerDraftInput } from "@/lib/planner/normalizeDraftInput";
 import { mapWithConcurrency } from "@/lib/planner/placesClient";
 
 const SUMMARY_CATEGORIES: AffiliateCategory[] = ["flight", "hotel"];
-const PREPARATION_CATEGORIES: AffiliateCategory[] = ["esim", "insurance", "travel_goods"];
+/** Service prep only — travel_goods is a separate subsection (PR-9AR), not competing for this max. */
+const PREPARATION_CATEGORIES: AffiliateCategory[] = ["esim", "insurance", "rental_car"];
 const SUMMARY_MAX = 2;
 const PREPARATION_MAX = 3;
 /** Parallel item-level activity lookups after the first (one wave for the trip cap). */
@@ -44,6 +51,10 @@ export type BuildAffiliateOffersDeps = {
   persist?: typeof persistAffiliateOfferToken;
   resolveDestination?: typeof resolveAffiliateDestination;
   resolveOriginIata?: typeof resolveAviasalesLocationIata;
+  buildDiscovery?: typeof buildActivityDiscovery;
+  /** Toss Shopping travel_goods (PR-9AR). */
+  buildTossTravelGoods?: typeof buildTossTravelGoodsOfferBuilds;
+  tossShoppingDeps?: TossShoppingAdapterDeps;
 };
 
 /**
@@ -146,11 +157,28 @@ export async function buildAffiliateOffersForSession(params: {
     return [firstOffer, ...restOffers];
   };
 
-  const [summary, preparation, activityOffers] = await Promise.all([
+  const buildDiscovery = params.deps?.buildDiscovery ?? buildActivityDiscovery;
+  const [summary, preparationServices, activityOffers, activityDiscovery] = await Promise.all([
     routeSummary(),
     routeGroup(PREPARATION_CATEGORIES, "preparation", PREPARATION_MAX),
     routeActivities(),
+    buildDiscovery({ draft, plan: params.plan, destination, providers }).catch(() => null),
   ]);
+
+  const travelGoods = await routeTravelGoodsOffers({
+    baseContext,
+    plan: params.plan,
+    preparationServices,
+    providers,
+    persist,
+    sessionId: params.sessionId,
+    destinationText: destination.text,
+    sourceProductId: params.sourceProductId,
+    buildTossTravelGoods: params.deps?.buildTossTravelGoods ?? buildTossTravelGoodsOfferBuilds,
+    tossShoppingDeps: params.deps?.tossShoppingDeps,
+  });
+
+  const preparation = [...preparationServices, ...travelGoods];
 
   const days: Record<string, AffiliateOffer[]> = {};
   activityTargets.forEach((target, index) => {
@@ -161,14 +189,77 @@ export async function buildAffiliateOffersForSession(params: {
   });
 
   const hasAny =
-    summary.length > 0 || preparation.length > 0 || Object.keys(days).length > 0;
+    summary.length > 0 ||
+    preparation.length > 0 ||
+    Object.keys(days).length > 0 ||
+    activityDiscovery?.tiqets != null ||
+    activityDiscovery?.klook != null;
 
   return {
     summary,
     preparation,
     days,
     disclosure: hasAny ? AFFILIATE_DISCLOSURE_KO : null,
+    activityDiscovery,
   };
+}
+
+async function routeTravelGoodsOffers(params: {
+  baseContext: Omit<AffiliateRoutingContext, "placement" | "category">;
+  plan: PlannerPlan;
+  preparationServices: AffiliateOffer[];
+  providers: AffiliateProviderDefinition[];
+  persist: typeof persistAffiliateOfferToken;
+  sessionId: string;
+  destinationText: string;
+  sourceProductId: string | null;
+  buildTossTravelGoods: typeof buildTossTravelGoodsOfferBuilds;
+  tossShoppingDeps?: TossShoppingAdapterDeps;
+}): Promise<AffiliateOffer[]> {
+  const tossEnabled = params.providers.some((p) => p.id === "toss_shopping" && p.enabled);
+  if (!tossEnabled) return [];
+
+  const routing: AffiliateRoutingContext = {
+    ...params.baseContext,
+    placement: "preparation",
+    category: "travel_goods",
+  };
+
+  let builds: AffiliateOfferBuild[] = [];
+  try {
+    builds = await params.buildTossTravelGoods({
+      routing,
+      plan: params.plan,
+      hasRentalCarOffer: params.preparationServices.some((o) => o.category === "rental_car"),
+      deps: params.tossShoppingDeps,
+    });
+  } catch {
+    console.info("[toss_shopping] travel_goods_batch_failed", {
+      providerId: "toss_shopping",
+      errorCode: "batch_failed",
+    });
+    return [];
+  }
+
+  const offers: AffiliateOffer[] = [];
+  for (const build of builds) {
+    try {
+      const offer = await params.persist({
+        sessionId: params.sessionId,
+        build: {
+          ...build,
+          title: build.title || affiliateDefaultTitle(build.category, build.destinationLabel),
+          ctaLabel: build.ctaLabel || affiliateCtaLabel(build.category),
+        },
+        destination: params.destinationText,
+        sourceProductId: params.sourceProductId,
+      });
+      if (offer) offers.push(offer);
+    } catch {
+      // fail-soft per card
+    }
+  }
+  return offers;
 }
 
 /**

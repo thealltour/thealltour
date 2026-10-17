@@ -17,7 +17,7 @@ export function affiliateCtaLabel(category: AffiliateCategory): string {
     case "insurance":
       return "여행자보험 보기";
     case "travel_goods":
-      return "여행 준비물 보기";
+      return "토스쇼핑에서 보기";
     default:
       return "자세히 보기";
   }

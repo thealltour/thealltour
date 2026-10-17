@@ -57,6 +57,11 @@ export default function KakaoFloatingButton() {
     return null;
   }
 
+  // Planner Result uses its own mobile Preparation Hub sticky CTA (PR-9AS).
+  if (/^\/planner\/[^/]+\/?$/.test(pathname)) {
+    return null;
+  }
+
   const bottomClass = "bottom-[max(16px,env(safe-area-inset-bottom))]";
 
   return (

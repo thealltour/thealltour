@@ -78,7 +78,8 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedPlacements: ["day_item"],
     priority: 50,
     network: "travelpayouts",
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    // PR-9AM: no day_item adapter (router skips it); enabled gates mustDo product-widget discovery only.
+    capabilities: { deepLink: false, search: false, api: false, widget: true },
   },
   {
     id: "yesim",
@@ -127,6 +128,18 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     capabilities: { deepLink: false, search: false, api: false, widget: false },
   },
   {
+    id: "localrent",
+    displayName: "Localrent",
+    categories: ["rental_car"],
+    enabled: false,
+    supportedDateModes: ["fixed"],
+    supportedPlacements: ["preparation"],
+    priority: 50,
+    network: "travelpayouts",
+    // PR-9AQ: verified-city Korean/KRW deep link → Partner Links (no widget, no API search).
+    capabilities: { deepLink: true, search: false, api: false, widget: false },
+  },
+  {
     id: "toss_shopping",
     displayName: "Toss Shopping",
     categories: ["travel_goods"],
@@ -134,7 +147,9 @@ export const PLANNER_AFFILIATE_PROVIDER_CATALOG: AffiliateProviderDefinition[] =
     supportedDateModes: ["fixed", "flexible"],
     supportedPlacements: ["preparation"],
     priority: 40,
-    capabilities: { deepLink: false, search: false, api: false, widget: false },
+    network: "toss",
+    // PR-9AR: curated category-best → detail → Sharelink (no keyword search / widget).
+    capabilities: { deepLink: true, search: false, api: true, widget: false },
   },
   {
     id: "coupang",
@@ -159,7 +174,20 @@ export const PLANNER_AFFILIATE_PROVIDER_ENV_KEYS: Partial<Record<AffiliateProvid
   stay22: "ENABLE_PLANNER_AFFILIATE_STAY22",
   klook: "ENABLE_PLANNER_AFFILIATE_KLOOK",
   kkday: "ENABLE_PLANNER_AFFILIATE_KKDAY",
+  tiqets: "ENABLE_PLANNER_AFFILIATE_TIQETS",
+  localrent: "ENABLE_PLANNER_AFFILIATE_LOCALRENT",
+  toss_shopping: "ENABLE_PLANNER_AFFILIATE_TOSS_SHOPPING",
 };
+
+export const PLANNER_AFFILIATE_TIQETS_SUGGEST_ENV_KEY = "ENABLE_PLANNER_AFFILIATE_TIQETS_SUGGEST";
+
+/**
+ * Runtime Travelpayouts suggest lookup (undocumented endpoint) — separate from the Tiqets provider
+ * toggle so the verified catalog can run without it. Missing/invalid → false.
+ */
+export function isPlannerTiqetsSuggestEnabled(env: EnvBag = process.env): boolean {
+  return parseAffiliateEnvToggle(env[PLANNER_AFFILIATE_TIQETS_SUGGEST_ENV_KEY]) ?? false;
+}
 
 export function applyAffiliateProviderEnvOverrides(
   catalog: AffiliateProviderDefinition[],

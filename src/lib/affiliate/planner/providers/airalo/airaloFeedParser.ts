@@ -1,9 +1,14 @@
 import { XMLParser } from "fast-xml-parser";
 
-import { deriveAiraloCountryCode } from "@/lib/affiliate/planner/providers/airalo/airaloCountry";
-import type {
-  AiraloOfferRecord,
-  AiraloParseResult,
+import {
+  deriveAiraloCountryCode,
+  parseAiraloProductTypePlanDetails,
+} from "@/lib/affiliate/planner/providers/airalo/airaloCountry";
+import {
+  AIRALO_AVAILABILITY_VALUES,
+  type AiraloAvailability,
+  type AiraloOfferRecord,
+  type AiraloParseResult,
 } from "@/lib/affiliate/planner/providers/airalo/airaloTypes";
 
 type JsonObject = { [key: string]: unknown };
@@ -15,7 +20,9 @@ type JsonObject = { [key: string]: unknown };
  * g:product_type (`esim > REGION > COUNTRY > DATA TYPE > VOLUME > DAYS`).
  * Country is derived from the product_type COUNTRY segment only — never a
  * fabricated countryCode attribute, never city→country inference.
- * g:link is a product source URL (NOT an affiliate URL).
+ * g:link (live feed: https://airalo.pxf.io/c/…?prodsku=…&u=…&intsrc=…) is kept verbatim as the
+ * Partner Links target page — its `u=` parameter is never extracted. Extra fields
+ * (google_product_category, condition, sale_price_effective_date, …) are ignored.
  *
  * XXE: processEntities disabled; no DTD/external entity expansion.
  */
@@ -97,9 +104,9 @@ function pathGet(obj: JsonObject, path: string[]): unknown {
 
 function normalizeItem(item: JsonObject): AiraloOfferRecord | null {
   const id = textField(item, ["id", "guid"]);
-  const title = textField(item, ["title"]);
+  const title = textField(item, ["title"]) || id;
   const sourceUrl = textField(item, ["link"]);
-  if (!id || !title || !sourceUrl) return null;
+  if (!id || !sourceUrl) return null;
 
   let url: URL;
   try {
@@ -116,6 +123,7 @@ function normalizeItem(item: JsonObject): AiraloOfferRecord | null {
 
   const priceParsed = parseMoney(textField(item, ["price"]));
   const saleParsed = parseMoney(textField(item, ["sale_price"]));
+  const plan = parseAiraloProductTypePlanDetails(productType);
 
   return {
     id,
@@ -126,14 +134,31 @@ function normalizeItem(item: JsonObject): AiraloOfferRecord | null {
     price: priceParsed?.amount ?? null,
     salePrice: saleParsed?.amount ?? null,
     currency: saleParsed?.currency ?? priceParsed?.currency ?? null,
-    availability: textField(item, ["availability"]) || null,
+    availability: normalizeAiraloAvailability(textField(item, ["availability"])),
     productType,
     description: textField(item, ["description"]) || null,
     imageUrl: textField(item, ["image_link"]) || null,
     brand: textField(item, ["brand"]) || null,
     isBundle: parseBool(textField(item, ["is_bundle"])),
     mpn: textField(item, ["mpn"]) || null,
+    dataLabel: plan.dataLabel,
+    validityDays: plan.validityDays,
   };
+}
+
+/**
+ * Google Merchant availability ("in stock", legacy "in_stock", case-insensitive).
+ * Unrecognised values → null so they are never treated as sellable.
+ */
+export function normalizeAiraloAvailability(
+  raw: string | null | undefined,
+): AiraloAvailability | null {
+  if (!raw) return null;
+  const v = raw.trim().toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ");
+  const compact = v === "pre order" ? "preorder" : v === "back order" ? "backorder" : v;
+  return (AIRALO_AVAILABILITY_VALUES as readonly string[]).includes(compact)
+    ? (compact as AiraloAvailability)
+    : null;
 }
 
 function textField(item: JsonObject, keys: string[]): string {
@@ -179,11 +204,15 @@ function parseMoney(
   raw: string | null | undefined,
 ): { amount: number; currency: string | null } | null {
   if (!raw) return null;
-  const m = raw.trim().match(/^([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z]{3})?$/);
-  if (!m) return null;
-  const amount = Number(m[1]);
+  const value = raw.trim();
+  const trailing = value.match(/^([0-9]+(?:\.[0-9]+)?)\s*([A-Za-z]{3})?$/);
+  const leading = trailing ? null : value.match(/^([A-Za-z]{3})\s*([0-9]+(?:\.[0-9]+)?)$/);
+  const amountText = trailing?.[1] ?? leading?.[2];
+  if (!amountText) return null;
+  const amount = Number(amountText);
   if (!Number.isFinite(amount)) return null;
-  return { amount, currency: m[2]?.toUpperCase() ?? null };
+  const currency = trailing?.[2] ?? leading?.[1];
+  return { amount, currency: currency?.toUpperCase() ?? null };
 }
 
 function parseBool(raw: string | null | undefined): boolean | null {

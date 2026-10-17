@@ -12,7 +12,11 @@ import type {
   PlannerSummaryEditSection,
 } from "@/types/planner";
 
-export type PlannerEntrySource = "home_hero" | "destinations_hero" | "themes_hero";
+export type PlannerEntrySource =
+  | "home_hero"
+  | "home_pathways"
+  | "destinations_hero"
+  | "themes_hero";
 
 export function trackPlannerEntryClick(params: {
   source: PlannerEntrySource;

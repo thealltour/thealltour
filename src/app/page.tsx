@@ -18,7 +18,9 @@ import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
 import { HomeDeferredSections } from "@/components/home/HomeDeferredSections";
+import { HomeTravelPathways } from "@/components/home/HomeTravelPathways";
 import { HomeTrustSection } from "@/components/home/HomeTrustSection";
+import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 
 const C_H3 = "원하는 여행상품을 찾지 못하셨나요?";
 const C_P1 =
@@ -102,13 +104,22 @@ export default async function Home() {
           <HeroSection
             heroBanners={topBanners}
             hero={hero}
-            golfEntryHref={golfTourProducts.length > 0 || golfCalendarModel ? "#home-golf-explore" : buildGolfProductsHref()}
+            golfToursHref={golfTourProducts.length > 0 ? "#home-golf-tours" : null}
+            golfDatesHref={golfCalendarModel ? "#home-golf-dates" : null}
           />
 
           <PageContainer
             size="wide"
             className="flex flex-col max-md:gap-5 max-md:pt-4 md:gap-10 md:pt-0"
           >
+            <HomeTravelPathways
+              golfHref={
+                golfTourProducts.length > 0 || golfCalendarModel
+                  ? "#home-golf-explore"
+                  : buildGolfProductsHref()
+              }
+              plannerEnabled={ENABLE_FREE_TRAVEL_PLANNER}
+            />
             <HomeDeferredSections
               golfTour={{
                 products: golfTourProducts,

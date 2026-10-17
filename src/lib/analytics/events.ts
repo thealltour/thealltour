@@ -121,6 +121,7 @@ export const ANALYTICS_SOURCES: Record<AnalyticsSource, AnalyticsSource> = {
   deposit_page: "deposit_page",
   kakao_sync_auth: "kakao_sync_auth",
   home_hero: "home_hero",
+  home_pathways: "home_pathways",
   home_section: "home_section",
   home_promo_banner: "home_promo_banner",
   auth_modal: "auth_modal",

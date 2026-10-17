@@ -118,6 +118,7 @@ export type AnalyticsSource =
   | "deposit_page"
   | "kakao_sync_auth"
   | "home_hero"
+  | "home_pathways"
   | "home_section"
   | "home_promo_banner"
   | "auth_modal"

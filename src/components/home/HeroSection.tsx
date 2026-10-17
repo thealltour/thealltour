@@ -5,9 +5,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { HeroRecommendedLinks } from "@/components/home/HeroRecommendedLinks";
 import { HomeHeroSearch } from "@/components/home/HomeHeroSearch";
 import { HomeQuickKeywords } from "@/components/home/HomeQuickKeywords";
-import { HomeTravelEntries } from "@/components/home/HomeTravelEntries";
-import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
-import { buildGolfProductsHref } from "@/lib/products/golfChannel";
+import { HomeHeroGolfFindCtas } from "@/components/home/HomeHeroGolfFindCtas";
 import type { HomeBanner } from "@/types/homeBanner";
 import { cn } from "@/lib/cn";
 import { HeroPanoramaSlideshowClient } from "@/components/home/HeroPanoramaSlideshowClient";
@@ -56,7 +54,12 @@ function MobileHeroHeadline({ hero }: { hero: HeroResolvedContent }): ReactNode 
 }
 
 export type HeroSectionProps = {
+  /** @deprecated 골프/플래너 페어는 HomeTravelPathways로 이동. 하위 호환용 무시됨. */
   golfEntryHref?: string;
+  /** 추천 골프상품 앵커 (#home-golf-tours). 없으면 CTA 숨김 */
+  golfToursHref?: string | null;
+  /** 출발 일정 달력 앵커 (#home-golf-dates). 없으면 CTA 숨김 */
+  golfDatesHref?: string | null;
   /**
    * 활성 배너 전부 (`getHomeBanners` 정렬 순). 0장이면 배경 없음, 1장이면 단일, 2장+ fade 슬라이드.
    */
@@ -75,7 +78,12 @@ export type HeroSectionProps = {
  * md+: 파노라마 배경 — `heroBanners`를 sort_order 순으로 fade 슬라이드(2장 이상 시).
  * 태블릿(md~lg-1): `mobile_image_url ?? image_url`, 데스크톱(lg+): `image_url`.
  */
-export default function HeroSection({ heroBanners = [], hero, golfEntryHref = buildGolfProductsHref() }: HeroSectionProps) {
+export default function HeroSection({
+  heroBanners = [],
+  hero,
+  golfToursHref = null,
+  golfDatesHref = null,
+}: HeroSectionProps) {
   const hasBanners = heroBanners.length > 0;
   const firstBanner = heroBanners[0] ?? null;
 
@@ -198,13 +206,10 @@ export default function HeroSection({ heroBanners = [], hero, golfEntryHref = bu
                         variant="hero-mobile"
                       />
                     </div>
-                    {ENABLE_FREE_TRAVEL_PLANNER ? (
-                      <div className="relative z-0 mt-2">
-                        <HomeTravelEntries golfHref={golfEntryHref} />
-                      </div>
-                    ) : null}
+                    <HomeHeroGolfFindCtas toursHref={golfToursHref} datesHref={golfDatesHref} />
                     <div className="relative z-0">
-                      <HomeQuickKeywords pairedEntriesVisible={ENABLE_FREE_TRAVEL_PLANNER} />
+                      {/* 골프·플래너는 히어로 아래 독립 섹션으로 이동 — 퀵액션 중복 제거 */}
+                      <HomeQuickKeywords pairedEntriesVisible />
                     </div>
                     <p className="hidden pt-1 type-caption text-[var(--hero-text-secondary)]/80 lg:block">
                       {hero.recommended_text ? (

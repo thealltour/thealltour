@@ -1,5 +1,4 @@
 import dynamic from "next/dynamic";
-import Link from "next/link";
 
 import { cn } from "@/lib/cn";
 
@@ -208,34 +207,26 @@ export function HomeDeferredSections({
 
     <>
 
+      {/*
+        골프 본문: 추천상품 → 출발 달력(1회).
+        히어로 CTA(#home-golf-tours / #home-golf-dates)와 경로 섹션(#home-golf-explore)이
+        여기로 스크롤한다. 달력은 복제하지 않는다.
+      */}
       {golfTour.products.length > 0 || golfCalendarModel ? (
         <section id="home-golf-explore" aria-label="골프여행 찾기" className="scroll-mt-48 space-y-5 md:space-y-8">
-          <nav aria-label="골프여행 탐색 방법" className="flex flex-wrap gap-2 px-4 pt-3 md:pt-6">
-            {golfTour.products.length > 0 ? <Link href="#home-golf-tours" className="inline-flex min-h-11 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">추천상품으로 찾기</Link> : null}
-            {golfCalendarModel ? <Link href="#home-golf-dates" className="inline-flex min-h-11 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">출발 날짜로 찾기</Link> : null}
-          </nav>
-      <GolfTourProductsSection
+          <GolfTourProductsSection
+            products={golfTour.products}
+            moreHref={golfTour.moreHref}
+            eyebrow={golfTour.eyebrow}
+            title={golfTour.title}
+            description={golfTour.description}
+          />
 
-        products={golfTour.products}
-
-        moreHref={golfTour.moreHref}
-
-        eyebrow={golfTour.eyebrow}
-
-        title={golfTour.title}
-
-        description={golfTour.description}
-
-      />
-
-      {golfCalendarModel ? (
-
-        <div id="home-golf-dates" className="scroll-mt-48">
-          <HomeGolfCalendar model={golfCalendarModel} className="-mt-1 max-md:mb-0 md:-mt-2" />
-        </div>
-
-      ) : null}
-
+          {golfCalendarModel ? (
+            <div id="home-golf-dates" className="scroll-mt-48">
+              <HomeGolfCalendar model={golfCalendarModel} className="-mt-1 max-md:mb-0 md:-mt-2" />
+            </div>
+          ) : null}
         </section>
       ) : null}
 

@@ -17,6 +17,7 @@ import {
 } from "@/components/planner/PlannerManualEditModals";
 import { PlannerPlanSummary } from "@/components/planner/PlannerPlanSummary";
 import { PlannerPreparationHub } from "@/components/planner/PlannerPreparationHub";
+import { PlannerContinuationBanner } from "@/components/planner/PlannerContinuationBanner";
 import { PlannerSavePanel } from "@/components/planner/PlannerSavePanel";
 import {
   usePlannerDayScrollSpy,
@@ -52,10 +53,13 @@ type PlannerResultViewProps = {
   sessionId: string;
   sourceProductId: string | null;
   isSaved: boolean;
+  /** True when session.member_id matches cookie member (claimed or created while logged in). */
+  isMemberLinked: boolean;
   enrichment: PlannerEnrichmentDto | null;
   originText?: string | null;
   pace?: PlannerPace | null;
-  onSaved: () => void;
+  onSaved: (meta?: { updatedAt?: string }) => void;
+  onMemberLinked: (meta: { updatedAt: string }) => void;
   onPlanUpdated: (payload: PlannerPlanUpdatedPayload) => void;
   onReloadLatest: () => void;
   /** Incremented by the loader on every plan update; refreshes affiliate offers. */
@@ -83,10 +87,12 @@ export function PlannerResultView({
   sessionId,
   sourceProductId,
   isSaved,
+  isMemberLinked,
   enrichment,
   originText,
   pace,
   onSaved,
+  onMemberLinked,
   onPlanUpdated,
   onReloadLatest,
   planRevision = 0,
@@ -284,6 +290,13 @@ export function PlannerResultView({
               compact
             />
           </div>
+
+          {!isSaved && !isMemberLinked ? (
+            <PlannerContinuationBanner
+              sessionId={sessionId}
+              onClaimed={(meta) => onMemberLinked({ updatedAt: meta.updatedAt })}
+            />
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-2" data-testid="planner-manual-edit-entry">
             {manualEditMode ? (

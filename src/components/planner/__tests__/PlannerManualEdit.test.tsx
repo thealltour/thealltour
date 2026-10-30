@@ -174,8 +174,10 @@ describe("PlannerResultView manual edit entry", () => {
         sessionId="550e8400-e29b-41d4-a716-446655440000"
         sourceProductId={null}
         isSaved={false}
+        isMemberLinked={true}
         enrichment={null}
         onSaved={vi.fn()}
+        onMemberLinked={vi.fn()}
         onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
@@ -252,8 +254,10 @@ describe("PlannerResultView day title save", () => {
         sessionId="550e8400-e29b-41d4-a716-446655440000"
         sourceProductId={null}
         isSaved={false}
+        isMemberLinked={true}
         enrichment={null}
         onSaved={vi.fn()}
+        onMemberLinked={vi.fn()}
         onReloadLatest={vi.fn()}
         onPlanUpdated={onPlanUpdated}
       />,
@@ -283,8 +287,10 @@ describe("PlannerResultView day title save", () => {
         sessionId="550e8400-e29b-41d4-a716-446655440000"
         sourceProductId={null}
         isSaved={false}
+        isMemberLinked={true}
         enrichment={null}
         onSaved={vi.fn()}
+        onMemberLinked={vi.fn()}
         onReloadLatest={onReloadLatest}
         onPlanUpdated={vi.fn()}
       />,

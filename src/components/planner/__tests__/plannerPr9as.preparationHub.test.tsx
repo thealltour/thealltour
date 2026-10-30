@@ -19,6 +19,54 @@ vi.mock("@/lib/analytics/trackPlannerEvents", () => ({
   trackAffiliateImpression: trackImpression,
   trackAffiliateClicked: trackClicked,
   trackPlannerDayNavigationClick: vi.fn(),
+  trackPlannerManualEditModeStarted: vi.fn(),
+  trackPlannerSaveClicked: vi.fn(),
+  trackPlannerSaved: vi.fn(),
+  trackPlannerKakaoLoginStarted: vi.fn(),
+  trackPlannerKakaoMemoClicked: vi.fn(),
+  trackPlannerKakaoMemoOAuthStarted: vi.fn(),
+  trackPlannerKakaoCalendarClicked: vi.fn(),
+  trackPlannerKakaoCalendarOAuthStarted: vi.fn(),
+  trackPlannerGuestPlanClaimed: vi.fn(),
+  trackPlannerGuestPlanClaimFailed: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => "/planner/test",
+  useSearchParams: () => ({
+    get: () => null,
+    toString: () => "",
+  }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/lib/planner/saveClient", () => ({
+  fetchPlannerMemberAuthenticated: vi.fn(async () => true),
+  postPlannerSessionSave: vi.fn(async () => ({
+    ok: true,
+    claimed: false,
+    session: {
+      id: "sess",
+      status: "saved",
+      isSaved: true,
+      updatedAt: "2026-10-31T00:00:00.000Z",
+    },
+  })),
 }));
 
 vi.mock("next/image", () => ({
@@ -244,8 +292,10 @@ describe("PR-9AS Preparation Hub", () => {
         sessionId={SESSION}
         sourceProductId={null}
         isSaved={false}
+        isMemberLinked={true}
         enrichment={null}
         onSaved={vi.fn()}
+        onMemberLinked={vi.fn()}
         updatedAt="2026-10-31T00:00:00.000Z"
         onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}

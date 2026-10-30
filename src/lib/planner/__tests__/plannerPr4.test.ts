@@ -197,6 +197,10 @@ describe("PR-4 planner save contracts", () => {
     expect(ANALYTICS_EVENTS.planner_save_clicked).toBe("planner_save_clicked");
     expect(ANALYTICS_EVENTS.planner_kakao_login_started).toBe("planner_kakao_login_started");
     expect(ANALYTICS_EVENTS.planner_saved).toBe("planner_saved");
+    expect(ANALYTICS_EVENTS.planner_guest_plan_claimed).toBe("planner_guest_plan_claimed");
+    expect(ANALYTICS_EVENTS.planner_guest_plan_claim_failed).toBe(
+      "planner_guest_plan_claim_failed",
+    );
   });
 });
 

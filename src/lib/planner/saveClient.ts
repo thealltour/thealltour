@@ -12,9 +12,22 @@ export async function fetchPlannerMemberAuthenticated(): Promise<boolean> {
   }
 }
 
+export type PlannerSaveClientResult =
+  | {
+      ok: true;
+      claimed: boolean;
+      session: {
+        id: string;
+        status: string;
+        isSaved: boolean;
+        updatedAt: string;
+      };
+    }
+  | { ok: false; message?: string };
+
 export async function postPlannerSessionSave(
   sessionId: string,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<PlannerSaveClientResult> {
   const anonymousKey = getOrCreatePlannerAnonymousKey();
   const res = await fetch(`/api/planner/sessions/${encodeURIComponent(sessionId)}/save`, {
     method: "POST",
@@ -22,9 +35,35 @@ export async function postPlannerSessionSave(
     credentials: "include",
     body: JSON.stringify({ anonymousKey }),
   });
-  const data = (await res.json().catch(() => null)) as { message?: string } | null;
+  const data = (await res.json().catch(() => null)) as {
+    message?: string;
+    claimed?: boolean;
+    session?: {
+      id?: string;
+      status?: string;
+      isSaved?: boolean;
+      updatedAt?: string;
+    };
+  } | null;
   if (!res.ok) {
     return { ok: false, message: data?.message ?? "플랜을 저장하지 못했습니다." };
   }
-  return { ok: true };
+
+  const updatedAt = data?.session?.updatedAt;
+  const id = data?.session?.id;
+  const status = data?.session?.status;
+  if (!updatedAt || !id || !status) {
+    return { ok: false, message: "플랜을 저장하지 못했습니다." };
+  }
+
+  return {
+    ok: true,
+    claimed: Boolean(data?.claimed),
+    session: {
+      id,
+      status,
+      isSaved: Boolean(data?.session?.isSaved) || status === "saved",
+      updatedAt,
+    },
+  };
 }

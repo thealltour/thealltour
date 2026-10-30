@@ -219,8 +219,10 @@ function renderResult(offers: Partial<PlannerAffiliateOffersDto> & { activityDis
       sessionId="550e8400-e29b-41d4-a716-446655440000"
       sourceProductId={null}
       isSaved={false}
+      isMemberLinked={true}
       enrichment={null}
       onSaved={vi.fn()}
+      onMemberLinked={vi.fn()}
       updatedAt="2026-10-31T00:00:00.000Z"
         onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}

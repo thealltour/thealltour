@@ -5,7 +5,7 @@ import { startOAuthLogin } from "@/lib/auth/oauthStart";
 import { setPlannerGenerationIntent } from "@/lib/planner/generationIntent";
 
 const searchParams = vi.hoisted(() => ({
-  get: vi.fn((..._args: unknown[]) => null as string | null),
+  get: vi.fn((): string | null => null),
 }));
 const push = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -90,7 +90,9 @@ function mockWizardToSummaryThenGenerate(generateResponse: {
 
 async function triggerQaGenerate(generateResponse: { status: number; body: unknown }) {
   mockWizardToSummaryThenGenerate(generateResponse);
-  searchParams.get.mockImplementation((key?: string) => (key === "qa" ? "1" : null));
+  searchParams.get.mockImplementation((...args: unknown[]) =>
+    args[0] === "qa" ? "1" : null,
+  );
   render(<PlannerWizard qaEnabled />);
   fireEvent.click(screen.getByRole("button", { name: "바로 생성 테스트" }));
 }

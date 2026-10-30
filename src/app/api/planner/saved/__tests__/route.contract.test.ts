@@ -1,13 +1,50 @@
-import { describe, expect, it } from "vitest";
-import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("GET /api/planner/saved contract", () => {
-  it("feature flag is boolean (off → route returns 404)", () => {
-    expect(typeof ENABLE_FREE_TRAVEL_PLANNER).toBe("boolean");
+const listSaved = vi.hoisted(() => vi.fn());
+const listGenerated = vi.hoisted(() => vi.fn());
+const getMemberSessionFromCookies = vi.hoisted(() => vi.fn());
+
+vi.mock("@/config/featureFlags", () => ({
+  ENABLE_FREE_TRAVEL_PLANNER: true,
+}));
+
+vi.mock("@/lib/memberSession", () => ({
+  getMemberSessionFromCookies,
+}));
+
+vi.mock("@/lib/planner/repository", () => ({
+  listSavedPlannerSessionsForMember: listSaved,
+  listGeneratedPlannerSessionsForMember: listGenerated,
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({})),
+}));
+
+import { GET } from "@/app/api/planner/saved/route";
+
+describe("GET /api/planner/saved backward compatibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getMemberSessionFromCookies.mockReturnValue({
+      memberId: "11111111-1111-4111-8111-111111111111",
+    });
   });
 
-  it("documents that memberId is never accepted from client query/body", () => {
-    // GET has no body; identity is cookie-only via getMemberSessionFromCookies.
-    expect(true).toBe(true);
+  it("keeps plans as saved-only and adds generatedPlans", async () => {
+    const saved = [{ id: "s1", title: "saved" }];
+    const generated = [{ id: "g1", title: "gen" }];
+    listSaved.mockResolvedValue(saved);
+    listGenerated.mockResolvedValue(generated);
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.plans).toEqual(saved);
+    expect(json.count).toBe(1);
+    expect(json.generatedPlans).toEqual(generated);
+    expect(json.generatedCount).toBe(1);
+    expect(listSaved).toHaveBeenCalled();
+    expect(listGenerated).toHaveBeenCalled();
   });
 });

@@ -41,7 +41,16 @@ vi.mock("@/lib/analytics/trackPlannerEvents", () => ({
 
 vi.mock("@/lib/planner/saveClient", () => ({
   fetchPlannerMemberAuthenticated: vi.fn(async () => true),
-  postPlannerSessionSave: vi.fn(async () => ({ ok: true })),
+  postPlannerSessionSave: vi.fn(async () => ({
+    ok: true,
+    claimed: false,
+    session: {
+      id: "sess",
+      status: "saved",
+      isSaved: true,
+      updatedAt: "2026-10-31T00:00:00.000Z",
+    },
+  })),
 }));
 
 vi.mock("@/lib/auth/oauthStart", () => ({

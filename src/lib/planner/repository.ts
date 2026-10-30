@@ -2,7 +2,10 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { createEmptyPlannerDraftInput } from "@/lib/planner/constants";
-import { decidePlannerClaim } from "@/lib/planner/claimDecision";
+import {
+  decidePlannerClaim,
+  decidePlannerOwnershipAttach,
+} from "@/lib/planner/claimDecision";
 import { normalizePlannerDraftInput } from "@/lib/planner/normalizeDraftInput";
 import { plannerPlanSchema, type PlannerPlan } from "@/lib/planner/planSchemas";
 import {
@@ -175,8 +178,79 @@ export type ClaimPlannerSessionResult =
   | { ok: true; session: PlannerSession; claimed: boolean }
   | { ok: false; reason: "not_found" | "conflict" | "forbidden" | "invalid_status" };
 
+export type AttachPlannerSessionResult =
+  | { ok: true; session: PlannerSession; claimed: boolean }
+  | { ok: false; reason: "not_found" | "conflict" | "forbidden" | "invalid_status" };
+
 /**
- * Atomic anonymous → member ownership transfer (or mark generated→saved for same member).
+ * Login continuation: attach member_id only.
+ * Keeps status=generated and does NOT change updated_at (Manual Edit CAS safe).
+ * Does not mutate input_json / plan_json / anonymous_key.
+ */
+export async function attachPlannerSessionToMember(params: {
+  id: string;
+  memberId: string;
+  anonymousKey: string;
+}): Promise<AttachPlannerSessionResult> {
+  const memberId = params.memberId.trim();
+  const anonymousKey = params.anonymousKey.trim();
+  const id = params.id.trim();
+  if (!memberId || !anonymousKey || !id) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const existing = await getPlannerSessionById(id);
+  if (!existing) return { ok: false, reason: "not_found" };
+
+  const decision = decidePlannerOwnershipAttach({
+    session: existing,
+    memberId,
+    anonymousKey,
+  });
+
+  if (decision.action === "reject") {
+    return { ok: false, reason: decision.reason };
+  }
+
+  if (decision.action === "idempotent_owned") {
+    return { ok: true, session: existing, claimed: false };
+  }
+
+  // attach_anonymous — conditional UPDATE: member_id only (no status / updated_at)
+  const { data, error } = await supabaseAdmin
+    .from("planner_sessions")
+    .update({ member_id: memberId })
+    .eq("id", id)
+    .is("member_id", null)
+    .eq("anonymous_key", anonymousKey)
+    .eq("status", "generated")
+    .select(
+      "id, anonymous_key, member_id, status, input_json, plan_json, source_product_id, created_at, updated_at",
+    )
+    .maybeSingle();
+
+  if (error) {
+    console.error("[planner] attachPlannerSessionToMember:", error.message);
+    return { ok: false, reason: "conflict" };
+  }
+
+  if (data) {
+    return { ok: true, session: mapRow(data as PlannerSessionRow), claimed: true };
+  }
+
+  const raced = await getPlannerSessionById(id);
+  if (!raced) return { ok: false, reason: "not_found" };
+  if (raced.memberId === memberId) {
+    return { ok: true, session: raced, claimed: false };
+  }
+  if (raced.memberId && raced.memberId !== memberId) {
+    return { ok: false, reason: "forbidden" };
+  }
+  return { ok: false, reason: "conflict" };
+}
+
+/**
+ * Explicit save: anonymous → member+saved, or mark generated→saved for same member.
  * Does not mutate input_json / plan_json.
  */
 export async function claimPlannerSessionForMember(params: {
@@ -270,13 +344,11 @@ export async function claimPlannerSessionForMember(params: {
   return { ok: false, reason: "conflict" };
 }
 
-/**
- * List saved plans for a member (server-only). memberId must come from cookie auth.
- * Malformed plan_json rows are skipped so one bad row cannot 500 the list.
- */
-export async function listSavedPlannerSessionsForMember(params: {
+async function listMemberPlannerSessionsByStatus(params: {
   memberId: string;
+  status: "saved" | "generated";
   limit?: number;
+  logLabel: string;
 }): Promise<SavedPlannerListItem[]> {
   const memberId = params.memberId.trim();
   if (!memberId) return [];
@@ -290,14 +362,14 @@ export async function listSavedPlannerSessionsForMember(params: {
     .from("planner_sessions")
     .select("id, plan_json, source_product_id, updated_at")
     .eq("member_id", memberId)
-    .eq("status", "saved")
+    .eq("status", params.status)
     .not("plan_json", "is", null)
     .order("updated_at", { ascending: false })
     .limit(limit);
 
   if (error) {
-    console.error("[planner] listSavedPlannerSessionsForMember:", error.message);
-    throw new Error("Failed to list saved planner sessions");
+    console.error(`[planner] ${params.logLabel}:`, error.message);
+    throw new Error(`Failed to list ${params.status} planner sessions`);
   }
 
   const items: SavedPlannerListItem[] = [];
@@ -314,4 +386,37 @@ export async function listSavedPlannerSessionsForMember(params: {
     if (projected) items.push(projected);
   }
   return items;
+}
+
+/**
+ * List saved plans for a member (server-only). memberId must come from cookie auth.
+ * Malformed plan_json rows are skipped so one bad row cannot 500 the list.
+ * Contract: status=saved only — do not change to include generated.
+ */
+export async function listSavedPlannerSessionsForMember(params: {
+  memberId: string;
+  limit?: number;
+}): Promise<SavedPlannerListItem[]> {
+  return listMemberPlannerSessionsByStatus({
+    memberId: params.memberId,
+    status: "saved",
+    limit: params.limit,
+    logLabel: "listSavedPlannerSessionsForMember",
+  });
+}
+
+/**
+ * List in-progress (generated, member-owned) plans for /planner/my "작성 중".
+ * Does not include anonymous unclaimed sessions.
+ */
+export async function listGeneratedPlannerSessionsForMember(params: {
+  memberId: string;
+  limit?: number;
+}): Promise<SavedPlannerListItem[]> {
+  return listMemberPlannerSessionsByStatus({
+    memberId: params.memberId,
+    status: "generated",
+    limit: params.limit,
+    logLabel: "listGeneratedPlannerSessionsForMember",
+  });
 }

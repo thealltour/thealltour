@@ -38,7 +38,7 @@ type PlannerSavePanelProps = {
   destination: string;
   sourceProductId: string | null;
   isSaved: boolean;
-  onSaved: () => void;
+  onSaved: (meta?: { updatedAt?: string }) => void;
   /** Tighter layout for Result action group (behavior unchanged). */
   compact?: boolean;
 };
@@ -83,7 +83,11 @@ export function PlannerSavePanel({
   }, [pathname, router, searchParams]);
 
   const handleSaveSuccess = useCallback(
-    (wasAlreadyLoggedIn: boolean, saveMethod: "kakao" | "existing_member") => {
+    (
+      wasAlreadyLoggedIn: boolean,
+      saveMethod: "kakao" | "existing_member",
+      updatedAt?: string,
+    ) => {
       clearPlannerSaveIntent();
       trackPlannerSaved({
         sessionId,
@@ -92,7 +96,7 @@ export function PlannerSavePanel({
         wasAlreadyLoggedIn,
         saveMethod,
       });
-      onSaved();
+      onSaved(updatedAt ? { updatedAt } : undefined);
     },
     [destination, onSaved, sessionId, sourceProductId],
   );
@@ -106,7 +110,7 @@ export function PlannerSavePanel({
         setError(result.message ?? "플랜을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
-      handleSaveSuccess(true, "existing_member");
+      handleSaveSuccess(true, "existing_member", result.session.updatedAt);
     } catch {
       setError("플랜을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {

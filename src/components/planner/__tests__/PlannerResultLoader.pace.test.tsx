@@ -19,6 +19,12 @@ vi.mock("@/lib/analytics/trackPlannerEvents", () => ({
   trackPlannerRoutesFailed: vi.fn(),
   trackPlannerRoutesLoaded: vi.fn(),
   trackPlannerSaved: vi.fn(),
+  trackPlannerGuestPlanClaimed: vi.fn(),
+  trackPlannerGuestPlanClaimFailed: vi.fn(),
+}));
+
+vi.mock("@/lib/planner/claimClient", () => ({
+  postPlannerSessionClaim: vi.fn(),
 }));
 
 vi.mock("@/components/planner/PlannerResultView", () => ({

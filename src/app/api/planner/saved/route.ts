@@ -2,14 +2,19 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
-import { listSavedPlannerSessionsForMember } from "@/lib/planner/repository";
+import {
+  listGeneratedPlannerSessionsForMember,
+  listSavedPlannerSessionsForMember,
+} from "@/lib/planner/repository";
 import { SAVED_PLANNER_LIST_DEFAULT_LIMIT } from "@/lib/planner/savedPlanDto";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/planner/saved
- * Returns the current member's saved plans. memberId is never accepted from the client.
+ * Returns the current member's saved + in-progress (generated) plans.
+ * `plans` remains saved-only for backward compatibility.
+ * memberId is never accepted from the client.
  */
 export async function GET() {
   if (!ENABLE_FREE_TRAVEL_PLANNER) {
@@ -23,14 +28,22 @@ export async function GET() {
   }
 
   try {
-    const plans = await listSavedPlannerSessionsForMember({
-      memberId: memberSession.memberId,
-      limit: SAVED_PLANNER_LIST_DEFAULT_LIMIT,
-    });
+    const [plans, generatedPlans] = await Promise.all([
+      listSavedPlannerSessionsForMember({
+        memberId: memberSession.memberId,
+        limit: SAVED_PLANNER_LIST_DEFAULT_LIMIT,
+      }),
+      listGeneratedPlannerSessionsForMember({
+        memberId: memberSession.memberId,
+        limit: SAVED_PLANNER_LIST_DEFAULT_LIMIT,
+      }),
+    ]);
 
     return NextResponse.json({
       plans,
       count: plans.length,
+      generatedPlans,
+      generatedCount: generatedPlans.length,
     });
   } catch {
     return NextResponse.json(

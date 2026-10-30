@@ -249,6 +249,39 @@ export function trackPlannerSaved(
   });
 }
 
+/** Guest plan attached to member account (ownership only; status stays generated). */
+export function trackPlannerGuestPlanClaimed(params: {
+  sessionId: string;
+  source?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_guest_plan_claimed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_continuation",
+    label: "planner_guest_plan_claimed",
+    metadata: {
+      sessionId: params.sessionId,
+      source: params.source?.trim().slice(0, 64) || "continuation",
+    },
+  });
+}
+
+export function trackPlannerGuestPlanClaimFailed(params: {
+  sessionId: string;
+  source?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_guest_plan_claim_failed,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_continuation",
+    label: "planner_guest_plan_claim_failed",
+    metadata: {
+      sessionId: params.sessionId,
+      source: params.source?.trim().slice(0, 64) || "continuation",
+    },
+  });
+}
+
 export function trackPlannerSavedListViewed(params: { savedPlanCount: number }): void {
   trackClientAnalytics({
     eventName: ANALYTICS_EVENTS.planner_saved_list_viewed,

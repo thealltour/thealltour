@@ -15,7 +15,29 @@ describe("kakaoProvider.getAuthorizationUrl scope", () => {
     // 카카오 로그인 전체가 실패하므로, 콘솔의 "필수 동의" 항목과 항상 일치해야 한다.
     expect(requested).not.toContain("account_email");
     expect(requested).not.toContain("profile_nickname");
+    expect(requested).not.toContain("talk_message");
     expect(requested.sort()).toEqual(["name", "phone_number", "plusfriends"].sort());
+  });
+
+  it("adds talk_message only when additionalScopes requests it", () => {
+    const url = kakaoProvider.getAuthorizationUrl({
+      state: "test-state",
+      redirectUri: "https://example.com/callback",
+      additionalScopes: ["talk_message"],
+    });
+    const scope = new URL(url).searchParams.get("scope") ?? "";
+    const requested = scope.split(",").filter(Boolean);
+    expect(requested).toEqual(["name", "phone_number", "plusfriends", "talk_message"]);
+  });
+
+  it("rejects arbitrary additional scopes", () => {
+    expect(() =>
+      kakaoProvider.getAuthorizationUrl({
+        state: "test-state",
+        redirectUri: "https://example.com/callback",
+        additionalScopes: ["talk_message", "evil_scope"],
+      }),
+    ).toThrow(/kakao_scope_not_allowed/);
   });
 });
 

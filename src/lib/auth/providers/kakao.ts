@@ -1,4 +1,5 @@
 import type { OAuthProviderAdapter, OAuthProfile, OAuthTokens } from "@/lib/auth/types";
+import { resolveKakaoAuthorizationScopes } from "@/lib/auth/kakaoScopes";
 
 function requiredEnv(name: string): string {
   return process.env[name]?.trim() ?? "";
@@ -63,17 +64,16 @@ export const kakaoProvider: OAuthProviderAdapter = {
   id: "kakao",
   displayName: "카카오",
   isConfigured: () => Boolean(requiredEnv("KAKAO_REST_API_KEY")),
-  getAuthorizationUrl: ({ state, redirectUri }) => {
+  getAuthorizationUrl: ({ state, redirectUri, additionalScopes }) => {
+    // 기본 로그인: name·phone_number·plusfriends만.
+    // action OAuth(예: talk_message)는 additionalScopes로만 추가 — 일반 로그인에 강제하지 않음.
+    const scope = resolveKakaoAuthorizationScopes(additionalScopes);
     const params = new URLSearchParams({
       client_id: requiredEnv("KAKAO_REST_API_KEY"),
       redirect_uri: redirectUri,
       response_type: "code",
       state,
-      // 카카오 디벨로퍼스 [동의항목] 설정과 반드시 동일해야 함 — 설정하지 않은(사용 안함) 항목을
-      // 포함하면 KOE205(invalid_scope)로 로그인 전체가 실패한다. 콘솔에서 "필수 동의"인
-      // name·phone_number·plusfriends만 요청. profile_nickname·account_email은
-      // 콘솔에서 "사용 안함"으로 전환되어 제거함 (가입전환 저해 이슈로 필수 동의 해제).
-      scope: "name,phone_number,plusfriends",
+      scope,
     });
     return `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
   },

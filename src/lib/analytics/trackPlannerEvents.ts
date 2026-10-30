@@ -257,6 +257,34 @@ export function trackPlannerSavedPlanOpened(params: {
   });
 }
 
+export function trackPlannerKakaoMemoClicked(params: SaveMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_kakao_memo_clicked,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_kakao_memo",
+    label: "planner_kakao_memo_clicked",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}
+
+export function trackPlannerKakaoMemoOAuthStarted(params: SaveMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_kakao_memo_oauth_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_kakao_memo",
+    label: "planner_kakao_memo_oauth_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}
+
 type EditMetaBase = {
   sessionId: string;
   destination?: string | null;

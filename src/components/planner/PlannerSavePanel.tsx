@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { startOAuthLogin } from "@/lib/auth/oauthStart";
 import {
   trackPlannerKakaoLoginStarted,
+  trackPlannerKakaoMemoClicked,
+  trackPlannerKakaoMemoOAuthStarted,
   trackPlannerSaveClicked,
   trackPlannerSaved,
 } from "@/lib/analytics/trackPlannerEvents";
@@ -17,6 +20,11 @@ import {
 } from "@/lib/planner/saveClient";
 import { clearPlannerSaveIntent, setPlannerSaveIntent } from "@/lib/planner/saveIntent";
 import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
+import {
+  parsePlannerKakaoMemoQuery,
+  PLANNER_KAKAO_MEMO_QUERY,
+  type PlannerKakaoMemoQueryStatus,
+} from "@/lib/auth/kakao/plannerKakaoMemoQuery";
 
 type PlannerSavePanelProps = {
   sessionId: string;
@@ -39,6 +47,22 @@ export function PlannerSavePanel({
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [memoStatus, setMemoStatus] = useState<PlannerKakaoMemoQueryStatus | null>(null);
+  const [memoStarting, setMemoStarting] = useState(false);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const parsed = parsePlannerKakaoMemoQuery(searchParams.get(PLANNER_KAKAO_MEMO_QUERY));
+    if (!parsed) return;
+    setMemoStatus(parsed);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete(PLANNER_KAKAO_MEMO_QUERY);
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const handleSaveSuccess = useCallback(
     (wasAlreadyLoggedIn: boolean, saveMethod: "kakao" | "existing_member") => {
@@ -100,27 +124,58 @@ export function PlannerSavePanel({
     startOAuthLogin("kakao", { nextPath: `/planner/${sessionId}` });
   }, [destination, sessionId, sourceProductId]);
 
+  const onKakaoMemoClick = useCallback(() => {
+    if (memoStarting) return;
+    setMemoStarting(true);
+    setMemoStatus(null);
+    trackPlannerKakaoMemoClicked({ sessionId, destination, sourceProductId });
+    trackPlannerKakaoMemoOAuthStarted({ sessionId, destination, sourceProductId });
+    window.location.href = `/api/planner/sessions/${encodeURIComponent(sessionId)}/kakao-memo/start`;
+  }, [destination, memoStarting, sessionId, sourceProductId]);
+
   if (isSaved) {
     return (
       <div
         className={
           compact
-            ? "space-y-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
-            : "space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+            ? "space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
+            : "space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
         }
       >
-        <p className="type-body font-medium text-[var(--foreground)]">✓ 저장됨</p>
-        {!compact ? (
+        <p className="type-body font-medium text-[var(--foreground)]">
+          {memoStatus === "sent"
+            ? "✓ 카카오톡 '나와의 채팅'으로 보냈어요."
+            : "✓ 여행 플랜이 저장됐어요."}
+        </p>
+        {memoStatus === "failed" ? (
+          <p className="type-small text-[var(--danger)]" role="alert">
+            카카오톡으로 보내지 못했어요. 플랜은 정상적으로 저장되어 있습니다.
+          </p>
+        ) : null}
+        {!compact && memoStatus !== "sent" ? (
           <p className="type-caption text-[var(--text-muted)]">
             같은 계정으로 로그인하면 다른 기기에서도 이 플랜을 볼 수 있어요.
           </p>
         ) : null}
-        <Link
-          href={PLANNER_SAVED_LIST_PATH}
-          className="inline-flex type-small font-medium text-[var(--primary)] underline-offset-2 hover:underline"
-        >
-          내 여행 플랜 보기
-        </Link>
+        <div className="flex flex-col gap-2">
+          {memoStatus !== "sent" ? (
+            <Button
+              type="button"
+              variant="kakao"
+              className="w-full min-h-[44px]"
+              loading={memoStarting}
+              onClick={onKakaoMemoClick}
+            >
+              {memoStatus === "failed" ? "다시 보내기" : "카카오톡으로 받아보기"}
+            </Button>
+          ) : null}
+          <Link
+            href={PLANNER_SAVED_LIST_PATH}
+            className="inline-flex min-h-[44px] items-center justify-center type-small font-medium text-[var(--primary)] underline-offset-2 hover:underline"
+          >
+            내 여행 플랜 보기
+          </Link>
+        </div>
       </div>
     );
   }

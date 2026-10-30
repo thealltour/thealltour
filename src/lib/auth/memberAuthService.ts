@@ -459,6 +459,26 @@ export async function getMemberAuthProviders(memberId: string) {
   return data ?? [];
 }
 
+/** Kakao provider_user_id for identity checks — never returns tokens. */
+export async function getMemberKakaoProviderUserId(memberId: string): Promise<string | null> {
+  const id = memberId.trim();
+  if (!id) return null;
+  const { data, error } = await supabaseAdmin
+    .from("member_auth_providers")
+    .select("provider_user_id")
+    .eq("member_id", id)
+    .eq("provider", "kakao")
+    .maybeSingle();
+  if (error) {
+    console.error("[memberAuthService] getMemberKakaoProviderUserId:", error.message);
+    return null;
+  }
+  const providerUserId = data?.provider_user_id;
+  return typeof providerUserId === "string" && providerUserId.trim()
+    ? providerUserId.trim()
+    : null;
+}
+
 export async function getMemberAuthSummary(memberId: string) {
   const member = await getMemberById(memberId);
   if (!member) return null;

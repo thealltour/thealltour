@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { AuthMode, AuthProviderId } from "@/lib/auth/types";
 import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
+import { parseOAuthAction, type OAuthAction } from "@/lib/auth/oauthAction";
 
 export const OAUTH_STATE_COOKIE = "theall_oauth_state";
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -12,6 +13,8 @@ export type OAuthStatePayload = {
   nonce: string;
   memberId?: string;
   acquisition?: MemberAcquisition | null;
+  /** Action-specific OAuth (e.g. planner Kakao memo). Absent for normal login/link. */
+  action?: OAuthAction;
   expiresAt: number;
 };
 
@@ -65,7 +68,24 @@ export function verifyOAuthStateToken(token?: string | null): OAuthStatePayload 
       return null;
     }
     if (parsed.expiresAt < Date.now()) return null;
-    return parsed as OAuthStatePayload;
+
+    let action: OAuthAction | undefined;
+    if (parsed.action != null) {
+      const normalized = parseOAuthAction(parsed.action);
+      if (!normalized) return null;
+      action = normalized;
+    }
+
+    return {
+      provider: parsed.provider,
+      mode: parsed.mode,
+      next: parsed.next,
+      nonce: parsed.nonce,
+      memberId: parsed.memberId,
+      acquisition: parsed.acquisition ?? null,
+      ...(action ? { action } : {}),
+      expiresAt: parsed.expiresAt,
+    } satisfies OAuthStatePayload;
   } catch {
     return null;
   }

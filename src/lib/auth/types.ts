@@ -28,7 +28,12 @@ export type OAuthProviderAdapter = {
   id: AuthProviderId;
   displayName: string;
   isConfigured: () => boolean;
-  getAuthorizationUrl: (params: { state: string; redirectUri: string }) => string;
+  getAuthorizationUrl: (params: {
+    state: string;
+    redirectUri: string;
+    /** Kakao only — validated optional scopes (talk_message, …). Ignored by other providers. */
+    additionalScopes?: readonly string[];
+  }) => string;
   exchangeCode: (code: string, redirectUri: string, state?: string) => Promise<OAuthTokens>;
   fetchProfile: (tokens: OAuthTokens) => Promise<OAuthProfile>;
 };

@@ -7,6 +7,7 @@ import {
   type AiraloFeedClientDeps,
 } from "@/lib/affiliate/planner/providers/airalo/airaloFeedClient";
 import { koreanCountryLabelFromIso } from "@/lib/affiliate/planner/countryIdentity";
+import { resolveAiraloCommerceSourceUrl } from "@/lib/affiliate/planner/providers/airalo/airaloKoreanUrl";
 import {
   airaloPlanCoversTrip,
   normalizeTripDurationDays,
@@ -100,9 +101,10 @@ async function buildAiraloOffer(
   if (!selected) return null;
 
   const createCommerce = deps.createCommerceTarget ?? createTravelpayoutsCommerceTarget;
+  const commerceSourceUrl = resolveAiraloCommerceSourceUrl(selected.sourceUrl);
   try {
     const commerce = await createCommerce({
-      sourceUrl: selected.sourceUrl,
+      sourceUrl: commerceSourceUrl,
       providerId: "airalo",
       allowedHosts: [...AIRALO_ALLOWED_HOSTS],
       campaignId: AIRALO_TRAVELPAYOUTS_CAMPAIGN_ID,
@@ -124,7 +126,7 @@ async function buildAiraloOffer(
       providerSubId: commerce.providerSubId,
       affiliateNetwork: commerce.affiliateNetwork,
       affiliateCampaignId: commerce.campaignId ?? AIRALO_TRAVELPAYOUTS_CAMPAIGN_ID,
-      sourceUrlHost: commerce.sourceUrlHost || safeHostnameFromUrl(selected.sourceUrl),
+      sourceUrlHost: commerce.sourceUrlHost || safeHostnameFromUrl(commerceSourceUrl),
       ...(esim ? { metadata: { esim } } : {}),
     };
   } catch (error) {
@@ -136,7 +138,7 @@ async function buildAiraloOffer(
       "[airalo] commerce_failed",
       travelpayoutsSafeLogMeta({
         providerId: "airalo",
-        hostname: safeHostnameFromUrl(selected.sourceUrl),
+        hostname: safeHostnameFromUrl(commerceSourceUrl),
         errorCode: code,
       }),
     );

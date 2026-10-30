@@ -326,7 +326,7 @@ describe("PlannerResultView information architecture", () => {
     expect(screen.queryByText("오사카 숙소")).not.toBeInTheDocument();
     expect(screen.queryByText("제휴 고지")).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /여행 준비하기/ })[0]!);
-    expect(screen.getByText("오사카 숙소")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "숙소 보기" })).toBeInTheDocument();
     expect(screen.getAllByText("제휴 고지")).toHaveLength(1);
   });
 

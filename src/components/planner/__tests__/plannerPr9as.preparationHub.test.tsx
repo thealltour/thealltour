@@ -291,12 +291,21 @@ describe("PR-9AS Preparation Hub", () => {
     expect(within(content).getByTestId("planner-hub-local")).toBeInTheDocument();
     expect(within(content).getByTestId("planner-hub-goods")).toBeInTheDocument();
     expect(within(content).getByTestId("planner-hub-activities")).toBeInTheDocument();
-    expect(within(content).getByText("오사카 항공권")).toBeInTheDocument();
+    expect(within(content).getByText("항공권")).toBeInTheDocument();
+    expect(within(content).getByText("숙소")).toBeInTheDocument();
+    const booking = within(content).getByTestId("planner-hub-booking");
+    expect(within(booking).getByTestId("planner-hub-trip-context")).toHaveTextContent("10.01 → 10.05");
+    expect(within(booking).getByTestId("planner-hub-offer-group").textContent).not.toMatch(
+      /10\.01 → 10\.05/,
+    );
+    expect(within(content).getAllByTestId("planner-hub-offer-group").length).toBeGreaterThan(0);
     expect(within(content).getAllByText("보조배터리").length).toBeGreaterThan(0);
-    expect(within(content).getByText("토스쇼핑에서 보기")).toBeInTheDocument();
+    expect(within(content).getByRole("link", { name: "여행 준비물 보기" })).toBeInTheDocument();
+    expect(within(content).getByRole("link", { name: "항공권 보기" })).toBeInTheDocument();
+    expect(within(content).getByRole("link", { name: "eSIM 보기" })).toBeInTheDocument();
     expect(screen.getByTestId("planner-activity-discovery-tiqets")).toBeInTheDocument();
     expect(screen.getAllByText(AFFILIATE_DISCLOSURE_KO)).toHaveLength(1);
-    expect(content.innerHTML).not.toMatch(/toss\.shopping|최저가|특가/);
+    expect(content.innerHTML).not.toMatch(/toss\.shopping|최저가|특가|로컬 미리보기|제휴 위젯/);
     expect(trackImpression.mock.calls.length).toBeGreaterThan(0);
   });
 

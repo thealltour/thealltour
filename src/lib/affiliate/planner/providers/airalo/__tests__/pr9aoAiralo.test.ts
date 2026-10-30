@@ -376,7 +376,7 @@ describe("PR-9AO adapter — KR exclusion, copy, metadata, source guard", () => 
     expect(offer?.destinationLabel).toBe("오사카");
     expect(offer?.metadata).toEqual({ esim: { dataLabel: "10GB", validityDays: 30 } });
     expect(createCommerceTarget).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceUrl: "https://www.airalo.com/japan-esim/jp-30d" }),
+      expect.objectContaining({ sourceUrl: "https://www.airalo.com/ko/japan-esim/jp-30d" }),
     );
     const serialized = JSON.stringify(offer);
     expect(serialized).not.toMatch(/price|currency|USD/i);

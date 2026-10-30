@@ -85,7 +85,7 @@ describe("airaloAdapter", () => {
       expect.objectContaining({
         providerId: "airalo",
         allowedHosts: expect.arrayContaining(["airalo.com", "www.airalo.com"]),
-        sourceUrl: "https://www.airalo.com/japan-esim/jp-1",
+        sourceUrl: "https://www.airalo.com/ko/japan-esim/jp-1",
       }),
     );
     // Offer must expose commerce affiliate URL, not raw feed g:link.
@@ -111,7 +111,9 @@ describe("airaloAdapter", () => {
     });
     const offer = await adapter.buildOffer(ctx());
     expect(createCommerceTarget).toHaveBeenCalledTimes(1);
-    expect(createCommerceTarget.mock.calls[0]?.[0].sourceUrl).toMatch(/^https:\/\/www\.airalo\.com\//);
+    expect(createCommerceTarget.mock.calls[0]?.[0].sourceUrl).toMatch(
+      /^https:\/\/www\.airalo\.com\/ko\//,
+    );
     expect(offer?.targetUrl).toBe("https://tp.media/r?converted=1");
   });
 

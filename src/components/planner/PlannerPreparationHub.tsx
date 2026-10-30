@@ -235,9 +235,15 @@ export function PlannerPreparationHub({
                   className="absolute inset-y-0 right-0 flex w-[min(440px,100vw)] flex-col bg-[var(--surface)] shadow-[-8px_0_24px_rgba(15,23,42,0.12)]"
                 >
                   <header className="flex shrink-0 items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                    <h2 id={titleId} className="type-body font-semibold text-[var(--foreground)]">
-                      여행 준비하기
-                    </h2>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full bg-[#61DAFB] shadow-[0_0_0_3px_rgba(97,218,251,0.28)]"
+                        aria-hidden={true}
+                      />
+                      <h2 id={titleId} className="type-body font-semibold text-[var(--foreground)]">
+                        여행 준비하기
+                      </h2>
+                    </div>
                     <button
                       ref={drawerCloseButtonRef}
                       type="button"
@@ -275,9 +281,15 @@ export function PlannerPreparationHub({
                     role="document"
                   >
                     <header className="sticky top-0 z-[1] flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-                      <h2 id={titleId} className="type-body font-semibold text-[var(--foreground)]">
-                        여행 준비하기
-                      </h2>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full bg-[#61DAFB] shadow-[0_0_0_3px_rgba(97,218,251,0.28)]"
+                          aria-hidden={true}
+                        />
+                        <h2 id={titleId} className="type-body font-semibold text-[var(--foreground)]">
+                          여행 준비하기
+                        </h2>
+                      </div>
                       <button
                         type="button"
                         onClick={close}

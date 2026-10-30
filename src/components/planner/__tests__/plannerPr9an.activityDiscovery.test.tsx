@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlannerActivityDiscovery } from "@/components/planner/PlannerActivityDiscovery";
@@ -21,7 +21,12 @@ vi.mock("@/components/affiliate/TpWidgetMount", () => ({
     src: string;
     onStatusChange?: (status: TpWidgetStatus) => void;
   }) => {
-    if (onStatusChange) widgetStatus.set(widgetKey, onStatusChange);
+    useEffect(() => {
+      if (!onStatusChange) return;
+      widgetStatus.set(widgetKey, onStatusChange);
+      // Mirror a successful embed so DiscoveryBlock headings become visible.
+      onStatusChange("rendered");
+    }, [widgetKey, onStatusChange]);
     return <div data-testid="tp-widget" data-key={widgetKey} data-src={src} />;
   },
 }));
@@ -84,16 +89,20 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("PR-9AN PlannerActivityDiscovery", () => {
-  it("tiqets only → only the Tiqets section", () => {
+  it("tiqets only → only the Tiqets section", async () => {
     render(<PlannerActivityDiscovery discovery={tiqetsOnly} />);
-    expect(screen.getByRole("heading", { name: "예약 가능한 명소 · 체험", level: 2 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "예약 가능한 명소 · 체험", level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("이런 액티비티도 있어요")).not.toBeInTheDocument();
     expect(widgets().map((w) => w.key)).toEqual(["tiqets:1102887,1108257"]);
   });
 
-  it("klook only → only the Klook section", () => {
+  it("klook only → only the Klook section", async () => {
     render(<PlannerActivityDiscovery discovery={klookOnly} />);
-    expect(screen.getByRole("heading", { name: "이런 액티비티도 있어요", level: 2 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "이런 액티비티도 있어요", level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("예약 가능한 명소 · 체험")).not.toBeInTheDocument();
     expect(widgets().map((w) => w.key)).toEqual(["klook:29:2"]);
   });
@@ -288,7 +297,7 @@ describe("PR-9AN backward compatibility (hub)", () => {
     expect(screen.queryByTestId("planner-booking-surface")).not.toBeInTheDocument();
     expect(screen.queryByTestId("planner-activity-discovery")).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: /여행 준비하기/ })[0]!);
-    expect(screen.getByText("항공권 가격 확인")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "항공권 보기" })).toBeInTheDocument();
     expect(screen.getAllByText(DISCLOSURE)).toHaveLength(1);
   });
 });

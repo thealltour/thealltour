@@ -13,6 +13,17 @@ import {
   toClientEditErrorMessage,
   type PlannerGenerateDiagnosticEvent,
 } from "@/lib/planner/generatePlan";
+import { formatKstBusinessDate } from "@/lib/planner/quota/kst";
+import { resolvePlannerQuotaSubject } from "@/lib/planner/quota/resolveSubject";
+import {
+  consumePlannerAiEditQuota,
+  releasePlannerAiEditQuota,
+  reservePlannerAiEditQuota,
+} from "@/lib/planner/quota/repository";
+import { aiEditQuotaBlockedResponse } from "@/lib/planner/quota/http";
+import type { PlannerQuotaSubject } from "@/lib/planner/quota/types";
+import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -23,6 +34,10 @@ type RouteContext = { params: Promise<{ id: string }> };
  * POST /api/planner/sessions/[id]/edit
  * Regenerates plan_json from DB input_json + current plan + instruction.
  * Never accepts planJson / memberId / status from the client.
+ *
+ * Member: AI Edit daily quota (3/KST day) + per-session in-progress lock.
+ * Guest: no new quota policy; session lock only (prevents concurrent LLM).
+ * Manual Edit is a separate route and never touches these quotas.
  */
 export async function POST(request: Request, context: RouteContext) {
   if (!ENABLE_FREE_TRAVEL_PLANNER) {
@@ -84,6 +99,70 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const cookieMemberId = memberSession?.memberId?.trim() || "";
+  let quotaSubject: PlannerQuotaSubject;
+  if (cookieMemberId) {
+    // Member AI Edit quota is keyed by memberId only (cross-device shared).
+    quotaSubject = {
+      subjectType: "member",
+      subjectId: cookieMemberId,
+      windowType: "kst_day",
+      windowKey: formatKstBusinessDate(new Date()),
+    };
+  } else {
+    const anonymousKey = parsed.data.anonymousKey?.trim() || "";
+    if (!anonymousKey) {
+      return NextResponse.json({ message: "Invalid request." }, { status: 400 });
+    }
+    try {
+      // Guest: session lock only — resolveSubject yields lifetime window (no new guest quota).
+      quotaSubject = resolvePlannerQuotaSubject({
+        cookieMemberId: null,
+        anonymousKey,
+      });
+    } catch {
+      return NextResponse.json({ message: "Invalid request." }, { status: 400 });
+    }
+  }
+
+  const isMemberQuota = quotaSubject.subjectType === "member";
+  let aiEditReserved = false;
+
+  try {
+    const reserveResult = await reservePlannerAiEditQuota({
+      subject: quotaSubject,
+      sessionId: session!.id,
+      enforceLimit: isMemberQuota,
+    });
+    if (reserveResult !== "reserved") {
+      const blocked = aiEditQuotaBlockedResponse({ result: reserveResult });
+      const eventName =
+        reserveResult === "already_reserved"
+          ? ANALYTICS_EVENTS.planner_ai_edit_in_progress_blocked
+          : ANALYTICS_EVENTS.planner_ai_edit_quota_blocked;
+      await persistAnalyticsEventAdmin({
+        eventName,
+        source: ANALYTICS_SOURCES.planner,
+        pagePath: `/planner/${session!.id}`,
+        productId: session!.sourceProductId,
+        metadata: {
+          sessionId: session!.id,
+          destination: session!.plan.destination.name.slice(0, 120),
+          subjectType: isMemberQuota ? "member" : "anonymous",
+          reason:
+            reserveResult === "already_reserved" ? "already_in_progress" : "daily_exceeded",
+        },
+      }).catch(() => undefined);
+      return blocked;
+    }
+    aiEditReserved = true;
+  } catch {
+    return NextResponse.json(
+      { message: toClientEditErrorMessage(null), code: "edit_failed" },
+      { status: 502 },
+    );
+  }
+
   const instruction = parsed.data.instruction;
   const instructionLength = instruction.length;
   const startedAt = Date.now();
@@ -93,6 +172,7 @@ export async function POST(request: Request, context: RouteContext) {
   const outcome: {
     success: Extract<PlannerGenerateDiagnosticEvent, { type: "attempt_success" }> | null;
   } = { success: null };
+
   try {
     const nextPlan = await generateEditedPlannerPlan(
       {
@@ -114,6 +194,14 @@ export async function POST(request: Request, context: RouteContext) {
       editInstruction: instruction,
       status,
     });
+
+    if (isMemberQuota) {
+      await consumePlannerAiEditQuota({ sessionId: session!.id });
+    } else {
+      // Guest: lock only — do not create a lasting quota ledger.
+      await releasePlannerAiEditQuota({ sessionId: session!.id });
+    }
+    aiEditReserved = false;
 
     const densityStats = getPlannerItemDensityStats(nextPlan);
     const refreshed = await getPlannerSessionById(session!.id);
@@ -146,6 +234,10 @@ export async function POST(request: Request, context: RouteContext) {
       versionNumber,
     });
   } catch (error) {
+    if (aiEditReserved) {
+      await releasePlannerAiEditQuota({ sessionId: session!.id });
+      aiEditReserved = false;
+    }
     const durationMs = Date.now() - startedAt;
     const safe = getPlannerGenerateSafeLogFields(error);
     console.info("[planner] edit failed", {
@@ -164,5 +256,9 @@ export async function POST(request: Request, context: RouteContext) {
       { message: toClientEditErrorMessage(error), code: "edit_failed" },
       { status: 502 },
     );
+  } finally {
+    if (aiEditReserved) {
+      await releasePlannerAiEditQuota({ sessionId: session!.id });
+    }
   }
 }

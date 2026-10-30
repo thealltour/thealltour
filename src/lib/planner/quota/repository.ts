@@ -2,14 +2,25 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
+  PLANNER_AI_EDIT_DAILY_LIMIT,
   PLANNER_QUOTA_RESERVATION_TTL_MS,
   type PlannerQuotaSubject,
+  type ReservePlannerAiEditQuotaResult,
   type ReservePlannerQuotaResult,
 } from "@/lib/planner/quota/types";
 
 type RpcJson = Record<string, unknown> | null;
 
 function asResult(data: unknown): ReservePlannerQuotaResult | null {
+  if (!data || typeof data !== "object") return null;
+  const result = (data as { result?: unknown }).result;
+  if (result === "reserved" || result === "already_consumed" || result === "already_reserved") {
+    return result;
+  }
+  return null;
+}
+
+function asAiEditResult(data: unknown): ReservePlannerAiEditQuotaResult | null {
   if (!data || typeof data !== "object") return null;
   const result = (data as { result?: unknown }).result;
   if (result === "reserved" || result === "already_consumed" || result === "already_reserved") {
@@ -78,6 +89,85 @@ export async function releasePlannerGenerationQuota(params: {
   if (error) {
     console.error("[planner/quota] release failed:", error.message);
     // Fail-soft: do not mask generation error; stale TTL recovers.
+    return "not_found";
+  }
+
+  const result =
+    data && typeof data === "object" ? (data as { result?: unknown }).result : null;
+  if (result === "released" || result === "not_found") return result;
+  return "not_found";
+}
+
+/**
+ * Reserve AI Edit slot + per-session in-progress lock.
+ * Members: enforce daily limit. Guests: lock only (no new guest quota policy).
+ */
+export async function reservePlannerAiEditQuota(params: {
+  subject: PlannerQuotaSubject;
+  sessionId: string;
+  enforceLimit?: boolean;
+  limit?: number;
+  now?: Date;
+  staleAfterMs?: number;
+}): Promise<ReservePlannerAiEditQuotaResult> {
+  const enforceLimit =
+    params.enforceLimit ?? params.subject.subjectType === "member";
+  const { data, error } = await supabaseAdmin.rpc("reserve_planner_ai_edit_quota", {
+    p_subject_type: params.subject.subjectType,
+    p_subject_id: params.subject.subjectId,
+    p_window_type: params.subject.windowType,
+    p_window_key: params.subject.windowKey,
+    p_session_id: params.sessionId,
+    p_limit: params.limit ?? PLANNER_AI_EDIT_DAILY_LIMIT,
+    p_enforce_limit: enforceLimit,
+    p_now: (params.now ?? new Date()).toISOString(),
+    p_stale_after_ms: params.staleAfterMs ?? PLANNER_QUOTA_RESERVATION_TTL_MS,
+  });
+
+  if (error) {
+    console.error("[planner/quota] ai-edit reserve failed:", error.message);
+    throw new Error("ai_edit_quota_reserve_failed");
+  }
+
+  const parsed = asAiEditResult(data as RpcJson);
+  if (!parsed) {
+    console.error("[planner/quota] ai-edit reserve unexpected payload");
+    throw new Error("ai_edit_quota_reserve_failed");
+  }
+  return parsed;
+}
+
+export async function consumePlannerAiEditQuota(params: {
+  sessionId: string;
+  now?: Date;
+}): Promise<"consumed" | "not_found"> {
+  const { data, error } = await supabaseAdmin.rpc("consume_planner_ai_edit_quota", {
+    p_session_id: params.sessionId,
+    p_now: (params.now ?? new Date()).toISOString(),
+  });
+
+  if (error) {
+    console.error("[planner/quota] ai-edit consume failed:", error.message);
+    throw new Error("ai_edit_quota_consume_failed");
+  }
+
+  const result =
+    data && typeof data === "object" ? (data as { result?: unknown }).result : null;
+  if (result === "consumed" || result === "not_found") return result;
+  console.error("[planner/quota] ai-edit consume unexpected payload");
+  throw new Error("ai_edit_quota_consume_failed");
+}
+
+export async function releasePlannerAiEditQuota(params: {
+  sessionId: string;
+}): Promise<"released" | "not_found"> {
+  const { data, error } = await supabaseAdmin.rpc("release_planner_ai_edit_quota", {
+    p_session_id: params.sessionId,
+  });
+
+  if (error) {
+    console.error("[planner/quota] ai-edit release failed:", error.message);
+    // Fail-soft: stale TTL recovers the session lock.
     return "not_found";
   }
 

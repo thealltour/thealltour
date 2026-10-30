@@ -287,6 +287,14 @@ export function PlannerResultView({
               sourceProductId={sourceProductId}
               status={isSaved ? "saved" : "generated"}
               onPlanUpdated={onPlanUpdated}
+              onRequestManualEdit={() => {
+                setManualEditMode(true);
+                trackPlannerManualEditModeStarted({
+                  sessionId,
+                  destination: plan.destination.name,
+                  sourceProductId,
+                });
+              }}
               compact
             />
           </div>

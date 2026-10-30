@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { mapReserveResultToBlocked } from "@/lib/planner/quota/http";
+import {
+  mapAiEditReserveResultToBlocked,
+  mapReserveResultToBlocked,
+} from "@/lib/planner/quota/http";
 import { getNextKstMidnightUtcIso, formatKstBusinessDate } from "@/lib/planner/quota/kst";
 import { resolvePlannerQuotaSubject } from "@/lib/planner/quota/resolveSubject";
+import { PLANNER_AI_EDIT_DAILY_LIMIT } from "@/lib/planner/quota/types";
 
 describe("resolvePlannerQuotaSubject", () => {
   it("uses cookie memberId + KST day window (not session.member_id)", () => {
@@ -74,6 +78,22 @@ describe("quota http mapping", () => {
     });
     expect(mapped.status).toBe(409);
     expect(mapped.code).toBe("GENERATION_ALREADY_IN_PROGRESS");
+  });
+});
+
+describe("AI edit quota http mapping", () => {
+  it("maps already_consumed → 429 AI_EDIT_QUOTA_EXCEEDED + limit + nextAvailableAt", () => {
+    const mapped = mapAiEditReserveResultToBlocked({ result: "already_consumed" });
+    expect(mapped.status).toBe(429);
+    expect(mapped.code).toBe("AI_EDIT_QUOTA_EXCEEDED");
+    expect(mapped.limit).toBe(PLANNER_AI_EDIT_DAILY_LIMIT);
+    expect(mapped.nextAvailableAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it("maps already_reserved → 409 AI_EDIT_ALREADY_IN_PROGRESS", () => {
+    const mapped = mapAiEditReserveResultToBlocked({ result: "already_reserved" });
+    expect(mapped.status).toBe(409);
+    expect(mapped.code).toBe("AI_EDIT_ALREADY_IN_PROGRESS");
   });
 });
 

@@ -101,6 +101,8 @@ export const ANALYTICS_EVENTS: Record<AnalyticsEventName, AnalyticsEventName> = 
   planner_edit_started: "planner_edit_started",
   planner_edit_succeeded: "planner_edit_succeeded",
   planner_edit_failed: "planner_edit_failed",
+  planner_ai_edit_quota_blocked: "planner_ai_edit_quota_blocked",
+  planner_ai_edit_in_progress_blocked: "planner_ai_edit_in_progress_blocked",
   planner_manual_edit_mode_started: "planner_manual_edit_mode_started",
   planner_manual_day_updated: "planner_manual_day_updated",
   planner_manual_item_updated: "planner_manual_item_updated",

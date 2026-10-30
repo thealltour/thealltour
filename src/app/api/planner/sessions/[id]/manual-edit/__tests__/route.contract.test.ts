@@ -9,6 +9,9 @@ const getPlannerSessionById = vi.hoisted(() => vi.fn());
 const cookies = vi.hoisted(() => vi.fn(async () => ({})));
 const generateEditedPlannerPlan = vi.hoisted(() => vi.fn());
 const reservePlannerGenerationQuota = vi.hoisted(() => vi.fn());
+const reservePlannerAiEditQuota = vi.hoisted(() => vi.fn());
+const consumePlannerAiEditQuota = vi.hoisted(() => vi.fn());
+const releasePlannerAiEditQuota = vi.hoisted(() => vi.fn());
 const { persistEditedPlannerPlan, PlannerPlanVersionConflictError } = vi.hoisted(() => {
   class PlannerPlanVersionConflictError extends Error {
     constructor(message = "PLAN_VERSION_CONFLICT") {
@@ -52,6 +55,9 @@ vi.mock("@/lib/planner/quota/repository", () => ({
   reservePlannerGenerationQuota,
   consumePlannerGenerationQuota: vi.fn(),
   releasePlannerGenerationQuota: vi.fn(),
+  reservePlannerAiEditQuota,
+  consumePlannerAiEditQuota,
+  releasePlannerAiEditQuota,
 }));
 
 import { POST } from "../route";
@@ -224,6 +230,9 @@ describe("POST manual-edit", () => {
     );
     expect(generateEditedPlannerPlan).not.toHaveBeenCalled();
     expect(reservePlannerGenerationQuota).not.toHaveBeenCalled();
+    expect(reservePlannerAiEditQuota).not.toHaveBeenCalled();
+    expect(consumePlannerAiEditQuota).not.toHaveBeenCalled();
+    expect(releasePlannerAiEditQuota).not.toHaveBeenCalled();
   });
 
   it("allows member owner on guest draft (anonymousKey)", async () => {

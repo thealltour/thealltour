@@ -10,13 +10,23 @@ export type PlannerQuotaStatus = (typeof PLANNER_QUOTA_STATUSES)[number];
 /** Mirrored in SQL default p_stale_after_ms. */
 export const PLANNER_QUOTA_RESERVATION_TTL_MS = 15 * 60 * 1000;
 
+/** Member AI Edit daily success limit (KST). Separate from generation 1/day. */
+export const PLANNER_AI_EDIT_DAILY_LIMIT = 3;
+
 export const PLANNER_QUOTA_ERROR_CODES = [
   "AI_DAILY_QUOTA_EXCEEDED",
   "ANONYMOUS_LIFETIME_QUOTA_EXCEEDED",
   "GENERATION_ALREADY_IN_PROGRESS",
+  "AI_EDIT_QUOTA_EXCEEDED",
+  "AI_EDIT_ALREADY_IN_PROGRESS",
 ] as const;
 
 export type PlannerQuotaErrorCode = (typeof PLANNER_QUOTA_ERROR_CODES)[number];
+
+export type ReservePlannerAiEditQuotaResult =
+  | "reserved"
+  | "already_consumed"
+  | "already_reserved";
 
 export type PlannerQuotaSubject = {
   subjectType: PlannerQuotaSubjectType;

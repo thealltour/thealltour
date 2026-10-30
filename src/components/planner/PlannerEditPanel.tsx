@@ -20,8 +20,15 @@ const PRESET_CHIPS = [
   "아이와 편하게",
 ] as const;
 
+const AI_EDIT_QUOTA_COPY =
+  "오늘의 AI 수정 횟수를 모두 사용했어요.\n직접 수정은 계속 사용할 수 있습니다.";
+
+const AI_EDIT_IN_PROGRESS_COPY =
+  "AI가 이미 이 플랜을 수정하고 있어요.\n현재 작업이 끝난 뒤 다시 시도해 주세요.";
+
 type EditResponse = {
   message?: string;
+  code?: string;
   session?: {
     plan: PlannerPlan | null;
     status: string;
@@ -41,6 +48,8 @@ type PlannerEditPanelProps = {
   sourceProductId: string | null;
   status: "generated" | "saved";
   onPlanUpdated: (payload: PlannerPlanUpdatedPayload) => void;
+  /** Enter Manual Edit mode (quota exhausted CTA). */
+  onRequestManualEdit?: () => void;
   /** Tighter layout for Result action group (behavior unchanged). */
   compact?: boolean;
 };
@@ -51,12 +60,14 @@ export function PlannerEditPanel({
   sourceProductId,
   status,
   onPlanUpdated,
+  onRequestManualEdit,
   compact = false,
 }: PlannerEditPanelProps) {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [successHint, setSuccessHint] = useState(false);
 
   const submit = useCallback(async () => {
@@ -65,6 +76,7 @@ export function PlannerEditPanel({
 
     setSubmitting(true);
     setError(null);
+    setErrorCode(null);
     setSuccessHint(false);
 
     trackPlannerEditStarted({
@@ -92,7 +104,15 @@ export function PlannerEditPanel({
           instructionLength: trimmed.length,
           status,
         });
-        setError(data?.message ?? "일정을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        const code = typeof data?.code === "string" ? data.code : null;
+        setErrorCode(code);
+        if (code === "AI_EDIT_QUOTA_EXCEEDED") {
+          setError(AI_EDIT_QUOTA_COPY);
+        } else if (code === "AI_EDIT_ALREADY_IN_PROGRESS") {
+          setError(AI_EDIT_IN_PROGRESS_COPY);
+        } else {
+          setError(data?.message ?? "일정을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
         return;
       }
 
@@ -120,6 +140,7 @@ export function PlannerEditPanel({
         instructionLength: trimmed.length,
         status,
       });
+      setErrorCode(null);
       setError("일정을 수정하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSubmitting(false);
@@ -134,6 +155,9 @@ export function PlannerEditPanel({
     submitting,
   ]);
 
+  const quotaExceeded = errorCode === "AI_EDIT_QUOTA_EXCEEDED";
+  const inProgressBlocked = errorCode === "AI_EDIT_ALREADY_IN_PROGRESS";
+
   return (
     <>
       <div className={compact ? "space-y-1.5" : "space-y-2"}>
@@ -144,6 +168,7 @@ export function PlannerEditPanel({
           disabled={submitting}
           onClick={() => {
             setError(null);
+            setErrorCode(null);
             setOpen(true);
           }}
         >
@@ -182,54 +207,90 @@ export function PlannerEditPanel({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {PRESET_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              className="rounded-full border border-[var(--border)] px-3 py-1 type-caption text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              onClick={() => setInstruction(chip)}
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
+        {!quotaExceeded ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="rounded-full border border-[var(--border)] px-3 py-1 type-caption text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                  onClick={() => setInstruction(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
 
-        <textarea
-          value={instruction}
-          onChange={(e) => setInstruction(e.target.value)}
-          rows={4}
-          maxLength={1000}
-          placeholder="예: 2일차 유니버설은 빼고 온천을 넣어주세요."
-          className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 type-small text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-          disabled={submitting}
-        />
+            <textarea
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              rows={4}
+              maxLength={1000}
+              placeholder="예: 2일차 유니버설은 빼고 온천을 넣어주세요."
+              className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 type-small text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              disabled={submitting}
+            />
+          </>
+        ) : null}
 
         {error ? (
-          <p className="type-small text-[var(--danger)]" role="alert">
+          <p
+            className="type-small whitespace-pre-line text-[var(--danger)]"
+            role="alert"
+            data-testid={
+              quotaExceeded
+                ? "planner-ai-edit-quota-exceeded"
+                : inProgressBlocked
+                  ? "planner-ai-edit-in-progress"
+                  : "planner-ai-edit-error"
+            }
+          >
             {error}
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={submitting}
-            onClick={() => setOpen(false)}
-          >
-            취소
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            loading={submitting}
-            disabled={instruction.trim().length < 2 || submitting}
-            onClick={() => void submit()}
-          >
-            일정 수정하기
-          </Button>
-        </div>
+        {quotaExceeded ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              내일 다시 이용하기
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setOpen(false);
+                onRequestManualEdit?.();
+              }}
+            >
+              직접 수정하기
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={submitting}
+              onClick={() => setOpen(false)}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              loading={submitting}
+              disabled={instruction.trim().length < 2 || submitting}
+              onClick={() => void submit()}
+            >
+              일정 수정하기
+            </Button>
+          </div>
+        )}
       </Modal>
     </>
   );

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { startOAuthLogin } from "@/lib/auth/oauthStart";
 import {
+  trackPlannerKakaoCalendarClicked,
+  trackPlannerKakaoCalendarOAuthStarted,
   trackPlannerKakaoLoginStarted,
   trackPlannerKakaoMemoClicked,
   trackPlannerKakaoMemoOAuthStarted,
@@ -25,6 +27,11 @@ import {
   PLANNER_KAKAO_MEMO_QUERY,
   type PlannerKakaoMemoQueryStatus,
 } from "@/lib/auth/kakao/plannerKakaoMemoQuery";
+import {
+  parsePlannerKakaoCalendarQuery,
+  PLANNER_KAKAO_CALENDAR_QUERY,
+  type PlannerKakaoCalendarQueryStatus,
+} from "@/lib/auth/kakao/plannerKakaoCalendarQuery";
 
 type PlannerSavePanelProps = {
   sessionId: string;
@@ -48,18 +55,29 @@ export function PlannerSavePanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [memoStatus, setMemoStatus] = useState<PlannerKakaoMemoQueryStatus | null>(null);
+  const [calendarStatus, setCalendarStatus] = useState<PlannerKakaoCalendarQueryStatus | null>(
+    null,
+  );
   const [memoStarting, setMemoStarting] = useState(false);
+  const [calendarStarting, setCalendarStarting] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const parsed = parsePlannerKakaoMemoQuery(searchParams.get(PLANNER_KAKAO_MEMO_QUERY));
-    if (!parsed) return;
-    setMemoStatus(parsed);
+    const memoParsed = parsePlannerKakaoMemoQuery(searchParams.get(PLANNER_KAKAO_MEMO_QUERY));
+    const calendarParsed = parsePlannerKakaoCalendarQuery(
+      searchParams.get(PLANNER_KAKAO_CALENDAR_QUERY),
+    );
+    if (!memoParsed && !calendarParsed) return;
+
+    if (memoParsed) setMemoStatus(memoParsed);
+    if (calendarParsed) setCalendarStatus(calendarParsed);
+
     const next = new URLSearchParams(searchParams.toString());
     next.delete(PLANNER_KAKAO_MEMO_QUERY);
+    next.delete(PLANNER_KAKAO_CALENDAR_QUERY);
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
@@ -125,15 +143,31 @@ export function PlannerSavePanel({
   }, [destination, sessionId, sourceProductId]);
 
   const onKakaoMemoClick = useCallback(() => {
-    if (memoStarting) return;
+    if (memoStarting || calendarStarting) return;
     setMemoStarting(true);
     setMemoStatus(null);
     trackPlannerKakaoMemoClicked({ sessionId, destination, sourceProductId });
     trackPlannerKakaoMemoOAuthStarted({ sessionId, destination, sourceProductId });
     window.location.href = `/api/planner/sessions/${encodeURIComponent(sessionId)}/kakao-memo/start`;
-  }, [destination, memoStarting, sessionId, sourceProductId]);
+  }, [calendarStarting, destination, memoStarting, sessionId, sourceProductId]);
+
+  const onKakaoCalendarClick = useCallback(() => {
+    if (memoStarting || calendarStarting) return;
+    setCalendarStarting(true);
+    setCalendarStatus(null);
+    trackPlannerKakaoCalendarClicked({ sessionId, destination, sourceProductId });
+    trackPlannerKakaoCalendarOAuthStarted({ sessionId, destination, sourceProductId });
+    window.location.href = `/api/planner/sessions/${encodeURIComponent(sessionId)}/kakao-calendar/start`;
+  }, [calendarStarting, destination, memoStarting, sessionId, sourceProductId]);
 
   if (isSaved) {
+    const statusMessage =
+      calendarStatus === "added"
+        ? "✓ 톡캘린더에 여행 일정을 추가했어요."
+        : memoStatus === "sent"
+          ? "✓ 카카오톡 '나와의 채팅'으로 보냈어요."
+          : "✓ 여행 플랜이 저장됐어요.";
+
     return (
       <div
         className={
@@ -142,17 +176,18 @@ export function PlannerSavePanel({
             : "space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
         }
       >
-        <p className="type-body font-medium text-[var(--foreground)]">
-          {memoStatus === "sent"
-            ? "✓ 카카오톡 '나와의 채팅'으로 보냈어요."
-            : "✓ 여행 플랜이 저장됐어요."}
-        </p>
+        <p className="type-body font-medium text-[var(--foreground)]">{statusMessage}</p>
         {memoStatus === "failed" ? (
           <p className="type-small text-[var(--danger)]" role="alert">
             카카오톡으로 보내지 못했어요. 플랜은 정상적으로 저장되어 있습니다.
           </p>
         ) : null}
-        {!compact && memoStatus !== "sent" ? (
+        {calendarStatus === "failed" ? (
+          <p className="type-small text-[var(--danger)]" role="alert">
+            톡캘린더에 일정을 추가하지 못했어요. 저장된 플랜에는 영향이 없습니다.
+          </p>
+        ) : null}
+        {!compact && calendarStatus !== "added" && memoStatus !== "sent" ? (
           <p className="type-caption text-[var(--text-muted)]">
             같은 계정으로 로그인하면 다른 기기에서도 이 플랜을 볼 수 있어요.
           </p>
@@ -164,9 +199,22 @@ export function PlannerSavePanel({
               variant="kakao"
               className="w-full min-h-[44px]"
               loading={memoStarting}
+              disabled={calendarStarting}
               onClick={onKakaoMemoClick}
             >
               {memoStatus === "failed" ? "다시 보내기" : "카카오톡으로 받아보기"}
+            </Button>
+          ) : null}
+          {calendarStatus !== "added" ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full min-h-[44px]"
+              loading={calendarStarting}
+              disabled={memoStarting}
+              onClick={onKakaoCalendarClick}
+            >
+              {calendarStatus === "failed" ? "다시 추가" : "톡캘린더에 추가"}
             </Button>
           ) : null}
           <Link

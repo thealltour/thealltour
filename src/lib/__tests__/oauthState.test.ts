@@ -51,6 +51,22 @@ describe("oauthState", () => {
     expect(parsed?.memberId).toBe("ffffffff-0000-4000-8000-000000000001");
   });
 
+  it("round-trips planner_kakao_calendar action", () => {
+    const plannerSessionId = "bbbbbbbb-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    const token = createOAuthStateToken({
+      provider: "kakao",
+      mode: "login",
+      next: `/planner/${plannerSessionId}`,
+      memberId: "ffffffff-0000-4000-8000-000000000002",
+      action: { type: "planner_kakao_calendar", plannerSessionId },
+    });
+    const parsed = verifyOAuthStateToken(token);
+    expect(parsed?.action).toEqual({
+      type: "planner_kakao_calendar",
+      plannerSessionId,
+    });
+  });
+
   it("rejects expired state", async () => {
     const { createHmac } = await import("node:crypto");
     const token = createOAuthStateToken({

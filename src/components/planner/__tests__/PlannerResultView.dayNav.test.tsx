@@ -150,6 +150,8 @@ describe("PlannerResultView day navigation", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -170,6 +172,8 @@ describe("PlannerResultView day navigation", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -185,6 +189,8 @@ describe("PlannerResultView day navigation", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -218,6 +224,8 @@ describe("PlannerResultView information architecture", () => {
         }}
         originText="서울"
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -254,6 +262,8 @@ describe("PlannerResultView information architecture", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -285,6 +295,8 @@ describe("PlannerResultView information architecture", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -319,6 +331,8 @@ describe("PlannerResultView information architecture", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -354,6 +368,8 @@ describe("PlannerResultView information architecture", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );
@@ -371,6 +387,8 @@ describe("PlannerResultView information architecture", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );

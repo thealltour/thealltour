@@ -19,7 +19,11 @@ import {
 import type { MemberAcquisition } from "@/lib/auth/memberAcquisition";
 import { runPlannerKakaoMemoAction } from "@/lib/auth/kakao/runPlannerKakaoMemoAction";
 import { buildPlannerKakaoMemoRedirectPath } from "@/lib/auth/kakao/plannerKakaoMemoQuery";
+import { runPlannerKakaoCalendarAction } from "@/lib/auth/kakao/runPlannerKakaoCalendarAction";
+import { buildPlannerKakaoCalendarRedirectPath } from "@/lib/auth/kakao/plannerKakaoCalendarQuery";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import type { OAuthAction } from "@/lib/auth/oauthAction";
+import type { OAuthTokens } from "@/lib/auth/types";
 
 type RouteContext = { params: Promise<{ provider: string }> };
 
@@ -48,12 +52,28 @@ async function persistKakaoOAuthFailure(input: {
   });
 }
 
-function plannerMemoFailRedirect(request: Request, plannerSessionId: string) {
-  const response = NextResponse.redirect(
-    new URL(buildPlannerKakaoMemoRedirectPath(plannerSessionId, "failed"), request.url),
-  );
+function disposeEphemeralTokens(tokens: OAuthTokens): void {
+  (tokens as { accessToken: string }).accessToken = "";
+  if (tokens.refreshToken) (tokens as { refreshToken?: string }).refreshToken = "";
+}
+
+function plannerActionFailRedirect(
+  request: Request,
+  action: OAuthAction,
+): NextResponse {
+  const path =
+    action.type === "planner_kakao_calendar"
+      ? buildPlannerKakaoCalendarRedirectPath(action.plannerSessionId, "failed")
+      : buildPlannerKakaoMemoRedirectPath(action.plannerSessionId, "failed");
+  const response = NextResponse.redirect(new URL(path, request.url));
   response.cookies.delete(OAUTH_STATE_COOKIE);
   return response;
+}
+
+function isPlannerAction(
+  action: OAuthAction | undefined,
+): action is OAuthAction & { type: "planner_kakao_memo" | "planner_kakao_calendar" } {
+  return action?.type === "planner_kakao_memo" || action?.type === "planner_kakao_calendar";
 }
 
 export async function GET(request: Request, context: RouteContext) {
@@ -72,21 +92,24 @@ export async function GET(request: Request, context: RouteContext) {
   const cookieState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
   /** 취소·오류 시에도 acquisition을 붙이기 위해 state를 먼저 해석 */
   const earlyState = verifyOAuthStateToken(stateParam) ?? verifyOAuthStateToken(cookieState);
-  const earlyMemoAction =
-    earlyState?.action?.type === "planner_kakao_memo" ? earlyState.action : null;
+  const earlyPlannerAction = isPlannerAction(earlyState?.action) ? earlyState!.action : null;
 
   if (oauthError || !code) {
-    if (earlyMemoAction) {
+    if (earlyPlannerAction) {
+      const eventName =
+        earlyPlannerAction.type === "planner_kakao_calendar"
+          ? ANALYTICS_EVENTS.planner_kakao_calendar_failed
+          : ANALYTICS_EVENTS.planner_kakao_memo_failed;
       await persistAnalyticsEventAdmin({
-        eventName: ANALYTICS_EVENTS.planner_kakao_memo_failed,
+        eventName,
         source: ANALYTICS_SOURCES.planner,
-        pagePath: `/planner/${earlyMemoAction.plannerSessionId}`,
+        pagePath: `/planner/${earlyPlannerAction.plannerSessionId}`,
         metadata: {
-          sessionId: earlyMemoAction.plannerSessionId,
+          sessionId: earlyPlannerAction.plannerSessionId,
           failureCode: oauthError ? "oauth_error" : "missing_code",
         },
       }).catch(() => undefined);
-      return plannerMemoFailRedirect(request, earlyMemoAction.plannerSessionId);
+      return plannerActionFailRedirect(request, earlyPlannerAction);
     }
     if (providerId === "kakao") {
       await persistKakaoOAuthFailure({
@@ -103,8 +126,8 @@ export async function GET(request: Request, context: RouteContext) {
 
   const state = earlyState;
   if (!state || state.provider !== providerId) {
-    if (earlyMemoAction) {
-      return plannerMemoFailRedirect(request, earlyMemoAction.plannerSessionId);
+    if (earlyPlannerAction) {
+      return plannerActionFailRedirect(request, earlyPlannerAction);
     }
     if (providerId === "kakao") {
       await persistKakaoOAuthFailure({
@@ -118,8 +141,8 @@ export async function GET(request: Request, context: RouteContext) {
 
   const adapter = getOAuthProvider(providerId);
   if (!adapter?.isConfigured()) {
-    if (state.action?.type === "planner_kakao_memo") {
-      return plannerMemoFailRedirect(request, state.action.plannerSessionId);
+    if (isPlannerAction(state.action)) {
+      return plannerActionFailRedirect(request, state.action);
     }
     if (providerId === "kakao") {
       await persistKakaoOAuthFailure({
@@ -137,11 +160,15 @@ export async function GET(request: Request, context: RouteContext) {
     const tokens = await adapter.exchangeCode(code, redirectUri, stateParam ?? undefined);
     const profile = await adapter.fetchProfile(tokens);
 
-    // ——— Action-specific Kakao OAuth (planner memo). Does not create login session. ———
-    if (state.action?.type === "planner_kakao_memo") {
+    // ——— Action-specific Kakao OAuth. Does not create login session. ———
+    if (isPlannerAction(state.action)) {
       const plannerSessionId = state.action.plannerSessionId;
       const cookieMember = getMemberSessionFromCookies(cookieStore);
       const stateMemberId = state.memberId?.trim() ?? "";
+      const failEvent =
+        state.action.type === "planner_kakao_calendar"
+          ? ANALYTICS_EVENTS.planner_kakao_calendar_failed
+          : ANALYTICS_EVENTS.planner_kakao_memo_failed;
 
       if (
         !stateMemberId ||
@@ -150,7 +177,7 @@ export async function GET(request: Request, context: RouteContext) {
         providerId !== "kakao"
       ) {
         await persistAnalyticsEventAdmin({
-          eventName: ANALYTICS_EVENTS.planner_kakao_memo_failed,
+          eventName: failEvent,
           source: ANALYTICS_SOURCES.planner,
           pagePath: `/planner/${plannerSessionId}`,
           metadata: {
@@ -158,34 +185,64 @@ export async function GET(request: Request, context: RouteContext) {
             failureCode: "session_mismatch",
           },
         }).catch(() => undefined);
-        // Drop ephemeral tokens without logging
-        (tokens as { accessToken: string }).accessToken = "";
-        if (tokens.refreshToken) (tokens as { refreshToken?: string }).refreshToken = "";
-        return plannerMemoFailRedirect(request, plannerSessionId);
+        disposeEphemeralTokens(tokens);
+        return plannerActionFailRedirect(request, state.action);
       }
 
-      const actionResult = await runPlannerKakaoMemoAction({
+      if (state.action.type === "planner_kakao_memo") {
+        const actionResult = await runPlannerKakaoMemoAction({
+          tokens,
+          kakaoProviderUserId: profile.providerUserId,
+          memberId: stateMemberId,
+          plannerSessionId,
+        });
+
+        if (
+          !actionResult.ok &&
+          actionResult.failureCode &&
+          actionResult.failureCode !== "memo_send_failed"
+        ) {
+          await persistAnalyticsEventAdmin({
+            eventName: ANALYTICS_EVENTS.planner_kakao_memo_failed,
+            source: ANALYTICS_SOURCES.planner,
+            pagePath: `/planner/${plannerSessionId}`,
+            metadata: {
+              sessionId: plannerSessionId,
+              failureCode: actionResult.failureCode,
+            },
+          }).catch(() => undefined);
+        }
+
+        const response = NextResponse.redirect(new URL(actionResult.redirectPath, request.url));
+        response.cookies.delete(OAUTH_STATE_COOKIE);
+        return response;
+      }
+
+      const calendarResult = await runPlannerKakaoCalendarAction({
         tokens,
         kakaoProviderUserId: profile.providerUserId,
         memberId: stateMemberId,
         plannerSessionId,
       });
 
-      // Analytics for sent/failed (memo API / identity) are emitted inside runPlannerKakaoMemoAction.
-      // Pre-run session_mismatch already tracked above.
-      if (!actionResult.ok && actionResult.failureCode && actionResult.failureCode !== "memo_send_failed") {
+      if (
+        !calendarResult.ok &&
+        calendarResult.failureCode &&
+        calendarResult.failureCode !== "calendar_create_failed" &&
+        calendarResult.failureCode !== "calendar_permission_denied"
+      ) {
         await persistAnalyticsEventAdmin({
-          eventName: ANALYTICS_EVENTS.planner_kakao_memo_failed,
+          eventName: ANALYTICS_EVENTS.planner_kakao_calendar_failed,
           source: ANALYTICS_SOURCES.planner,
           pagePath: `/planner/${plannerSessionId}`,
           metadata: {
             sessionId: plannerSessionId,
-            failureCode: actionResult.failureCode,
+            failureCode: calendarResult.failureCode,
           },
         }).catch(() => undefined);
       }
 
-      const response = NextResponse.redirect(new URL(actionResult.redirectPath, request.url));
+      const response = NextResponse.redirect(new URL(calendarResult.redirectPath, request.url));
       response.cookies.delete(OAUTH_STATE_COOKIE);
       return response;
     }
@@ -289,9 +346,13 @@ export async function GET(request: Request, context: RouteContext) {
     return response;
   } catch (err) {
     console.error(`[auth/${providerId}/callback]`, err);
-    if (state.action?.type === "planner_kakao_memo") {
+    if (isPlannerAction(state.action)) {
+      const eventName =
+        state.action.type === "planner_kakao_calendar"
+          ? ANALYTICS_EVENTS.planner_kakao_calendar_failed
+          : ANALYTICS_EVENTS.planner_kakao_memo_failed;
       await persistAnalyticsEventAdmin({
-        eventName: ANALYTICS_EVENTS.planner_kakao_memo_failed,
+        eventName,
         source: ANALYTICS_SOURCES.planner,
         pagePath: `/planner/${state.action.plannerSessionId}`,
         metadata: {
@@ -299,7 +360,7 @@ export async function GET(request: Request, context: RouteContext) {
           failureCode: "oauth_failed",
         },
       }).catch(() => undefined);
-      return plannerMemoFailRedirect(request, state.action.plannerSessionId);
+      return plannerActionFailRedirect(request, state.action);
     }
     if (providerId === "kakao") {
       await persistKakaoOAuthFailure({

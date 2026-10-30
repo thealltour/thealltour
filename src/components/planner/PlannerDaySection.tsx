@@ -3,6 +3,7 @@
 import { PlannerDayMap, type PlannerMapMarker } from "@/components/planner/PlannerDayMap";
 import { getPlannerIconToneClasses } from "@/components/planner/conversation/plannerConversationIcons";
 import { ITEM_TYPE_VISUALS } from "@/components/planner/plannerResultVisuals";
+import { Button } from "@/components/ui/Button";
 import type { AffiliateOffer } from "@/lib/affiliate/planner/types";
 import type { PlannerPlanDay, PlannerPlanItem } from "@/lib/planner/planSchemas";
 import type {
@@ -12,6 +13,7 @@ import type {
 } from "@/lib/planner/enrichmentTypes";
 import { formatDistanceMeters } from "@/lib/planner/routePairs";
 import { cn } from "@/lib/cn";
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 
 const ITEM_TYPE_LABEL: Record<PlannerPlanItem["type"], string> = {
   attraction: "관광",
@@ -95,6 +97,12 @@ type PlannerDaySectionProps = {
   /** Contextual affiliate offers keyed by item order (this day only). */
   itemOffers?: Map<number, AffiliateOffer>;
   sourceProductId?: string | null;
+  manualEditMode?: boolean;
+  onEditDayTitle?: () => void;
+  onEditItem?: (itemOrder: number) => void;
+  onAddItem?: () => void;
+  onDeleteItem?: (itemOrder: number, name: string) => void;
+  onMoveItem?: (itemOrder: number, direction: "up" | "down") => void;
 };
 
 export function PlannerDaySection({
@@ -105,11 +113,18 @@ export function PlannerDaySection({
   weatherDay,
   itemOffers,
   sourceProductId: _sourceProductId,
+  manualEditMode = false,
+  onEditDayTitle,
+  onEditItem,
+  onAddItem,
+  onDeleteItem,
+  onMoveItem,
 }: PlannerDaySectionProps) {
   void _sourceProductId;
   const weatherText = weatherLine(weatherDay);
   const dateText = formatDateKo(day.date);
   const metaBits = [dateText, weatherText].filter(Boolean).join(" · ");
+  const canDeleteItems = day.items.length > 1;
 
   const markers: PlannerMapMarker[] = day.items
     .map((item) => {
@@ -136,7 +151,21 @@ export function PlannerDaySection({
             <p className="type-caption text-[var(--text-muted)]">{metaBits}</p>
           ) : null}
         </div>
-        <h2 className="type-h3 text-[var(--foreground)]">{day.title}</h2>
+        <div className="flex items-start gap-2">
+          <h2 className="min-w-0 flex-1 type-h3 text-[var(--foreground)]">{day.title}</h2>
+          {manualEditMode ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 min-w-11 shrink-0 px-2"
+              aria-label={`${day.title} 제목 수정`}
+              onClick={onEditDayTitle}
+            >
+              <Pencil className="h-4 w-4" aria-hidden={true} />
+            </Button>
+          ) : null}
+        </div>
         <p className="type-small leading-snug text-[var(--text-muted)]">{day.summary}</p>
       </header>
 
@@ -223,6 +252,59 @@ export function PlannerDaySection({
                       약 {item.estimatedDurationMinutes}분
                     </p>
                   ) : null}
+                  {manualEditMode ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5" data-testid={`planner-item-edit-controls-${day.day}-${item.order}`}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 min-w-11 px-2"
+                        aria-label={`${item.name} 수정`}
+                        onClick={() => onEditItem?.(item.order)}
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden={true} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 min-w-11 px-2"
+                        aria-label={`${item.name} 위로 이동`}
+                        disabled={index === 0}
+                        onClick={() => onMoveItem?.(item.order, "up")}
+                      >
+                        <ChevronUp className="h-4 w-4" aria-hidden={true} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 min-w-11 px-2"
+                        aria-label={`${item.name} 아래로 이동`}
+                        disabled={isLast}
+                        onClick={() => onMoveItem?.(item.order, "down")}
+                      >
+                        <ChevronDown className="h-4 w-4" aria-hidden={true} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 min-w-11 px-2"
+                        aria-label={`${item.name} 삭제`}
+                        disabled={!canDeleteItems}
+                        title={
+                          canDeleteItems ? undefined : "하루에는 최소 1개의 일정이 필요합니다."
+                        }
+                        onClick={() => {
+                          if (!canDeleteItems) return;
+                          onDeleteItem?.(item.order, item.name);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden={true} />
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -294,6 +376,21 @@ export function PlannerDaySection({
           );
         })}
       </ol>
+
+      {manualEditMode ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full min-h-11"
+          onClick={onAddItem}
+          data-testid={`planner-day-add-item-${day.day}`}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Plus className="h-4 w-4" aria-hidden={true} />
+            일정 추가
+          </span>
+        </Button>
+      ) : null}
 
       {day.tips.length > 0 ? (
         <ul className="space-y-1 border-t border-[var(--divider)] pt-3">

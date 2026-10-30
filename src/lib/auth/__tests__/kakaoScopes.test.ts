@@ -22,12 +22,16 @@ describe("kakaoScopes", () => {
     expect(() => sanitizeKakaoAdditionalScopes(["friends"])).toThrow(/kakao_scope_not_allowed/);
   });
 
-  it("maps planner_kakao_memo to talk_message", () => {
+  it("maps memo/calendar/task actions to dedicated scopes", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    expect(scopesForOAuthAction({ type: "planner_kakao_memo", plannerSessionId: id })).toEqual([
+      "talk_message",
+    ]);
+    expect(scopesForOAuthAction({ type: "planner_kakao_calendar", plannerSessionId: id })).toEqual([
+      "talk_calendar",
+    ]);
     expect(
-      scopesForOAuthAction({
-        type: "planner_kakao_memo",
-        plannerSessionId: "11111111-1111-4111-8111-111111111111",
-      }),
-    ).toEqual(["talk_message"]);
+      scopesForOAuthAction({ type: "planner_kakao_calendar_task", plannerSessionId: id }),
+    ).toEqual(["talk_calendar_task"]);
   });
 });

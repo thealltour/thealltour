@@ -20,6 +20,15 @@ import {
 } from "@/lib/planner/generatePlan";
 import type { PlannerUsageDiagnostic } from "@/lib/planner/generationDiagnostics";
 import { countPlannerMustDoCoverage } from "@/lib/planner/mustDo";
+import { resolvePlannerQuotaSubject } from "@/lib/planner/quota/resolveSubject";
+import {
+  consumePlannerGenerationQuota,
+  releasePlannerGenerationQuota,
+  reservePlannerGenerationQuota,
+} from "@/lib/planner/quota/repository";
+import { quotaBlockedResponse } from "@/lib/planner/quota/http";
+import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEventAdmin";
+import { ANALYTICS_EVENTS, ANALYTICS_SOURCES } from "@/lib/analytics/events";
 import type { PlannerGenerationFailureCategory } from "@/types/planner";
 import { z } from "zod";
 
@@ -183,6 +192,53 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const quotaSubject = resolvePlannerQuotaSubject({
+    cookieMemberId: memberSession?.memberId ?? null,
+    anonymousKey: parsed.data.anonymousKey,
+  });
+
+  let quotaReserved = false;
+  try {
+    const reserveResult = await reservePlannerGenerationQuota({
+      subject: quotaSubject,
+      sessionId: session!.id,
+    });
+    if (reserveResult !== "reserved") {
+      const blocked = quotaBlockedResponse({
+        subject: quotaSubject,
+        result: reserveResult,
+      });
+      await persistAnalyticsEventAdmin({
+        eventName: ANALYTICS_EVENTS.planner_generation_quota_blocked,
+        source: ANALYTICS_SOURCES.planner,
+        pagePath: `/planner`,
+        productId: session!.sourceProductId,
+        metadata: {
+          sessionId: session!.id,
+          destination: draftParsed.data.destination.text.slice(0, 120),
+          subjectType: quotaSubject.subjectType === "member" ? "member" : "anonymous",
+          reason:
+            reserveResult === "already_reserved"
+              ? "already_in_progress"
+              : quotaSubject.subjectType === "member"
+                ? "daily_exceeded"
+                : "lifetime_exceeded",
+        },
+      }).catch(() => undefined);
+      return blocked;
+    }
+    quotaReserved = true;
+  } catch {
+    return NextResponse.json(
+      {
+        message: toClientGenerationErrorMessage(null),
+        code: "generation_failed",
+        failureCategory: "provider_failed" satisfies PlannerGenerationFailureCategory,
+      },
+      { status: 502 },
+    );
+  }
+
   const startedAt = Date.now();
   const success: { usage: PlannerUsageDiagnostic | null; finishReason: string | null } = {
     usage: null,
@@ -248,6 +304,10 @@ export async function POST(request: Request, context: RouteContext) {
     try {
       saved = await saveGeneratedPlannerPlan({ id: session!.id, plan });
     } catch (persistError) {
+      if (quotaReserved) {
+        await releasePlannerGenerationQuota({ sessionId: session!.id });
+        quotaReserved = false;
+      }
       logGenerateFailure({
         sessionId: session!.id,
         failureCategory: "persist_failed",
@@ -275,6 +335,10 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     if (!saved.plan) {
+      if (quotaReserved) {
+        await releasePlannerGenerationQuota({ sessionId: session!.id });
+        quotaReserved = false;
+      }
       logGenerateFailure({
         sessionId: session!.id,
         failureCategory: "result_navigation_failed",
@@ -295,6 +359,16 @@ export async function POST(request: Request, context: RouteContext) {
         },
         { status: 502 },
       );
+    }
+
+    try {
+      await consumePlannerGenerationQuota({ sessionId: session!.id });
+      quotaReserved = false;
+    } catch {
+      // Plan already persisted; stale reserved would block wrongly — best-effort log only.
+      console.error("[planner/generate] quota consume failed after persist", {
+        sessionId: session!.id,
+      });
     }
 
     const densityStats = getPlannerItemDensityStats(plan);
@@ -319,6 +393,10 @@ export async function POST(request: Request, context: RouteContext) {
       reused: false,
     });
   } catch (err) {
+    if (quotaReserved) {
+      await releasePlannerGenerationQuota({ sessionId: session!.id });
+      quotaReserved = false;
+    }
     const failureCategory = getPlannerFailureCategory(err);
     const safe = getPlannerGenerateSafeLogFields(err);
     logGenerateFailure({

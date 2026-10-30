@@ -33,6 +33,8 @@ vi.mock("@/lib/analytics/trackPlannerEvents", () => ({
   trackPlannerKakaoLoginStarted: vi.fn(),
   trackPlannerKakaoMemoClicked: vi.fn(),
   trackPlannerKakaoMemoOAuthStarted: vi.fn(),
+  trackPlannerKakaoCalendarClicked: vi.fn(),
+  trackPlannerKakaoCalendarOAuthStarted: vi.fn(),
   trackPlannerSaveClicked: vi.fn(),
   trackPlannerSaved: vi.fn(),
 }));
@@ -46,7 +48,7 @@ vi.mock("@/lib/auth/oauthStart", () => ({
   startOAuthLogin: vi.fn(),
 }));
 
-describe("PlannerSavePanel kakao memo CTA", () => {
+describe("PlannerSavePanel kakao memo/calendar CTA", () => {
   const sessionId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
   const assign = vi.fn();
 
@@ -69,7 +71,7 @@ describe("PlannerSavePanel kakao memo CTA", () => {
     cleanup();
   });
 
-  it("shows kakao memo CTA after save and does not auto-navigate", () => {
+  it("shows memo + calendar CTAs after save without auto-sending", () => {
     render(
       <PlannerSavePanel
         sessionId={sessionId}
@@ -83,11 +85,12 @@ describe("PlannerSavePanel kakao memo CTA", () => {
 
     expect(screen.getByText(/여행 플랜이 저장됐어요/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "카카오톡으로 받아보기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "톡캘린더에 추가" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "내 여행 플랜 보기" })).toBeTruthy();
     expect(window.location.href).toBe("");
   });
 
-  it("starts action OAuth on CTA click", () => {
+  it("starts memo action OAuth on CTA click", () => {
     render(
       <PlannerSavePanel
         sessionId={sessionId}
@@ -104,7 +107,24 @@ describe("PlannerSavePanel kakao memo CTA", () => {
     );
   });
 
-  it("shows failure copy and retry without unsaving", () => {
+  it("starts calendar action OAuth on CTA click", () => {
+    render(
+      <PlannerSavePanel
+        sessionId={sessionId}
+        destination="오사카"
+        sourceProductId={null}
+        isSaved
+        onSaved={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "톡캘린더에 추가" }));
+    expect(window.location.href).toContain(
+      `/api/planner/sessions/${sessionId}/kakao-calendar/start`,
+    );
+  });
+
+  it("shows memo failure copy and retry without unsaving", () => {
     searchParamsGet.mockImplementation((key?: string) =>
       key === "plannerKakaoMemo" ? "failed" : null,
     );
@@ -124,7 +144,26 @@ describe("PlannerSavePanel kakao memo CTA", () => {
     expect(screen.getByText(/여행 플랜이 저장됐어요/)).toBeTruthy();
   });
 
-  it("shows success copy after sent query", () => {
+  it("shows calendar failure and retry", () => {
+    searchParamsGet.mockImplementation((key?: string) =>
+      key === "plannerKakaoCalendar" ? "failed" : null,
+    );
+
+    render(
+      <PlannerSavePanel
+        sessionId={sessionId}
+        destination="오사카"
+        sourceProductId={null}
+        isSaved
+        onSaved={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText(/톡캘린더에 일정을 추가하지 못했어요/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "다시 추가" })).toBeTruthy();
+  });
+
+  it("shows memo success copy after sent query", () => {
     searchParamsGet.mockImplementation((key?: string) =>
       key === "plannerKakaoMemo" ? "sent" : null,
     );
@@ -141,5 +180,25 @@ describe("PlannerSavePanel kakao memo CTA", () => {
 
     expect(screen.getByText(/나와의 채팅/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /카카오톡으로/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "톡캘린더에 추가" })).toBeTruthy();
+  });
+
+  it("shows calendar success copy after added query", () => {
+    searchParamsGet.mockImplementation((key?: string) =>
+      key === "plannerKakaoCalendar" ? "added" : null,
+    );
+
+    render(
+      <PlannerSavePanel
+        sessionId={sessionId}
+        destination="오사카"
+        sourceProductId={null}
+        isSaved
+        onSaved={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText(/톡캘린더에 여행 일정을 추가했어요/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /톡캘린더/ })).toBeNull();
   });
 });

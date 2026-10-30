@@ -4,121 +4,137 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { plannerPlanSchema, type PlannerPlan } from "@/lib/planner/planSchemas";
 import type { PlannerSessionStatus } from "@/types/planner";
 
-async function getMaxVersionNumber(sessionId: string): Promise<number> {
-  const { data, error } = await supabaseAdmin
-    .from("planner_plan_versions")
-    .select("version_number")
-    .eq("planner_session_id", sessionId)
-    .order("version_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[planner] getMaxVersionNumber:", error.message);
-    throw new Error("Failed to read plan versions");
+export class PlannerPlanVersionConflictError extends Error {
+  constructor(message = "PLAN_VERSION_CONFLICT") {
+    super(message);
+    this.name = "PlannerPlanVersionConflictError";
   }
-  const n = data?.version_number;
-  return typeof n === "number" && Number.isFinite(n) ? n : 0;
 }
 
-async function insertPlanVersion(params: {
-  sessionId: string;
-  versionNumber: number;
-  plan: PlannerPlan;
-  editInstruction: string | null;
-}): Promise<boolean> {
-  const { error } = await supabaseAdmin.from("planner_plan_versions").insert({
-    planner_session_id: params.sessionId,
-    version_number: params.versionNumber,
-    plan_json: params.plan,
-    edit_instruction: params.editInstruction,
-  });
-  if (!error) return true;
-  // Unique violation → caller may retry
-  if (error.code === "23505") return false;
-  console.error("[planner] insertPlanVersion:", error.message);
-  throw new Error("Failed to insert plan version");
+export class PlannerPlanPersistError extends Error {
+  readonly code: "not_found" | "invalid_status" | "missing_plan" | "invalid_plan" | "persist_failed";
+
+  constructor(
+    code: PlannerPlanPersistError["code"],
+    message = "Failed to update planner plan",
+  ) {
+    super(message);
+    this.name = "PlannerPlanPersistError";
+    this.code = code;
+  }
+}
+
+type PersistRpcOutcome =
+  | {
+      outcome: "updated";
+      version_number: number;
+      updated_at: string;
+      status?: string;
+    }
+  | {
+      outcome: "conflict";
+      updated_at?: string;
+      status?: string;
+    }
+  | {
+      outcome: "not_found" | "invalid_status" | "missing_plan" | "invalid_plan";
+      status?: string;
+    };
+
+function parsePersistRpcPayload(data: unknown): PersistRpcOutcome | null {
+  if (!data || typeof data !== "object") return null;
+  const outcome = (data as { outcome?: unknown }).outcome;
+  if (
+    outcome !== "updated" &&
+    outcome !== "conflict" &&
+    outcome !== "not_found" &&
+    outcome !== "invalid_status" &&
+    outcome !== "missing_plan" &&
+    outcome !== "invalid_plan"
+  ) {
+    return null;
+  }
+
+  if (outcome === "updated") {
+    const versionNumber = (data as { version_number?: unknown }).version_number;
+    const updatedAt = (data as { updated_at?: unknown }).updated_at;
+    if (typeof versionNumber !== "number" || !Number.isFinite(versionNumber)) return null;
+    if (typeof updatedAt !== "string" || !updatedAt) return null;
+    return {
+      outcome: "updated",
+      version_number: versionNumber,
+      updated_at: updatedAt,
+      status:
+        typeof (data as { status?: unknown }).status === "string"
+          ? (data as { status: string }).status
+          : undefined,
+    };
+  }
+
+  return data as PersistRpcOutcome;
 }
 
 /**
- * Ensure the current plan is snapshotted as version 1 before first edit.
- * Idempotent when versions already exist.
- */
-export async function ensureBootstrapPlanVersion(params: {
-  sessionId: string;
-  currentPlan: PlannerPlan;
-}): Promise<number> {
-  const max = await getMaxVersionNumber(params.sessionId);
-  if (max >= 1) return max;
-
-  const inserted = await insertPlanVersion({
-    sessionId: params.sessionId,
-    versionNumber: 1,
-    plan: params.currentPlan,
-    editInstruction: null,
-  });
-  if (inserted) return 1;
-  return getMaxVersionNumber(params.sessionId);
-}
-
-/**
- * Persist edited plan: version history first, then replace current plan_json.
- * On failure before replace, current plan_json is untouched.
- * Status (generated|saved) and member_id / input_json are preserved.
+ * Persist edited plan atomically via DB RPC:
+ * FOR UPDATE session → optional updated_at CAS → bootstrap v1 from DB plan_json →
+ * insert next version → update plan_json (status preserved).
+ *
+ * `previousPlan` is retained for call-site compatibility but is NOT trusted;
+ * the RPC snapshots locked `planner_sessions.plan_json`.
+ *
+ * When `expectedUpdatedAt` is set (Manual Edit), mismatch → PlannerPlanVersionConflictError
+ * with zero version inserts (no orphan rows).
  */
 export async function persistEditedPlannerPlan(params: {
   sessionId: string;
+  /** @deprecated Unused — authoritative previous plan is locked DB plan_json. */
   previousPlan: PlannerPlan;
   nextPlan: PlannerPlan;
   editInstruction: string;
   status: Extract<PlannerSessionStatus, "generated" | "saved">;
-}): Promise<{ versionNumber: number }> {
+  expectedUpdatedAt?: string;
+}): Promise<{ versionNumber: number; updatedAt: string }> {
+  void params.previousPlan;
   plannerPlanSchema.parse(params.nextPlan);
 
-  const maxBefore = await ensureBootstrapPlanVersion({
-    sessionId: params.sessionId,
-    currentPlan: params.previousPlan,
+  const expected = params.expectedUpdatedAt?.trim() || null;
+
+  const { data, error } = await supabaseAdmin.rpc("persist_planner_plan_edit", {
+    p_session_id: params.sessionId,
+    p_next_plan: params.nextPlan,
+    p_edit_instruction: params.editInstruction.slice(0, 1000),
+    p_status: params.status,
+    p_expected_updated_at: expected,
   });
 
-  let nextVersion = maxBefore + 1;
-  let inserted = await insertPlanVersion({
-    sessionId: params.sessionId,
-    versionNumber: nextVersion,
-    plan: params.nextPlan,
-    editInstruction: params.editInstruction.slice(0, 1000),
-  });
-
-  if (!inserted) {
-    const max = await getMaxVersionNumber(params.sessionId);
-    nextVersion = max + 1;
-    inserted = await insertPlanVersion({
-      sessionId: params.sessionId,
-      versionNumber: nextVersion,
-      plan: params.nextPlan,
-      editInstruction: params.editInstruction.slice(0, 1000),
-    });
-    if (!inserted) {
-      throw new Error("Failed to insert plan version after retry");
-    }
+  if (error) {
+    console.error("[planner] persist_planner_plan_edit rpc:", error.message);
+    throw new PlannerPlanPersistError("persist_failed");
   }
 
-  // Only after version snapshot succeeds, overwrite current plan
-  const now = new Date().toISOString();
-  const { data, error: updateError } = await supabaseAdmin
-    .from("planner_sessions")
-    .update({
-      plan_json: params.nextPlan,
-      updated_at: now,
-    })
-    .eq("id", params.sessionId)
-    .eq("status", params.status)
-    .select("id")
-    .maybeSingle();
-
-  if (updateError || !data) {
-    console.error("[planner] persistEditedPlannerPlan update:", updateError?.message ?? "no row");
-    throw new Error("Failed to update planner plan");
+  const parsed = parsePersistRpcPayload(data);
+  if (!parsed) {
+    console.error("[planner] persist_planner_plan_edit unexpected payload");
+    throw new PlannerPlanPersistError("persist_failed");
   }
 
-  return { versionNumber: nextVersion };
+  if (parsed.outcome === "conflict") {
+    throw new PlannerPlanVersionConflictError();
+  }
+  if (parsed.outcome === "updated") {
+    return {
+      versionNumber: parsed.version_number,
+      updatedAt: parsed.updated_at,
+    };
+  }
+  if (parsed.outcome === "not_found") {
+    throw new PlannerPlanPersistError("not_found", "Planner session not found");
+  }
+  if (parsed.outcome === "invalid_status") {
+    throw new PlannerPlanPersistError("invalid_status", "Invalid planner session status");
+  }
+  if (parsed.outcome === "missing_plan") {
+    throw new PlannerPlanPersistError("missing_plan", "Planner session has no plan");
+  }
+  throw new PlannerPlanPersistError("invalid_plan", "Invalid plan payload");
 }

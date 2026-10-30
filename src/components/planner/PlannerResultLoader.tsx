@@ -35,6 +35,7 @@ type ReadResponse = {
     sourceProductId?: string | null;
     isSaved?: boolean;
     isOwner?: boolean;
+    updatedAt?: string;
     input?: {
       origin?: { text?: string } | null;
       destination?: { text?: string };
@@ -54,6 +55,7 @@ type PlannerResultLoaderProps = {
 
 export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   const [plan, setPlan] = useState<PlannerPlan | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [planRevision, setPlanRevision] = useState(0);
   const [originText, setOriginText] = useState<string | null>(null);
   const [pace, setPace] = useState<PlannerPace | null>(null);
@@ -133,6 +135,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
         return;
       }
       setPlan(data!.session!.plan);
+      setUpdatedAt(data!.session!.updatedAt ?? new Date().toISOString());
       const rawOrigin = data!.session!.input?.origin?.text?.trim() || "";
       setOriginText(rawOrigin || null);
       const rawPace = data!.session!.input?.pace;
@@ -146,10 +149,23 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
     } catch {
       setError("네트워크 오류가 발생했습니다.");
       setPlan(null);
+      setUpdatedAt(null);
     } finally {
       setLoading(false);
     }
   }, [sessionId]);
+
+  const applyPlanUpdate = useCallback(
+    (nextPlan: PlannerPlan, nextUpdatedAt: string) => {
+      setPlan(nextPlan);
+      setUpdatedAt(nextUpdatedAt);
+      setPlanRevision((revision) => revision + 1);
+      setEnrichment(null);
+      enrichTracked.current = false;
+      void loadEnrichment();
+    },
+    [loadEnrichment],
+  );
 
   useEffect(() => {
     void load();
@@ -203,7 +219,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
     );
   }
 
-  if (error || !plan) {
+  if (error || !plan || !updatedAt) {
     return (
       <div className="mx-auto max-w-lg space-y-4 px-4 py-12">
         <AlertCard variant="warning" title="플랜을 열 수 없습니다">
@@ -228,6 +244,7 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
   return (
     <PlannerResultView
       plan={plan}
+      updatedAt={updatedAt}
       sessionId={sessionId}
       sourceProductId={sourceProductId}
       isSaved={isSaved}
@@ -236,12 +253,9 @@ export function PlannerResultLoader({ sessionId }: PlannerResultLoaderProps) {
       pace={pace}
       onSaved={() => setIsSaved(true)}
       planRevision={planRevision}
-      onPlanUpdated={(next) => {
-        setPlan(next);
-        setPlanRevision((revision) => revision + 1);
-        setEnrichment(null);
-        enrichTracked.current = false;
-        void loadEnrichment();
+      onReloadLatest={() => void load()}
+      onPlanUpdated={(payload) => {
+        applyPlanUpdate(payload.plan, payload.updatedAt);
       }}
     />
   );

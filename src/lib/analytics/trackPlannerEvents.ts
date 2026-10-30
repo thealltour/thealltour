@@ -169,6 +169,28 @@ export function trackPlannerGenerationFailed(
   });
 }
 
+export function trackPlannerGenerationQuotaBlocked(params: {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+  subjectType: "member" | "anonymous";
+  reason: "daily_exceeded" | "lifetime_exceeded" | "already_in_progress";
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_generation_quota_blocked,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_generation",
+    label: "planner_generation_quota_blocked",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+      subjectType: params.subjectType,
+      reason: params.reason,
+    },
+  });
+}
+
 type SaveMetaBase = {
   sessionId: string;
   destination?: string | null;
@@ -285,6 +307,34 @@ export function trackPlannerKakaoMemoOAuthStarted(params: SaveMetaBase): void {
   });
 }
 
+export function trackPlannerKakaoCalendarClicked(params: SaveMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_kakao_calendar_clicked,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_kakao_calendar",
+    label: "planner_kakao_calendar_clicked",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}
+
+export function trackPlannerKakaoCalendarOAuthStarted(params: SaveMetaBase): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_kakao_calendar_oauth_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_kakao_calendar",
+    label: "planner_kakao_calendar_oauth_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: {
+      sessionId: params.sessionId,
+      destination: params.destination?.trim().slice(0, 120) || null,
+    },
+  });
+}
+
 type EditMetaBase = {
   sessionId: string;
   destination?: string | null;
@@ -337,6 +387,117 @@ export function trackPlannerEditFailed(params: EditMetaBase): void {
     label: "planner_edit_failed",
     productId: params.sourceProductId?.trim() || null,
     metadata: editBaseMetadata(params),
+  });
+}
+
+type ManualEditMeta = {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+  dayNumber?: number;
+  itemType?: string | null;
+};
+
+function manualEditMetadata(params: ManualEditMeta) {
+  return {
+    sessionId: params.sessionId,
+    destination: params.destination?.trim().slice(0, 120) || null,
+    dayNumber: params.dayNumber ?? null,
+    itemType: params.itemType ?? null,
+  };
+}
+
+export function trackPlannerManualEditModeStarted(params: {
+  sessionId: string;
+  destination?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_edit_mode_started,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_edit_mode_started",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
+  });
+}
+
+export function trackPlannerManualDayUpdated(params: {
+  sessionId: string;
+  dayNumber: number;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_day_updated,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_day_updated",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
+  });
+}
+
+export function trackPlannerManualItemUpdated(params: {
+  sessionId: string;
+  dayNumber: number;
+  itemType?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_item_updated,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_item_updated",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
+  });
+}
+
+export function trackPlannerManualItemAdded(params: {
+  sessionId: string;
+  dayNumber: number;
+  itemType?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_item_added,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_item_added",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
+  });
+}
+
+export function trackPlannerManualItemDeleted(params: {
+  sessionId: string;
+  dayNumber: number;
+  itemType?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_item_deleted,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_item_deleted",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
+  });
+}
+
+export function trackPlannerManualItemMoved(params: {
+  sessionId: string;
+  dayNumber: number;
+  itemType?: string | null;
+  sourceProductId?: string | null;
+}): void {
+  trackClientAnalytics({
+    eventName: ANALYTICS_EVENTS.planner_manual_item_moved,
+    source: ANALYTICS_SOURCES.planner,
+    section: "planner_manual_edit",
+    label: "planner_manual_item_moved",
+    productId: params.sourceProductId?.trim() || null,
+    metadata: manualEditMetadata(params),
   });
 }
 

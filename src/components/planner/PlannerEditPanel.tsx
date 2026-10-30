@@ -30,12 +30,17 @@ type EditResponse = {
   };
 };
 
+export type PlannerPlanUpdatedPayload = {
+  plan: PlannerPlan;
+  updatedAt: string;
+};
+
 type PlannerEditPanelProps = {
   sessionId: string;
   destination: string;
   sourceProductId: string | null;
   status: "generated" | "saved";
-  onPlanUpdated: (plan: PlannerPlan) => void;
+  onPlanUpdated: (payload: PlannerPlanUpdatedPayload) => void;
   /** Tighter layout for Result action group (behavior unchanged). */
   compact?: boolean;
 };
@@ -99,7 +104,10 @@ export function PlannerEditPanel({
         status,
         dayCount: data.session.plan.days.length,
       });
-      onPlanUpdated(data.session.plan);
+      onPlanUpdated({
+        plan: data.session.plan,
+        updatedAt: data.session.updatedAt ?? new Date().toISOString(),
+      });
       setOpen(false);
       setInstruction("");
       setSuccessHint(true);

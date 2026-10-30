@@ -246,6 +246,8 @@ describe("PR-9AS Preparation Hub", () => {
         isSaved={false}
         enrichment={null}
         onSaved={vi.fn()}
+        updatedAt="2026-10-31T00:00:00.000Z"
+        onReloadLatest={vi.fn()}
         onPlanUpdated={vi.fn()}
       />,
     );

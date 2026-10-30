@@ -23,6 +23,7 @@ vi.mock("@/lib/analytics/trackPlannerEvents", () => ({
   trackPlannerGenerationStarted: vi.fn(),
   trackPlannerPlanGenerated: vi.fn(),
   trackPlannerGenerationFailed: vi.fn(),
+  trackPlannerGenerationQuotaBlocked: vi.fn(),
   trackPlannerInputCompleted: vi.fn(),
   trackPlannerSummaryEditClicked: vi.fn(),
 }));

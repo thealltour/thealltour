@@ -28,6 +28,18 @@ describe("kakaoProvider.getAuthorizationUrl scope", () => {
     const scope = new URL(url).searchParams.get("scope") ?? "";
     const requested = scope.split(",").filter(Boolean);
     expect(requested).toEqual(["name", "phone_number", "plusfriends", "talk_message"]);
+    expect(requested).not.toContain("talk_calendar");
+  });
+
+  it("adds talk_calendar only for calendar action scopes", () => {
+    const url = kakaoProvider.getAuthorizationUrl({
+      state: "test-state",
+      redirectUri: "https://example.com/callback",
+      additionalScopes: ["talk_calendar"],
+    });
+    const requested = (new URL(url).searchParams.get("scope") ?? "").split(",").filter(Boolean);
+    expect(requested).toEqual(["name", "phone_number", "plusfriends", "talk_calendar"]);
+    expect(requested).not.toContain("talk_message");
   });
 
   it("rejects arbitrary additional scopes", () => {

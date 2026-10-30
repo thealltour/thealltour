@@ -34,6 +34,7 @@ import { canArriveAtPlannerStep } from "@/lib/planner/qaStepSafety";
 import { validatePlannerStep } from "@/lib/planner/schemas";
 import {
   trackPlannerGenerationFailed,
+  trackPlannerGenerationQuotaBlocked,
   trackPlannerGenerationStarted,
   trackPlannerInputCompleted,
   trackPlannerLandingView,
@@ -42,6 +43,13 @@ import {
   trackPlannerSummaryEditClicked,
 } from "@/lib/analytics/trackPlannerEvents";
 import { formatPlannerGenerationContext } from "@/lib/planner/conversationCopy";
+import { startOAuthLogin } from "@/lib/auth/oauthStart";
+import {
+  clearPlannerGenerationIntent,
+  readPlannerGenerationIntent,
+  setPlannerGenerationIntent,
+} from "@/lib/planner/generationIntent";
+import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 import type {
   PlannerDraftInput,
   PlannerSummaryEditSection,
@@ -49,6 +57,9 @@ import type {
 } from "@/types/planner";
 import { cn } from "@/lib/cn";
 import { Sparkles } from "lucide-react";
+import Link from "next/link";
+
+type WizardPhase = "wizard" | "generating" | "failed" | "quota_guest" | "quota_member";
 
 export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
   const router = useRouter();
@@ -79,12 +90,13 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
     sourceProductId,
   );
   const [error, setError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"wizard" | "generating" | "failed">("wizard");
+  const [phase, setPhase] = useState<WizardPhase>("wizard");
   const [budgetUiMode, setBudgetUiMode] = useState<BudgetUiMode>("undecided");
   const [editingFromSummary, setEditingFromSummary] = useState(false);
   const [customDurationOpen, setCustomDurationOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const generateLockRef = useRef(false);
+  const resumeHandledRef = useRef(false);
   const [qaPresetId, setQaPresetId] = useState<PlannerQaPresetId>("osaka-fixed");
   const [qaError, setQaError] = useState<string | null>(null);
   const [qaBusy, setQaBusy] = useState(false);
@@ -93,6 +105,49 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
     if (showQaPanel) return;
     trackPlannerLandingView();
   }, [showQaPanel]);
+
+  // Guest lifetime quota → Kakao login → resume draft (no auto-generate).
+  // Ownership: guest sessions keep member_id=null; anonymousKey ownership still applies (Option A).
+  useEffect(() => {
+    if (resumeHandledRef.current || showQaPanel) return;
+    const fromQuery = searchParams.get("resumeSession")?.trim() ?? "";
+    const fromIntent = readPlannerGenerationIntent()?.sessionId ?? "";
+    const resumeId =
+      fromQuery && /^[0-9a-f-]{36}$/i.test(fromQuery)
+        ? fromQuery
+        : fromIntent && /^[0-9a-f-]{36}$/i.test(fromIntent)
+          ? fromIntent
+          : "";
+    if (!resumeId) return;
+    resumeHandledRef.current = true;
+
+    void (async () => {
+      const key = anonymousKey || getOrCreatePlannerAnonymousKey();
+      try {
+        const res = await fetch(`/api/planner/sessions/${encodeURIComponent(resumeId)}/read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ anonymousKey: key }),
+        });
+        const data = (await res.json().catch(() => null)) as {
+          session?: { id?: string; input?: PlannerDraftInput; status?: string };
+        } | null;
+        if (!res.ok || !data?.session?.id || !data.session.input) {
+          clearPlannerGenerationIntent();
+          return;
+        }
+        setSessionId(data.session.id);
+        applyDraftLocal(data.session.input);
+        setStep(7);
+        setPhase("wizard");
+        setError(null);
+        clearPlannerGenerationIntent();
+      } catch {
+        clearPlannerGenerationIntent();
+      }
+    })();
+  }, [showQaPanel, searchParams, anonymousKey]);
 
   function patchDraft(patch: Partial<PlannerDraftInput>) {
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -284,11 +339,55 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
       );
       const data = (await res.json().catch(() => null)) as {
         message?: string;
+        code?: string;
         failureCategory?: string;
+        nextAvailableAt?: string;
         session?: { plan?: { days?: Array<{ items?: unknown[] }> } | null };
       } | null;
 
       if (!res.ok || !data?.session?.plan) {
+        const code = typeof data?.code === "string" ? data.code : "";
+        if (
+          code === "AI_DAILY_QUOTA_EXCEEDED" ||
+          code === "ANONYMOUS_LIFETIME_QUOTA_EXCEEDED" ||
+          code === "GENERATION_ALREADY_IN_PROGRESS"
+        ) {
+          if (code === "ANONYMOUS_LIFETIME_QUOTA_EXCEEDED") {
+            if (!showQaPanel) {
+              trackPlannerGenerationQuotaBlocked({
+                sessionId: activeSessionId,
+                destination: activeDraft.destination.text,
+                sourceProductId: resolvedSourceProductId,
+                subjectType: "anonymous",
+                reason: "lifetime_exceeded",
+              });
+            }
+            setPlannerGenerationIntent(activeSessionId);
+            setError(null);
+            setPhase("quota_guest");
+            return;
+          }
+          if (code === "AI_DAILY_QUOTA_EXCEEDED") {
+            if (!showQaPanel) {
+              trackPlannerGenerationQuotaBlocked({
+                sessionId: activeSessionId,
+                destination: activeDraft.destination.text,
+                sourceProductId: resolvedSourceProductId,
+                subjectType: "member",
+                reason: "daily_exceeded",
+              });
+            }
+            setError(null);
+            setPhase("quota_member");
+            return;
+          }
+          // GENERATION_ALREADY_IN_PROGRESS — server analytics already recorded.
+          setPhase("wizard");
+          setStep(7);
+          setError("같은 계정에서 플랜을 만들고 있어요. 잠시 후 다시 시도해 주세요.");
+          return;
+        }
+
         if (!showQaPanel) {
           trackPlannerGenerationFailed({
             sessionId: activeSessionId,
@@ -565,6 +664,84 @@ export function PlannerWizard({ qaEnabled = false }: { qaEnabled?: boolean }) {
         destination={draft.destination.text}
         contextLine={formatPlannerGenerationContext(draft)}
       />
+    );
+  }
+
+  if (phase === "quota_guest") {
+    return (
+      <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-10 sm:px-0">
+        <AlertCard variant="info" title="무료 플랜 1회를 사용했어요.">
+          <p className="type-body whitespace-pre-line text-[var(--text-secondary)]">
+            {
+              "비회원은 이 기기에서 AI 여행 플랜을 1회 만들 수 있어요.\n카카오로 로그인하면 매일 새로운 여행 플랜을 1회 만들 수 있습니다."
+            }
+          </p>
+        </AlertCard>
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            if (sessionId) setPlannerGenerationIntent(sessionId);
+            startOAuthLogin("kakao", {
+              nextPath: sessionId
+                ? `/planner?resumeSession=${encodeURIComponent(sessionId)}`
+                : "/planner",
+            });
+          }}
+        >
+          카카오로 계속하기
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            setPhase("wizard");
+            setError(null);
+            setStep(7);
+            setEditingFromSummary(false);
+          }}
+        >
+          여행 조건 수정하기
+        </Button>
+      </div>
+    );
+  }
+
+  if (phase === "quota_member") {
+    return (
+      <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-10 sm:px-0">
+        <AlertCard variant="info" title="오늘의 AI 플랜 생성권을 모두 사용했어요.">
+          <p className="type-body whitespace-pre-line text-[var(--text-secondary)]">
+            {
+              "매일 새로운 여행 플랜을 1회 만들 수 있어요.\n내일 00시에 다시 이용할 수 있습니다.\n현재 일정은 직접 수정할 수 있어요."
+            }
+          </p>
+        </AlertCard>
+        {/* Wizard quota screen has no generated plan yet — Manual Edit CTA only when a plan is open. */}
+        <Link href={PLANNER_SAVED_LIST_PATH} className="block w-full">
+          <Button type="button" variant="primary" size="lg" className="w-full">
+            내 여행 플랜 보기
+          </Button>
+        </Link>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            setPhase("wizard");
+            setError(null);
+            setStep(7);
+            setEditingFromSummary(false);
+          }}
+        >
+          여행 조건 확인하기
+        </Button>
+      </div>
     );
   }
 

@@ -2,8 +2,8 @@ import type { KakaoOptionalScope } from "@/lib/auth/kakaoScopes";
 
 /**
  * Action-specific OAuth (signed into OAuth state).
- * Calendar/task types are reserved for a follow-up PR — scopes map exists,
- * but callback only executes planner_kakao_memo today.
+ * Implemented: planner_kakao_memo, planner_kakao_calendar.
+ * Reserved (scope map only): planner_kakao_calendar_task.
  */
 export const OAUTH_ACTION_TYPES = [
   "planner_kakao_memo",
@@ -59,4 +59,12 @@ export function buildPlannerKakaoMemoAction(plannerSessionId: string): OAuthActi
     throw new Error("invalid_planner_session_id");
   }
   return { type: "planner_kakao_memo", plannerSessionId: id };
+}
+
+export function buildPlannerKakaoCalendarAction(plannerSessionId: string): OAuthAction {
+  const id = plannerSessionId.trim();
+  if (!isPlannerSessionId(id)) {
+    throw new Error("invalid_planner_session_id");
+  }
+  return { type: "planner_kakao_calendar", plannerSessionId: id };
 }

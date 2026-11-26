@@ -28,6 +28,11 @@ export type ProductCardGridSectionProps = {
   mobileInterstitial?: React.ReactNode;
   /** 가이드 브리지 보조 추천 등: 모바일 가로 레일 gap 축소 (gap-3 → gap-2) */
   guideBridgeMobileTightGap?: boolean;
+  /**
+   * /products 목록·검색: 전 구간 동일 열 폭.
+   * 모바일·태블릿 2열, 데스크톱 3열. 가로 스크롤·상품 수별 폭 변경 없음.
+   */
+  catalogListingLayout?: boolean;
 };
 
 /**
@@ -46,10 +51,29 @@ export function ProductCardGridSection({
   guideBridgeTopPicksLayout = false,
   mobileInterstitial,
   guideBridgeMobileTightGap = false,
+  catalogListingLayout = false,
 }: ProductCardGridSectionProps) {
   const items = React.Children.toArray(children);
 
   if (items.length === 0) return null;
+
+  if (catalogListingLayout) {
+    return (
+      <div className={className}>
+        <ul
+          className={cn(
+            "mx-auto grid w-full max-w-[1344px] grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-3",
+          )}
+        >
+          {items.map((item, i) => (
+            <li key={i} className="min-w-0">
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   if (guideBridgeTopPicksLayout) {
     const first = items[0];

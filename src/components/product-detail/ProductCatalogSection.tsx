@@ -4,8 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ProductCardSource } from "@/lib/products/productListItem";
-import ProductListCard from "@/components/products/ProductListCard";
-import ProductListCardMobile from "@/components/products/ProductListCardMobile";
 import ProductCard from "@/components/products/ProductCard";
 import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
@@ -54,8 +52,8 @@ type ProductCatalogSectionProps = {
   onClearCollection?: () => void;
   /** 결과 0건일 때 필터 초기화 CTA */
   onResetFilters?: () => void;
-  /** list: /products 목록형. related: 연관·랜딩용 카드 그리드 */
-  cardLayout?: "list" | "related";
+  /** list|catalog: /products 카탈로그 그리드. related: 연관·랜딩용 테마 그룹 그리드 */
+  cardLayout?: "list" | "related" | "catalog";
 };
 
 export default function ProductCatalogSection({
@@ -74,6 +72,7 @@ export default function ProductCatalogSection({
 }: ProductCatalogSectionProps) {
   const isBrowsePaginated = typeof listTotalCount === "number";
   const omitKeywordFilter = skipClientKeywordFilter === true || isBrowsePaginated;
+  const useCatalogGrid = cardLayout === "list" || cardLayout === "catalog";
 
   const keyword = useMemo(
     () => normalizeProductCatalogSearchKeyword(initialKeyword),
@@ -112,19 +111,27 @@ export default function ProductCatalogSection({
   const displayTotalCount =
     typeof listTotalCount === "number" ? listTotalCount : keywordFilteredProducts.length;
 
+  /** related 레이아웃만 테마별 재배치. 목록/카탈로그는 서버(입력) 순서 유지 */
   const groupedByTheme = useMemo(
-    () => groupProductsByTheme(keywordFilteredProducts, themeTabs),
-    [keywordFilteredProducts, themeTabs],
+    () =>
+      useCatalogGrid
+        ? []
+        : groupProductsByTheme(keywordFilteredProducts, themeTabs),
+    [useCatalogGrid, keywordFilteredProducts, themeTabs],
   );
 
   const displayGroups = useMemo(
     () =>
-      groupedByTheme.length > 0
-        ? groupedByTheme
-        : keywordFilteredProducts.length > 0
+      useCatalogGrid
+        ? keywordFilteredProducts.length > 0
           ? [{ theme: "상품", products: keywordFilteredProducts }]
-          : [],
-    [groupedByTheme, keywordFilteredProducts],
+          : []
+        : groupedByTheme.length > 0
+          ? groupedByTheme
+          : keywordFilteredProducts.length > 0
+            ? [{ theme: "상품", products: keywordFilteredProducts }]
+            : [],
+    [useCatalogGrid, groupedByTheme, keywordFilteredProducts],
   );
 
   const router = useRouter();
@@ -213,58 +220,39 @@ export default function ProductCatalogSection({
               "표시할 상품이 없습니다. 필터를 조정해 보세요."
             )}
           </div>
+        ) : useCatalogGrid ? (
+          <ProductCardGridSection catalogListingLayout className="w-full max-w-[1344px]">
+            {keywordFilteredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                {...productToProductCardProps(product, {
+                  layout: "catalog",
+                  analyticsSource: "product_list",
+                  analyticsSection: "catalog",
+                  onClickDetail: () => router.push(`/products/${product.id}`),
+                  onClickConsult: () => handleProductConsult(product),
+                  campaignBadgeMax: 2,
+                  campaignPresentationKind: "list",
+                })}
+              />
+            ))}
+          </ProductCardGridSection>
         ) : (
           displayGroups.map((group) => (
             <div key={group.theme} className="space-y-3">
               <h3 className="font-card-title type-h3 text-[var(--primary)]">{group.theme}</h3>
-              {cardLayout === "related" ? (
-                <ProductCardGridSection desktopGridCols={2} className="w-full max-w-[1344px]">
-                  {group.products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      {...productToProductCardProps(product, {
-                        layout: "related",
-                        analyticsSource: "landing",
-                        analyticsSection: "landing_catalog",
-                      })}
-                    />
-                  ))}
-                </ProductCardGridSection>
-              ) : (
-                <div className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
-                  {group.products.map((product) => {
-                    const catalogOverrides = {
-                      analyticsSource: "product_list" as const,
-                      analyticsSection: "catalog",
-                      onClickDetail: () => router.push(`/products/${product.id}`),
-                      onClickConsult: () => handleProductConsult(product),
-                      /** /destinations 추천 카드와 동일하게 대표 배지 최대 2개(이미지 오버레이) */
-                      campaignBadgeMax: 2,
-                    };
-
-                    return (
-                      <div key={product.id} className="w-full">
-                        <div className="hidden md:block">
-                          <ProductListCard
-                            {...productToProductCardProps(product, {
-                              ...catalogOverrides,
-                              campaignPresentationKind: "list",
-                            })}
-                          />
-                        </div>
-                        <div className="md:hidden">
-                          <ProductListCardMobile
-                            {...productToProductCardProps(product, {
-                              ...catalogOverrides,
-                              campaignPresentationKind: "mobile",
-                            })}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <ProductCardGridSection desktopGridCols={2} className="w-full max-w-[1344px]">
+                {group.products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    {...productToProductCardProps(product, {
+                      layout: "related",
+                      analyticsSource: "landing",
+                      analyticsSection: "landing_catalog",
+                    })}
+                  />
+                ))}
+              </ProductCardGridSection>
             </div>
           ))
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal, ArrowDownUp } from "lucide-react";
+import { SlidersHorizontal, ArrowDownUp, MapPin, Palette, Package, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   PRODUCT_COLLECTION_SWITCH_OPTIONS,
@@ -13,6 +13,9 @@ export type ProductListToolbarProps = {
   sortLabel: string | null;
   currentSort: ProductSortId;
   currentCollection: string | null;
+  currentRegion?: string | null;
+  currentTheme?: string | null;
+  currentProductLine?: string | null;
   onFilterClick: () => void;
   onSortClick: () => void;
   onSortChange: (sort: ProductSortId) => void;
@@ -26,6 +29,8 @@ export type ProductListToolbarProps = {
   searchMode?: boolean;
   /** 데스크톱 정렬 옵션 (미지정 시 Browse 기본) */
   sortOptions?: { value: ProductSortId; label: string }[];
+  /** 데스크톱에서 상품군 버튼 숨김 (모바일 필터 패널로만) — false면 표시 */
+  hideDesktopProductLine?: boolean;
   className?: string;
 };
 
@@ -34,14 +39,52 @@ const DESKTOP_SORT_OPTIONS: { value: ProductSortId; label: string }[] = [
   ...SORT_OPTIONS,
 ];
 
+function FilterChipButton({
+  label,
+  value,
+  onClick,
+  icon: Icon,
+  className,
+}: {
+  label: string;
+  value?: string | null;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  className?: string;
+}) {
+  const active = Boolean(value?.trim());
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-10 min-w-0 max-w-[12rem] items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+        active
+          ? "border-[var(--primary)]/40 bg-[var(--primary-soft)] text-[var(--primary)]"
+          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]",
+        className,
+      )}
+      aria-label={`${label} 필터 열기`}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+      <span className="truncate">{active ? value : label}</span>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+    </button>
+  );
+}
+
 /**
- * 모바일: SiteHeader·MobileBack 아래 sticky 필터/정렬 바.
- * 데스크톱: 정렬 셀렉트(우측) — 필터는 사이드바 유지.
+ * 상단 필터·정렬 바.
+ * 데스크톱: 지역·테마·상품군 + 정렬. 모바일: 지역·테마·정렬(+필터 패널에서 상품군).
  */
 export function ProductListToolbar({
   sortLabel,
   currentSort,
   currentCollection,
+  currentRegion = null,
+  currentTheme = null,
+  currentProductLine = null,
   onFilterClick,
   onSortClick,
   onSortChange,
@@ -49,6 +92,7 @@ export function ProductListToolbar({
   belowMobileBackHeader = false,
   searchMode = false,
   sortOptions,
+  hideDesktopProductLine = false,
   className,
 }: ProductListToolbarProps) {
   const desktopSortOptions = sortOptions ?? DESKTOP_SORT_OPTIONS;
@@ -119,6 +163,31 @@ export function ProductListToolbar({
           </div>
         ) : null}
 
+        {/* 데스크톱 상단 필터 칩 */}
+        <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-2 lg:flex">
+          <FilterChipButton
+            label="지역"
+            value={currentRegion}
+            onClick={onFilterClick}
+            icon={MapPin}
+          />
+          <FilterChipButton
+            label="테마"
+            value={currentTheme}
+            onClick={onFilterClick}
+            icon={Palette}
+          />
+          {!hideDesktopProductLine ? (
+            <FilterChipButton
+              label="상품군"
+              value={currentProductLine}
+              onClick={onFilterClick}
+              icon={Package}
+            />
+          ) : null}
+        </div>
+
+        {/* 모바일: 지역·테마·정렬 우선 */}
         <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
           <button
             type="button"
@@ -129,10 +198,12 @@ export function ProductListToolbar({
               "active:bg-[var(--surface-muted)]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
             )}
-            aria-label="필터 열기"
+            aria-label="지역·테마·상품군 필터 열기"
           >
             <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-            필터
+            <span className="truncate">
+              {[currentRegion, currentTheme].filter(Boolean).join(" · ") || "지역 · 테마"}
+            </span>
           </button>
           <button
             type="button"
@@ -150,7 +221,7 @@ export function ProductListToolbar({
           </button>
         </div>
 
-        <label className="hidden min-w-[200px] items-center gap-2 lg:flex">
+        <label className="hidden min-w-[200px] shrink-0 items-center gap-2 lg:flex">
           <span className="shrink-0 text-sm text-[var(--text-muted)]">정렬</span>
           <select
             value={currentSort}

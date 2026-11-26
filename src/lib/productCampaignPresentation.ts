@@ -118,13 +118,13 @@ function visualToneFromBadgeTone(tone: CampaignBadgeTone): CampaignVisualTone {
 
 /** ProductCard layout + 옵션 → 표현 kind */
 export function resolveCampaignCardKind(args: {
-  layout: "grid" | "list" | "related" | "stack";
+  layout: "grid" | "list" | "related" | "stack" | "catalog";
   analyticsSection?: string | null;
   presentationKind?: CampaignCardKind;
 }): CampaignCardKind {
   if (args.presentationKind) return args.presentationKind;
   if (args.analyticsSection === "related_products" || args.layout === "related") return "related";
-  if (args.layout === "list") return "list";
+  if (args.layout === "list" || args.layout === "catalog") return "list";
   return "grid";
 }
 

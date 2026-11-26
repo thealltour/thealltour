@@ -6,8 +6,8 @@ import type { ProductListItem } from "@/lib/products/productListItem";
 import type { SearchFilterState } from "@/types/search";
 import { buildSearchQueryString } from "@/lib/search/searchQueryParams";
 import SearchPagination from "@/components/search/SearchPagination";
-import ProductListCard from "@/components/products/ProductListCard";
-import ProductListCardMobile from "@/components/products/ProductListCardMobile";
+import ProductCard from "@/components/products/ProductCard";
+import { ProductCardGridSection } from "@/components/products/ProductCardGridSection";
 import { productToProductCardProps } from "@/lib/productCardProps";
 import { useConsultModal } from "@/components/inquiry/ConsultModal";
 import { trackClientEvent } from "@/lib/analytics/trackClientEvent";
@@ -39,11 +39,14 @@ function uniqById(products: ProductListItem[]): ProductListItem[] {
 
 function LoadMoreSkeleton() {
   return (
-    <div className="flex flex-col gap-4" aria-hidden>
-      {[1, 2].map((i) => (
+    <div
+      className="mx-auto grid w-full max-w-[1344px] grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-3"
+      aria-hidden
+    >
+      {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="h-36 w-full animate-pulse rounded-2xl bg-[var(--surface-muted)] ring-1 ring-[var(--border)]"
+          className="aspect-[3/4] w-full animate-pulse rounded-2xl bg-[var(--surface-muted)] ring-1 ring-[var(--border)]"
         />
       ))}
     </div>
@@ -51,8 +54,7 @@ function LoadMoreSkeleton() {
 }
 
 /**
- * Search Mode 결과 리스트 + Load More + Pagination.
- * 카드는 ProductListCard / Mobile 유지 (ProductCard grid 미사용).
+ * Search Mode 결과 — 목록과 동일한 카탈로그 세로 카드 그리드.
  */
 export function ProductsSearchModeResults({
   initialItems,
@@ -98,44 +100,31 @@ export function ProductsSearchModeResults({
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="검색 결과 상품 목록" className="flex w-full max-w-[1344px] flex-col gap-4 md:gap-5">
-        {items.map((product) => {
-          const catalogOverrides = {
-            analyticsSource: "product_list" as const,
-            analyticsSection: "search",
-            onClickDetail: () => router.push(`/products/${product.id}`),
-            onClickConsult: () =>
-              openModal({
-                productId: product.id,
-                productTitle: product.title,
-                sourcePath:
-                  typeof window !== "undefined"
-                    ? `${window.location.pathname}${window.location.search}`
-                    : "/products",
-              }),
-            campaignBadgeMax: 2,
-          };
-          return (
-            <div key={product.id} className="w-full">
-              <div className="hidden md:block">
-                <ProductListCard
-                  {...productToProductCardProps(product, {
-                    ...catalogOverrides,
-                    campaignPresentationKind: "list",
-                  })}
-                />
-              </div>
-              <div className="md:hidden">
-                <ProductListCardMobile
-                  {...productToProductCardProps(product, {
-                    ...catalogOverrides,
-                    campaignPresentationKind: "mobile",
-                  })}
-                />
-              </div>
-            </div>
-          );
-        })}
+      <section aria-label="검색 결과 상품 목록">
+        <ProductCardGridSection catalogListingLayout className="w-full max-w-[1344px]">
+          {items.map((product) => (
+            <ProductCard
+              key={product.id}
+              {...productToProductCardProps(product, {
+                layout: "catalog",
+                analyticsSource: "product_list",
+                analyticsSection: "search",
+                onClickDetail: () => router.push(`/products/${product.id}`),
+                onClickConsult: () =>
+                  openModal({
+                    productId: product.id,
+                    productTitle: product.title,
+                    sourcePath:
+                      typeof window !== "undefined"
+                        ? `${window.location.pathname}${window.location.search}`
+                        : "/products",
+                  }),
+                campaignBadgeMax: 2,
+                campaignPresentationKind: "list",
+              })}
+            />
+          ))}
+        </ProductCardGridSection>
       </section>
 
       {totalPages > 1 && hasMore && (

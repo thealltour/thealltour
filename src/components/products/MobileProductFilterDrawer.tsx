@@ -39,6 +39,8 @@ export type MobileProductFilterDrawerProps = {
   filters: ProductFiltersState;
   onApply: (next: Partial<ProductFiltersState>) => void;
   onReset: () => void;
+  /** true면 lg:hidden 해제 — 상단 필터 바에서 데스크톱 패널로도 사용 */
+  showOnDesktop?: boolean;
 };
 
 type DraftState = { region: string | null; theme: string | null; product_line: string | null };
@@ -141,6 +143,7 @@ export function MobileProductFilterDrawer({
   filters,
   onApply,
   onReset,
+  showOnDesktop = false,
 }: MobileProductFilterDrawerProps) {
   const [draft, setDraft] = useState<DraftState>({
     region: filters.region,
@@ -249,7 +252,10 @@ export function MobileProductFilterDrawer({
   const content = (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
+      className={cn(
+        "fixed inset-0 z-50 flex flex-col justify-end",
+        !showOnDesktop && "lg:hidden",
+      )}
       role="dialog"
       aria-modal="true"
       aria-label="필터"

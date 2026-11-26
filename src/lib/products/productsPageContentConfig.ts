@@ -23,7 +23,8 @@ export type ProductsPageContentListingConfig = {
   initialRegionDescendants?: { ids: string[]; names: string[] } | null;
   /** 동일하게 테마 하위 이름 목록(랜딩에서만 채움) */
   initialThemeDescendantNames?: string[] | null;
-  cardLayout?: "list" | "related";
+  /** list|catalog: /products 카탈로그 그리드. related: 테마 그룹 세로 카드 */
+  cardLayout?: "list" | "related" | "catalog";
   mobileListToolbarBelowBackHeader?: boolean;
   /** FK/이름 매핑·하위 전개용 지역 택소노미(전체 트리) */
   regionTaxonomies?: ProductTaxonomy[] | null;

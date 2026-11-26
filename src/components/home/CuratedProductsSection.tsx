@@ -14,21 +14,28 @@ import type {
   HomeCuratedSectionWithProducts,
 } from "@/types/homeCurated";
 
-/** 데스크톱 4열을 채울 수 있는 섹션을 앞에 둔다. 운영 순서는 home_curated_sections.sort_order. */
+/**
+ * 홈 첫 줄이 4열을 채우도록 최소만 보정한다.
+ * 관리자 순서(home_curated_sections.sort_order)를 기본으로 두고,
+ * 첫 섹션이 4개 미만일 때만 처음 만나는 4개 이상 섹션 하나를 맨 앞으로 옮긴다.
+ */
 export function orderCuratedSectionsForHome(
   sections: HomeCuratedSectionWithProducts[],
 ): HomeCuratedSectionWithProducts[] {
   if (sections.length <= 1) return sections;
-  return sections
-    .map((section, index) => ({ section, index, count: section.products?.length ?? 0 }))
-    .sort((a, b) => {
-      const aFull = a.count >= 4 ? 1 : 0;
-      const bFull = b.count >= 4 ? 1 : 0;
-      if (aFull !== bFull) return bFull - aFull;
-      if (a.count !== b.count) return b.count - a.count;
-      return a.index - b.index;
-    })
-    .map((entry) => entry.section);
+
+  const productCount = (section: HomeCuratedSectionWithProducts) =>
+    section.products?.length ?? 0;
+
+  if (productCount(sections[0]!) >= 4) return sections;
+
+  const fullIndex = sections.findIndex((section) => productCount(section) >= 4);
+  if (fullIndex <= 0) return sections;
+
+  const next = sections.slice();
+  const [fullSection] = next.splice(fullIndex, 1);
+  next.unshift(fullSection!);
+  return next;
 }
 
 export type CuratedProductsSectionProps = {

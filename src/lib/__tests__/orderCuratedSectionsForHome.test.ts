@@ -22,15 +22,32 @@ function section(
 }
 
 describe("orderCuratedSectionsForHome", () => {
-  it("puts sections with 4+ products first while preserving relative order", () => {
+  it("keeps admin order when the first section already has 4+ products [4, 5, 2]", () => {
+    const input = [
+      section("a", 4, 0),
+      section("b", 5, 1),
+      section("c", 2, 2),
+    ];
+    expect(orderCuratedSectionsForHome(input).map((s) => s.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("moves only the first 4+ section to the front when the lead is short [2, 4, 5, 1]", () => {
     const ordered = orderCuratedSectionsForHome([
-      section("europe", 2, 0),
-      section("family", 4, 1),
-      section("asia", 1, 2),
-      section("golf", 5, 3),
+      section("a", 2, 0),
+      section("b", 4, 1),
+      section("c", 5, 2),
+      section("d", 1, 3),
     ]);
-    // 4개 이상끼리에서는 상품 수 내림차순, 그다음 원본 인덱스
-    expect(ordered.map((s) => s.id)).toEqual(["golf", "family", "europe", "asia"]);
+    expect(ordered.map((s) => s.id)).toEqual(["b", "a", "c", "d"]);
+  });
+
+  it("keeps admin order when no section has 4+ products [2, 3, 1]", () => {
+    const input = [
+      section("a", 2, 0),
+      section("b", 3, 1),
+      section("c", 1, 2),
+    ];
+    expect(orderCuratedSectionsForHome(input).map((s) => s.id)).toEqual(["a", "b", "c"]);
   });
 
   it("returns single section unchanged", () => {

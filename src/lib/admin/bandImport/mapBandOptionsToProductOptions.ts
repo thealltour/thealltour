@@ -20,13 +20,17 @@ export function parseKrwDeltaFromPriceText(priceText: string): number | null {
   const trimmed = priceText.trim();
   if (!trimmed) return null;
 
+  const hasForeign = hasForeignCurrencyAmountText(trimmed);
+
   // 외화 + 참고 환산만 있으면(명시 원화 없음) 숫자·만원 fallback 전에 중단
-  if (hasForeignCurrencyAmountText(trimmed) && !hasExplicitPayableKrwAmountText(trimmed)) {
+  if (hasForeign && !hasExplicitPayableKrwAmountText(trimmed)) {
     return null;
   }
 
-  // 참고 환산 구문을 제거한 뒤 명시 원화만 파싱 (예: 50위안(1만원))
-  const payableText = stripKrwReferenceConversionText(trimmed) || trimmed;
+  // 외화가 있을 때만 참고 환산 구문 제거. 원화 전용(예: 인/박/한화 4만원)은 trimmed 그대로 파싱
+  const payableText = hasForeign
+    ? stripKrwReferenceConversionText(trimmed) || trimmed
+    : trimmed;
 
   const manWonMatch = payableText.match(/(\d+(?:\.\d+)?)\s*만\s*원?/);
   if (manWonMatch) {

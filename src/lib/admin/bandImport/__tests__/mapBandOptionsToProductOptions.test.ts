@@ -7,6 +7,7 @@ import {
 describe("parseKrwDeltaFromPriceText", () => {
   it("parses 만원 notation", () => {
     expect(parseKrwDeltaFromPriceText("인/박/4만원")).toBe(40000);
+    expect(parseKrwDeltaFromPriceText("인/박/한화 4만원")).toBe(40000);
     expect(parseKrwDeltaFromPriceText("추가 20,000원")).toBe(20000);
   });
 

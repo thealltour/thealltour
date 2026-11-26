@@ -20,10 +20,10 @@ function bannerSrcForMobile(banner: HomeBanner): string {
 /** PageContainer `wide`와 동일 — 파노라마·srcset이 뷰포트 전체로 불필요 확대되지 않도록 */
 const HERO_PANORAMA_MAX_WIDTH_PX = 1600;
 
-/** md+ 파노라마 — 1440×900에서 추천 카드가 더 일찍 보이도록 높이 완화 */
-const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[200px] h-[min(32vh,360px)]";
+/** md+ 파노라마 — 340~380px 대역 (1440×900에서 첫 추천 카드가 보이도록 상한 유지) */
+const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[340px] h-[clamp(340px,40vh,380px)]";
 
-/** 모바일 배너 — 낮은 높이 */
+/** 모바일 배너 — 짧은 현행 높이 유지 */
 const HERO_MOBILE_HEIGHT_CLASS = "min-h-[120px] h-[min(24vh,180px)]";
 
 /** @deprecated Hero 모바일 칩용. 다른 화면에서 재사용 시에만 유지 */
@@ -65,7 +65,7 @@ export type HeroSectionProps = {
   /** 출발 일정 달력 앵커 (#home-golf-dates). 없으면 CTA 숨김 */
   golfDatesHref?: string | null;
   /**
-   * 활성 배너 전부 (`getHomeBanners` 정렬 순). 0장이면 배경 없음, 1장이면 단일, 2장+ fade 슬라이드.
+   * 활성 배너 목록 (`getHomeBanners` 정렬 순). 0장이면 배경 없음, 1장이면 단일, 2장+ fade 슬라이드.
    */
   heroBanners?: HomeBanner[];
   /** 히어로 문구 (resolveHeroContent 결과) */
@@ -77,7 +77,7 @@ export type HeroSectionProps = {
 };
 
 /**
- * 홈 최상단 Hero 섹션 — 중앙 정렬 사진 + 짧은 제목.
+ * 홈 최상단 Hero 섹션 — PageContainer wide 기준선에 맞춘 배너 + 짧은 제목.
  * 검색은 공통 헤더로 이동. 골프 탐색은 홈 바로가기·골프 섹션에서 접근.
  */
 export default function HeroSection({
@@ -88,100 +88,95 @@ export default function HeroSection({
   const firstBanner = heroBanners[0] ?? null;
 
   return (
-    <section
-      className={cn(
-        "relative w-full",
-        "md:mx-auto md:max-w-[1600px] md:px-6 lg:px-8 xl:px-10",
-      )}
-    >
-      <div
-        className={cn(
-          "relative overflow-hidden bg-[var(--hero-bg)]",
-          "md:rounded-2xl lg:rounded-3xl",
-        )}
-      >
+    <section className="relative w-full">
+      <PageContainer size="wide" className="md:pt-2 lg:pt-3">
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 z-0 overflow-hidden",
+            "relative overflow-hidden bg-[var(--hero-bg)]",
             "md:rounded-2xl lg:rounded-3xl",
           )}
-          aria-hidden
         >
-          {hasBanners ? (
-            <>
-              {/* 모바일: 낮은 배너 이미지 */}
-              <div className={cn("absolute inset-0 z-0 md:hidden", HERO_MOBILE_HEIGHT_CLASS)}>
-                {firstBanner ? (
-                  <Image
-                    src={bannerSrcForMobile(firstBanner)}
-                    alt={firstBanner.title}
-                    fill
-                    sizes="100vw"
-                    priority
-                    fetchPriority="high"
-                    quality={78}
-                    className="object-cover object-center"
-                  />
-                ) : null}
-                <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/55 via-black/25 to-black/10" />
-              </div>
-
-              {/* md+: 파노라마 */}
-              <div
-                className={cn(
-                  "absolute inset-x-0 top-0 z-0 hidden md:block",
-                  "w-full",
-                  HERO_PANORAMA_HEIGHT_CLASS,
-                  "overflow-hidden",
-                )}
-              >
-                {heroBanners.length > 1 ? (
-                  <HeroPanoramaSlideshowClient banners={heroBanners} />
-                ) : firstBanner ? (
-                  <>
-                    <div className="absolute inset-0 md:block lg:hidden">
-                      <Image
-                        src={bannerSrcForMidViewport(firstBanner)}
-                        alt={firstBanner.title}
-                        fill
-                        sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
-                        loading="lazy"
-                        fetchPriority="low"
-                        quality={82}
-                        className="object-cover object-center"
-                      />
-                    </div>
-                    <div className="absolute inset-0 hidden lg:block">
-                      <Image
-                        src={firstBanner.image_url}
-                        alt={firstBanner.title}
-                        fill
-                        sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
-                        priority
-                        fetchPriority="high"
-                        quality={82}
-                        className="object-cover object-[right_center]"
-                      />
-                    </div>
-                  </>
-                ) : null}
-                <div className="absolute inset-0 z-[2] hero-scrim" />
-                <div className="absolute inset-y-0 right-0 z-[2] w-3/5 hero-overlay-warm mix-blend-soft-light" />
-                <div className="absolute inset-0 z-[2] hero-vignette" />
-              </div>
-            </>
-          ) : (
-            <div className="absolute inset-0 z-0 bg-[var(--primary-soft)] md:hidden" />
-          )}
-        </div>
-
-        <PageContainer size="wide" className="px-3 sm:px-6 lg:px-8 xl:px-10">
           <div
             className={cn(
-              "relative z-10 flex min-w-0 max-w-full flex-col items-center justify-end text-center",
+              "pointer-events-none absolute inset-0 z-0 overflow-hidden",
+              "md:rounded-2xl lg:rounded-3xl",
+            )}
+            aria-hidden
+          >
+            {hasBanners ? (
+              <>
+                {/* 모바일: 낮은 배너 이미지 */}
+                <div className={cn("absolute inset-0 z-0 md:hidden", HERO_MOBILE_HEIGHT_CLASS)}>
+                  {firstBanner ? (
+                    <Image
+                      src={bannerSrcForMobile(firstBanner)}
+                      alt={firstBanner.title}
+                      fill
+                      sizes="100vw"
+                      priority
+                      fetchPriority="high"
+                      quality={78}
+                      className="object-cover object-center"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/55 via-black/25 to-black/10" />
+                </div>
+
+                {/* md+: 파노라마 */}
+                <div
+                  className={cn(
+                    "absolute inset-x-0 top-0 z-0 hidden md:block",
+                    "w-full",
+                    HERO_PANORAMA_HEIGHT_CLASS,
+                    "overflow-hidden",
+                  )}
+                >
+                  {heroBanners.length > 1 ? (
+                    <HeroPanoramaSlideshowClient banners={heroBanners} />
+                  ) : firstBanner ? (
+                    <>
+                      <div className="absolute inset-0 md:block lg:hidden">
+                        <Image
+                          src={bannerSrcForMidViewport(firstBanner)}
+                          alt={firstBanner.title}
+                          fill
+                          sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
+                          loading="lazy"
+                          fetchPriority="low"
+                          quality={82}
+                          className="object-cover object-center"
+                        />
+                      </div>
+                      <div className="absolute inset-0 hidden lg:block">
+                        <Image
+                          src={firstBanner.image_url}
+                          alt={firstBanner.title}
+                          fill
+                          sizes={`(max-width: ${HERO_PANORAMA_MAX_WIDTH_PX}px) 100vw, ${HERO_PANORAMA_MAX_WIDTH_PX}px`}
+                          priority
+                          fetchPriority="high"
+                          quality={82}
+                          className="object-cover object-[center_40%]"
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="absolute inset-0 z-[2] hero-scrim" />
+                  <div className="absolute inset-y-0 right-0 z-[2] w-3/5 hero-overlay-warm mix-blend-soft-light" />
+                  <div className="absolute inset-0 z-[2] hero-vignette" />
+                </div>
+              </>
+            ) : (
+              <div className="absolute inset-0 z-0 bg-[var(--primary-soft)] md:hidden" />
+            )}
+          </div>
+
+          <div
+            className={cn(
+              "relative z-10 flex min-w-0 max-w-full flex-col items-center justify-end px-3 text-center sm:px-6",
               "pt-8 pb-4 sm:pt-10 sm:pb-5",
-              "md:min-h-[200px] md:justify-center md:py-8",
-              "lg:min-h-[min(32vh,360px)] lg:py-9",
+              "md:min-h-[340px] md:justify-center md:px-8 md:py-8",
+              "lg:min-h-[clamp(340px,40vh,380px)] lg:py-9",
               !hasBanners && "min-h-[120px]",
             )}
           >
@@ -201,13 +196,13 @@ export default function HeroSection({
               </span>
             </h1>
             {hero.sub_description ? (
-              <p className="mt-2 hidden max-w-xl text-sm font-medium leading-snug text-white/85 md:mt-3 md:block md:text-base">
+              <p className="mt-2 hidden max-w-xl text-sm font-medium leading-snug text-white/85 md:mt-3 md:block md:text-base md:drop-shadow-sm">
                 {hero.sub_description}
               </p>
             ) : null}
           </div>
-        </PageContainer>
-      </div>
+        </div>
+      </PageContainer>
     </section>
   );
 }

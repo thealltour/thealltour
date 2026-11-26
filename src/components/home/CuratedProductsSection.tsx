@@ -14,6 +14,23 @@ import type {
   HomeCuratedSectionWithProducts,
 } from "@/types/homeCurated";
 
+/** 데스크톱 4열을 채울 수 있는 섹션을 앞에 둔다. 운영 순서는 home_curated_sections.sort_order. */
+export function orderCuratedSectionsForHome(
+  sections: HomeCuratedSectionWithProducts[],
+): HomeCuratedSectionWithProducts[] {
+  if (sections.length <= 1) return sections;
+  return sections
+    .map((section, index) => ({ section, index, count: section.products?.length ?? 0 }))
+    .sort((a, b) => {
+      const aFull = a.count >= 4 ? 1 : 0;
+      const bFull = b.count >= 4 ? 1 : 0;
+      if (aFull !== bFull) return bFull - aFull;
+      if (a.count !== b.count) return b.count - a.count;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.section);
+}
+
 export type CuratedProductsSectionProps = {
   /** home_curated 설정 (비활성 또는 없으면 빈 상태 노출) */
   settings: HomeCuratedSettings | null;
@@ -44,9 +61,11 @@ export default function CuratedProductsSection({
   if (isActive) {
     const headerTitle = resolveHomeCuratedSectionTitle(settings!, sections);
     const rawEyebrow = settings!.section_label?.trim() || "";
-    // 제목과 같은 라벨(예: THEALL PICKS 중복)은 숨김
+    // 제목과 같거나 레거시 THEALL PICKS 라벨은 숨김
     const eyebrow =
-      rawEyebrow && rawEyebrow.toLowerCase() !== headerTitle.toLowerCase()
+      rawEyebrow &&
+      rawEyebrow.toLowerCase() !== headerTitle.toLowerCase() &&
+      !/^theall\s*picks$/i.test(rawEyebrow)
         ? rawEyebrow
         : undefined;
     const description = settings!.section_description?.trim() || undefined;
@@ -57,7 +76,8 @@ export default function CuratedProductsSection({
         padding="md"
         className={cn(
           HOME_MAIN_SECTION_BLOCK_CLASS,
-          "!py-1 sm:!py-2 md:!py-2.5",
+          // PageContainer wide와 배너 좌우 기준선 맞춤 — 데스크톱 가로 패딩 제거
+          "!py-1 sm:!py-1.5 md:!px-0 md:!py-2",
           className,
         )}
       >
@@ -89,8 +109,8 @@ export default function CuratedProductsSection({
           ) : null}
         </div>
 
-        <div className="mx-auto mt-3 flex w-full max-w-[1344px] flex-col gap-3.5 md:mt-3.5 md:gap-4">
-          {sections.map((sec) => (
+        <div className="mx-auto mt-2.5 flex w-full flex-col gap-3.5 md:mt-3 md:gap-4">
+          {orderCuratedSectionsForHome(sections).map((sec) => (
             <CuratedSectionScrollBlock
               key={sec.id}
               section={sec}

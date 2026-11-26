@@ -119,13 +119,13 @@ export default function HeaderQuickConsultCtas({
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2">
         <Button
           type="button"
           variant="accent"
           size="sm"
           onClick={() => setIsOpen(true)}
-          className="glass-cta-edge h-11 px-4 text-[14px] md:px-5 md:text-[15px]"
+          className="glass-cta-edge h-11 px-4 text-[14px] font-semibold md:px-5 md:text-[15px]"
         >
           <Send
             className="mr-1.5 h-4 w-4 opacity-90"
@@ -139,9 +139,10 @@ export default function HeaderQuickConsultCtas({
           target="_blank"
           rel="noreferrer"
           className={buttonVariants({
-            variant: "kakao",
+            variant: "outline",
             size: "sm",
-            className: "glass-cta-edge h-11 px-4 text-[14px] md:px-5 md:text-[15px]",
+            className:
+              "glass-cta-edge h-11 border-[var(--border-strong)] px-3.5 text-[13px] text-[var(--text-secondary)] md:px-4 md:text-[14px]",
           })}
         >
           <MessageCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />

@@ -12,9 +12,9 @@ export type HomeProductCardGridProps = {
   className?: string;
 };
 
-/** 홈 큐레이션·골프 공통: 모바일/태블릿 2열, 데스크톱 4열 */
+/** 홈 큐레이션·골프 공통: 모바일/태블릿 2열, 데스크톱 4열 — wide PageContainer 기준선에 맞춤 */
 export const HOME_PRODUCT_CARD_GRID_CLASS =
-  "mx-auto grid w-full max-w-[1344px] grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-4";
+  "mx-auto grid w-full grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-4";
 
 /**
  * 홈 상품 카드 그리드. 상품 수와 무관하게 동일 열 폭을 쓰고, 있는 상품만 렌더한다.

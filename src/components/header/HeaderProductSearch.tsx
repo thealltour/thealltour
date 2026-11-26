@@ -196,7 +196,7 @@ export default function HeaderProductSearch({ searchQuery, mode, headerBar = fal
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 120)}
-            placeholder="지역, 테마, 상품명으로 검색해보세요 (예: 일본 골프, 남미 여행, 발리 파크골프)"
+            placeholder="여행지·상품 검색"
             className="h-11 min-h-[44px] w-full flex-1 bg-transparent pl-3 pr-24 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--text-subtle)]"
             autoComplete="off"
           />

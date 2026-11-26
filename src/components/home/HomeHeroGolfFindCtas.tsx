@@ -4,6 +4,10 @@ import Link from "next/link";
 import { CalendarDays, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { trackClientAnalytics } from "@/lib/analytics/trackEvent";
+import {
+  elementIdFromHashHref,
+  scrollToElementId,
+} from "@/lib/navigation/inPageAnchor";
 
 export type HomeHeroGolfFindCtasProps = {
   /** 추천 골프상품 섹션 앵커. 없으면 해당 CTA 숨김 */
@@ -42,7 +46,12 @@ export function HomeHeroGolfFindCtas({ toursHref, datesHref }: HomeHeroGolfFindC
             "hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)]",
             "glass-on-media",
           )}
-          onClick={() => {
+          onClick={(e) => {
+            const id = elementIdFromHashHref(tours);
+            if (id) {
+              e.preventDefault();
+              scrollToElementId(id);
+            }
             trackClientAnalytics({
               eventName: "home_travel_entry_click",
               source: "home_hero",
@@ -64,7 +73,12 @@ export function HomeHeroGolfFindCtas({ toursHref, datesHref }: HomeHeroGolfFindC
             "border border-transparent bg-[var(--primary)] text-[var(--on-primary)]",
             "hover:opacity-95",
           )}
-          onClick={() => {
+          onClick={(e) => {
+            const id = elementIdFromHashHref(dates);
+            if (id) {
+              e.preventDefault();
+              scrollToElementId(id);
+            }
             trackClientAnalytics({
               eventName: "home_travel_entry_click",
               source: "home_hero",

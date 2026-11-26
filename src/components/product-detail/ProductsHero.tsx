@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  elementIdFromHashHref,
+  scrollToElementId,
+} from "@/lib/navigation/inPageAnchor";
 
 type ProductsHeroVariant = "package" | "golf";
 
@@ -93,6 +97,12 @@ export default function ProductsHero({
           <a
             href={datesHref}
             className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            onClick={(e) => {
+              const id = elementIdFromHashHref(datesHref);
+              if (!id) return;
+              e.preventDefault();
+              scrollToElementId(id);
+            }}
           >
             출발일로 찾기
           </a>

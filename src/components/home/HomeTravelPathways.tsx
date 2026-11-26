@@ -5,6 +5,10 @@ import { cn } from "@/lib/cn";
 import { trackClientAnalytics } from "@/lib/analytics/trackEvent";
 import { trackPlannerEntryClick } from "@/lib/analytics/trackPlannerEvents";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
+import {
+  elementIdFromHashHref,
+  scrollToElementId,
+} from "@/lib/navigation/inPageAnchor";
 
 export type HomeTravelPathwaysProps = {
   golfHref: string;
@@ -41,7 +45,12 @@ export function HomeTravelPathways({
       <Link
         href={golfHref}
         className={chipClassName}
-        onClick={() => {
+        onClick={(e) => {
+          const id = elementIdFromHashHref(golfHref);
+          if (id) {
+            e.preventDefault();
+            scrollToElementId(id);
+          }
           trackClientAnalytics({
             eventName: "home_travel_entry_click",
             source: "home_pathways",
@@ -58,7 +67,12 @@ export function HomeTravelPathways({
         <Link
           href={datesHref}
           className={chipClassName}
-          onClick={() => {
+          onClick={(e) => {
+            const id = elementIdFromHashHref(datesHref);
+            if (id) {
+              e.preventDefault();
+              scrollToElementId(id);
+            }
             trackClientAnalytics({
               eventName: "home_travel_entry_click",
               source: "home_pathways",

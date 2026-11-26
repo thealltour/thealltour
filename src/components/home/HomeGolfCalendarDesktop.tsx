@@ -16,6 +16,7 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { formatIsoDateKorean } from "@/lib/inquiry/desiredDeparture";
 import { formatPriceKR } from "@/lib/pricing/calcQuote";
 import type { GolfDepartureEvent, HomeGolfCalendarModel } from "@/lib/products/golfDepartureCalendar";
+import { stripLocationHashFromHistory } from "@/lib/navigation/inPageAnchor";
 import { HomeGolfCalendarFooter } from "@/components/home/HomeGolfCalendarFooter";
 import "react-day-picker/style.css";
 import "@/components/ui/datePicker.css";
@@ -183,6 +184,7 @@ export function HomeGolfCalendarDesktop({ model, className }: HomeGolfCalendarDe
                     <li key={`${event.productId}-${event.date}`}>
                       <Link
                         href={event.href}
+                        onClick={() => stripLocationHashFromHistory()}
                         className="flex gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 transition hover:border-[var(--primary)]/40 hover:bg-[var(--primary-soft)]/30 sm:p-3"
                       >
                         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[var(--surface-muted)] sm:h-16 sm:w-16">

@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronUp } from "lucide-react";
+import { KakaoIcon } from "@/components/auth/AuthProviderIcons";
 import TrustSignals from "@/components/products/TrustSignals";
 import { ProductConsultCTA } from "@/components/products/ProductConsultCTA";
-import { ConnectedProductBookingSelectionPanel } from "@/components/products/ConnectedProductBookingSelectionPanel";
 import { ProductStickyCheckoutRail } from "@/components/products/ProductStickyCheckoutRail";
 import { ProductBookingSheet } from "@/components/products/ProductBookingSheet";
+import { buildProductQuoteHref } from "@/components/products/ProductDetailBookingZone";
 import { useProductDepartureSiblings } from "@/components/products/ProductDepartureSiblingsContext";
 import {
   useProductQuote,
@@ -22,7 +24,10 @@ import {
   SEASONAL_CARD_SUBLINE,
 } from "@/lib/products/productCardSeasonalPriceDisplay";
 import { STICKY_SEASONAL_VOLATILITY_HINT } from "@/lib/products/detailSeasonalPriceDisplay";
-import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
+import {
+  getProductCtaLabel,
+  getProductCtaStickyPrimaryLabel,
+} from "@/lib/products/getProductCtaLabel";
 import {
   buildProductStickyMetaLine,
   hasProductFixedDeparture,
@@ -31,7 +36,10 @@ import {
   getSelectedDepartureStickyDateLabel,
   resolveStickyExpectedAmount,
 } from "@/lib/products/stickyExpectedPrice";
-import { productHasBookingSelection } from "@/lib/products/resolveProductBookingUx";
+import {
+  productHasBookingSelection,
+  resolveProductBookingUxMode,
+} from "@/lib/products/resolveProductBookingUx";
 
 export type ProductDetailStickyV2Status =
   | "AVAILABLE"
@@ -173,8 +181,7 @@ export function ProductDetailStickyV2Desktop({
   experimentKey,
   variant,
 }: ProductDetailStickyV2Props) {
-  const { quoteSummary, selectedDeparture } = useProductQuote();
-  const { siblings: departureSiblings } = useProductDepartureSiblings();
+  const { quoteSummary, selectedDeparture, scrollToBooking } = useProductQuote();
   const isSoldOut = status === "SOLD_OUT";
 
   const stickyPrice = useMemo(
@@ -201,6 +208,14 @@ export function ProductDetailStickyV2Desktop({
       }),
     [product, stickyPrice.mode, selectedDeparture],
   );
+  const bookingUxMode = product ? resolveProductBookingUxMode(product) : "calendar_booking";
+  const isConsultQuoteFlow =
+    status === "CONSULT_REQUIRED" || bookingUxMode === "seasonal_consult";
+  const quoteHref = buildProductQuoteHref({
+    productId,
+    sourcePath: sourcePath || `/products/${productId}`,
+    desiredDepartureYmd: selectedDeparture?.ymd ?? null,
+  });
 
   /** PR23: 데스크톱 sticky 헤더 충돌 방지 — SiteHeader(유틸바 40px + 메인 바 64px) + 여백 */
   const desktopStickyTop = 120;
@@ -235,30 +250,40 @@ export function ProductDetailStickyV2Desktop({
               </div>
             )}
           </div>
-          {productHasBookingSelection(product) || departureSiblings.length > 1 ? (
-            <div className="mt-1">
-              <ConnectedProductBookingSelectionPanel
-                variant="rail"
-                product={product}
-                productTitle={productTitle}
-              />
-            </div>
-          ) : null}
           <TrustSignals trust={trust} />
           {!isSoldOut ? (
             <div
-              className="border-t border-slate-100 pt-3"
+              className="space-y-2 border-t border-slate-100 pt-3"
               onClickCapture={() => {
                 trackReviewConversionCtaClick(productId, { experimentKey, variant });
               }}
             >
-              <ProductStickyCheckoutRail
-                product={product}
-                productTitle={productTitle}
-                kakaoHref={kakaoHref}
-                layout="rail"
-                analyticsSection="sidebar"
-              />
+              {isConsultQuoteFlow ? (
+                <Link
+                  href={quoteHref}
+                  className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)]"
+                >
+                  이 일정으로 견적 받기
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => scrollToBooking("checkout")}
+                  className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)]"
+                >
+                  {getProductCtaStickyPrimaryLabel(status, ctaLabelOptions)}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => scrollToBooking("panel")}
+                className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                출발일·인원 선택으로 이동
+              </button>
+              <p className="text-center text-[11px] leading-snug text-slate-500">
+                예약·견적 버튼은 본문 선택 구역에 있습니다.
+              </p>
             </div>
           ) : (
             <div className="border-t border-slate-100 pt-3">
@@ -333,6 +358,14 @@ export function ProductDetailStickyV2Mobile({
       }),
     [product, stickyPrice.mode, selectedDeparture],
   );
+  const bookingUxMode = product ? resolveProductBookingUxMode(product) : "calendar_booking";
+  const isConsultQuoteFlow =
+    status === "CONSULT_REQUIRED" || bookingUxMode === "seasonal_consult";
+  const quoteHref = buildProductQuoteHref({
+    productId,
+    sourcePath: sourcePath || `/products/${productId}`,
+    desiredDepartureYmd: selectedDeparture?.ymd ?? null,
+  });
 
   const { siblings: departureSiblings, current: currentDeparture } = useProductDepartureSiblings();
   const showBookingSheetTrigger = productHasBookingSelection(product) || departureSiblings.length > 1;
@@ -484,6 +517,30 @@ export function ProductDetailStickyV2Mobile({
               isSoldOut
               compact={compact}
             />
+          ) : isConsultQuoteFlow ? (
+            <div className="flex min-h-[44px] min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
+              <Link
+                href={quoteHref}
+                className="inline-flex min-h-[48px] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--on-accent)] shadow-[var(--shadow-soft)] sm:px-4"
+                onClick={() => {
+                  trackReviewConversionCtaClick(productId, { experimentKey, variant });
+                }}
+              >
+                <span className="block min-w-0 truncate">이 일정으로 견적 받기</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  if (kakaoHref && typeof window !== "undefined") {
+                    window.open(kakaoHref, "_blank", "noopener,noreferrer");
+                  }
+                }}
+                className="inline-flex h-12 w-12 min-h-12 min-w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--theall-kakao-border)] bg-[var(--theall-kakao-bg)] p-0 text-[var(--theall-kakao-text)]"
+                aria-label="카톡 상담"
+              >
+                <KakaoIcon className="h-5 w-5 shrink-0" aria-hidden />
+              </button>
+            </div>
           ) : (
             <div
               className="flex min-h-[44px] min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden"

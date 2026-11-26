@@ -58,12 +58,18 @@ type InquiryFormProps = {
   >;
   productIdForTracking?: string;
   initialDesiredDeparture?: string;
+  /**
+   * quote: /quote 페이지용 — 요약 카드와 제목이 바깥에 있으므로 중복 안내·상품 배너를 줄인다.
+   * default: 공유 폼 기본 레이아웃.
+   */
+  layout?: "default" | "quote";
 };
 
 export default function InquiryForm({
   source,
   productIdForTracking,
   initialDesiredDeparture,
+  layout = "default",
 }: InquiryFormProps) {
   const sourceProductId = source?.product_id?.trim() ?? "";
   const sourceProductTitle = source?.product_title?.trim() ?? "";
@@ -222,30 +228,44 @@ export default function InquiryForm({
     setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
   };
 
-  return (
-    <form className="flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5" onSubmit={handleSubmit}>
-      <div className="md:col-span-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0]">
-        <div>
-          <p className="section-label text-[var(--primary)]">응답 안내</p>
-          <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
-        </div>
-        <div>
-          <p className="section-label text-[var(--primary)]">맞춤 제안</p>
-          <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
-        </div>
-        <div>
-          <p className="section-label text-[var(--primary)]">개인정보 보호</p>
-          <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
-        </div>
-      </div>
+  const isQuoteLayout = layout === "quote";
 
-      {sourceProductTitle ? (
+  return (
+    <form
+      className="flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5"
+      onSubmit={handleSubmit}
+      aria-label={isQuoteLayout ? "견적 문의 작성" : undefined}
+    >
+      {!isQuoteLayout ? (
+        <div className="md:col-span-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0]">
+          <div>
+            <p className="section-label text-[var(--primary)]">응답 안내</p>
+            <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
+          </div>
+          <div>
+            <p className="section-label text-[var(--primary)]">맞춤 제안</p>
+            <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
+          </div>
+          <div>
+            <p className="section-label text-[var(--primary)]">개인정보 보호</p>
+            <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
+          </div>
+        </div>
+      ) : null}
+
+      {!isQuoteLayout && sourceProductTitle ? (
         <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 type-small text-content-primary">
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
         </div>
       ) : null}
 
       {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
+
+      {isQuoteLayout ? (
+        <div className="md:col-span-2">
+          <h2 className="mb-3 text-base font-semibold text-content-primary">이름 · 연락처</h2>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1 md:col-span-1">
         <Label className="flex flex-col gap-2">
@@ -295,6 +315,12 @@ export default function InquiryForm({
           </p>
         ) : null}
       </div>
+
+      {isQuoteLayout ? (
+        <div className="md:col-span-2 pt-1">
+          <h2 className="mb-3 text-base font-semibold text-content-primary">희망 여행 조건</h2>
+        </div>
+      ) : null}
 
       <DesiredDepartureField
         className="md:col-span-2"

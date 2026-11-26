@@ -20,7 +20,7 @@ export type ProductBookingSheetProps = {
 function focusSectionId(target: BookingScrollTarget | undefined): string {
   if (target === "departure") return "product-sheet-departure-section";
   if (target === "options") return "product-sheet-options-section";
-  if (target === "checkout") return "product-checkout";
+  if (target === "checkout") return "product-sheet-checkout";
   return "product-booking-sheet";
 }
 
@@ -99,12 +99,13 @@ export function ProductBookingSheet({
               product={product}
               productTitle={productTitle}
             />
-            <div className="mt-6 border-t border-[var(--border)] pt-4">
+            <div id="product-sheet-checkout" className="mt-6 border-t border-[var(--border)] pt-4">
               <ProductStickyCheckoutRail
                 product={product}
                 productTitle={productTitle}
                 kakaoHref={kakaoHref}
                 layout="rail"
+                checkoutAnchorId={false}
               />
             </div>
           </div>

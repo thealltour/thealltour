@@ -15,7 +15,7 @@ import type { Product } from "@/types/product";
 export type ConnectedProductBookingSelectionPanelProps = {
   product?: Product | null;
   productTitle?: string;
-  variant: "rail" | "sheet";
+  variant: "page" | "rail" | "sheet";
 };
 
 export function ConnectedProductBookingSelectionPanel({

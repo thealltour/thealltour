@@ -11,14 +11,22 @@ describe("buildProductQuoteHref", () => {
     ).toBe("/quote?product_id=abc&source_path=%2Fproducts%2Fabc");
   });
 
-  it("ymd가 있을 때만 desired_departure를 채운다", () => {
+  it("예약 가능 ymd만 desired_departure를 채운다", () => {
     expect(
       buildProductQuoteHref({
         productId: "abc",
         sourcePath: "/products/abc",
-        desiredDepartureYmd: "2026-05-10",
+        desiredDepartureYmd: "2099-05-10",
       }),
-    ).toContain("desired_departure=2026-05-10");
+    ).toContain("desired_departure=2099-05-10");
+
+    expect(
+      buildProductQuoteHref({
+        productId: "abc",
+        sourcePath: "/products/abc",
+        desiredDepartureYmd: "2023-11-04",
+      }),
+    ).not.toContain("desired_departure");
 
     expect(
       buildProductQuoteHref({

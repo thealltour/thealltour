@@ -11,6 +11,10 @@ import {
 } from "@/lib/calendar/krPublicHolidays";
 import { dateToYmd, ymdToDate } from "@/lib/datePickerUtils";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import {
+  filterBookableDepartureYmds,
+  resolveFirstBookableDepartureMonth,
+} from "@/lib/products/bookableDepartureDates";
 import { collectProductDepartureDates } from "@/lib/products/productDepartureDates";
 import { buildSelectedDepartureFromYmd } from "@/lib/products/matchDepartureScheduleByYmd";
 import { productHasPromotionCampaignMeta } from "@/lib/products/resolveProductBookingUx";
@@ -56,7 +60,12 @@ export function ProductDepartureCalendarPanel({
   compact = false,
 }: ProductDepartureCalendarPanelProps) {
   const isWide = useIsDesktop(1024);
-  const departureYmds = useMemo(() => collectProductDepartureDates(product), [product]);
+  const allDepartureYmds = useMemo(() => collectProductDepartureDates(product), [product]);
+  /** 목록 골프 달력과 동일: KST 오늘 기준 예약 가능일만 */
+  const departureYmds = useMemo(
+    () => filterBookableDepartureYmds(allDepartureYmds),
+    [allDepartureYmds],
+  );
   const isPromotionProduct = productHasPromotionCampaignMeta(product);
 
   const departureDates = useMemo(
@@ -80,8 +89,15 @@ export function ProductDepartureCalendarPanel({
     [promotionYmdSet],
   );
 
-  const initialMonth = departureDates[0] ?? new Date();
+  const initialMonth = useMemo(
+    () => resolveFirstBookableDepartureMonth(allDepartureYmds) ?? new Date(),
+    [allDepartureYmds],
+  );
   const [month, setMonth] = useState<Date>(initialMonth);
+
+  useEffect(() => {
+    setMonth(initialMonth);
+  }, [initialMonth]);
 
   const pickerSelected = useMemo(
     () => resolveSelectedDateFromKey(selectedDepartureKey, departureYmds, schedules, departures),
@@ -93,6 +109,18 @@ export function ProductDepartureCalendarPanel({
       setMonth(pickerSelected);
     }
   }, [pickerSelected]);
+
+  /** 과거·만료 출발일이 선택돼 있으면 해제 (견적 자동입력에도 넘기지 않음) */
+  useEffect(() => {
+    if (!selectedDepartureKey) return;
+    const stillValid = departureYmds.some((ymd) => {
+      const built = buildSelectedDepartureFromYmd({ ymd, schedules, departures });
+      return built?.key === selectedDepartureKey;
+    });
+    if (!stillValid) {
+      onDepartureChange(null, null);
+    }
+  }, [selectedDepartureKey, departureYmds, schedules, departures, onDepartureChange]);
 
   const extraHolidayYears = useMemo(
     () => collectYearsFromYmdList(departureYmds),
@@ -142,7 +170,9 @@ export function ProductDepartureCalendarPanel({
       >
         <CalendarDays className="mx-auto h-8 w-8 text-slate-400" aria-hidden />
         <p className="mt-3 text-sm font-medium text-slate-700">
-          등록된 출발 가능일이 없습니다.
+          {allDepartureYmds.length > 0
+            ? "선택 가능한 출발일이 없습니다."
+            : "등록된 출발 가능일이 없습니다."}
         </p>
         <p className="mt-1 text-xs text-slate-500">
           희망 일정을 알려주시면 맞춤 일정을 안내해 드립니다.

@@ -259,7 +259,9 @@ export default function InquiryForm({
         </div>
       ) : null}
 
-      {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
+      {!isQuoteLayout && showGolfBrief ? (
+        <GolfBriefFields value={golfBrief} onChange={setGolfBrief} />
+      ) : null}
 
       {isQuoteLayout ? (
         <div className="md:col-span-2">
@@ -351,6 +353,10 @@ export default function InquiryForm({
           className="py-3 min-h-[4.5rem]"
         />
       </Label>
+
+      {isQuoteLayout && showGolfBrief ? (
+        <GolfBriefFields value={golfBrief} onChange={setGolfBrief} />
+      ) : null}
 
       <div className="md:col-span-2 flex flex-col gap-2">
         <Button type="submit" disabled={isSubmitting} className="w-full py-3">

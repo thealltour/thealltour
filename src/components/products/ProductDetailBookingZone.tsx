@@ -9,6 +9,7 @@ import { useProductQuote } from "@/components/products/ProductQuoteContext";
 import { cn } from "@/lib/cn";
 import { getProductCtaLabel } from "@/lib/products/getProductCtaLabel";
 import { hasProductFixedDeparture } from "@/lib/products/productFixedDeparture";
+import { isBookableDepartureYmd } from "@/lib/products/bookableDepartureDates";
 import {
   productHasBookingSelection,
   resolveProductBookingUxMode,
@@ -43,7 +44,7 @@ function buildProductQuoteHref(input: {
   params.set("product_id", input.productId);
   if (input.sourcePath.trim()) params.set("source_path", input.sourcePath.trim());
   const ymd = input.desiredDepartureYmd?.trim();
-  if (ymd) params.set("desired_departure", ymd);
+  if (ymd && isBookableDepartureYmd(ymd)) params.set("desired_departure", ymd);
   return `/quote?${params.toString()}`;
 }
 

@@ -57,6 +57,7 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
   const [openKey, setOpenKey] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastOpenKeyRef = useRef<string | null>(null);
 
   const golfHref = buildGolfProductsHref();
   const golfActive = pathname === "/products" && isGolfTourType(tourTypeParam);
@@ -91,11 +92,32 @@ export function DesktopMegaMenu({ primaryNav }: { primaryNav: HeaderPrimaryNavIt
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpenKey(null);
+      if (e.key === "Escape" && openKey) setOpenKey(null);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [openKey]);
+
+  // 패널(부모 렌더) 언마운트 후 body로 빠진 포커스를 트리거로 복귀
+  useEffect(() => {
+    if (openKey) {
+      lastOpenKeyRef.current = openKey;
+      return;
+    }
+    const key = lastOpenKeyRef.current;
+    if (!key) return;
+    lastOpenKeyRef.current = null;
+    const trigger = document.getElementById(`mega-menu-trigger-${key}`);
+    if (!(trigger instanceof HTMLElement)) return;
+    const timer = window.setTimeout(() => {
+      const active = document.activeElement;
+      // 패널 제거로 focus가 문서 body로 떨어진 경우에만 복귀 (외부 클릭 등 다른 포커스 이동은 유지)
+      if (active === document.body || active == null) {
+        trigger.focus();
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [openKey]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

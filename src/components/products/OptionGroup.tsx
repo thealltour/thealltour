@@ -2,6 +2,10 @@
 
 import { Select } from "@/components/ui/Select";
 import {
+  formatConsultOnlyOptionGuide,
+  isConsultOnlyProductOption,
+} from "@/lib/products/optionCurrency";
+import {
   getGroupSelectedValues,
   isOptionItemSelected,
 } from "@/lib/pricing/selectedOptions";
@@ -28,7 +32,9 @@ export function OptionGroup({
   onMultiToggle,
 }: OptionGroupProps) {
   const items = group.items ?? [];
-  const useSelect = group.type !== "multi" && items.length > 5;
+  const selectableItems = items.filter((item) => !isConsultOnlyProductOption(item));
+  const consultOnlyItems = items.filter((item) => isConsultOnlyProductOption(item));
+  const useSelect = group.type !== "multi" && selectableItems.length > 5;
   const isMulti = group.type === "multi";
   const singleValue = isMulti ? "" : (getGroupSelectedValues(group, selected)[0] ?? "");
 
@@ -52,7 +58,15 @@ export function OptionGroup({
         </div>
       ) : null}
 
-      {useSelect ? (
+      {consultOnlyItems.length > 0 ? (
+        <div className="flex flex-col space-y-2" role="group" aria-label={`${group.title} 상담 안내`}>
+          {consultOnlyItems.map((opt) => (
+            <ConsultOnlyOptionNotice key={opt.value} item={opt} />
+          ))}
+        </div>
+      ) : null}
+
+      {selectableItems.length === 0 ? null : useSelect ? (
         <Select
           value={singleValue}
           onChange={(e) => onSingleChange(e.target.value)}
@@ -60,7 +74,7 @@ export function OptionGroup({
           aria-required={isRequired}
         >
           <option value="">선택하세요</option>
-          {items.map((opt) => (
+          {selectableItems.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {formatOptionLabel(opt)}
             </option>
@@ -73,7 +87,7 @@ export function OptionGroup({
           aria-label={group.title}
           aria-multiselectable="true"
         >
-          {items.map((opt) => (
+          {selectableItems.map((opt) => (
             <OptionCheckboxItem
               key={opt.value}
               item={opt}
@@ -90,7 +104,7 @@ export function OptionGroup({
           aria-label={group.title}
           aria-required={isRequired}
         >
-          {items.map((opt) => (
+          {selectableItems.map((opt) => (
             <OptionRadioItem
               key={opt.value}
               item={opt}
@@ -105,7 +119,10 @@ export function OptionGroup({
   );
 }
 
-function formatOptionLabel(opt: ProductOptionItem): string {
+export function formatOptionLabel(opt: ProductOptionItem): string {
+  if (isConsultOnlyProductOption(opt)) {
+    return `${opt.label} · ${formatConsultOnlyOptionGuide(opt)}`;
+  }
   const priceText =
     typeof opt.priceDelta === "number" && opt.priceDelta !== 0
       ? ` (${opt.priceDelta >= 0 ? "+" : ""}${new Intl.NumberFormat("ko-KR").format(opt.priceDelta)}원)`
@@ -118,6 +135,18 @@ function optionCardClass(checked: boolean): string {
   return checked
     ? "border-[var(--accent)] bg-[var(--accent-soft)] ring-1 ring-[var(--accent)]"
     : "border-slate-300 bg-slate-50/40 hover:border-slate-400 hover:bg-slate-50";
+}
+
+function ConsultOnlyOptionNotice({ item }: { item: ProductOptionItem }) {
+  return (
+    <div
+      className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3"
+      data-consult-only="true"
+    >
+      <p className="text-base font-medium text-slate-800">{item.label}</p>
+      <p className="mt-1 text-sm text-slate-600">{formatConsultOnlyOptionGuide(item)}</p>
+    </div>
+  );
 }
 
 function OptionRadioItem({

@@ -5,10 +5,12 @@ import { createPendingDepositBooking } from "@/lib/bookings/createPendingDeposit
 import { resolveCheckoutBenefitMode } from "@/lib/payments/resolveCheckoutBenefitMode";
 import { isPortOneEnabled } from "@/lib/payments/portone/config";
 import { getMemberSessionFromCookies } from "@/lib/memberSession";
+import { findConsultOnlySelectedOptions } from "@/lib/products/optionCurrency";
 import { normalizeDepartureSchedulesFromUnknown } from "@/lib/products/normalizeDepartureSchedules";
 import { normalizeProductDepartureDateToYmd } from "@/lib/products/productDepartureDates";
 import { findDepartureScheduleForYmd } from "@/lib/products/matchDepartureScheduleByYmd";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import type { ProductOptions } from "@/types/product";
 
 const customerSchema = z.object({
   name: z.string().trim().min(1, "이름을 입력해 주세요."),
@@ -128,6 +130,22 @@ export async function POST(request: Request) {
       ? normalizeProductDepartureDateToYmd(returnRaw) ?? departureYmd
       : departureYmd;
 
+    const productOptions =
+      (product.options as Record<string, unknown> | null)?.groups
+        ? (product.options as ProductOptions)
+        : undefined;
+
+    const consultOnlyHits = findConsultOnlySelectedOptions(productOptions, body.selected_options);
+    if (consultOnlyHits.length > 0) {
+      const labels = consultOnlyHits.map((hit) => hit.label).join(", ");
+      return NextResponse.json(
+        {
+          message: `「${labels}」 옵션은 원화 결제 금액이 확정되지 않아 온라인 예약에 포함할 수 없습니다. 상담 문의로 진행해 주세요.`,
+        },
+        { status: 400 },
+      );
+    }
+
     const result = await createPendingDepositBooking({
       memberId: session?.memberId ?? null,
       customer: {
@@ -143,9 +161,7 @@ export async function POST(request: Request) {
         ymd: departureYmd,
       },
       selectedOptions: body.selected_options,
-      options: (product.options as Record<string, unknown> | null)?.groups
-        ? (product.options as import("@/types/product").ProductOptions)
-        : undefined,
+      options: productOptions,
       productBasePrice: typeof product.price === "number" ? product.price : null,
       pointsUse: body.points_use,
       travelerCount: body.traveler_count,

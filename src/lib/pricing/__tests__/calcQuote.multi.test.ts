@@ -39,4 +39,38 @@ describe("calcQuote multi groups", () => {
     expect(quote.total).toBe(957000);
     expect(quote.breakdown).toHaveLength(2);
   });
+
+  it("ignores legacy foreign-currency options even if still selected", () => {
+    const options: ProductOptions = {
+      basePrice: 1299000,
+      currency: "KRW",
+      groups: [
+        {
+          key: "surcharges",
+          title: "추가 옵션·할증",
+          type: "multi",
+          items: [
+            {
+              value: "surcharge-0",
+              label: "싱글룸 이용시",
+              meta: "인/전일정/$240",
+              priceDelta: 240,
+            },
+            {
+              value: "surcharge-1",
+              label: "석식 추가",
+              meta: "인/식/1만원",
+              priceDelta: 10000,
+            },
+          ],
+        },
+      ],
+    };
+    const quote = calcQuote(options, {
+      surcharges: ["surcharge-0", "surcharge-1"],
+    });
+    expect(quote.total).toBe(1309000);
+    expect(quote.breakdown).toHaveLength(1);
+    expect(quote.breakdown[0].optionLabel).toBe("석식 추가");
+  });
 });

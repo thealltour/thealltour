@@ -75,6 +75,41 @@ describe("stringifyProductOptionsJson", () => {
     expect(roundTrip.options?.groups[0].items[1].meta).toBe("18홀/120위안 추가");
   });
 
+  it("preserves consultOnly through parse/stringify round-trip", () => {
+    const withConsult = {
+      basePrice: 1299000,
+      currency: "KRW" as const,
+      groups: [
+        {
+          key: "surcharges",
+          title: "추가 옵션·할증",
+          type: "multi" as const,
+          items: [
+            {
+              value: "surcharge-0",
+              label: "싱글룸 이용시",
+              meta: "인/전일정/$240",
+              consultOnly: true,
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = parseProductOptionsJson(JSON.stringify(withConsult));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok || !parsed.options) return;
+    expect(parsed.options.groups[0].items[0].consultOnly).toBe(true);
+    const json = stringifyProductOptionsJson(parsed.options);
+    const roundTrip = parseProductOptionsJson(json);
+    expect(roundTrip.ok).toBe(true);
+    if (!roundTrip.ok) return;
+    expect(roundTrip.options?.groups[0].items[0]).toMatchObject({
+      meta: "인/전일정/$240",
+      consultOnly: true,
+    });
+    expect(roundTrip.options?.groups[0].items[0].priceDelta).toBeUndefined();
+  });
+
   it("returns empty string when no items remain", () => {
     const parsed = parseProductOptionsJson(JSON.stringify(imported));
     expect(parsed.ok).toBe(true);

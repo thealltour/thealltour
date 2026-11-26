@@ -1,4 +1,8 @@
 import type { ProductOptions, ProductOptionGroup, ProductOptionItem, SelectedOptions } from "@/types/product";
+import {
+  isConsultOnlyProductOption,
+  resolveOnlineOptionPriceDelta,
+} from "@/lib/products/optionCurrency";
 import { getGroupSelectedValues } from "@/lib/pricing/selectedOptions";
 
 export type QuoteBreakdownItem = {
@@ -42,8 +46,9 @@ function appendBreakdownForValues(
   for (const itemValue of values) {
     const item = findItemByValue(group, itemValue);
     if (!item) continue;
+    if (isConsultOnlyProductOption(item)) continue;
 
-    const delta = typeof item.priceDelta === "number" ? item.priceDelta : 0;
+    const delta = resolveOnlineOptionPriceDelta(item);
     breakdown.push({
       groupId: group.key,
       groupLabel: group.title,

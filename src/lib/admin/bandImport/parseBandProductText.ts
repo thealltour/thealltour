@@ -31,7 +31,7 @@ Rules:
 - Band post text is authoritative for band_marketing_copy (promotional paragraphs not in HWP).
 - description: copy HWP product overview/selling paragraphs verbatim. Do NOT include day-by-day schedule (handled separately).
 - included_items, excluded_items, optional_expenses, booking_notes, travel_notes, booking_conditions, terms_and_notes, refund_policy: preserve line breaks, ■ bullets, and [category] brackets.
-- Also extract each surcharge/option into options[] (name + priceText) in addition to booking_notes when present. "18홀" is a hole count, not KRW. Keep "위안"/"元" in priceText as-is; never convert them to "원".
+- Also extract each surcharge/option into options[] (name + priceText) in addition to booking_notes when present. "18홀" is a hole count, not KRW. Keep currency symbols/units in priceText verbatim ($240, US$240, USD 240, ¥120, ￥120, €50, £50, 위안/元/엔); never convert foreign amounts to "원". Code decides KRW priceDelta.
 - overview_accommodation: hotel names like "천홍 호텔 또는 동급".
 - seasonal_price_bands: numeric KRW integers only. Put date ranges and conditions in seasonal_price_band_notes.
 - Flight: split outbound (가는편) and return (오는편/귀국). Use YYYY-MM-DD for dates, HH:mm for times when available.
@@ -65,7 +65,7 @@ function buildBandMetaPrompt(input: ParseBandProductTextInput): string {
     "다음 원문에서 메타데이터 스키마 필드를 빠짐없이 추출하세요. 단어·금액·조건을 요약하거나 생략하지 마세요.",
     "",
     "[추출 지침]",
-    "1. 비고 섹션 → booking_notes 원문 + options[] 각 항목 분리. 18홀은 가격이 아님. 위안은 원으로 바꾸지 말고 priceText에 그대로.",
+    "1. 비고 섹션 → booking_notes 원문 + options[] 각 항목 분리. 18홀은 가격이 아님. $240·USD·¥·위안 등 통화 기호·단위는 priceText에 원문 유지(원으로 바꾸지 않음). 원화 판별은 코드가 수행.",
     "2. 호텔/숙박 → overview_accommodation",
     "3. 밴드 홍보·특가 문단 → band_marketing_copy (HWP에 없는 내용)",
     "4. 구간 요금 날짜·조건 → seasonal_price_band_notes, 숫자만 → seasonal_price_bands",

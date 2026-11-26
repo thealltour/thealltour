@@ -8,6 +8,8 @@ import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 
 export type HomeTravelPathwaysProps = {
   golfHref: string;
+  /** 달력 데이터가 있을 때 `#home-golf-dates` 등. 없으면 출발일 칩 숨김 */
+  golfDatesHref?: string | null;
   plannerEnabled?: boolean;
   /** 인라인(추천상품 제목 옆) vs 독립 행 */
   variant?: "inline" | "row";
@@ -22,15 +24,18 @@ const chipClassName = cn(
 );
 
 /**
- * 골프·패키지·맞춤견적·플래너 작은 바로가기.
+ * 골프·출발일·패키지·맞춤견적·플래너 작은 바로가기.
  * 기존 대형 진입 카드를 대체하며 클릭 계측·플래그 계약을 유지한다.
  */
 export function HomeTravelPathways({
   golfHref,
+  golfDatesHref = null,
   plannerEnabled = ENABLE_FREE_TRAVEL_PLANNER,
   variant = "row",
   className,
 }: HomeTravelPathwaysProps) {
+  const datesHref = golfDatesHref?.trim() || null;
+
   const links = (
     <>
       <Link
@@ -49,6 +54,24 @@ export function HomeTravelPathways({
       >
         골프
       </Link>
+      {datesHref ? (
+        <Link
+          href={datesHref}
+          className={chipClassName}
+          onClick={() => {
+            trackClientAnalytics({
+              eventName: "home_travel_entry_click",
+              source: "home_pathways",
+              section: "golf_find_dates",
+              label: "출발일로 찾기",
+              href: datesHref,
+              metadata: { variant: "shortcut" },
+            });
+          }}
+        >
+          출발일로 찾기
+        </Link>
+      ) : null}
       <Link
         href="/products"
         className={chipClassName}

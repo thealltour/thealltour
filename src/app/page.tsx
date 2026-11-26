@@ -109,7 +109,7 @@ export default async function Home() {
 
           <PageContainer
             size="wide"
-            className="flex flex-col max-md:gap-5 max-md:pt-3 md:gap-8 md:pt-5"
+            className="flex flex-col max-md:gap-4 max-md:pt-2 md:gap-5 md:pt-3"
           >
             <HomeDeferredSections
               golfTour={{
@@ -142,6 +142,7 @@ export default async function Home() {
                   ? "#home-golf-explore"
                   : buildGolfProductsHref()
               }
+              pathwayGolfDatesHref={golfCalendarModel ? "#home-golf-dates" : null}
               plannerEnabled={ENABLE_FREE_TRAVEL_PLANNER}
             />
 

@@ -22,18 +22,20 @@ export type CuratedProductsSectionProps = {
   className?: string;
   /** 추천 제목 옆 골프·패키지·맞춤견적 바로가기 */
   pathwayGolfHref?: string;
+  pathwayGolfDatesHref?: string | null;
   plannerEnabled?: boolean;
 };
 
 /**
  * 홈 Curated Products 섹션.
- * 배너 바로 아래 추천상품. 데스크톱 4열 / 모바일 2열 그리드.
+ * 배너 바로 아래 추천상품. 모바일 2열 / 데스크톱은 상품 수에 맞는 열.
  */
 export default function CuratedProductsSection({
   settings,
   sections,
   className,
   pathwayGolfHref,
+  pathwayGolfDatesHref = null,
   plannerEnabled,
 }: CuratedProductsSectionProps) {
   const isActive = settings?.is_active === true && sections.length > 0;
@@ -41,25 +43,36 @@ export default function CuratedProductsSection({
 
   if (isActive) {
     const headerTitle = resolveHomeCuratedSectionTitle(settings!, sections);
+    const rawEyebrow = settings!.section_label?.trim() || "";
+    // 제목과 같은 라벨(예: THEALL PICKS 중복)은 숨김
+    const eyebrow =
+      rawEyebrow && rawEyebrow.toLowerCase() !== headerTitle.toLowerCase()
+        ? rawEyebrow
+        : undefined;
+    const description = settings!.section_description?.trim() || undefined;
 
     return (
       <SectionBlock
         surface="none"
         padding="md"
-        className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
+        className={cn(
+          HOME_MAIN_SECTION_BLOCK_CLASS,
+          "!py-1 sm:!py-2 md:!py-2.5",
+          className,
+        )}
       >
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-2 sm:gap-2.5">
           <SectionHeader
-            eyebrow={settings!.section_label?.trim() || undefined}
+            eyebrow={eyebrow}
             title={headerTitle}
-            description={settings!.section_description?.trim() || undefined}
+            description={description}
             action={
               <HomeSectionMoreLink
                 href="/recommended"
                 section="curated"
                 label="더보기"
                 className={SECTION_HEADER_MOBILE_CTA_CLASS}
-                ariaLabel="THEALL PICKS 더보기"
+                ariaLabel={`${headerTitle} 더보기`}
               >
                 더보기
                 <span aria-hidden>→</span>
@@ -69,13 +82,14 @@ export default function CuratedProductsSection({
           {pathwayGolfHref ? (
             <HomeTravelPathways
               golfHref={pathwayGolfHref}
+              golfDatesHref={pathwayGolfDatesHref}
               plannerEnabled={plannerEnabled}
               variant="inline"
             />
           ) : null}
         </div>
 
-        <div className="mx-auto mt-4 flex w-full max-w-[1344px] flex-col gap-4 md:mt-5">
+        <div className="mx-auto mt-3 flex w-full max-w-[1344px] flex-col gap-3.5 md:mt-3.5 md:gap-4">
           {sections.map((sec) => (
             <CuratedSectionScrollBlock
               key={sec.id}

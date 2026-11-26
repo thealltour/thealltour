@@ -20,11 +20,11 @@ function bannerSrcForMobile(banner: HomeBanner): string {
 /** PageContainer `wide`와 동일 — 파노라마·srcset이 뷰포트 전체로 불필요 확대되지 않도록 */
 const HERO_PANORAMA_MAX_WIDTH_PX = 1600;
 
-/** md+ 파노라마 — 첫 화면에서 추천상품 제목·카드 상단이 보이도록 높이 완화 */
-const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[220px] h-[min(38vh,420px)]";
+/** md+ 파노라마 — 1440×900에서 추천 카드가 더 일찍 보이도록 높이 완화 */
+const HERO_PANORAMA_HEIGHT_CLASS = "min-h-[200px] h-[min(32vh,360px)]";
 
 /** 모바일 배너 — 낮은 높이 */
-const HERO_MOBILE_HEIGHT_CLASS = "min-h-[140px] h-[min(28vh,200px)]";
+const HERO_MOBILE_HEIGHT_CLASS = "min-h-[120px] h-[min(24vh,180px)]";
 
 /** @deprecated Hero 모바일 칩용. 다른 화면에서 재사용 시에만 유지 */
 export type HeroChipItem = { id: string; name: string; href: string };
@@ -179,10 +179,10 @@ export default function HeroSection({
           <div
             className={cn(
               "relative z-10 flex min-w-0 max-w-full flex-col items-center justify-end text-center",
-              "pt-10 pb-5 sm:pt-12 sm:pb-6",
-              "md:min-h-[220px] md:justify-center md:py-10",
-              "lg:min-h-[min(38vh,420px)] lg:py-12",
-              !hasBanners && "min-h-[140px]",
+              "pt-8 pb-4 sm:pt-10 sm:pb-5",
+              "md:min-h-[200px] md:justify-center md:py-8",
+              "lg:min-h-[min(32vh,360px)] lg:py-9",
+              !hasBanners && "min-h-[120px]",
             )}
           >
             <h1 className="max-w-[20rem] font-semibold leading-snug tracking-tight text-white text-[1.35rem] drop-shadow-sm sm:max-w-xl sm:text-[1.85rem] sm:leading-tight md:max-w-3xl md:text-[2.25rem] md:leading-[1.2] lg:text-[2.75rem] lg:leading-[1.15]">

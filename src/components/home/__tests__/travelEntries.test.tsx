@@ -59,12 +59,33 @@ describe("home travel pathways", () => {
     expect(planner).toHaveAttribute("href", "/planner");
     expect(screen.getByRole("link", { name: "패키지" })).toHaveAttribute("href", "/products");
     expect(screen.getByRole("link", { name: "맞춤견적" })).toHaveAttribute("href", "/quote");
+    expect(screen.queryByRole("link", { name: "출발일로 찾기" })).not.toBeInTheDocument();
     fireEvent.click(planner);
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: "planner_entry_click",
         section: "home_pathways",
         metadata: { variant: "compact" },
+      }),
+    );
+  });
+
+  it("adds departure-date shortcut when calendar anchor is provided", () => {
+    render(
+      <HomeTravelPathways
+        golfHref="#home-golf-explore"
+        golfDatesHref="#home-golf-dates"
+        plannerEnabled
+      />,
+    );
+    const dates = screen.getByRole("link", { name: "출발일로 찾기" });
+    expect(dates).toHaveAttribute("href", "#home-golf-dates");
+    fireEvent.click(dates);
+    expect(track).toHaveBeenCalledWith(
+      expect.objectContaining({
+        section: "golf_find_dates",
+        href: "#home-golf-dates",
+        label: "출발일로 찾기",
       }),
     );
   });

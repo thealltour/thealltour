@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { SectionBlock } from "@/components/layout/SectionBlock";
 import {
@@ -16,6 +17,8 @@ export type GolfTourProductsSectionProps = {
   eyebrow?: string | null;
   title?: string | null;
   description?: string | null;
+  /** 달력 앵커. 있으면 제목 옆에 출발일 바로가기 표시 */
+  datesHref?: string | null;
   className?: string;
 };
 
@@ -28,11 +31,13 @@ export default function GolfTourProductsSection({
   eyebrow,
   title,
   description,
+  datesHref = null,
   className,
 }: GolfTourProductsSectionProps) {
   if (products.length === 0) return null;
 
   const href = moreHref?.trim() || buildGolfProductsHref();
+  const dates = datesHref?.trim() || null;
 
   return (
     <SectionBlock
@@ -46,16 +51,26 @@ export default function GolfTourProductsSection({
         title={title?.trim() || undefined}
         description={description?.trim() || undefined}
         action={
-          <HomeSectionMoreLink
-            href={href}
-            section="golf"
-            label="더보기"
-            className={SECTION_HEADER_MOBILE_CTA_CLASS}
-            ariaLabel="골프투어 상품 더보기"
-          >
-            더보기
-            <span aria-hidden>→</span>
-          </HomeSectionMoreLink>
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            {dates ? (
+              <Link
+                href={dates}
+                className={SECTION_HEADER_MOBILE_CTA_CLASS}
+              >
+                출발일로 찾기
+              </Link>
+            ) : null}
+            <HomeSectionMoreLink
+              href={href}
+              section="golf"
+              label="더보기"
+              className={SECTION_HEADER_MOBILE_CTA_CLASS}
+              ariaLabel="골프투어 상품 더보기"
+            >
+              더보기
+              <span aria-hidden>→</span>
+            </HomeSectionMoreLink>
+          </div>
         }
       />
       <HomeProductCardRail

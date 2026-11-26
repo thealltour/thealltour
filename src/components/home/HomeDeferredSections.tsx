@@ -91,6 +91,7 @@ export type HomeDeferredSectionsProps = {
   homeReviews: Review[];
   tourismRegNo?: string;
   pathwayGolfHref?: string;
+  pathwayGolfDatesHref?: string | null;
   plannerEnabled?: boolean;
 };
 
@@ -109,6 +110,7 @@ export function HomeDeferredSections({
   homeReviews,
   tourismRegNo,
   pathwayGolfHref,
+  pathwayGolfDatesHref = null,
   plannerEnabled,
 }: HomeDeferredSectionsProps) {
   return (
@@ -117,12 +119,13 @@ export function HomeDeferredSections({
         settings={curatedSettings}
         sections={curatedSections}
         pathwayGolfHref={pathwayGolfHref}
+        pathwayGolfDatesHref={pathwayGolfDatesHref}
         plannerEnabled={plannerEnabled}
       />
 
       {/*
         골프 본문: 추천상품 → 출발 달력(1회).
-        바로가기(#home-golf-explore)와 앵커가 여기로 스크롤한다. 달력은 복제하지 않는다.
+        바로가기(#home-golf-explore / #home-golf-dates)가 여기로 스크롤한다. 달력은 복제하지 않는다.
       */}
       {golfTour.products.length > 0 || golfCalendarModel ? (
         <section id="home-golf-explore" aria-label="골프여행 찾기" className="scroll-mt-56 space-y-5 md:space-y-8 md:scroll-mt-64">
@@ -132,6 +135,7 @@ export function HomeDeferredSections({
             eyebrow={golfTour.eyebrow}
             title={golfTour.title}
             description={golfTour.description}
+            datesHref={pathwayGolfDatesHref}
           />
 
           {golfCalendarModel ? (

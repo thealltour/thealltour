@@ -170,7 +170,7 @@ export default function HeaderProductSearch({ searchQuery, mode, headerBar = fal
       <form
         onSubmit={handleSubmit}
         ref={formRef}
-        className="relative hidden lg:flex w-full max-w-xl"
+        className="relative hidden w-full max-w-2xl lg:flex"
       >
         <label htmlFor="header-product-search-desktop" className="sr-only">
           상품 검색

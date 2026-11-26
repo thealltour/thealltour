@@ -275,6 +275,7 @@
    * Site header — 데스크톱 메인 바 비율 토큰 (모바일 2단 헤더는 --mobile-header-* 사용)
    */
   --header-main-height-desktop: 64px;
+  --header-nav-bar-height-desktop: 48px;
   --header-logo-height-mobile: 28px;
   --header-logo-height-tablet: 32px;
   --header-logo-height-desktop: 44px;

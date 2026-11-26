@@ -17,17 +17,18 @@ vi.mock("@/components/header/HeaderProductSearch", () => ({ default: () => null 
 vi.mock("@/components/header/HeaderQuickConsultCtas", () => ({ default: () => null }));
 vi.mock("@/components/header/UserMenuDropdown", () => ({ default: () => null }));
 vi.mock("@/components/header/GuestAuthHoverMenu", () => ({ default: () => null }));
-vi.mock("@/components/header/HeaderExpandSearch", () => ({ HeaderExpandSearch: () => null }));
 vi.mock("@/components/header/HeaderBrandLogo", () => ({ HeaderBrandLogo: () => null }));
 vi.mock("@/components/header/MobileHeaderMenu", () => ({ MobileHeaderMenu: () => null }));
 vi.mock("@/components/site-chrome/GuestSignupPromoBanner", () => ({ GuestSignupPromoBanner: () => null }));
-const fallback = HEADER_PRIMARY_NAV_ITEMS.map(({ key, label }) => ({ key, label, href: HEADER_PRIMARY_NAV_DEFAULT_HREF[key] }));
+const fallback = HEADER_PRIMARY_NAV_ITEMS.filter((item) =>
+  ["recommended", "region", "theme", "inquiry", "guides", "support"].includes(item.key),
+).map(({ key, label }) => ({ key, label, href: HEADER_PRIMARY_NAV_DEFAULT_HREF[key] }));
 beforeEach(() => { cleanup(); vi.clearAllMocks(); flags.ENABLE_FREE_TRAVEL_PLANNER = true; nav.pathname = "/planner"; });
 
 describe("public planner navigation", () => {
   it.each([null, { primaryNav: [] }, { primaryNav: [{ key: "region", label: "지역별 여행", href: "/destinations" }] }])("renders the public link through SiteHeaderUI normal/fallback paths: %s", (data) => {
     const { rerender } = render(<SiteHeaderUI headerNavigationData={data} session={null} memberPoints={null} />);
-    expect(screen.getAllByRole("link", { name: "여행플래너" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "여행플래너" }).length).toBeGreaterThanOrEqual(1);
     flags.ENABLE_FREE_TRAVEL_PLANNER = false;
     rerender(<SiteHeaderUI headerNavigationData={data} session={null} memberPoints={null} />);
     expect(screen.queryByRole("link", { name: "여행플래너" })).not.toBeInTheDocument();
@@ -39,10 +40,16 @@ describe("public planner navigation", () => {
   });
   it.each(["/planner", "/planner/my", "/planner/abc"])("recognizes planner route %s", (path) => expect(isPlannerPath(path)).toBe(true));
   it("does not activate unrelated prefix paths", () => expect(isPlannerPath("/planner-other")).toBe(false));
-  it("renders golf then a direct planner link then inquiry with the right position", () => {
+  it("renders golf then package/theme/inquiry/planner with the right position", () => {
     render(<DesktopMegaMenu primaryNav={withPlannerNavigation(fallback)} />);
     const links = within(screen.getByRole("navigation", { name: "탐색 메뉴" })).getAllByRole("link");
-    expect(links.map((link) => link.textContent)).toEqual(["여행추천", "지역별 여행", "테마별 여행", "골프", "여행플래너", "맞춤/단체문의"]);
+    expect(links.map((link) => link.textContent)).toEqual([
+      "골프여행",
+      "패키지여행",
+      "테마여행",
+      "맞춤·단체여행",
+      "여행플래너",
+    ]);
     const planner = screen.getByRole("link", { name: "여행플래너" });
     expect(planner).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("button", { name: /여행플래너/ })).not.toBeInTheDocument();

@@ -133,9 +133,9 @@ export function DesktopNavItem({
           aria-controls={isOpen ? `mega-menu-panel-${item.key}` : undefined}
           id={`mega-menu-trigger-${item.key}`}
           className={cn(
-            "flex shrink-0 items-center justify-center rounded p-0.5 text-[var(--text-muted)] transition-colors",
-            "hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:rounded",
+            "flex shrink-0 items-center justify-center rounded p-0.5 text-current opacity-80 transition-colors",
+            "hover:opacity-100 hover:bg-white/15",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:rounded",
           )}
           onClick={(e) => {
             e.preventDefault();

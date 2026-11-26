@@ -6,7 +6,6 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { X, LogIn, LogOut } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
-import HeaderProductSearch from "@/components/header/HeaderProductSearch";
 import { MobileHeaderAccordion } from "./MobileHeaderAccordion";
 import type { HeaderPrimaryNavItem } from "./headerNav.types";
 import { cn } from "@/lib/cn";
@@ -19,6 +18,8 @@ import { restoreFocus, trapOverlayTabKey } from "@/lib/a11y/overlayFocus";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 import { PLANNER_SAVED_LIST_PATH } from "@/lib/planner/memberAccountNav";
 import { isPlannerPath } from "@/lib/planner/entryNavigation";
+import { assembleCatalogPrimaryNav } from "./assembleCatalogPrimaryNav";
+import type { HeaderNavGroup } from "./headerNav.types";
 
 export const MOBILE_HEADER_NAVIGATION_ID = "mobile-header-navigation";
 
@@ -29,8 +30,6 @@ export type MobileHeaderDrawerProps = {
   session: { name: string } | null;
   searchQuery?: string;
 };
-
-const ACCORDION_KEYS = new Set(["recommended", "region", "theme"]);
 
 const directLinkClass =
   "flex min-h-11 w-full items-center justify-between px-4 py-3 type-small font-semibold text-[var(--foreground)] transition-colors active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-inset";
@@ -43,7 +42,6 @@ export function MobileHeaderDrawer({
   isOpen,
   onClose,
   session,
-  searchQuery,
 }: MobileHeaderDrawerProps) {
   const pathname = usePathname();
   const [tourTypeParam, setTourTypeParam] = useState<string | null>(null);
@@ -54,13 +52,47 @@ export function MobileHeaderDrawer({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
-  const isHome = pathname === "/";
   const golfHref = buildGolfProductsHref();
-  const accordionItems = primaryNav.filter((item) => ACCORDION_KEYS.has(item.key));
-  const inquiryItem = primaryNav.find((item) => item.key === "inquiry");
-  const plannerItem = ENABLE_FREE_TRAVEL_PLANNER ? primaryNav.find((item) => item.key === "planner") : undefined;
+  const catalogItems = assembleCatalogPrimaryNav(primaryNav);
+  const packageItem = catalogItems.find((item) => item.key === "package");
+  const themeItem = catalogItems.find((item) => item.key === "theme");
+  const inquiryItem = catalogItems.find((item) => item.key === "inquiry");
+  const plannerItem = catalogItems.find((item) => item.key === "planner");
+  const packageAccordionGroups: HeaderNavGroup[] = (packageItem?.groups ?? []).filter(
+    (group) => !group.subGroups?.length,
+  );
+  const accordionItems = [
+    packageItem
+      ? {
+          key: "package",
+          label: "패키지여행",
+          href: packageItem.href ?? "/products",
+          groups:
+            packageAccordionGroups.length > 0
+              ? packageAccordionGroups
+              : [
+                  {
+                    key: "package-recommended",
+                    label: "추천여행",
+                    labelHref: "/recommended",
+                    items: [
+                      { key: "recommended-all", label: "전체 여행 보기", href: "/products" },
+                      { key: "region-destinations", label: "지역별 여행", href: "/destinations" },
+                    ],
+                  },
+                ],
+        }
+      : null,
+    themeItem
+      ? {
+          key: "theme",
+          label: themeItem.label,
+          href: themeItem.href,
+          groups: themeItem.groups,
+        }
+      : null,
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
   const golfChannelActive = pathname === "/products" && isGolfTourType(tourTypeParam);
-  const productsActive = pathname === "/products" && !golfChannelActive;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -176,12 +208,6 @@ export function MobileHeaderDrawer({
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
-          {isHome ? (
-            <div className="shrink-0 border-b border-[var(--divider)] p-4">
-              <HeaderProductSearch mode="mobile" searchQuery={searchQuery} />
-            </div>
-          ) : null}
-
           <div className="shrink-0 border-b border-[var(--divider)] p-4">
             {session ? (
               <div className="flex flex-col gap-2">
@@ -250,31 +276,53 @@ export function MobileHeaderDrawer({
 
           <div className="border-b border-[var(--divider)] py-1">
             <Link
-              href="/products"
-              className={cn(
-                directLinkClass,
-                productsActive && "bg-[var(--primary-soft)] text-[var(--primary)]",
-              )}
-              onClick={() => {
-                trackDirectNav("전체 상품", "/products", "products");
-                onClose();
-              }}
-            >
-              전체 상품
-            </Link>
-            <Link
               href={golfHref}
               className={cn(
                 directLinkClass,
                 golfChannelActive && "bg-[var(--primary-soft)] text-[var(--primary)]",
               )}
               onClick={() => {
-                trackDirectNav("골프 여행", golfHref, GOLF_TOUR_TYPE);
+                trackDirectNav("골프여행", golfHref, GOLF_TOUR_TYPE);
                 onClose();
               }}
             >
-              골프 여행
+              골프여행
             </Link>
+          </div>
+
+          <div className="flex-1 px-0">
+            <MobileHeaderAccordion
+              items={accordionItems}
+              expandedKey={expandedKey}
+              onToggle={handleToggle}
+              onNavigate={onClose}
+            />
+          </div>
+
+          <div className="border-t border-[var(--divider)] py-1">
+            {inquiryItem?.href ? (
+              <Link
+                href={inquiryItem.href}
+                className={cn(directLinkClass, pathname === "/quote" && "bg-[var(--primary-soft)] text-[var(--primary)]")}
+                onClick={() => {
+                  trackDirectNav(inquiryItem.label, inquiryItem.href!, "inquiry");
+                  onClose();
+                }}
+              >
+                {inquiryItem.label}
+              </Link>
+            ) : (
+              <Link
+                href="/quote"
+                className={cn(directLinkClass, pathname === "/quote" && "bg-[var(--primary-soft)] text-[var(--primary)]")}
+                onClick={() => {
+                  trackDirectNav("맞춤·단체여행", "/quote", "inquiry");
+                  onClose();
+                }}
+              >
+                맞춤·단체여행
+              </Link>
+            )}
             {plannerItem?.href ? (
               <Link
                 href={plannerItem.href}
@@ -288,18 +336,6 @@ export function MobileHeaderDrawer({
                 {plannerItem.label}
               </Link>
             ) : null}
-          </div>
-
-          <div className="flex-1 px-0">
-            <MobileHeaderAccordion
-              items={accordionItems}
-              expandedKey={expandedKey}
-              onToggle={handleToggle}
-              onNavigate={onClose}
-            />
-          </div>
-
-          <div className="border-t border-[var(--divider)] py-1">
             <Link
               href="/reviews"
               className={secondaryLinkClass}
@@ -320,29 +356,6 @@ export function MobileHeaderDrawer({
             >
               블로그
             </Link>
-            {inquiryItem?.href ? (
-              <Link
-                href={inquiryItem.href}
-                className={directLinkClass}
-                onClick={() => {
-                  trackDirectNav(inquiryItem.label, inquiryItem.href!, "inquiry");
-                  onClose();
-                }}
-              >
-                {inquiryItem.label}
-              </Link>
-            ) : (
-              <Link
-                href="/quote"
-                className={directLinkClass}
-                onClick={() => {
-                  trackDirectNav("맞춤/단체문의", "/quote", "inquiry");
-                  onClose();
-                }}
-              >
-                맞춤/단체문의
-              </Link>
-            )}
           </div>
 
           {session ? (

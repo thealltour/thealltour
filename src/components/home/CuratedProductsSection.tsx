@@ -7,6 +7,7 @@ import {
 } from "@/components/layout/SectionHeader";
 import { HomeSectionMoreLink } from "@/components/home/HomeSectionMoreLink";
 import { CuratedSectionScrollBlock } from "@/components/home/CuratedSectionScrollBlock";
+import { HomeTravelPathways } from "@/components/home/HomeTravelPathways";
 import { resolveHomeCuratedSectionTitle } from "@/lib/homeCuratedSectionTitle";
 import type {
   HomeCuratedSettings,
@@ -19,17 +20,21 @@ export type CuratedProductsSectionProps = {
   /** 추천 섹션 목록 (상품 포함) */
   sections: HomeCuratedSectionWithProducts[];
   className?: string;
+  /** 추천 제목 옆 골프·패키지·맞춤견적 바로가기 */
+  pathwayGolfHref?: string;
+  plannerEnabled?: boolean;
 };
 
 /**
  * 홈 Curated Products 섹션.
- * Theme 아래에 위치. 노출 설정된 추천 섹션을 sort_order 순서대로 블록 단위로 노출.
- * 각 섹션은 지역·테마와 동일한 가로 스크롤 + 좌/우 버튼 UX.
+ * 배너 바로 아래 추천상품. 데스크톱 4열 / 모바일 2열 그리드.
  */
 export default function CuratedProductsSection({
   settings,
   sections,
   className,
+  pathwayGolfHref,
+  plannerEnabled,
 }: CuratedProductsSectionProps) {
   const isActive = settings?.is_active === true && sections.length > 0;
   const hasMultipleSections = sections.length >= 2;
@@ -43,25 +48,34 @@ export default function CuratedProductsSection({
         padding="md"
         className={cn(HOME_MAIN_SECTION_BLOCK_CLASS, className)}
       >
-        <SectionHeader
-          eyebrow={settings!.section_label?.trim() || undefined}
-          title={headerTitle}
-          description={settings!.section_description?.trim() || undefined}
-          action={
-            <HomeSectionMoreLink
-              href="/recommended"
-              section="curated"
-              label="더보기"
-              className={SECTION_HEADER_MOBILE_CTA_CLASS}
-              ariaLabel="THEALL PICKS 더보기"
-            >
-              더보기
-              <span aria-hidden>→</span>
-            </HomeSectionMoreLink>
-          }
-        />
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <SectionHeader
+            eyebrow={settings!.section_label?.trim() || undefined}
+            title={headerTitle}
+            description={settings!.section_description?.trim() || undefined}
+            action={
+              <HomeSectionMoreLink
+                href="/recommended"
+                section="curated"
+                label="더보기"
+                className={SECTION_HEADER_MOBILE_CTA_CLASS}
+                ariaLabel="THEALL PICKS 더보기"
+              >
+                더보기
+                <span aria-hidden>→</span>
+              </HomeSectionMoreLink>
+            }
+          />
+          {pathwayGolfHref ? (
+            <HomeTravelPathways
+              golfHref={pathwayGolfHref}
+              plannerEnabled={plannerEnabled}
+              variant="inline"
+            />
+          ) : null}
+        </div>
 
-        <div className="mx-auto flex w-full max-w-[1344px] flex-col gap-4">
+        <div className="mx-auto mt-4 flex w-full max-w-[1344px] flex-col gap-4 md:mt-5">
           {sections.map((sec) => (
             <CuratedSectionScrollBlock
               key={sec.id}

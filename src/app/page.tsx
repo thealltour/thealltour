@@ -18,7 +18,6 @@ import { getTopRatedPublishedReviews } from "@/lib/reviews";
 import HeroQuickConsultButton from "@/components/inquiry/HeroQuickConsultButton";
 import HeroSection from "@/components/home/HeroSection";
 import { HomeDeferredSections } from "@/components/home/HomeDeferredSections";
-import { HomeTravelPathways } from "@/components/home/HomeTravelPathways";
 import { HomeTrustSection } from "@/components/home/HomeTrustSection";
 import { ENABLE_FREE_TRAVEL_PLANNER } from "@/config/featureFlags";
 
@@ -110,16 +109,8 @@ export default async function Home() {
 
           <PageContainer
             size="wide"
-            className="flex flex-col max-md:gap-5 max-md:pt-4 md:gap-10 md:pt-0"
+            className="flex flex-col max-md:gap-5 max-md:pt-3 md:gap-8 md:pt-5"
           >
-            <HomeTravelPathways
-              golfHref={
-                golfTourProducts.length > 0 || golfCalendarModel
-                  ? "#home-golf-explore"
-                  : buildGolfProductsHref()
-              }
-              plannerEnabled={ENABLE_FREE_TRAVEL_PLANNER}
-            />
             <HomeDeferredSections
               golfTour={{
                 products: golfTourProducts,
@@ -146,6 +137,12 @@ export default async function Home() {
               homeBlogPosts={homeBlogPosts}
               homeReviews={homeReviews}
               tourismRegNo={settings.tourism_reg_no}
+              pathwayGolfHref={
+                golfTourProducts.length > 0 || golfCalendarModel
+                  ? "#home-golf-explore"
+                  : buildGolfProductsHref()
+              }
+              plannerEnabled={ENABLE_FREE_TRAVEL_PLANNER}
             />
 
             <HomeTrustSection tourismRegNo={settings.tourism_reg_no} />

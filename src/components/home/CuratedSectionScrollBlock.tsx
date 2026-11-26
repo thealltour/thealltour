@@ -1,6 +1,5 @@
 "use client";
 
-import { HomeProductCardRail } from "@/components/products/HomeProductCardRail";
 import { HomeProductCard } from "@/components/products/HomeProductCard";
 import type { HomeCuratedSectionWithProducts } from "@/types/homeCurated";
 import { cn } from "@/lib/cn";
@@ -14,7 +13,7 @@ export type CuratedSectionScrollBlockProps = {
 
 /**
  * 추천 여행 단일 섹션.
- * Mobile: Home Discovery Rail (Golf와 동일 preset) / Desktop: 4-column grid.
+ * 모바일 2열 / 데스크톱 4열 그리드. 상품 수만큼만 표시.
  */
 export function CuratedSectionScrollBlock({
   section,
@@ -34,23 +33,19 @@ export function CuratedSectionScrollBlock({
         </h3>
       ) : null}
 
-      <div className="md:hidden">
-        <HomeProductCardRail
-          products={section.products}
-          analyticsSection={analyticsSection}
-          listAriaLabel={listAriaLabel}
-        />
-      </div>
-
-      <div className="mx-auto hidden w-full max-w-[1344px] md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-4">
+      <ul
+        aria-label={listAriaLabel}
+        className="mx-auto grid w-full max-w-[1344px] grid-cols-2 gap-2.5 sm:gap-3 md:gap-4 lg:grid-cols-4"
+      >
         {section.products.map((product) => (
-          <HomeProductCard
-            key={product.id}
-            product={product}
-            analyticsSection={analyticsSection}
-          />
+          <li key={product.id} className="min-w-0">
+            <HomeProductCard
+              product={product}
+              analyticsSection={analyticsSection}
+            />
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

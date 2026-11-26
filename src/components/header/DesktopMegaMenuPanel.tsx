@@ -210,12 +210,87 @@ export function DesktopMegaMenuPanel({
     onClose();
   };
 
-  const isRegion = item.key === "region";
+  const isRegionCascadeHost = item.key === "region" || item.key === "package";
   const regionRootGroups = groups.filter((g): g is HeaderNavGroup & { subGroups: HeaderNavSubGroup[] } =>
     Boolean(g.subGroups && g.subGroups.length > 0),
   );
   const hubGroup = groups.find((g) => g.key === "region-hub");
-  const useRegionCascade = isRegion && regionRootGroups.length > 0;
+  const useRegionCascade = isRegionCascadeHost && regionRootGroups.length > 0 && item.key === "region";
+
+  // 패키지여행: 추천여행 + 지역 허브 링크를 단순 다열로 노출 (신규 라우트/쿼리 없음)
+  if (item.key === "package") {
+    const packageGroups = groups.filter((g) => !g.subGroups?.length);
+    const displayGroups =
+      packageGroups.length > 0
+        ? packageGroups
+        : groups.slice(0, 2);
+    return (
+      <div
+        id={`mega-menu-panel-${item.key}`}
+        className={cn(PANEL_BASE, "min-w-[560px]")}
+        role="menu"
+        aria-label={item.label}
+      >
+        <div className="grid grid-cols-2 gap-8">
+          {displayGroups.map((group, groupIndex) => (
+            <div key={group.key} className="space-y-3">
+              {group.labelHref ? (
+                <Link
+                  href={group.labelHref}
+                  role="menuitem"
+                  className={cn(LINK_BASE, "font-semibold text-[var(--text-muted)]", LINK_HOVER, "hover:text-[var(--primary)]")}
+                  onClick={() => {
+                    handleLeafClick({ key: group.key, label: group.label, href: group.labelHref! }, groupIndex, -1);
+                  }}
+                >
+                  {group.label}
+                </Link>
+              ) : (
+                <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  {group.label}
+                </p>
+              )}
+              <ul className="space-y-0.5" role="none">
+                {group.items.map((leaf, itemIndex) => (
+                  <li key={leaf.key} role="none">
+                    <Link
+                      href={leaf.href}
+                      role="menuitem"
+                      className={cn(LINK_BASE, LINK_DEFAULT, LINK_HOVER)}
+                      onClick={() => handleLeafClick(leaf, groupIndex, itemIndex)}
+                    >
+                      {leaf.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {hubGroup && !displayGroups.some((g) => g.key === hubGroup.key) ? (
+            <div key={hubGroup.key} className="space-y-3">
+              <p className="px-2.5 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                지역별 여행
+              </p>
+              <ul className="space-y-0.5" role="none">
+                {hubGroup.items.map((leaf, itemIndex) => (
+                  <li key={leaf.key} role="none">
+                    <Link
+                      href={leaf.href}
+                      role="menuitem"
+                      className={cn(LINK_BASE, LINK_DEFAULT, LINK_HOVER)}
+                      onClick={() => handleLeafClick(leaf, displayGroups.length, itemIndex)}
+                    >
+                      {leaf.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   if (useRegionCascade) {
     return (

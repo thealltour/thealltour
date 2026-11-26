@@ -2,9 +2,10 @@ import { normalizeNullablePriceNumber } from "@/lib/products/seasonalPriceBands"
 import {
   FOREIGN_CURRENCY_AMOUNT_RE,
   FOREIGN_CURRENCY_WORD_RE,
+  hasExplicitPayableKrwAmountText,
   hasForeignCurrencyAmountText,
-  hasKrwAmountText,
   isForeignCurrencyOnlyPriceText,
+  stripKrwReferenceConversionText,
 } from "@/lib/products/optionCurrency";
 import type { ProductOptions } from "@/types/product";
 import type { BandParsedOption } from "@/lib/admin/bandImport/productParserSchema";
@@ -13,42 +14,42 @@ const NON_PRICE_UNIT_RE = /^(홀|인|박|명)/;
 
 /**
  * "인/박/4만원", "2만원", "50위안(1만원)" 등에서 원화 금액 추출.
- * `$240`, `18홀/120위안` 등 외화만 있으면 null (KRW priceDelta 금지).
+ * `$240`, `USD 240 (한화 약 33만원)`, `18홀/120위안` 등 외화(+참고 환산)만 있으면 null.
  */
 export function parseKrwDeltaFromPriceText(priceText: string): number | null {
   const trimmed = priceText.trim();
   if (!trimmed) return null;
 
-  // 1) 명시적 원화 (외화+원화 병기 시에도 원화 우선 — 예: 50위안(1만원))
-  const manWonMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*만\s*원?/);
+  // 외화 + 참고 환산만 있으면(명시 원화 없음) 숫자·만원 fallback 전에 중단
+  if (hasForeignCurrencyAmountText(trimmed) && !hasExplicitPayableKrwAmountText(trimmed)) {
+    return null;
+  }
+
+  // 참고 환산 구문을 제거한 뒤 명시 원화만 파싱 (예: 50위안(1만원))
+  const payableText = stripKrwReferenceConversionText(trimmed) || trimmed;
+
+  const manWonMatch = payableText.match(/(\d+(?:\.\d+)?)\s*만\s*원?/);
   if (manWonMatch) {
     const n = Number(manWonMatch[1]);
     if (Number.isFinite(n) && n > 0) return Math.round(n * 10000);
   }
 
-  const wonMatch = trimmed.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
+  const wonMatch = payableText.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
   if (wonMatch) {
     return normalizeNullablePriceNumber(wonMatch[1].replace(/,/g, ""));
   }
 
-  // 2) 외화만 있으면 숫자 fallback 전에 중단
   if (isForeignCurrencyOnlyPriceText(trimmed)) {
     return null;
   }
 
-  // 3) 외화 금액 토큰이 섞여 있으면 그 숫자는 KRW로 쓰지 않음
-  if (hasForeignCurrencyAmountText(trimmed) && !hasKrwAmountText(trimmed)) {
-    return null;
-  }
-
-  for (const match of trimmed.matchAll(/(\d{1,3}(?:,\d{3})+|\d+)/g)) {
+  for (const match of payableText.matchAll(/(\d{1,3}(?:,\d{3})+|\d+)/g)) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
-    const after = trimmed.slice(end);
+    const after = payableText.slice(end);
     if (NON_PRICE_UNIT_RE.test(after)) continue;
 
-    // `$240` / `USD 240` / `¥120` 등: 숫자 앞뒤가 외화 기호·코드면 skip
-    const window = trimmed.slice(Math.max(0, start - 6), Math.min(trimmed.length, end + 6));
+    const window = payableText.slice(Math.max(0, start - 6), Math.min(payableText.length, end + 6));
     if (FOREIGN_CURRENCY_AMOUNT_RE.test(window) || FOREIGN_CURRENCY_WORD_RE.test(window)) {
       continue;
     }

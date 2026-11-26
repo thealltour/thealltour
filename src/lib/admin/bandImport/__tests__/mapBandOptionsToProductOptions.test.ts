@@ -14,8 +14,13 @@ describe("parseKrwDeltaFromPriceText", () => {
     expect(parseKrwDeltaFromPriceText("인/18홀/주중/2만원")).toBe(20000);
   });
 
-  it("parses KRW when foreign and KRW appear together", () => {
+  it("parses KRW when foreign and explicit KRW appear together", () => {
     expect(parseKrwDeltaFromPriceText("인/식/50위안(1만원)")).toBe(10000);
+  });
+
+  it("does not treat foreign + reference KRW conversion as priceDelta", () => {
+    expect(parseKrwDeltaFromPriceText("USD 240 (한화 약 33만원)")).toBeNull();
+    expect(parseKrwDeltaFromPriceText("CAD$55 (한화 약 5만원)")).toBeNull();
   });
 
   it("does not treat hole counts or yuan as KRW", () => {
@@ -28,6 +33,8 @@ describe("parseKrwDeltaFromPriceText", () => {
     expect(parseKrwDeltaFromPriceText("인/3박/$240")).toBeNull();
     expect(parseKrwDeltaFromPriceText("US$240")).toBeNull();
     expect(parseKrwDeltaFromPriceText("USD 240")).toBeNull();
+    expect(parseKrwDeltaFromPriceText("CAD$55")).toBeNull();
+    expect(parseKrwDeltaFromPriceText("AUD$80")).toBeNull();
     expect(parseKrwDeltaFromPriceText("¥120")).toBeNull();
     expect(parseKrwDeltaFromPriceText("￥120")).toBeNull();
     expect(parseKrwDeltaFromPriceText("€50")).toBeNull();
@@ -91,6 +98,32 @@ describe("mapBandOptionsToProductOptions", () => {
       meta: "인/전일정/$240",
       consultOnly: true,
     });
+  });
+
+  it("marks USD + 한화 약 reference as consultOnly without priceDelta", () => {
+    const result = mapBandOptionsToProductOptions(
+      [{ name: "싱글룸 이용시", priceText: "USD 240 (한화 약 33만원)" }],
+      1299000,
+    );
+    expect(result?.groups[0].items[0]).toEqual({
+      value: "surcharge-0",
+      label: "싱글룸 이용시",
+      meta: "USD 240 (한화 약 33만원)",
+      consultOnly: true,
+    });
+  });
+
+  it("keeps explicit 50위안(1만원) as payable KRW delta", () => {
+    const result = mapBandOptionsToProductOptions(
+      [{ name: "중식", priceText: "인/식/50위안(1만원)" }],
+      799000,
+    );
+    expect(result?.groups[0].items[0]).toMatchObject({
+      label: "중식",
+      meta: "인/식/50위안(1만원)",
+      priceDelta: 10000,
+    });
+    expect(result?.groups[0].items[0].consultOnly).toBeUndefined();
   });
 
   it("returns null for empty options", () => {

@@ -4,14 +4,31 @@ import type { ProductOptionItem, ProductOptions, SelectedOptions } from "@/types
 export const KRW_AMOUNT_RE = /만\s*원?|(?:\d{1,3}(?:,\d{3})+|\d+)\s*원/;
 
 /**
+ * 외화에 붙는 참고 환산액.
+ * 예: `한화 약 33만원`, `(한화 약 33만원)`, `약 33만원`
+ * → 온라인 KRW priceDelta / 결제 옵션으로 쓰지 않는다.
+ */
+const KRW_REFERENCE_CONVERSION_PATTERN =
+  String.raw`\(?\s*한화\s*약?\s*\d+(?:\.\d+)?\s*만\s*원?\s*\)?|\(?\s*한화\s*약?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\s*원\s*\)?|\(?\s*약\s*\d+(?:\.\d+)?\s*만\s*원?\s*\)?|\(?\s*약\s*(?:\d{1,3}(?:,\d{3})+|\d+)\s*원\s*\)?`;
+
+export function createKrwReferenceConversionRe(): RegExp {
+  return new RegExp(KRW_REFERENCE_CONVERSION_PATTERN, "gi");
+}
+
+/**
  * 외화 금액 표기.
- * `$240`, `US$240`, `USD 240`, `¥120`, `￥120`, `€50`, `£50`, 위안/元/엔/CNY/JPY 등.
+ * `$240`, `US$240`, `USD 240`, `CAD$55`, `AUD$80`, `¥120`, `￥120`, `€50`, `£50`, 위안/元/엔 등.
  * `¥`/`￥`는 원문 그대로 두고 KRW로 해석하지 않는다.
  */
 export const FOREIGN_CURRENCY_AMOUNT_RE =
-  /(?:US\s*\$|USD\s*|\$)\s*[\d,]+(?:\.\d+)?|(?:CNY|JPY|EUR|GBP)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:위안|元|엔|달러)|[¥￥€£]\s*[\d,]+(?:\.\d+)?/i;
+  /(?:(?:CAD|AUD|US)\s*\$|(?:USD|CAD|AUD|CNY|JPY|EUR|GBP)\s*|\$)\s*[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?\s*(?:위안|元|엔|달러)|[¥￥€£]\s*[\d,]+(?:\.\d+)?/i;
 
-export const FOREIGN_CURRENCY_WORD_RE = /위안|元|엔|달러|CNY|USD|JPY|EUR|GBP/i;
+export const FOREIGN_CURRENCY_WORD_RE = /위안|元|엔|달러|CNY|USD|CAD|AUD|JPY|EUR|GBP/i;
+
+const FOREIGN_CODE_AMOUNT_RE =
+  /\b(CAD|AUD|USD|EUR|GBP|CNY|JPY)\s*\$?\s*([\d,]+(?:\.\d+)?)/i;
+const FOREIGN_PREFIXED_DOLLAR_RE = /\b(CAD|AUD|US)\s*\$\s*([\d,]+(?:\.\d+)?)/i;
+const BARE_DOLLAR_AMOUNT_RE = /\$\s*([\d,]+(?:\.\d+)?)/;
 
 export function hasKrwAmountText(text: string): boolean {
   return KRW_AMOUNT_RE.test(text);
@@ -21,12 +38,30 @@ export function hasForeignCurrencyAmountText(text: string): boolean {
   return FOREIGN_CURRENCY_AMOUNT_RE.test(text) || FOREIGN_CURRENCY_WORD_RE.test(text);
 }
 
-/** 외화만 있고 원화 금액이 없으면 true (KRW priceDelta 금지) */
+/** 참고 환산 구문을 제거한 뒤의 텍스트 */
+export function stripKrwReferenceConversionText(text: string): string {
+  return text.replace(createKrwReferenceConversionRe(), " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * 온라인 결제에 쓸 수 있는 명시적 원화 금액이 있는지.
+ * `50위안(1만원)` → true / `USD 240 (한화 약 33만원)` → false
+ */
+export function hasExplicitPayableKrwAmountText(text: string): boolean {
+  const withoutRef = stripKrwReferenceConversionText(text);
+  if (!withoutRef) return false;
+  return hasKrwAmountText(withoutRef);
+}
+
+/**
+ * 외화 금액이 본문이고, 결제용 명시 원화가 없으면 true.
+ * 참고 환산(`한화 약 …`)만 있어도 true → 상담 전용.
+ */
 export function isForeignCurrencyOnlyPriceText(priceText: string | null | undefined): boolean {
   const trimmed = priceText?.trim() ?? "";
   if (!trimmed) return false;
   if (!hasForeignCurrencyAmountText(trimmed)) return false;
-  if (hasKrwAmountText(trimmed)) return false;
+  if (hasExplicitPayableKrwAmountText(trimmed)) return false;
   return true;
 }
 
@@ -42,24 +77,46 @@ export function resolveOnlineOptionPriceDelta(item: ProductOptionItem): number {
   return typeof item.priceDelta === "number" ? item.priceDelta : 0;
 }
 
+function resolveConsultGuideScope(text: string): string[] {
+  const nights = text.match(/(\d+)\s*박/);
+  const perPerson = /(?:^|[^\d])인(?:[^\d]|$)/.test(text) || /1인/.test(text);
+  const scope: string[] = [];
+  if (perPerson && nights) scope.push(`1인·${nights[1]}박 기준`);
+  else if (nights) scope.push(`${nights[1]}박 기준`);
+  else if (perPerson && /전일정/.test(text)) scope.push("1인·전일정 기준");
+  else if (perPerson) scope.push("1인 기준");
+  return scope;
+}
+
+function formatCodedForeignGuide(text: string, code: string, amount: string): string {
+  const scope = resolveConsultGuideScope(text);
+  const head = scope.length > 0 ? `${scope.join(" · ")} ${code} ${amount}` : `${code} ${amount}`;
+  return `${head} · 상담 문의`;
+}
+
 /**
  * 상담 전용 안내 문구.
- * 예: meta `인/3박/$240` → `1인·3박 기준 USD 240 · 상담 문의`
+ * - `인/3박/$240` → `1인·3박 기준 USD 240 · 상담 문의`
+ * - `CAD$55` / `AUD$80` → `CAD 55` / `AUD 80` (USD로 오인하지 않음)
  */
 export function formatConsultOnlyOptionGuide(item: ProductOptionItem): string {
   const text = [item.meta, item.label].filter(Boolean).join(" ");
-  const usd = text.match(/(?:US\s*\$|USD\s*|\$)\s*([\d,]+(?:\.\d+)?)/i);
-  if (usd) {
-    const amount = usd[1].replace(/,/g, "");
-    const nights = text.match(/(\d+)\s*박/);
-    const perPerson = /(?:^|[^\d])인(?:[^\d]|$)/.test(text) || /1인/.test(text);
-    const scope: string[] = [];
-    if (perPerson && nights) scope.push(`1인·${nights[1]}박 기준`);
-    else if (nights) scope.push(`${nights[1]}박 기준`);
-    else if (perPerson && /전일정/.test(text)) scope.push("1인·전일정 기준");
-    else if (perPerson) scope.push("1인 기준");
-    const head = scope.length > 0 ? `${scope.join(" · ")} USD ${amount}` : `USD ${amount}`;
-    return `${head} · 상담 문의`;
+
+  const prefixed = text.match(FOREIGN_PREFIXED_DOLLAR_RE);
+  if (prefixed) {
+    const rawCode = prefixed[1].toUpperCase();
+    const code = rawCode === "US" ? "USD" : rawCode;
+    return formatCodedForeignGuide(text, code, prefixed[2].replace(/,/g, ""));
+  }
+
+  const coded = text.match(FOREIGN_CODE_AMOUNT_RE);
+  if (coded) {
+    return formatCodedForeignGuide(text, coded[1].toUpperCase(), coded[2].replace(/,/g, ""));
+  }
+
+  const bareDollar = text.match(BARE_DOLLAR_AMOUNT_RE);
+  if (bareDollar) {
+    return formatCodedForeignGuide(text, "USD", bareDollar[1].replace(/,/g, ""));
   }
 
   const foreign =

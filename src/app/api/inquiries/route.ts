@@ -22,6 +22,7 @@ import {
   INQUIRY_API_ASSIGNEE_NO_SELF,
   INQUIRY_API_ASSIGNEE_UNASSIGNED,
 } from "@/components/admin/inquiries/inquiryQueue.utils";
+import { requireInquiriesApiAccess } from "@/lib/inquiries/requireInquiriesApiAccess";
 
 type ListStatus =
   | "all"
@@ -223,6 +224,9 @@ async function getInquirySummarySafe(): Promise<SafeSummary> {
 }
 
 export async function GET(request: Request) {
+  const denied = await requireInquiriesApiAccess();
+  if (denied) return denied;
+
   const url = new URL(request.url);
   const search = url.searchParams.get("search")?.trim() ?? "";
   const statusParam = url.searchParams.get("status");
@@ -426,6 +430,9 @@ type BulkPatchBody = {
 };
 
 export async function PATCH(request: Request) {
+  const denied = await requireInquiriesApiAccess();
+  if (denied) return denied;
+
   const body = (await request.json()) as BulkPatchBody;
   const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
 

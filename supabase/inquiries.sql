@@ -18,12 +18,12 @@ for insert
 to anon
 with check (true);
 
+-- Public/anon SELECT is intentionally not granted.
+-- Inquiry reads go through service_role (admin API). Do not recreate
+-- "Allow public read inquiries".
 drop policy if exists "Allow public read inquiries" on public.inquiries;
-create policy "Allow public read inquiries"
-on public.inquiries
-for select
-to anon
-using (true);
+revoke select on table public.inquiries from anon;
+revoke select on table public.inquiries from public;
 
 drop policy if exists "Allow public update inquiries" on public.inquiries;
 create policy "Allow public update inquiries"

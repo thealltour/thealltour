@@ -129,12 +129,20 @@ export async function middleware(request: NextRequest, _event: NextFetchEvent) {
     }
   }
 
-  if (isInquiriesApiPath(pathname) && !authenticated) {
-    return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
-  }
-
-  if (isInquiriesApiPath(pathname) && session && !isSessionAllowedForApiPath(session, pathname)) {
-    return NextResponse.json({ message: "이 작업에 대한 권한이 없습니다." }, { status: 403 });
+  // Guest quote intake must POST /api/inquiries without an admin session.
+  // Protect list/update; do not blanket-block all methods.
+  // Route handlers also enforce requireInquiriesApiAccess for GET/PATCH/DELETE.
+  if (isInquiriesApiPath(pathname)) {
+    const method = request.method.toUpperCase();
+    const isPublicQuoteIntakePost = method === "POST" && pathname === "/api/inquiries";
+    if (!isPublicQuoteIntakePost) {
+      if (!authenticated || !session) {
+        return NextResponse.json({ message: "관리자 인증이 필요합니다." }, { status: 401 });
+      }
+      if (!isSessionAllowedForApiPath(session, pathname)) {
+        return NextResponse.json({ message: "이 작업에 대한 권한이 없습니다." }, { status: 403 });
+      }
+    }
   }
 
   return NextResponse.next();

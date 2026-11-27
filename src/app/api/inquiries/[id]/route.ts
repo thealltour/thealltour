@@ -11,6 +11,7 @@ import {
   BOOKING_STATUS_KO,
   CONSULTATION_STATUS_KO,
 } from "@/lib/inquiries/inquiryActivityLog";
+import { requireInquiriesApiAccess } from "@/lib/inquiries/requireInquiriesApiAccess";
 import type { ConsultationStatus, BookingStatus } from "@/types/inquiry";
 
 const STATUS_LOG_ACTOR = "관리자";
@@ -106,6 +107,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const denied = await requireInquiriesApiAccess();
+  if (denied) return denied;
+
   const { id: inquiryId } = await context.params;
   const body = (await request.json()) as PatchBody;
 
@@ -433,6 +437,9 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const denied = await requireInquiriesApiAccess();
+  if (denied) return denied;
+
   const { id: inquiryId } = await context.params;
   const id = inquiryId?.trim();
   if (!id) {

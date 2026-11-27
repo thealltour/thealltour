@@ -126,8 +126,10 @@ create index if not exists idx_inquiries_customer_profile_id on public.inquiries
 alter table public.inquiries enable row level security;
 drop policy if exists "Allow public insert inquiries" on public.inquiries;
 create policy "Allow public insert inquiries" on public.inquiries for insert to anon with check (true);
+-- Public/anon SELECT is intentionally not granted (admin reads via service_role).
 drop policy if exists "Allow public read inquiries" on public.inquiries;
-create policy "Allow public read inquiries" on public.inquiries for select to anon using (true);
+revoke select on table public.inquiries from anon;
+revoke select on table public.inquiries from public;
 drop policy if exists "Allow public update inquiries" on public.inquiries;
 create policy "Allow public update inquiries" on public.inquiries for update to anon using (true) with check (true);
 

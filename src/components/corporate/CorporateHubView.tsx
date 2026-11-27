@@ -5,6 +5,8 @@ import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 import { CorporateQuoteCta } from "@/components/corporate/CorporateQuoteCta";
 import { CorporateStatusBadge } from "@/components/corporate/CorporateStatusBadge";
+import { CorporateProgramImage } from "@/components/corporate/CorporateProgramImage";
+import { CorporateDownloadLink } from "@/components/corporate/CorporateDownloadLink";
 import {
   CORPORATE_HUB,
   CORPORATE_SEGMENTS,
@@ -26,11 +28,14 @@ export function CorporateHubView() {
         />
 
         <ContentCard>
-          <section className="space-y-3" aria-labelledby="corporate-hub-intro">
+          <section className="space-y-4" aria-labelledby="corporate-hub-intro">
             <h2 id="corporate-hub-intro" className="type-h3 text-content-primary">
               소개
             </h2>
             <p className="type-body text-content-secondary">{CORPORATE_HUB.intro}</p>
+            {CORPORATE_HUB.image ? (
+              <CorporateProgramImage image={CORPORATE_HUB.image} priority />
+            ) : null}
           </section>
         </ContentCard>
 
@@ -92,6 +97,11 @@ export function CorporateHubView() {
                 </li>
               ))}
             </ul>
+            {CORPORATE_HUB.download ? (
+              <div className="pt-2">
+                <CorporateDownloadLink download={CORPORATE_HUB.download} />
+              </div>
+            ) : null}
           </section>
         </ContentCard>
 

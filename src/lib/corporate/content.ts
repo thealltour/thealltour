@@ -24,6 +24,26 @@ export type CorporateProgram = {
   summary: string;
 };
 
+/** Tailwind object-* utility for cover crop focus (e.g. object-[center_35%]). */
+export type CorporateImageAsset = {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+  mobileObjectPosition: string;
+  desktopObjectPosition?: string;
+  /** 생성 사진: 이미지 밖 캡션 */
+  showExampleCaption: boolean;
+};
+
+export type CorporateDownloadAsset = {
+  href: string;
+  label: string;
+  fileName: string;
+  bytes: number;
+  pages: number;
+};
+
 export type CorporateSegmentContent = {
   id: CorporateSegmentId;
   path: `/corporate/${CorporateSegmentId}`;
@@ -40,7 +60,22 @@ export type CorporateSegmentContent = {
   };
   supportScope: string[];
   negotiationNotes: string[];
+  /** 장면 사진이 public에 있을 때만 설정. 없으면 UI는 텍스트만 유지. */
+  image: CorporateImageAsset | null;
+  download: CorporateDownloadAsset | null;
 };
+
+/**
+ * PR3 장면 사진 기대 경로. 전달본이 없으면 null로 두고 이 목록을 결과로 공유한다.
+ * (거인투어 골프/리조트 팩은 장면 명세와 불일치해 연결하지 않음)
+ */
+export const CORPORATE_PENDING_IMAGE_FILES = [
+  "public/images/corporate/hub-hotel-briefing.jpg",
+  "public/images/corporate/business-reward-dinner.jpg",
+  "public/images/corporate/public-enterprises-facility.jpg",
+  "public/images/corporate/public-institutions-field.jpg",
+  "public/images/corporate/councils-briefing.jpg",
+] as const;
 
 export const CORPORATE_HUB_PATH = "/corporate" as const;
 
@@ -64,7 +99,16 @@ export const CORPORATE_HUB = {
     { title: "협의·조정", detail: "면담·견학·행사 등 협의 대상을 함께 좁혀 갑니다." },
     { title: "견적·확정", detail: "합의된 범위로 견적을 정리하고 진행 여부를 결정합니다." },
   ],
-} as const;
+  /** 홈·허브 공용 대표 사진 — 전달 시 hub-hotel-briefing.jpg */
+  image: null as CorporateImageAsset | null,
+  download: {
+    href: "/downloads/corporate/corporate-program-guide-4p.pdf",
+    label: "기업·기관 단체 프로그램 공통 안내서",
+    fileName: "corporate-program-guide-4p.pdf",
+    bytes: 53430,
+    pages: 4,
+  } satisfies CorporateDownloadAsset,
+};
 
 export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
   {
@@ -128,6 +172,14 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "행사 장소와 시상 형식은 확정 전이면 협의 대상으로 표기합니다.",
       "방문·면담이 필요한 경우에도 후보 단계로만 안내합니다.",
     ],
+    image: null,
+    download: {
+      href: "/downloads/corporate/business-proposal-summary-1p.pdf",
+      label: "기업 행사 제안 요약서",
+      fileName: "business-proposal-summary-1p.pdf",
+      bytes: 40829,
+      pages: 1,
+    },
   },
   {
     id: "public-enterprises",
@@ -180,6 +232,14 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "기관·운영사 면담과 시설 견학은 확정 일정이 아닙니다.",
       "가능 여부는 상담 후 협의하며, 화면에는 후보·협의 대상으로만 표기합니다.",
     ],
+    image: null,
+    download: {
+      href: "/downloads/corporate/public-enterprises-training-brief-1p.pdf",
+      label: "직무연수 검토자료",
+      fileName: "public-enterprises-training-brief-1p.pdf",
+      bytes: 40604,
+      pages: 1,
+    },
   },
   {
     id: "public-institutions",
@@ -232,6 +292,14 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "관계기관 면담은 확정된 일정이 아니며 면담 후보로만 표기합니다.",
       "현장 답사 범위는 협의 후 확정합니다.",
     ],
+    image: null,
+    download: {
+      href: "/downloads/corporate/public-institutions-policy-brief-1p.pdf",
+      label: "정책연수·답사 검토자료",
+      fileName: "public-institutions-policy-brief-1p.pdf",
+      bytes: 37831,
+      pages: 1,
+    },
   },
   {
     id: "councils",
@@ -284,8 +352,16 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "지방의회 면담과 현장 방문은 수행 실적을 보장하지 않으며 후보로만 표기합니다.",
       "실제 면담·견학 가능 여부는 상담 후 협의합니다.",
     ],
+    image: null,
+    download: {
+      href: "/downloads/corporate/councils-inspection-brief-1p.pdf",
+      label: "의회 정책시찰 검토자료",
+      fileName: "councils-inspection-brief-1p.pdf",
+      bytes: 39014,
+      pages: 1,
+    },
   },
-] as const;
+] as const satisfies readonly CorporateSegmentContent[];
 
 export function getCorporateSegment(id: CorporateSegmentId): CorporateSegmentContent {
   const found = CORPORATE_SEGMENTS.find((segment) => segment.id === id);

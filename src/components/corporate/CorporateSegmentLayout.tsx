@@ -5,6 +5,8 @@ import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 import { CorporateQuoteCta } from "@/components/corporate/CorporateQuoteCta";
 import { CorporateStatusBadge } from "@/components/corporate/CorporateStatusBadge";
+import { CorporateProgramImage } from "@/components/corporate/CorporateProgramImage";
+import { CorporateDownloadLink } from "@/components/corporate/CorporateDownloadLink";
 import { buttonVariants } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import {
@@ -43,10 +45,13 @@ export function CorporateSegmentLayout({
         </nav>
 
         <ContentCard>
-          <section className="space-y-3" aria-labelledby="corporate-intro">
+          <section className="space-y-4" aria-labelledby="corporate-intro">
             <h2 id="corporate-intro" className="type-h3 text-content-primary">
               소개
             </h2>
+            {segment.image ? (
+              <CorporateProgramImage image={segment.image} priority />
+            ) : null}
             <p className="type-body text-content-secondary whitespace-pre-line">{segment.intro}</p>
           </section>
         </ContentCard>
@@ -131,6 +136,11 @@ export function CorporateSegmentLayout({
                 </ul>
               </div>
             </div>
+            {segment.download ? (
+              <div className="pt-1">
+                <CorporateDownloadLink download={segment.download} />
+              </div>
+            ) : null}
           </section>
         </ContentCard>
 

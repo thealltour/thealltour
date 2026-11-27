@@ -24,7 +24,7 @@ export const HEADER_PRIMARY_NAV_ITEMS: ReadonlyArray<{ key: HeaderPrimaryNavKey;
   { key: "package", label: "패키지여행" },
   { key: "theme", label: "테마여행" },
   { key: "planner", label: "여행플래너" },
-  { key: "inquiry", label: "맞춤·단체여행" },
+  { key: "inquiry", label: "기업·단체여행" },
   { key: "guides", label: "여행가이드" },
   { key: "support", label: "고객센터" },
 ];
@@ -44,14 +44,14 @@ export const HEADER_PRIMARY_NAV_DEFAULT_HREF: Record<HeaderPrimaryNavKey, string
   package: "/products",
   theme: "/themes",
   planner: "/planner",
-  inquiry: "/quote",
+  inquiry: "/corporate",
   guides: "/guides",
   support: "/support",
 };
 
 /**
  * 데스크톱/모바일 카탈로그 1차 메뉴 (골프는 컴포넌트에서 별도 주입).
- * 순서: 패키지여행 → 테마여행 → 맞춤·단체여행 → 여행플래너
+ * 순서: 패키지여행 → 테마여행 → 기업·단체여행 → 여행플래너
  */
 export const HEADER_CATALOG_PRIMARY_NAV_KEYS = [
   "package",

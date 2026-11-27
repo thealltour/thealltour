@@ -91,8 +91,17 @@ export function MobileHeaderDrawer({
           groups: themeItem.groups,
         }
       : null,
+    inquiryItem
+      ? {
+          key: "inquiry",
+          label: inquiryItem.label,
+          href: inquiryItem.href ?? "/corporate",
+          groups: inquiryItem.groups,
+        }
+      : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
   const golfChannelActive = pathname === "/products" && isGolfTourType(tourTypeParam);
+
 
   useEffect(() => {
     if (!isOpen) return;
@@ -300,29 +309,6 @@ export function MobileHeaderDrawer({
           </div>
 
           <div className="border-t border-[var(--divider)] py-1">
-            {inquiryItem?.href ? (
-              <Link
-                href={inquiryItem.href}
-                className={cn(directLinkClass, pathname === "/quote" && "bg-[var(--primary-soft)] text-[var(--primary)]")}
-                onClick={() => {
-                  trackDirectNav(inquiryItem.label, inquiryItem.href!, "inquiry");
-                  onClose();
-                }}
-              >
-                {inquiryItem.label}
-              </Link>
-            ) : (
-              <Link
-                href="/quote"
-                className={cn(directLinkClass, pathname === "/quote" && "bg-[var(--primary-soft)] text-[var(--primary)]")}
-                onClick={() => {
-                  trackDirectNav("맞춤·단체여행", "/quote", "inquiry");
-                  onClose();
-                }}
-              >
-                맞춤·단체여행
-              </Link>
-            )}
             {plannerItem?.href ? (
               <Link
                 href={plannerItem.href}

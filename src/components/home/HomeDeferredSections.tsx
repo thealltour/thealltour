@@ -55,6 +55,10 @@ const CuratedProductsSection = dynamic(() => import("@/components/home/CuratedPr
   loading: () => <SectionSkeleton className="min-h-[18rem]" />,
 });
 
+const HomeCorporateSection = dynamic(() => import("@/components/home/HomeCorporateSection"), {
+  loading: () => <SectionSkeleton className="min-h-[10rem]" />,
+});
+
 const HomeBlogSection = dynamic(
   () => import("@/components/home/HomeBlogSection").then((m) => ({ default: m.HomeBlogSection })),
   { loading: () => <SectionSkeleton className="min-h-[14rem]" /> },
@@ -97,7 +101,7 @@ export type HomeDeferredSectionsProps = {
 
 /**
  * 홈 히어로 아래 본문 블록 — 카탈로그형 순서:
- * Curated(+바로가기) → Golf → Destination → Theme → Reviews → Blog
+ * Curated(+바로가기) → Corporate → Golf → Destination → Theme → Reviews → Blog
  */
 export function HomeDeferredSections({
   golfTour,
@@ -122,6 +126,8 @@ export function HomeDeferredSections({
         pathwayGolfDatesHref={pathwayGolfDatesHref}
         plannerEnabled={plannerEnabled}
       />
+
+      <HomeCorporateSection />
 
       {/*
         골프 본문: 추천상품 → 출발 달력(1회).

@@ -45,7 +45,9 @@ function getIsActive(item: HeaderPrimaryNavItem, pathname: string, tourTypeParam
   if (key === "region") return pathname === "/destinations" || pathname.startsWith("/destinations/");
   if (key === "theme") return pathname === "/themes" || pathname.startsWith("/themes/");
   if (key === "planner") return isPlannerPath(pathname);
-  if (key === "inquiry") return pathname === "/quote";
+  if (key === "inquiry") {
+    return pathname === "/corporate" || pathname.startsWith("/corporate/");
+  }
   if (key === "guides") return pathname.startsWith("/guides");
   if (key === "support") return pathname.startsWith("/support");
   return false;

@@ -4,6 +4,7 @@ import {
   HEADER_CATALOG_PRIMARY_NAV_KEYS,
   type HeaderCatalogPrimaryNavKey,
 } from "./headerNav.constants";
+import { getCorporateNavLeafItems } from "@/lib/corporate/content";
 
 const FALLBACK_RECOMMENDED_GROUP: HeaderNavGroup = {
   key: "package-recommended",
@@ -63,23 +64,30 @@ function relabelTheme(item: HeaderPrimaryNavItem | undefined): HeaderPrimaryNavI
   };
 }
 
-function relabelInquiry(item: HeaderPrimaryNavItem | undefined): HeaderPrimaryNavItem {
+function buildCorporateInquiryNavItem(): HeaderPrimaryNavItem {
   return {
     key: "inquiry",
-    label: "맞춤·단체여행",
-    href: item?.href ?? HEADER_PRIMARY_NAV_DEFAULT_HREF.inquiry,
+    label: "기업·단체여행",
+    href: HEADER_PRIMARY_NAV_DEFAULT_HREF.inquiry,
+    groups: [
+      {
+        key: "corporate-links",
+        label: "고객군·견적",
+        items: getCorporateNavLeafItems(),
+      },
+    ],
   };
 }
 
 /**
- * 카탈로그형 1차 메뉴: 패키지여행 · 테마여행 · 맞춤·단체여행 · (플래너).
+ * 카탈로그형 1차 메뉴: 패키지여행 · 테마여행 · 기업·단체여행 · (플래너).
  * 골프는 Desktop/Mobile에서 별도 주입. 원본 recommended/region은 패키지 하위로 합친다.
  */
 export function assembleCatalogPrimaryNav(primaryNav: HeaderPrimaryNavItem[]): HeaderPrimaryNavItem[] {
   const byKey = new Map(primaryNav.map((item) => [item.key, item]));
   const packageItem = buildPackageNavItem(primaryNav);
   const themeItem = relabelTheme(byKey.get("theme"));
-  const inquiryItem = relabelInquiry(byKey.get("inquiry"));
+  const inquiryItem = buildCorporateInquiryNavItem();
   const plannerItem = byKey.get("planner");
 
   const result: HeaderPrimaryNavItem[] = [packageItem, themeItem, inquiryItem];

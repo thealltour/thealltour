@@ -47,9 +47,11 @@ describe("public planner navigation", () => {
       "골프여행",
       "패키지여행",
       "테마여행",
-      "맞춤·단체여행",
+      "기업·단체여행",
       "여행플래너",
     ]);
+    expect(screen.getByRole("link", { name: "기업·단체여행" })).toHaveAttribute("href", "/corporate");
+    expect(screen.getByRole("button", { name: /기업·단체여행 하위 메뉴/ })).toBeInTheDocument();
     const planner = screen.getByRole("link", { name: "여행플래너" });
     expect(planner).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("button", { name: /여행플래너/ })).not.toBeInTheDocument();
@@ -67,6 +69,28 @@ describe("public planner navigation", () => {
     expect(track).toHaveBeenCalledWith(expect.objectContaining({ eventName: "mobile_menu_click", source: "header_mobile_drawer", section: "planner" }));
     if (session) expect(screen.getByRole("link", { name: "내 여행 플랜" })).toHaveAttribute("href", "/planner/my");
   });
+
+  it("moves corporate inquiry into the accordion and closes on hub/child navigation", () => {
+    const close = vi.fn();
+    render(
+      <MobileHeaderDrawer
+        primaryNav={withPlannerNavigation(fallback)}
+        isOpen
+        onClose={close}
+        session={null}
+      />,
+    );
+    expect(screen.getAllByRole("link", { name: "기업·단체여행" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "기업·단체여행" })).toHaveAttribute("href", "/corporate");
+    expect(screen.getByRole("button", { name: /기업·단체여행 하위 메뉴/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /기업·단체여행 하위 메뉴 펼치기/ }));
+    const familyQuote = screen.getByRole("link", { name: "가족·동호회 단체 견적" });
+    expect(familyQuote).toHaveAttribute("href", "/quote");
+    close.mockClear();
+    fireEvent.click(familyQuote);
+    expect(close).toHaveBeenCalled();
+  });
+
   it("removes public entries when disabled", () => {
     flags.ENABLE_FREE_TRAVEL_PLANNER = false;
     const primaryNav = withPlannerNavigation(fallback);

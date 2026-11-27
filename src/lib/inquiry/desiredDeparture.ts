@@ -144,6 +144,8 @@ export function hasQuoteSnapshotData(snapshot: Inquiry["quote_snapshot"]): boole
       snapshot.quoteSummary ||
       snapshot.inquiredAt ||
       snapshot.desiredDeparture ||
-      snapshot.golf_brief,
+      snapshot.golf_brief ||
+      snapshot.corporate_brief ||
+      snapshot.pointsUseRequested,
   );
 }

@@ -5,8 +5,11 @@ import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 import { CorporateQuoteCta } from "@/components/corporate/CorporateQuoteCta";
 import { CorporateStatusBadge } from "@/components/corporate/CorporateStatusBadge";
+import { buttonVariants } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import {
   CORPORATE_HUB,
+  getCorporateProgramQuoteHref,
   getCorporateSegmentQuoteHref,
   type CorporateSegmentContent,
 } from "@/lib/corporate/content";
@@ -56,11 +59,20 @@ export function CorporateSegmentLayout({
             <ul className="grid gap-3 sm:grid-cols-2">
               {segment.programs.map((program) => (
                 <li
-                  key={program.title}
-                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4"
+                  key={program.id}
+                  className="flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4"
                 >
                   <p className="font-semibold text-content-primary">{program.title}</p>
-                  <p className="mt-1 type-small text-content-secondary">{program.summary}</p>
+                  <p className="mt-1 flex-1 type-small text-content-secondary">{program.summary}</p>
+                  <Link
+                    href={getCorporateProgramQuoteHref(segment.id, program.id)}
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                      "mt-3 self-start",
+                    )}
+                  >
+                    {program.title} 견적
+                  </Link>
                 </li>
               ))}
             </ul>

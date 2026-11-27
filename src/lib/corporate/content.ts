@@ -17,6 +17,13 @@ export type CorporateItineraryStep = {
   status: CorporateItineraryStatus;
 };
 
+export type CorporateProgram = {
+  /** URL·저장용 안정 ID */
+  id: string;
+  title: string;
+  summary: string;
+};
+
 export type CorporateSegmentContent = {
   id: CorporateSegmentId;
   path: `/corporate/${CorporateSegmentId}`;
@@ -25,7 +32,7 @@ export type CorporateSegmentContent = {
   description: string;
   intro: string;
   quoteCategory: CorporateQuoteCategory;
-  programs: { title: string; summary: string }[];
+  programs: CorporateProgram[];
   sampleItinerary: {
     title: string;
     summary: string;
@@ -71,18 +78,22 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
     quoteCategory: "corporate-business",
     programs: [
       {
+        id: "incentive-reward",
         title: "인센티브·포상",
         summary: "성과 인정과 휴식을 함께 담은 포상여행 구성",
       },
       {
+        id: "workshop-teambuilding",
         title: "워크숍·팀빌딩",
         summary: "회의·팀 프로그램과 선택 관광을 균형 있게 배치",
       },
       {
+        id: "corporate-golf",
         title: "기업 골프",
         summary: "라운딩과 이동·숙박을 맞춘 기업 골프 일정",
       },
       {
+        id: "business-trip",
         title: "비즈니스 출장",
         summary: "미팅·이동 동선을 중심으로 한 출장형 일정",
       },
@@ -129,10 +140,12 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
     quoteCategory: "corporate-public-enterprises",
     programs: [
       {
+        id: "energy-environment",
         title: "에너지·환경 연수",
         summary: "에너지·환경 관련 현장 이해와 토론을 위한 일정",
       },
       {
+        id: "transport-facility",
         title: "교통·시설 운영 연수",
         summary: "교통·시설 운영 사례를 살펴보는 직무연수형 구성",
       },
@@ -179,10 +192,12 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
     quoteCategory: "corporate-public-institutions",
     programs: [
       {
+        id: "urban-tourism",
         title: "도시재생·지역관광",
         summary: "도시재생·지역관광 정책 현장 이해형 일정",
       },
       {
+        id: "welfare-education",
         title: "복지·교육 정책연수",
         summary: "복지·교육 현장 답사와 참가자 정리",
       },
@@ -229,10 +244,12 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
     quoteCategory: "corporate-councils",
     programs: [
       {
+        id: "transport-urban",
         title: "교통·도시 시찰",
         summary: "교통 운영·도시정책 사례를 중심으로 한 시찰",
       },
       {
+        id: "welfare-committee",
         title: "복지 등 위원회 주제 시찰",
         summary: "복지 등 위원회 안건에 맞춘 현장 시찰",
       },
@@ -276,12 +293,23 @@ export function getCorporateSegment(id: CorporateSegmentId): CorporateSegmentCon
   return found;
 }
 
-export function getCorporateSegmentQuoteHref(id: CorporateSegmentId): string {
+export function getCorporateSegmentQuoteHref(
+  id: CorporateSegmentId,
+  programId?: string | null,
+): string {
   const segment = getCorporateSegment(id);
   return buildCorporateQuoteHref({
     sourcePath: segment.path,
     quoteCategory: segment.quoteCategory,
+    program: programId,
   });
+}
+
+export function getCorporateProgramQuoteHref(
+  segmentId: CorporateSegmentId,
+  programId: string,
+): string {
+  return getCorporateSegmentQuoteHref(segmentId, programId);
 }
 
 export function getCorporateHubQuoteHref(): string {

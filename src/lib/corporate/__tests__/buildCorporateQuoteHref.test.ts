@@ -18,6 +18,18 @@ describe("buildCorporateQuoteHref", () => {
     );
   });
 
+  it("optionally includes program", () => {
+    expect(
+      buildCorporateQuoteHref({
+        sourcePath: "/corporate/business",
+        quoteCategory: "corporate-business",
+        program: "corporate-golf",
+      }),
+    ).toBe(
+      "/quote?source_path=%2Fcorporate%2Fbusiness&quote_category=corporate-business&program=corporate-golf",
+    );
+  });
+
   it("builds hub and segment quote hrefs with unified categories", () => {
     expect(getCorporateHubQuoteHref()).toContain("quote_category=corporate");
     expect(getCorporateHubQuoteHref()).toContain("source_path=%2Fcorporate");

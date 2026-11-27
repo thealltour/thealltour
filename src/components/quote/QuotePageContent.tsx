@@ -19,12 +19,14 @@ type QuotePageContentProps = {
   >;
   productSummary?: QuoteSummary | null;
   initialDesiredDeparture?: string;
+  initialProgram?: string;
 };
 
 export function QuotePageContent({
   source,
   productSummary,
   initialDesiredDeparture,
+  initialProgram,
 }: QuotePageContentProps) {
   const productId = source?.product_id?.trim() ?? "";
   const sourcePath = source?.source_path?.trim() ?? "";
@@ -54,6 +56,7 @@ export function QuotePageContent({
         source={source}
         productIdForTracking={productId || undefined}
         initialDesiredDeparture={initialDesiredDeparture}
+        initialProgram={initialProgram}
         layout="quote"
       />
     </div>

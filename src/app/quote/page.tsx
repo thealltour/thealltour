@@ -13,6 +13,7 @@ type QuotePageProps = {
     landing_slug?: string;
     quote_category?: string;
     desired_departure?: string;
+    program?: string;
   }>;
 };
 
@@ -20,6 +21,7 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
   const query = (await searchParams) ?? {};
   const productId = (query.product_id ?? query.productId)?.trim();
   const productTitleFromQuery = query.product_title?.trim();
+  const initialProgram = query.program?.trim();
 
   let productSummary: QuoteSummary | null = null;
   if (productId) {
@@ -47,9 +49,15 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
 
       <SectionBody className="flex flex-col gap-[var(--space-5)]">
         <header className="space-y-1">
-          <h1 className="type-h2 text-content-primary">맞춤 견적 문의</h1>
+          <h1 className="type-h2 text-content-primary">
+            {query.quote_category?.startsWith("corporate")
+              ? "기업·기관 견적 문의"
+              : "맞춤 견적 문의"}
+          </h1>
           <p className="type-small text-content-secondary">
-            이름과 연락처만 남겨도 상담이 가능합니다.
+            {query.quote_category?.startsWith("corporate")
+              ? "조직 유형과 회사·기관명, 행사 목적을 남겨주시면 상담이 가능합니다."
+              : "이름과 연락처만 남겨도 상담이 가능합니다."}
           </p>
         </header>
 
@@ -64,6 +72,7 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
             }}
             productSummary={productSummary}
             initialDesiredDeparture={query.desired_departure?.trim()}
+            initialProgram={initialProgram}
           />
         </ContentCard>
       </SectionBody>

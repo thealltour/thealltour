@@ -210,6 +210,26 @@ export type DesiredDepartureSnapshot = {
   flexible?: boolean;
 };
 
+/** 기업·기관 견적 브리프 (quote_snapshot.corporate_brief) */
+export type CorporateBriefSnapshot = {
+  org_type: string;
+  org_name: string;
+  purpose: string;
+  program_id?: string | null;
+  program_label?: string | null;
+  headcount?: string | null;
+  headcount_flexible?: boolean;
+  timing?: string | null;
+  timing_flexible?: boolean;
+  destination?: string | null;
+  budget_per_person?: string | null;
+  email?: string | null;
+  golf_rounds?: string | null;
+  job_topic?: string | null;
+  policy_topic?: string | null;
+  committee_focus?: string | null;
+};
+
 /** 문의 시 함께 저장한 옵션/견적 스냅샷 (관리자 표시용, 서버 재계산용) */
 export type QuoteSnapshot = {
   selectedOptions?: Record<string, string>;
@@ -221,6 +241,7 @@ export type QuoteSnapshot = {
   inquiredAt?: string;
   desiredDeparture?: DesiredDepartureSnapshot;
   golf_brief?: Record<string, string>;
+  corporate_brief?: CorporateBriefSnapshot;
   pointsUseRequested?: number;
   pointsBalanceAtSubmit?: number;
 };

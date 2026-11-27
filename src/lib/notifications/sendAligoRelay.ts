@@ -1,4 +1,6 @@
-const RELAY_URL = "http://121.78.183.144:3000/send-aligo";
+/** Override with ALIGO_RELAY_URL for isolated tests (never hit production relay). */
+const RELAY_URL =
+  process.env.ALIGO_RELAY_URL?.trim() || "http://121.78.183.144:3000/send-aligo";
 const TIMEOUT_MS = 5000;
 
 export type AligoRelayErrorCode =

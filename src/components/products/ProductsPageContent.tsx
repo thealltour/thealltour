@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import ProductCatalogSection from "@/components/product-detail/ProductCatalogSection";
-import { ProductFilterSidebar } from "@/components/products/ProductFilterSidebar";
 import { ProductFilterChips } from "@/components/products/ProductFilterChips";
 import { MobileProductFilterDrawer } from "@/components/products/MobileProductFilterDrawer";
 import { MobileProductSortSheet } from "@/components/products/MobileProductSortSheet";
@@ -64,6 +63,8 @@ const GolfDepartureCalendarSection = dynamic(
     ),
   },
 );
+
+export const PRODUCTS_GOLF_DATES_ANCHOR_ID = "products-golf-dates";
 
 export type ProductsPageGolfCalendarMeta = {
   promotionCampaignId: string | null;
@@ -280,18 +281,7 @@ export function ProductsPageContent({
   };
 
   return (
-    <div className="flex w-full max-w-full flex-col gap-6">
-      {golfChannelPreset && !isSearchMode ? (
-        <GolfDepartureCalendarSection
-          events={calendarEvents}
-          promotionLegendLabel={golfCalendarMeta?.promotionLegendLabel}
-          eyebrow="출발일 한눈에"
-          title="골프 출발 달력"
-          description="현재 보고 있는 골프 상품의 출발 가능일을 확인하고 바로 상품으로 이동할 수 있습니다."
-          className="!px-0"
-        />
-      ) : null}
-
+    <div className="flex w-full max-w-full flex-col gap-5">
       {isSearchMode && searchKeyword ? (
         <div className="space-y-1">
           <h2 className="type-h3 font-semibold text-[var(--foreground)]">
@@ -307,23 +297,14 @@ export function ProductsPageContent({
         </p>
       ) : null}
 
-      <div className="flex w-full max-w-full items-start gap-8">
-        <ProductFilterSidebar
-          regionOptions={regionOptions}
-          regionTree={regionTree}
-          themeOptions={themeOptions}
-          themeTree={themeTree}
-          productLineOptions={effectiveProductLineOptions}
-          filters={displayFilters}
-          onFilterChange={handleFilterChange}
-          searchMode={isSearchMode}
-        />
-
-        <div className="min-w-0 flex-1 space-y-4">
+      <div className="flex w-full max-w-full flex-col space-y-4">
           <ProductListToolbar
             sortLabel={sortLabel}
             currentSort={displayFilters.sort}
             currentCollection={displayFilters.collection}
+            currentRegion={displayFilters.region}
+            currentTheme={displayFilters.theme}
+            currentProductLine={displayFilters.product_line}
             onFilterClick={() => setFilterDrawerOpen(true)}
             onSortClick={() => setSortSheetOpen(true)}
             onSortChange={(sort) => handleFilterChange({ sort })}
@@ -462,6 +443,19 @@ export function ProductsPageContent({
             </div>
           ) : null}
 
+          {golfChannelPreset && !isSearchMode ? (
+            <div id={PRODUCTS_GOLF_DATES_ANCHOR_ID} className="scroll-mt-56 md:scroll-mt-64">
+              <GolfDepartureCalendarSection
+                events={calendarEvents}
+                promotionLegendLabel={golfCalendarMeta?.promotionLegendLabel}
+                eyebrow="출발일 한눈에"
+                title="골프 출발 달력"
+                description="현재 보고 있는 골프 상품의 출발 가능일을 확인하고 바로 상품으로 이동할 수 있습니다."
+                className="!px-0"
+              />
+            </div>
+          ) : null}
+
           {isSearchMode && searchRecommendations ? (
             <>
               {searchRecommendations.destinations.length > 0 && (
@@ -486,7 +480,6 @@ export function ProductsPageContent({
               )}
             </>
           ) : null}
-        </div>
 
         <MobileProductFilterDrawer
           isOpen={filterDrawerOpen}
@@ -499,6 +492,7 @@ export function ProductsPageContent({
           filters={displayFilters}
           onApply={(next) => handleFilterChange(next)}
           onReset={handleResetFilters}
+          showOnDesktop
         />
 
         <MobileProductSortSheet

@@ -19,7 +19,6 @@ import type { Product, ProductTrust, ProductOptions } from "@/types/product";
 import type { TravelOverviewModel } from "@/lib/products/mapProductToOverview";
 import { mapProductToOverview } from "@/lib/products/mapProductToOverview";
 import { ThemeChartCard } from "@/components/products/ThemeChartCard";
-import { cn } from "@/lib/cn";
 import { mapProductToTimelineModel, getTimelineModelFromSchedule } from "@/lib/products/mapProductToTimelineModel";
 import { FlightSummarySection } from "@/components/products/FlightSummarySection";
 import { ProductIncludeExclude } from "@/components/products/ProductIncludeExclude";
@@ -64,6 +63,11 @@ import {
   SeasonalPriceComparison,
 } from "@/components/products/ProductDetailPriceGuide";
 import { trackProductDetailViewSummary } from "@/lib/analytics/trackProductClick";
+import { buildProductHeroFacts } from "@/lib/products/buildProductHeroFacts";
+import { ProductDetailBookingZone } from "@/components/products/ProductDetailBookingZone";
+import {
+  productHasBookingSelection,
+} from "@/lib/products/resolveProductBookingUx";
 
 export type ProductDetailV2StatusTag =
   | "AVAILABLE"
@@ -204,17 +208,6 @@ export default function ProductDetailV2({
   const overviewThemeChart = useMemo(() => {
     const items = resolvedOverview?.chart?.items;
     return items?.length ? items : null;
-  }, [resolvedOverview]);
-
-  const hasOverviewAside = Boolean(overviewThemeChart);
-
-  /** 오버뷰 카드에서는 항공 카드를 제외하고, 항공편은 오버뷰 내부 컴팩트 섹션으로 표시 */
-  const overviewForCards = useMemo(() => {
-    if (!resolvedOverview?.cards?.length) return resolvedOverview;
-    const withoutFlight = resolvedOverview.cards.filter((c) => c.iconKey !== "flight");
-    return withoutFlight.length === resolvedOverview.cards.length
-      ? resolvedOverview
-      : { ...resolvedOverview, cards: withoutFlight };
   }, [resolvedOverview]);
 
   const resolvedOverviewFallbackUrl = product ? getPrimaryImageUrl(product) : overviewFallbackUrl ?? "";
@@ -572,6 +565,20 @@ export default function ProductDetailV2({
 
   const priceBasisLabel = (priceMeta || "1인 기준").trim() || "1인 기준";
   const priceVolatilityHint = "출발일에 따라 달라질 수 있어요";
+  const heroFacts = useMemo(
+    () =>
+      buildProductHeroFacts(product, {
+        duration,
+        minDeparturePeople,
+      }),
+    [product, duration, minDeparturePeople],
+  );
+  const showInFlowBooking =
+    Boolean(productId) &&
+    (productHasBookingSelection(product) ||
+      statusTag === "CONSULT_REQUIRED" ||
+      bookingUxMode === "seasonal_consult" ||
+      statusTag === "SOLD_OUT");
 
   const openIncludedTab = useCallback(() => {
     setActiveTab("included");
@@ -583,147 +590,170 @@ export default function ProductDetailV2({
     });
   }, []);
 
-  return (
-    <div className="space-y-8">
-      {/* DetailHero */}
-      <section className="space-y-5">
-        <ProductImageCarousel images={galleryImages} showPlaceholderWhenEmpty />
-
-        {/* TagRow: 상태 우선, 그 다음 지역/카테고리 */}
-        <div className="flex flex-wrap items-center gap-2">
-          {statusTag != null && (
-            <Tag variant={statusTag === "AVAILABLE" ? "accent" : statusTag === "LIMITED" ? "gold" : "muted"} size="sm">
-              {STATUS_LABELS[statusTag]}
-            </Tag>
-          )}
-          {region ? (
-            <Tag variant="accent" size="sm">
-              {region}
-            </Tag>
-          ) : null}
-          {category ? (
-            <Tag variant="accent" size="sm">
-              {category}
-            </Tag>
-          ) : null}
-        </div>
-
-        <h1 className="font-card-title text-2xl font-bold leading-tight text-[#0f172a] md:text-3xl">
-          {title || "상품명"}
-        </h1>
-
-        {reviewSummary && reviewSummary.reviewCount > 0 && (
-          <a
-            href="#reviews"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-bg)] px-3 py-1.5 text-sm font-medium text-[var(--warning)] transition hover:bg-[var(--warning-bg)]/70"
-          >
-            <span className="text-[var(--warning)]">★</span>
-            <span>{reviewSummary.averageRating.toFixed(1)}</span>
-            <span className="text-slate-500">(후기 {reviewSummary.reviewCount})</span>
-          </a>
-        )}
-
-        {oneLiner ? (
-          <p className="mt-2 whitespace-pre-wrap text-base leading-6 text-slate-600">{oneLiner}</p>
-        ) : null}
-
-        {/* Price Summary Card: 대표가·구간 비교·추천 대상(PR-F) + 키워드/테마 */}
-        <Card
-          variant="default"
-          className="mt-4 border-[var(--primary-soft)] bg-[var(--primary-soft)] p-5 ring-1 ring-[var(--primary-soft)]"
-        >
-          <div
-            className={cn(
-              "grid gap-6",
-              hasOverviewAside ? "xl:grid-cols-2 xl:items-start" : undefined,
-            )}
-          >
-            <div className="min-w-0">
-              {showDepartureSchedulePrice ? (
-                <>
-                  <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
-                    ₩{departureSchedulePriceFormatted}~
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
-                  </p>
-                  {displayDuration ? (
-                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
-                  ) : null}
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
-                  </p>
-                </>
-              ) : showSeasonalBandCard ? (
-                <>
-                  <p className="text-base font-semibold text-[#0f172a]">대표 출발가 안내</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
-                  </p>
-                  {displayDuration ? (
-                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
-                  ) : null}
-                  {product?.seasonal_price_bands ? (
-                    <div className="mt-2">
-                      <SeasonalPriceComparison bands={product.seasonal_price_bands} />
-                    </div>
-                  ) : null}
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
-                  </p>
-                </>
-              ) : displayPrice ? (
-                <>
-                  <p className="font-price-strong text-xl font-bold text-[var(--primary)] md:text-2xl">
-                    ₩{displayPrice}~
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {[priceBasisLabel, priceVolatilityHint].join(" · ")}
-                  </p>
-                  {displayDuration ? (
-                    <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
-                  ) : null}
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-price-strong text-xl font-semibold text-slate-600 md:text-2xl">
-                    상담 후 견적 안내
-                  </p>
-                  {(displayDuration || priceMeta) && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
-                  </p>
-                </>
-              )}
-              {shouldShowDescriptionSection(product?.description, product?.golf_course_info) ? (
-                <div className="mt-5">
-                  <ProductDescriptionSection
-                    description={product?.description}
-                    golfCourseInfo={product?.golf_course_info}
-                    embedded
-                  />
-                </div>
-              ) : null}
-            </div>
-            {overviewThemeChart ? (
-              <div className="hidden min-w-0 rounded-lg border border-slate-200/90 bg-white/90 p-3 md:block">
-                <ThemeChartCard items={overviewThemeChart} />
+  const heroPriceBlock = (
+    <Card
+      variant="default"
+      className="border-[var(--primary-soft)] bg-[var(--primary-soft)] p-4 ring-1 ring-[var(--primary-soft)] sm:p-5"
+    >
+      <div className="min-w-0">
+        {showDepartureSchedulePrice ? (
+          <>
+            <p className="text-xs font-medium text-slate-500">예상가</p>
+            <p className="font-price-strong mt-1 text-xl font-bold text-[var(--primary)] md:text-2xl">
+              ₩{departureSchedulePriceFormatted}~
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+            </p>
+            {displayDuration ? (
+              <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
+            ) : null}
+          </>
+        ) : showSeasonalBandCard ? (
+          <>
+            <p className="text-xs font-medium text-slate-500">예상가</p>
+            <p className="mt-1 text-base font-semibold text-[#0f172a]">대표 출발가 안내</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+            </p>
+            {displayDuration ? (
+              <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
+            ) : null}
+            {product?.seasonal_price_bands ? (
+              <div className="mt-2">
+                <SeasonalPriceComparison bands={product.seasonal_price_bands} />
               </div>
             ) : null}
+          </>
+        ) : displayPrice ? (
+          <>
+            <p className="text-xs font-medium text-slate-500">예상가</p>
+            <p className="font-price-strong mt-1 text-xl font-bold text-[var(--primary)] md:text-2xl">
+              ₩{displayPrice}~
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {[priceBasisLabel, priceVolatilityHint].join(" · ")}
+            </p>
+            {displayDuration ? (
+              <p className="mt-0.5 text-xs text-slate-400">{displayDuration}</p>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="text-xs font-medium text-slate-500">예상가</p>
+            <p className="font-price-strong mt-1 text-xl font-semibold text-slate-600 md:text-2xl">
+              상담 후 견적 안내
+            </p>
+            {(displayDuration || priceMeta) && (
+              <p className="mt-1 text-sm text-slate-500">
+                {[displayDuration, priceMeta].filter(Boolean).join(" · ")}
+              </p>
+            )}
+          </>
+        )}
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          {DETAIL_UNIFIED_PRICE_NOTICE_LINES[0]}
+        </p>
+      </div>
+    </Card>
+  );
+
+  const heroSummaryColumn = (
+    <div className="min-w-0 space-y-3 lg:space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {statusTag != null && (
+          <Tag
+            variant={
+              statusTag === "AVAILABLE" ? "accent" : statusTag === "LIMITED" ? "gold" : "muted"
+            }
+            size="sm"
+          >
+            {STATUS_LABELS[statusTag]}
+          </Tag>
+        )}
+        {region ? (
+          <Tag variant="accent" size="sm">
+            {region}
+          </Tag>
+        ) : null}
+        {category ? (
+          <Tag variant="accent" size="sm">
+            {category}
+          </Tag>
+        ) : null}
+      </div>
+
+      <h1 className="font-card-title text-2xl font-bold leading-tight text-[#0f172a] md:text-3xl">
+        {title || "상품명"}
+      </h1>
+
+      {reviewSummary && reviewSummary.reviewCount > 0 && (
+        <a
+          href="#reviews"
+          className="inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-bg)] px-3 py-1.5 text-sm font-medium text-[var(--warning)] transition hover:bg-[var(--warning-bg)]/70"
+        >
+          <span className="text-[var(--warning)]">★</span>
+          <span>{reviewSummary.averageRating.toFixed(1)}</span>
+          <span className="text-slate-500">(후기 {reviewSummary.reviewCount})</span>
+        </a>
+      )}
+
+      {oneLiner ? (
+        <p className="whitespace-pre-wrap text-base leading-6 text-slate-600">{oneLiner}</p>
+      ) : null}
+
+      {heroPriceBlock}
+
+      {heroFacts.length > 0 ? (
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="핵심 조건">
+          {heroFacts.map((fact) => (
+            <li
+              key={`${fact.label}-${fact.value}`}
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5"
+            >
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                {fact.label}
+              </p>
+              <p className="mt-0.5 text-sm font-medium leading-snug text-[#0f172a]">{fact.value}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="space-y-8">
+      {/* DetailHero: 모바일 제목·가격 → 사진 / 데스크톱 사진 | 요약 */}
+      <section className="space-y-5">
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+          <div className="order-1 min-w-0 lg:order-2">{heroSummaryColumn}</div>
+          <div className="order-2 min-w-0 lg:order-1 lg:sticky lg:top-[calc(var(--site-header-height,7rem)+0.75rem)]">
+            <ProductImageCarousel
+              images={galleryImages}
+              showPlaceholderWhenEmpty
+              layout="stack"
+            />
           </div>
-        </Card>
+        </div>
+
+        {showInFlowBooking && productId ? (
+          <ProductDetailBookingZone
+            product={product}
+            productId={productId}
+            productTitle={productTitle || title || "상품"}
+            sourcePath={sourcePath || `/products/${productId}`}
+            kakaoHref={kakaoHref || ""}
+            status={statusTag}
+            visibility="always"
+            className="pt-1"
+          />
+        ) : null}
 
         <FlightSummarySection product={product ?? null} compact embedded showDepartureSwitcher />
 
         {hasSummaryData && (
-          <div className="mt-6">
+          <div className="mt-2">
             <ProductSummaryInfo
               duration={product?.duration ?? duration}
               departure={product?.departure ?? product?.overview_region}
@@ -735,8 +765,21 @@ export default function ProductDetailV2({
           </div>
         )}
 
+        {shouldShowDescriptionSection(product?.description, product?.golf_course_info) ? (
+          <ProductDescriptionSection
+            description={product?.description}
+            golfCourseInfo={product?.golf_course_info}
+          />
+        ) : null}
+
+        {overviewThemeChart ? (
+          <div className="hidden min-w-0 rounded-lg border border-slate-200/90 bg-white/90 p-3 md:block">
+            <ThemeChartCard items={overviewThemeChart} />
+          </div>
+        ) : null}
+
         {isGolfCoupon ? (
-          <div className="mt-5">
+          <div className="mt-1">
             <ProductGolfMemberBenefit
               memberLoggedIn={memberLoggedIn}
               paxDiscountPreview={paxDiscountPreview}
@@ -744,37 +787,27 @@ export default function ProductDetailV2({
           </div>
         ) : null}
 
-        <div className="mt-5">
-          <ProductCostSummary
-            includedLines={includedLines}
-            excludedLines={excludedLines}
-            optionalExpenseLines={[...optionalExpenseLines, ...optionalLines]}
-            fuelIncluded={fuelIncluded}
-            onOpenIncludedTab={openIncludedTab}
-          />
-        </div>
+        <ProductCostSummary
+          includedLines={includedLines}
+          excludedLines={excludedLines}
+          optionalExpenseLines={[...optionalExpenseLines, ...optionalLines]}
+          fuelIncluded={fuelIncluded}
+          onOpenIncludedTab={openIncludedTab}
+        />
 
         {recommendedAudienceBullets.length > 0 ? (
-          <div className="mt-4">
-            <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
-          </div>
+          <ProductDetailRecommendedAudience bullets={recommendedAudienceBullets} />
         ) : null}
 
         {product?.selling_points_json ? (
-          <div className="mt-6">
-            <ProductSellingPointsSection sellingPoints={product.selling_points_json} />
-          </div>
+          <ProductSellingPointsSection sellingPoints={product.selling_points_json} />
         ) : null}
 
         {hasPackageCatalogContent(product?.package_catalog_json) ? (
-          <div className="mt-6">
-            <ProductPackageCatalogSection catalog={product?.package_catalog_json} />
-          </div>
+          <ProductPackageCatalogSection catalog={product?.package_catalog_json} />
         ) : null}
 
-        <div className="mt-6">
-          <TrustSignals trust={trust} />
-        </div>
+        <TrustSignals trust={trust} />
       </section>
 
       <ProductVenuePhotosSection

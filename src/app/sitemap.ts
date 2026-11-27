@@ -28,6 +28,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
     },
     {
+      url: `${base}/corporate`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/corporate/business`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/corporate/public-enterprises`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/corporate/public-institutions`,
+      lastModified: now,
+    },
+    {
+      url: `${base}/corporate/councils`,
+      lastModified: now,
+    },
+    {
       url: `${base}/status`,
       lastModified: now,
     },

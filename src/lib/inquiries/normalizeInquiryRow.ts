@@ -1,3 +1,4 @@
+import { validateCorporateBrief } from "@/lib/corporate/corporateBrief";
 import { normalizeDesiredDepartureSnapshot } from "@/lib/inquiry/desiredDeparture";
 import {
   INQUIRY_LEAD_PRIORITIES,
@@ -56,6 +57,8 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
         ),
       );
     }
+    const corporateValidated = validateCorporateBrief(o.corporate_brief);
+    const corporate_brief = corporateValidated.ok ? corporateValidated.brief : undefined;
     quote_snapshot = {
       selectedOptions:
         o.selectedOptions && typeof o.selectedOptions === "object"
@@ -73,6 +76,7 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
       inquiredAt: typeof o.inquiredAt === "string" ? o.inquiredAt : undefined,
       desiredDeparture,
       golf_brief: golf_brief && Object.keys(golf_brief).length > 0 ? golf_brief : undefined,
+      corporate_brief,
       pointsUseRequested:
         typeof o.pointsUseRequested === "number" && Number.isFinite(o.pointsUseRequested)
           ? o.pointsUseRequested
@@ -88,6 +92,7 @@ export function normalizeInquiryRow(row: Record<string, unknown>): Inquiry {
       quote_snapshot.inquiredAt ||
       quote_snapshot.desiredDeparture ||
       quote_snapshot.golf_brief ||
+      quote_snapshot.corporate_brief ||
       quote_snapshot.pointsUseRequested;
     if (!hasData) {
       quote_snapshot = undefined;

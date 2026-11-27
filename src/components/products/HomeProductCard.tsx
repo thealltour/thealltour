@@ -42,9 +42,9 @@ export type HomeProductCardProps = {
   className?: string;
   /** 홈 큐레이션 카드 클릭 계측 section */
   analyticsSection?: string;
-  /** grid: 기존(모바일 16:9). rail: 레일 전용 4:3 고정 */
+  /** grid: 홈 큐레이션·골프 공통 4:3. rail: 랜딩/광고 가로 레일용 */
   variant?: "grid" | "rail";
-  /** coinBenefit: 1인 정가→회원가 / teamCouponBenefit: 4인 팀 총할인 */
+  /** coinBenefit: 1인 정가→회원가 / teamCouponBenefit: 4인 팀 총할인 (홈 외부 쿠폰 카드) */
   priceDisplay?: "default" | "coinBenefit" | "teamCouponBenefit";
 };
 
@@ -172,6 +172,9 @@ export function HomeProductCard({
     });
   };
 
+  const isHomeGrid = variant === "grid" && priceDisplay === "default";
+  const summaryText = campaignPitch || oneLine || subMeta;
+
   return (
     <Link
       href={resolvedHref}
@@ -186,11 +189,11 @@ export function HomeProductCard({
         className,
       )}
     >
-      {/* 모바일 2열: 이미지 높이 축소(16:9), sm+ 기존 4:3 / rail: 항상 4:3 */}
+      {/* 홈 그리드·레일 모두 4:3 — 섹션 간 이미지 높이 통일 */}
       <div
         className={cn(
           "relative w-full shrink-0 overflow-hidden bg-[var(--surface-muted)]",
-          variant === "rail" ? "aspect-[4/3]" : "aspect-video sm:aspect-[4/3]",
+          "aspect-[4/3]",
         )}
       >
         {overlayCampaignBadges.length > 0 ? (
@@ -232,10 +235,15 @@ export function HomeProductCard({
       <div
         className={cn(
           "flex min-h-0 flex-col gap-1 px-2.5 py-2 sm:gap-1.5 sm:px-4 sm:py-4",
-          variant === "rail" ? "min-h-0 flex-1" : "flex-1",
+          "flex-1",
         )}
       >
-        <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+        <div
+          className={cn(
+            "flex items-start justify-between gap-1.5 sm:gap-2",
+            isHomeGrid && "min-h-[1.25rem] sm:min-h-[1.5rem]",
+          )}
+        >
           <div className="flex min-w-0 flex-wrap items-center gap-1">
             {infoDisplayChips.map((chip, i) => (
               <span
@@ -263,43 +271,73 @@ export function HomeProductCard({
           ) : null}
         </div>
 
-        {regionLabel ? (
-          <p className="line-clamp-1 text-xs font-medium text-[var(--text-muted)] sm:text-sm">
-            {regionLabel}
+        {isHomeGrid || regionLabel ? (
+          <p
+            className={cn(
+              "line-clamp-1 text-xs font-medium text-[var(--text-muted)] sm:text-sm",
+              isHomeGrid && "min-h-[1rem] sm:min-h-[1.25rem]",
+              !regionLabel && isHomeGrid && "invisible",
+            )}
+          >
+            {regionLabel || "\u00a0"}
           </p>
         ) : null}
 
         <h3
           className={cn(
-            "line-clamp-2 font-semibold leading-tight text-[var(--foreground)]",
+            "line-clamp-2 font-semibold leading-snug text-[var(--foreground)]",
             priceDisplay === "teamCouponBenefit"
               ? "text-base"
-              : "text-sm sm:text-base sm:leading-snug",
+              : "text-sm sm:text-base",
+            isHomeGrid && "min-h-[2.5rem] sm:min-h-[2.75rem]",
           )}
         >
           {titleText}
         </h3>
 
-        {campaignPitch ? (
+        {isHomeGrid ? (
           <p
             className={cn(
-              "line-clamp-2 font-semibold leading-snug text-[var(--primary)]",
-              priceDisplay === "teamCouponBenefit" ? "text-sm" : "text-xs sm:line-clamp-1 sm:text-sm",
+              "line-clamp-1 text-xs leading-snug sm:text-sm",
+              "min-h-[1rem] sm:min-h-[1.25rem]",
+              campaignPitch
+                ? "font-semibold text-[var(--primary)]"
+                : "text-[var(--text-muted)]",
+              !summaryText && "invisible",
             )}
           >
-            {campaignPitch}
+            {summaryText || "\u00a0"}
           </p>
-        ) : null}
+        ) : (
+          <>
+            {campaignPitch ? (
+              <p
+                className={cn(
+                  "line-clamp-2 font-semibold leading-snug text-[var(--primary)]",
+                  priceDisplay === "teamCouponBenefit" ? "text-sm" : "text-xs sm:line-clamp-1 sm:text-sm",
+                )}
+              >
+                {campaignPitch}
+              </p>
+            ) : null}
+            {oneLine ? (
+              <p className="hidden line-clamp-1 text-xs leading-snug text-[var(--text-muted)] sm:block sm:text-sm">
+                {oneLine}
+              </p>
+            ) : subMeta ? (
+              <p className="hidden line-clamp-1 text-xs text-[var(--text-muted)] sm:block sm:text-sm">
+                {subMeta}
+              </p>
+            ) : null}
+          </>
+        )}
 
-        {oneLine ? (
-          <p className="hidden line-clamp-1 text-xs leading-snug text-[var(--text-muted)] sm:block sm:text-sm">
-            {oneLine}
-          </p>
-        ) : subMeta ? (
-          <p className="hidden line-clamp-1 text-xs text-[var(--text-muted)] sm:block sm:text-sm">{subMeta}</p>
-        ) : null}
-
-        <div className="mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1">
+        <div
+          className={cn(
+            "mt-auto border-t border-[var(--border)]/60 pt-1.5 sm:border-0 sm:pt-1",
+            isHomeGrid && "min-h-[2.75rem] sm:min-h-[3.25rem]",
+          )}
+        >
           {priceDisplay === "teamCouponBenefit" && teamListFormatted && teamMemberFormatted ? (
             <>
               <p className="mb-1 inline-flex max-w-full rounded-md bg-[var(--accent)] px-2 py-0.5 text-[0.625rem] font-extrabold leading-tight text-[var(--on-accent)] sm:text-[0.6875rem]">

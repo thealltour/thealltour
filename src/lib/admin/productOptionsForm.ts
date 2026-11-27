@@ -25,6 +25,7 @@ function parseItem(raw: unknown, fallbackValue: string): ProductOptionItem | nul
   if (meta) item.meta = meta;
   const priceDelta = normalizeNullablePriceNumber(o.priceDelta);
   if (priceDelta != null) item.priceDelta = priceDelta;
+  if (o.consultOnly === true) item.consultOnly = true;
   if (o.isDefault === true) item.isDefault = true;
   return item;
 }
@@ -83,6 +84,7 @@ function compactItem(item: ProductOptionItem): ProductOptionItem {
   };
   if (item.meta?.trim()) next.meta = item.meta.trim();
   if (item.priceDelta != null && item.priceDelta > 0) next.priceDelta = item.priceDelta;
+  if (item.consultOnly === true) next.consultOnly = true;
   if (item.isDefault) next.isDefault = true;
   return next;
 }
@@ -160,7 +162,7 @@ export function patchProductOptionItem(
   options: ProductOptions,
   groupIndex: number,
   itemIndex: number,
-  patch: Partial<Pick<ProductOptionItem, "label" | "meta" | "priceDelta">>,
+  patch: Partial<Pick<ProductOptionItem, "label" | "meta" | "priceDelta" | "consultOnly">>,
 ): ProductOptions {
   return {
     ...options,
@@ -176,6 +178,9 @@ export function patchProductOptionItem(
           }
           if ("meta" in patch && !patch.meta?.trim()) {
             delete next.meta;
+          }
+          if ("consultOnly" in patch && patch.consultOnly !== true) {
+            delete next.consultOnly;
           }
           return next;
         }),

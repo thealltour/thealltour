@@ -33,13 +33,22 @@ function section(title: string): HomeCuratedSectionWithProducts {
 }
 
 describe("resolveHomeCuratedSectionTitle", () => {
-  it("uses settings.section_title when present", () => {
+  it("maps THEALL PICKS section_title to 추천 여행", () => {
     expect(
       resolveHomeCuratedSectionTitle(
         settings({ section_title: "THEALL PICKS" }),
         [section("유럽 여행 상품")],
       ),
-    ).toBe("THEALL PICKS");
+    ).toBe("추천 여행");
+  });
+
+  it("uses custom settings.section_title when present", () => {
+    expect(
+      resolveHomeCuratedSectionTitle(
+        settings({ section_title: "이달의 추천" }),
+        [section("유럽 여행 상품")],
+      ),
+    ).toBe("이달의 추천");
   });
 
   it("falls back to single section title when settings title empty", () => {
@@ -60,3 +69,4 @@ describe("resolveHomeCuratedSectionTitle", () => {
     ).toBe("추천 여행");
   });
 });
+

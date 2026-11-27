@@ -25,6 +25,7 @@ import {
   resolveGolfCalendarInitialDate,
   type GolfDepartureEvent,
 } from "@/lib/products/golfDepartureCalendar";
+import { stripLocationHashFromHistory } from "@/lib/navigation/inPageAnchor";
 
 const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/thealltour-home-card/800/600";
 const DEFAULT_PROMOTION_LEGEND = "특가·기획 상품 출발일";
@@ -192,6 +193,7 @@ export default function GolfDepartureCalendarSection({
                 <li key={`${event.productId}-${event.date}`}>
                   <Link
                     href={event.href}
+                    onClick={() => stripLocationHashFromHistory()}
                     className="flex gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-2.5 transition hover:border-[var(--primary)]/40 hover:bg-[var(--primary-soft)]/30 sm:p-4"
                   >
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--surface-muted)]">

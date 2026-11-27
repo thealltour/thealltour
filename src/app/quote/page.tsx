@@ -1,5 +1,4 @@
 import SiteHeader from "@/components/site-chrome/SiteHeader";
-import { PageHero } from "@/components/layout/PageHero";
 import { SectionBody } from "@/components/layout/SectionBody";
 import { ContentCard } from "@/components/layout/ContentCard";
 import { QuotePageContent, type QuoteSummary } from "@/components/quote/QuotePageContent";
@@ -14,6 +13,7 @@ type QuotePageProps = {
     landing_slug?: string;
     quote_category?: string;
     desired_departure?: string;
+    program?: string;
   }>;
 };
 
@@ -21,6 +21,7 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
   const query = (await searchParams) ?? {};
   const productId = (query.product_id ?? query.productId)?.trim();
   const productTitleFromQuery = query.product_title?.trim();
+  const initialProgram = query.program?.trim();
 
   let productSummary: QuoteSummary | null = null;
   if (productId) {
@@ -47,21 +48,20 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
       <SiteHeader activeTab="quote" />
 
       <SectionBody className="flex flex-col gap-[var(--space-5)]">
-        <PageHero
-          kicker="THEALL TOUR QUOTE"
-          title="맞춤 견적 문의"
-          subtitle="여행 희망 조건을 남겨주시면 접수 순서대로 맞춤 일정과 견적 옵션을 안내드립니다."
-          size="sm"
-        />
+        <header className="space-y-1">
+          <h1 className="type-h2 text-content-primary">
+            {query.quote_category?.startsWith("corporate")
+              ? "기업·기관 견적 문의"
+              : "맞춤 견적 문의"}
+          </h1>
+          <p className="type-small text-content-secondary">
+            {query.quote_category?.startsWith("corporate")
+              ? "조직 유형과 회사·기관명, 행사 목적을 남겨주시면 상담이 가능합니다."
+              : "이름과 연락처만 남겨도 상담이 가능합니다."}
+          </p>
+        </header>
 
         <ContentCard>
-          <div className="mb-6 space-y-2">
-            <p className="section-label text-[#B8962E]">THEALL TOUR CONTACT</p>
-            <h2 className="section-title type-h2">견적 문의 작성</h2>
-            <p className="type-small text-content-secondary">
-              간단한 정보만 남겨주시면 확인 후 안내드리겠습니다. 필수 항목만 입력하셔도 상담이 가능합니다.
-            </p>
-          </div>
           <QuotePageContent
             source={{
               product_id: productId,
@@ -72,6 +72,7 @@ export default async function QuotePage({ searchParams }: QuotePageProps) {
             }}
             productSummary={productSummary}
             initialDesiredDeparture={query.desired_departure?.trim()}
+            initialProgram={initialProgram}
           />
         </ContentCard>
       </SectionBody>

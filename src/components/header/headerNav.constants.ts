@@ -7,6 +7,7 @@
 export const HEADER_PRIMARY_NAV_KEYS = [
   "recommended",
   "region",
+  "package",
   "theme",
   "planner",
   "inquiry",
@@ -20,9 +21,10 @@ export type HeaderPrimaryNavKey = (typeof HEADER_PRIMARY_NAV_KEYS)[number];
 export const HEADER_PRIMARY_NAV_ITEMS: ReadonlyArray<{ key: HeaderPrimaryNavKey; label: string }> = [
   { key: "recommended", label: "여행추천" },
   { key: "region", label: "지역별 여행" },
-  { key: "theme", label: "테마별 여행" },
+  { key: "package", label: "패키지여행" },
+  { key: "theme", label: "테마여행" },
   { key: "planner", label: "여행플래너" },
-  { key: "inquiry", label: "맞춤/단체문의" },
+  { key: "inquiry", label: "기업·단체여행" },
   { key: "guides", label: "여행가이드" },
   { key: "support", label: "고객센터" },
 ];
@@ -32,27 +34,36 @@ export const HEADER_NAV_GROUP_KEYS = {
   RECOMMENDED: "recommended",
   REGION: "region",
   THEME: "theme",
+  PACKAGE: "package",
 } as const;
 
 /** 정적 1차 메뉴용 기본 href (메가메뉴 없이 상단만 쓸 때) */
 export const HEADER_PRIMARY_NAV_DEFAULT_HREF: Record<HeaderPrimaryNavKey, string> = {
   recommended: "/recommended",
   region: "/destinations",
+  package: "/products",
   theme: "/themes",
   planner: "/planner",
-  inquiry: "/quote",
+  inquiry: "/corporate",
   guides: "/guides",
   support: "/support",
 };
 
-/** 데스크톱 2행에 노출할 1차 탐색축 메뉴 key (추천·지역·테마·맞춤문의) */
-export const HEADER_DESKTOP_PRIMARY_NAV_KEYS: readonly HeaderPrimaryNavKey[] = [
-  "recommended",
-  "region",
+/**
+ * 데스크톱/모바일 카탈로그 1차 메뉴 (골프는 컴포넌트에서 별도 주입).
+ * 순서: 패키지여행 → 테마여행 → 기업·단체여행 → 여행플래너
+ */
+export const HEADER_CATALOG_PRIMARY_NAV_KEYS = [
+  "package",
   "theme",
-  "planner",
   "inquiry",
-];
+  "planner",
+] as const;
+
+export type HeaderCatalogPrimaryNavKey = (typeof HEADER_CATALOG_PRIMARY_NAV_KEYS)[number];
+
+/** @deprecated HEADER_CATALOG_PRIMARY_NAV_KEYS 사용. 하위 호환용 별칭 */
+export const HEADER_DESKTOP_PRIMARY_NAV_KEYS = HEADER_CATALOG_PRIMARY_NAV_KEYS;
 
 /**
  * 상단 유틸리티 메뉴(회사소개~고객센터)의 여행가이드 탭.

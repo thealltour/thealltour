@@ -225,7 +225,18 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           />
           {!isSearchMode ? (
             <>
-              <ProductsHero variant={golfPresetActive ? "golf" : "package"} />
+              <ProductsHero
+                variant={golfPresetActive ? "golf" : "package"}
+                contextLabel={
+                  [parsedFilters.region, parsedFilters.theme].filter(Boolean).join(" · ") ||
+                  initialFiltersFromServer?.region ||
+                  initialFiltersFromServer?.theme ||
+                  null
+                }
+                golfDatesHref={
+                  golfPresetActive ? `#products-golf-dates` : null
+                }
+              />
               <CoupangTravelSection compact />
             </>
           ) : null}

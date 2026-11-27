@@ -5,6 +5,11 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Inquiry, QuoteSnapshot, ConsultationStatus, BookingStatus } from "@/types/inquiry";
+import {
+  CORPORATE_ORG_TYPE_LABELS,
+  corporateBriefSummaryLines,
+  type CorporateOrgType,
+} from "@/lib/corporate/corporateBrief";
 import { buildAdminBookingNewUrl } from "@/lib/bookings/bookingNewUrl";
 import {
   useAdminInquiryTable,
@@ -86,14 +91,34 @@ function QuoteSnapshotSection({ snapshot }: { snapshot: QuoteSnapshot }) {
   );
   const hasPointsUse =
     typeof snapshot.pointsUseRequested === "number" && snapshot.pointsUseRequested > 0;
+  const corporateBrief = snapshot.corporate_brief;
 
-  if (!hasOptions && !hasSummary && !snapshot.inquiredAt && !hasDesiredDeparture && !hasPointsUse) {
+  if (
+    !hasOptions &&
+    !hasSummary &&
+    !snapshot.inquiredAt &&
+    !hasDesiredDeparture &&
+    !hasPointsUse &&
+    !corporateBrief
+  ) {
     return null;
   }
 
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm">
       <h4 className="mb-3 font-semibold text-[var(--text-primary)]">고객 선택 구성</h4>
+      {corporateBrief ? (
+        <div className="mb-3 space-y-1 text-[var(--text-secondary)]">
+          <p className="font-semibold text-[var(--text-primary)]">기업·기관 견적</p>
+          <ul className="list-inside list-disc space-y-0.5">
+            {corporateBriefSummaryLines(corporateBrief as Parameters<typeof corporateBriefSummaryLines>[0]).map(
+              (line) => (
+                <li key={line}>{line}</li>
+              ),
+            )}
+          </ul>
+        </div>
+      ) : null}
       {hasDesiredDeparture ? (
         <div className="mb-3">
           <DesiredDepartureBadge
@@ -620,7 +645,25 @@ export default function AdminInquiryTable() {
                       </td>
                       <td className="px-3 py-3 align-top text-left tabular-nums">{inquiry.phone}</td>
                       <td className="min-w-0 max-w-[120px] px-2 py-3 align-top text-left">
-                        {inquiry.product_title ? (
+                        {inquiry.quote_snapshot?.corporate_brief ? (
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="truncate text-sm font-medium text-[var(--text-secondary)]">
+                              {CORPORATE_ORG_TYPE_LABELS[
+                                inquiry.quote_snapshot.corporate_brief.org_type as CorporateOrgType
+                              ] ?? inquiry.quote_snapshot.corporate_brief.org_type}
+                            </p>
+                            <p
+                              className="truncate text-xs text-[var(--text-subtle)]"
+                              title={
+                                inquiry.quote_snapshot.corporate_brief.program_label ??
+                                inquiry.quote_snapshot.corporate_brief.org_name
+                              }
+                            >
+                              {inquiry.quote_snapshot.corporate_brief.program_label ??
+                                inquiry.quote_snapshot.corporate_brief.org_name}
+                            </p>
+                          </div>
+                        ) : inquiry.product_title ? (
                           <div className="min-w-0 space-y-0.5">
                             <p
                               className="truncate text-sm font-medium text-[var(--text-secondary)]"

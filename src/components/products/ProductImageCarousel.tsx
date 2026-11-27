@@ -13,6 +13,11 @@ type ProductImageCarouselProps = {
   images: ProductGalleryImage[];
   /** 이미지가 없을 때 placeholder 표시 (false면 아무것도 안 그림) */
   showPlaceholderWhenEmpty?: boolean;
+  /**
+   * default: 데스크톱에서 대표+측면 썸네일 그리드
+   * stack: 상세 히어로 좌열용 — 대표 아래 가로 썸네일 (좁은 열에서 밀림 방지)
+   */
+  layout?: "default" | "stack";
 };
 
 function clampIndex(index: number, length: number): number {
@@ -25,11 +30,13 @@ function clampIndex(index: number, length: number): number {
 export function ProductImageCarousel({
   images,
   showPlaceholderWhenEmpty = true,
+  layout = "default",
 }: ProductImageCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
-  const maxDesktopThumbs = 6;
+  const maxDesktopThumbs = layout === "stack" ? 8 : 6;
+  const stackLayout = layout === "stack";
 
   if (!images.length) {
     if (!showPlaceholderWhenEmpty) return null;
@@ -172,11 +179,17 @@ export function ProductImageCarousel({
           </div>
         </div>
 
-        <div className="hidden gap-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div
+          className={
+            stackLayout
+              ? "hidden gap-3 md:flex md:flex-col"
+              : "hidden gap-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+          }
+        >
           <button
             type="button"
             onClick={() => openModalAt(activeIndex)}
-            className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100"
+            className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-100"
             aria-label={`대표 이미지 ${activeIndex + 1} 확대 보기`}
           >
             <Image
@@ -184,7 +197,11 @@ export function ProductImageCarousel({
               alt={current.alt}
               fill
               priority={activeIndex === 0}
-              sizes="(max-width: 1024px) 68vw, 720px"
+              sizes={
+                stackLayout
+                  ? "(max-width: 1024px) 90vw, 42vw"
+                  : "(max-width: 1024px) 68vw, 720px"
+              }
               className="object-cover transition duration-300 group-hover:scale-[1.02]"
             />
             <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
@@ -196,7 +213,13 @@ export function ProductImageCarousel({
             </div>
           </button>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div
+            className={
+              stackLayout
+                ? "grid grid-cols-4 gap-2 sm:grid-cols-5"
+                : "grid grid-cols-2 gap-2"
+            }
+          >
             {desktopThumbs.map((image, i) => {
               const imageIndex = i + 1;
               const isLastVisible = i === desktopThumbs.length - 1;
@@ -213,7 +236,11 @@ export function ProductImageCarousel({
                     src={normalizeProductImageUrl(image.url, { width: 480, quality: 70, mode: "cover" })}
                     alt={image.alt}
                     fill
-                    sizes="(max-width: 1280px) 16vw, 180px"
+                    sizes={
+                      stackLayout
+                        ? "(max-width: 1280px) 10vw, 96px"
+                        : "(max-width: 1280px) 16vw, 180px"
+                    }
                     className="object-cover transition duration-300 group-hover:scale-[1.03]"
                   />
                   <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />

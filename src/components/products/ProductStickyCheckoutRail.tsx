@@ -26,6 +26,11 @@ export type ProductStickyCheckoutRailProps = {
   onOpenSelection?: () => void;
   /** sticky_mobile | sidebar — analytics section */
   analyticsSection?: "sticky_mobile" | "sidebar";
+  /**
+   * 본문 예약 구역의 스크롤 앵커. 시트/중복 인스턴스에서는 false로 끈다.
+   * 기본: layout=rail 일 때 product-checkout
+   */
+  checkoutAnchorId?: string | false;
 };
 
 /**
@@ -39,6 +44,7 @@ export function ProductStickyCheckoutRail({
   layout = "rail",
   onOpenSelection,
   analyticsSection = "sidebar",
+  checkoutAnchorId,
 }: ProductStickyCheckoutRailProps) {
   const {
     selectedOptions,
@@ -215,18 +221,32 @@ export function ProductStickyCheckoutRail({
     );
   }
 
+  const resolvedCheckoutAnchorId =
+    checkoutAnchorId === false
+      ? undefined
+      : checkoutAnchorId ?? (layout === "rail" ? "product-checkout" : undefined);
+
   return (
     <>
-      <div id="product-checkout" className="space-y-3 scroll-mt-28">
+      <div
+        id={resolvedCheckoutAnchorId}
+        className="space-y-3 scroll-mt-[calc(var(--site-header-height,7rem)+1rem)]"
+      >
         <dl className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
           <div className="flex justify-between gap-2">
-            <dt>상품 총액</dt>
+            <dt>{canReserve ? "상품 총액" : "예상 총액"}</dt>
             <dd className="font-semibold text-[var(--primary)]">
-              ₩{formatPriceKR(totalTripPrice) ?? "0"}
+              {canReserve && totalTripPrice > 0
+                ? `₩${formatPriceKR(totalTripPrice)}`
+                : totalTripPrice > 0
+                  ? `₩${formatPriceKR(totalTripPrice)}~`
+                  : "선택 후 안내"}
             </dd>
           </div>
           <p className="mt-2 text-[11px] leading-snug text-slate-500">
-            출발일·인원 확인 후 상품 총액을 결제합니다.
+            {canReserve
+              ? "출발일·인원 확인 후 상품 총액을 결제합니다."
+              : "필수 선택(출발일·옵션)이 끝나면 확정 총액이 표시됩니다."}
           </p>
           {paxDiscountPreview && paxDiscountPreview.amount > 0 ? (
             <p className="mt-1 text-[11px] leading-snug text-[var(--success)]">

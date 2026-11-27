@@ -21,6 +21,7 @@ export type ProductTrust = {
  * - priceDelta: 기준가에 더할 금액(원). 미설정 시 0
  * - meta: "1인1실", "성수기" 등 부가 표시
  * - isDefault: true면 초기 선택값 후보
+ * - consultOnly: 원화 결제 미확정(외화 안내 등). 온라인 선택·합계 제외
  */
 export type ProductOptionItem = {
   value: string;
@@ -28,6 +29,7 @@ export type ProductOptionItem = {
   priceDelta?: number;
   meta?: string;
   isDefault?: boolean;
+  consultOnly?: boolean;
 };
 
 /**

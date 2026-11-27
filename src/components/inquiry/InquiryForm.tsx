@@ -13,6 +13,21 @@ import { GolfBriefFields } from "@/components/inquiry/GolfBriefFields";
 import { InquirySuccessPanel } from "@/components/inquiry/InquirySuccessPanel";
 import { DesiredDepartureField } from "@/components/inquiry/DesiredDepartureField";
 import {
+  CorporateInquiryFields,
+  INITIAL_CORPORATE_FORM,
+  type CorporateFieldErrors,
+  type CorporateFormState,
+} from "@/components/inquiry/CorporateInquiryFields";
+import { isCorporateQuoteCategory } from "@/lib/corporate/buildCorporateQuoteHref";
+import {
+  corporateBriefSummaryLines,
+  findProgramInOrg,
+  orgTypeFromQuoteCategory,
+  resolveInitialProgramId,
+  validateCorporateBrief,
+  type CorporateOrgType,
+} from "@/lib/corporate/corporateBrief";
+import {
   isGolfBriefContext,
   mergeGolfBriefIntoContent,
   type GolfBriefSnapshot,
@@ -58,12 +73,34 @@ type InquiryFormProps = {
   >;
   productIdForTracking?: string;
   initialDesiredDeparture?: string;
+  /** 기업·기관 프로그램 URL 프리셋 (소속 조직과 맞을 때만 적용) */
+  initialProgram?: string;
+  /**
+   * quote: /quote 페이지용 — 요약 카드와 제목이 바깥에 있으므로 중복 안내·상품 배너를 줄인다.
+   * default: 공유 폼 기본 레이아웃.
+   */
+  layout?: "default" | "quote";
 };
+
+function buildInitialCorporateForm(
+  quoteCategory: string,
+  initialProgram?: string,
+): CorporateFormState {
+  const orgType = orgTypeFromQuoteCategory(quoteCategory);
+  const programId = resolveInitialProgramId(orgType, initialProgram);
+  return {
+    ...INITIAL_CORPORATE_FORM,
+    orgType: orgType ?? "",
+    programId: programId ?? "",
+  };
+}
 
 export default function InquiryForm({
   source,
   productIdForTracking,
   initialDesiredDeparture,
+  initialProgram,
+  layout = "default",
 }: InquiryFormProps) {
   const sourceProductId = source?.product_id?.trim() ?? "";
   const sourceProductTitle = source?.product_title?.trim() ?? "";
@@ -71,23 +108,38 @@ export default function InquiryForm({
   const landingSlug = source?.landing_slug?.trim() ?? "";
   const quoteCategory = source?.quote_category?.trim() ?? "";
 
+  const isCorporateMode = useMemo(
+    () => isCorporateQuoteCategory(quoteCategory) && !sourceProductId,
+    [quoteCategory, sourceProductId],
+  );
+
   const showGolfBrief = useMemo(
     () =>
+      !isCorporateMode &&
       isGolfBriefContext({
         quoteCategory,
         productTitle: sourceProductTitle,
         landingSlug,
       }),
-    [quoteCategory, sourceProductTitle, landingSlug],
+    [isCorporateMode, quoteCategory, sourceProductTitle, landingSlug],
   );
 
   const [form, setForm] = useState<FormState>({
     ...initialFormState,
     desiredDeparture: parseInitialDesiredDeparture(initialDesiredDeparture),
   });
+  const [corporate, setCorporate] = useState<CorporateFormState>(() =>
+    buildInitialCorporateForm(quoteCategory, initialProgram),
+  );
   const [golfBrief, setGolfBrief] = useState<GolfBriefSnapshot>({});
   const [touched, setTouched] = useState<Touched>({});
+  const [corporateTouched, setCorporateTouched] = useState<{
+    orgType?: boolean;
+    orgName?: boolean;
+    purpose?: boolean;
+  }>({});
   const [errors, setErrors] = useState<Errors>({});
+  const [corporateErrors, setCorporateErrors] = useState<CorporateFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -118,8 +170,37 @@ export default function InquiryForm({
   }, []);
 
   const buildContent = useCallback(
-    (state: FormState) => {
+    (state: FormState, corporateState?: CorporateFormState) => {
       const parts: string[] = [];
+      if (isCorporateMode && corporateState) {
+        const program = corporateState.orgType
+          ? findProgramInOrg(corporateState.orgType as CorporateOrgType, corporateState.programId)
+          : null;
+        const validated = validateCorporateBrief({
+          org_type: corporateState.orgType || undefined,
+          org_name: corporateState.orgName,
+          purpose: corporateState.purpose,
+          program_id: corporateState.programId || null,
+          program_label: program?.title ?? null,
+          headcount: corporateState.headcountFlexible ? null : corporateState.headcount,
+          headcount_flexible: corporateState.headcountFlexible,
+          timing: corporateState.timingFlexible ? null : corporateState.timing,
+          timing_flexible: corporateState.timingFlexible,
+          destination: corporateState.destination,
+          budget_per_person: corporateState.budgetPerPerson,
+          email: corporateState.email,
+          golf_rounds: corporateState.golfRounds,
+          job_topic: corporateState.jobTopic,
+          policy_topic: corporateState.policyTopic,
+          committee_focus: corporateState.committeeFocus,
+        });
+        if (validated.ok) {
+          parts.push(...corporateBriefSummaryLines(validated.brief));
+        }
+        if (state.content?.trim()) parts.push(state.content.trim());
+        return parts.join("\n");
+      }
+
       const departureLine = buildDesiredDepartureContentLine(state.desiredDeparture);
       if (departureLine) parts.push(departureLine);
       if (state.peopleCount?.trim()) parts.push(`인원: ${state.peopleCount.trim()}`);
@@ -128,15 +209,62 @@ export default function InquiryForm({
       if (merged) parts.push(merged);
       return parts.join("\n");
     },
-    [golfBrief, showGolfBrief],
+    [golfBrief, isCorporateMode, showGolfBrief],
   );
+
+  const validateCorporateFields = useCallback((state: CorporateFormState): CorporateFieldErrors => {
+    const next: CorporateFieldErrors = {};
+    if (!state.orgType) next.orgType = "조직 유형을 선택해 주세요.";
+    if (!state.orgName.trim()) next.orgName = "회사·기관명을 입력해 주세요.";
+    if (!state.purpose.trim()) next.purpose = "행사 목적을 입력해 주세요.";
+    return next;
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setTouched({ name: true, phone: true });
     const nextErrors = validate(form);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+
+    let nextCorporateErrors: CorporateFieldErrors = {};
+    if (isCorporateMode) {
+      setCorporateTouched({ orgType: true, orgName: true, purpose: true });
+      nextCorporateErrors = validateCorporateFields(corporate);
+      setCorporateErrors(nextCorporateErrors);
+    }
+
+    if (Object.keys(nextErrors).length > 0 || Object.keys(nextCorporateErrors).length > 0) return;
+
+    let corporateBriefPayload: Record<string, unknown> | undefined;
+    if (isCorporateMode) {
+      const program = corporate.orgType
+        ? findProgramInOrg(corporate.orgType as CorporateOrgType, corporate.programId)
+        : null;
+      const validated = validateCorporateBrief({
+        org_type: corporate.orgType || undefined,
+        org_name: corporate.orgName,
+        purpose: corporate.purpose,
+        program_id: corporate.programId || null,
+        program_label: program?.title ?? null,
+        headcount: corporate.headcountFlexible ? null : corporate.headcount,
+        headcount_flexible: corporate.headcountFlexible,
+        timing: corporate.timingFlexible ? null : corporate.timing,
+        timing_flexible: corporate.timingFlexible,
+        destination: corporate.destination,
+        budget_per_person: corporate.budgetPerPerson,
+        email: corporate.email,
+        golf_rounds: corporate.golfRounds,
+        job_topic: corporate.jobTopic,
+        policy_topic: corporate.policyTopic,
+        committee_focus: corporate.committeeFocus,
+      });
+      if (!validated.ok) {
+        setMessage(validated.message);
+        setIsSuccess(false);
+        return;
+      }
+      corporateBriefPayload = validated.brief as unknown as Record<string, unknown>;
+    }
 
     const trackingId = productIdForTracking || sourceProductId;
     if (trackingId) trackQuoteSubmitClick(trackingId);
@@ -144,15 +272,20 @@ export default function InquiryForm({
     setMessage("");
 
     try {
-      const content = buildContent(form);
+      const content = buildContent(form, corporate);
       const firstTouch = getAttributionTouch();
-      const desiredDeparturePayload = toQuoteSnapshotPayload(form.desiredDeparture);
+      const desiredDeparturePayload = !isCorporateMode
+        ? toQuoteSnapshotPayload(form.desiredDeparture)
+        : null;
       const quoteSnapshot: Record<string, unknown> = {};
       if (desiredDeparturePayload) {
         quoteSnapshot.desiredDeparture = desiredDeparturePayload;
       }
       if (showGolfBrief) {
         quoteSnapshot.golf_brief = golfBrief;
+      }
+      if (corporateBriefPayload) {
+        quoteSnapshot.corporate_brief = corporateBriefPayload;
       }
 
       const response = await fetch("/api/inquiries", {
@@ -188,7 +321,9 @@ export default function InquiryForm({
           const att = inferAttribution(firstTouch ?? undefined);
           window.gtag("event", "generate_lead", {
             event_category: "inquiry",
-            event_label: sourceProductTitle || "general_inquiry",
+            event_label: isCorporateMode
+              ? "corporate_inquiry"
+              : sourceProductTitle || "general_inquiry",
             source_path: sourcePath || undefined,
             inquiry_page_url: window.location.pathname,
             acquisition_channel: att.acquisition_channel ?? undefined,
@@ -205,9 +340,12 @@ export default function InquiryForm({
         ...initialFormState,
         desiredDeparture: parseInitialDesiredDeparture(initialDesiredDeparture),
       });
+      setCorporate(buildInitialCorporateForm(quoteCategory, initialProgram));
       setGolfBrief({});
       setErrors({});
+      setCorporateErrors({});
       setTouched({});
+      setCorporateTouched({});
     } catch {
       setIsSuccess(false);
       setMessage("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
@@ -222,30 +360,52 @@ export default function InquiryForm({
     setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
   };
 
-  return (
-    <form className="flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5" onSubmit={handleSubmit}>
-      <div className="md:col-span-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0]">
-        <div>
-          <p className="section-label text-[var(--primary)]">응답 안내</p>
-          <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
-        </div>
-        <div>
-          <p className="section-label text-[var(--primary)]">맞춤 제안</p>
-          <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
-        </div>
-        <div>
-          <p className="section-label text-[var(--primary)]">개인정보 보호</p>
-          <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
-        </div>
-      </div>
+  const handleCorporateBlur = (field: keyof CorporateFieldErrors) => {
+    setCorporateTouched((prev) => ({ ...prev, [field]: true }));
+    const next = validateCorporateFields(corporate);
+    setCorporateErrors((prev) => ({ ...prev, [field]: next[field] }));
+  };
 
-      {sourceProductTitle ? (
+  const isQuoteLayout = layout === "quote";
+
+  return (
+    <form
+      className="flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5"
+      onSubmit={handleSubmit}
+      aria-label={isQuoteLayout ? "견적 문의 작성" : undefined}
+    >
+      {!isQuoteLayout ? (
+        <div className="md:col-span-2 flex flex-col space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-3 rounded-xl bg-[#f9fafb] p-4 border border-[#e2e8f0]">
+          <div>
+            <p className="section-label text-[var(--primary)]">응답 안내</p>
+            <p className="mt-1 type-small text-content-secondary">접수된 순서대로 확인 후 연락드립니다.</p>
+          </div>
+          <div>
+            <p className="section-label text-[var(--primary)]">맞춤 제안</p>
+            <p className="mt-1 type-small text-content-secondary">일정/예산/동행 구성 중심으로 설계합니다.</p>
+          </div>
+          <div>
+            <p className="section-label text-[var(--primary)]">개인정보 보호</p>
+            <p className="mt-1 type-small text-content-secondary">상담 목적 외에는 사용하지 않습니다.</p>
+          </div>
+        </div>
+      ) : null}
+
+      {!isQuoteLayout && sourceProductTitle ? (
         <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 type-small text-content-primary">
           문의 상품: <span className="font-semibold">{sourceProductTitle}</span>
         </div>
       ) : null}
 
-      {showGolfBrief ? <GolfBriefFields value={golfBrief} onChange={setGolfBrief} /> : null}
+      {!isQuoteLayout && showGolfBrief ? (
+        <GolfBriefFields value={golfBrief} onChange={setGolfBrief} />
+      ) : null}
+
+      {isQuoteLayout ? (
+        <div className="md:col-span-2">
+          <h2 className="mb-3 text-base font-semibold text-content-primary">이름 · 연락처</h2>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-1 md:col-span-1">
         <Label className="flex flex-col gap-2">
@@ -296,23 +456,41 @@ export default function InquiryForm({
         ) : null}
       </div>
 
-      <DesiredDepartureField
-        className="md:col-span-2"
-        value={form.desiredDeparture}
-        onChange={(desiredDeparture) => setForm((prev) => ({ ...prev, desiredDeparture }))}
-      />
-
-      <Label className="flex flex-col gap-2 md:col-span-2">
-        인원 <span className="text-slate-400 type-small font-normal">(선택)</span>
-        <Input
-          type="text"
-          name="peopleCount"
-          value={form.peopleCount}
-          onChange={(e) => setForm((prev) => ({ ...prev, peopleCount: e.target.value }))}
-          placeholder="예: 2명"
-          className="py-3"
+      {isCorporateMode ? (
+        <CorporateInquiryFields
+          value={corporate}
+          errors={corporateErrors}
+          touched={corporateTouched}
+          onChange={setCorporate}
+          onBlur={handleCorporateBlur}
         />
-      </Label>
+      ) : (
+        <>
+          {isQuoteLayout ? (
+            <div className="md:col-span-2 pt-1">
+              <h2 className="mb-3 text-base font-semibold text-content-primary">희망 여행 조건</h2>
+            </div>
+          ) : null}
+
+          <DesiredDepartureField
+            className="md:col-span-2"
+            value={form.desiredDeparture}
+            onChange={(desiredDeparture) => setForm((prev) => ({ ...prev, desiredDeparture }))}
+          />
+
+          <Label className="flex flex-col gap-2 md:col-span-2">
+            인원 <span className="text-slate-400 type-small font-normal">(선택)</span>
+            <Input
+              type="text"
+              name="peopleCount"
+              value={form.peopleCount}
+              onChange={(e) => setForm((prev) => ({ ...prev, peopleCount: e.target.value }))}
+              placeholder="예: 2명"
+              className="py-3"
+            />
+          </Label>
+        </>
+      )}
 
       <Label className="flex flex-col gap-2 md:col-span-2">
         문의 내용 <span className="text-slate-400 type-small font-normal">(선택)</span>
@@ -321,10 +499,18 @@ export default function InquiryForm({
           rows={4}
           value={form.content}
           onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
-          placeholder="예: 스위스 7일, 부모님 동반, 5월 출발 희망"
+          placeholder={
+            isCorporateMode
+              ? "추가로 전달할 내용이 있으면 적어 주세요"
+              : "예: 스위스 7일, 부모님 동반, 5월 출발 희망"
+          }
           className="py-3 min-h-[4.5rem]"
         />
       </Label>
+
+      {isQuoteLayout && showGolfBrief ? (
+        <GolfBriefFields value={golfBrief} onChange={setGolfBrief} />
+      ) : null}
 
       <div className="md:col-span-2 flex flex-col gap-2">
         <Button type="submit" disabled={isSubmitting} className="w-full py-3">

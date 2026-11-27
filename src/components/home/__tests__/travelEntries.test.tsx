@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import HeroSection from "../HeroSection";
 import { HomeTravelEntries } from "../HomeTravelEntries";
 import { HomeTravelPathways } from "../HomeTravelPathways";
@@ -50,20 +50,42 @@ describe("home hero golf find CTAs", () => {
 });
 
 describe("home travel pathways", () => {
-  it("renders golf and planner as independent pathway sections", () => {
+  it("renders compact golf/package/quote/planner shortcuts", () => {
     render(<HomeTravelPathways golfHref="#home-golf-explore" plannerEnabled />);
-    expect(screen.getByRole("heading", { name: "골프여행 찾기" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "자유여행 만들기" })).toBeInTheDocument();
-    const golf = screen.getByRole("link", { name: /골프여행 찾기/ });
-    const planner = screen.getByRole("link", { name: /자유여행 만들기/ });
+    expect(screen.getByRole("navigation", { name: "여행 바로가기" })).toBeInTheDocument();
+    const golf = screen.getByRole("link", { name: "골프" });
+    const planner = screen.getByRole("link", { name: "여행플래너" });
     expect(golf).toHaveAttribute("href", "#home-golf-explore");
     expect(planner).toHaveAttribute("href", "/planner");
+    expect(screen.getByRole("link", { name: "패키지" })).toHaveAttribute("href", "/products");
+    expect(screen.getByRole("link", { name: "맞춤견적" })).toHaveAttribute("href", "/quote");
+    expect(screen.queryByRole("link", { name: "출발일로 찾기" })).not.toBeInTheDocument();
     fireEvent.click(planner);
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: "planner_entry_click",
         section: "home_pathways",
-        metadata: { variant: "card" },
+        metadata: { variant: "compact" },
+      }),
+    );
+  });
+
+  it("adds departure-date shortcut when calendar anchor is provided", () => {
+    render(
+      <HomeTravelPathways
+        golfHref="#home-golf-explore"
+        golfDatesHref="#home-golf-dates"
+        plannerEnabled
+      />,
+    );
+    const dates = screen.getByRole("link", { name: "출발일로 찾기" });
+    expect(dates).toHaveAttribute("href", "#home-golf-dates");
+    fireEvent.click(dates);
+    expect(track).toHaveBeenCalledWith(
+      expect.objectContaining({
+        section: "golf_find_dates",
+        href: "#home-golf-dates",
+        label: "출발일로 찾기",
       }),
     );
   });
@@ -87,7 +109,7 @@ describe("balanced home discovery", () => {
     );
   });
 
-  it("puts golf find CTAs in the hero and keeps search", () => {
+  it("shows photo banner headline without inline hero search", () => {
     render(
       <HeroSection
         golfToursHref="#home-golf-tours"
@@ -102,9 +124,8 @@ describe("balanced home discovery", () => {
         }}
       />,
     );
-    expect(screen.getByRole("textbox", { name: "상품 검색" })).toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: "여행 준비 방법" })).not.toBeInTheDocument();
-    const golfFind = screen.getByRole("navigation", { name: "골프여행 탐색" });
-    expect(within(golfFind).getAllByRole("link")).toHaveLength(2);
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "상품 검색" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "골프여행 탐색" })).not.toBeInTheDocument();
   });
 });

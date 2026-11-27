@@ -18,7 +18,8 @@ export type MobileHeaderMenuProps = {
   searchQuery?: string;
   session: { name: string } | null;
   /**
-   * false면 헤더 직하단 검색행 미렌더 (홈 모바일/태블릿: 히어로 검색만 사용).
+   * false면 헤더 직하단 검색행 미렌더 (예: 플래너 작성 화면 hideMobileSearchRow).
+   * 홈에서는 true — 배너 검색 대신 헤더 검색 사용.
    * @default true
    */
   showHeaderSearchRow?: boolean;

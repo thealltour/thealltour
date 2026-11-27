@@ -14,6 +14,8 @@ import { persistAnalyticsEventAdmin } from "@/lib/analytics/persistAnalyticsEven
 import { dualWriteGolfLeadFromInquiry } from "@/lib/leads/dualWriteGolfLeadFromInquiry";
 import { resolveQuoteSubmitLandingSlug } from "@/lib/analytics/resolveQuoteSubmitLandingSlug";
 import { normalizeDesiredDepartureSnapshot } from "@/lib/inquiry/desiredDeparture";
+import { isCorporateQuoteCategory } from "@/lib/corporate/buildCorporateQuoteHref";
+import { validateCorporateBrief } from "@/lib/corporate/corporateBrief";
 import type { FirstTouch, Inquiry, InquiryInput } from "@/types/inquiry";
 import { getInquiryIdsWithUnreadInbound, getUnreadInboundCountsByInquiryIds } from "@/lib/sms/inboundSmsCounts";
 import { normalizeInquiryRow } from "@/lib/inquiries/normalizeInquiryRow";
@@ -572,6 +574,7 @@ export async function POST(request: Request) {
     }
   }
 
+  let requiresCorporateBrief = false;
   if (quoteSnapshotBody && typeof quoteSnapshotBody === "object") {
     const clientSnapshot = quoteSnapshotBody as Record<string, unknown>;
     if (!quoteSnapshot) quoteSnapshot = {};
@@ -592,6 +595,24 @@ export async function POST(request: Request) {
     ) {
       quoteSnapshot.golf_brief = clientSnapshot.golf_brief;
     }
+
+    const corporateMode =
+      isCorporateQuoteCategory(quoteCategoryBody) && !(productId && productId.length > 0);
+    if (corporateMode || clientSnapshot.corporate_brief != null) {
+      requiresCorporateBrief = true;
+      const validated = validateCorporateBrief(clientSnapshot.corporate_brief, {
+        strictUnknown: true,
+      });
+      if (!validated.ok) {
+        return NextResponse.json({ message: validated.message }, { status: 400 });
+      }
+      quoteSnapshot.corporate_brief = validated.brief;
+    }
+  } else if (isCorporateQuoteCategory(quoteCategoryBody) && !(productId && productId.length > 0)) {
+    return NextResponse.json(
+      { message: "기업·기관 견적 정보(corporate_brief)가 필요합니다." },
+      { status: 400 },
+    );
   }
 
   if (pointsUseRequested > 0 && memberPointBalance != null) {
@@ -649,6 +670,18 @@ export async function POST(request: Request) {
   if (insertResultWithProduct.error || !insertResultWithProduct.data) {
     const firstError = insertResultWithProduct.error;
     const code = firstError?.code;
+
+    // corporate_brief 가 필수인 요청은 quote_snapshot 유실 fallback 을 성공으로 반환하지 않는다.
+    if (requiresCorporateBrief) {
+      console.error("[inquiries POST] corporate_brief 저장 실패 — fallback 차단", {
+        code,
+        message: firstError?.message,
+      });
+      return NextResponse.json(
+        { message: "기업·기관 견적 정보 저장에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 500 },
+      );
+    }
 
     // 2차: quote_snapshot만 제거하고 재시도 (product_*, source_path, customer_profile_id 유지)
     if (code === "42703" && quoteSnapshot) {

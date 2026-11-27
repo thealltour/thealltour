@@ -45,7 +45,7 @@ export type ProductCardBadge = {
   isPromotion?: boolean;
 };
 
-export type ProductCardLayout = "grid" | "list" | "related" | "stack";
+export type ProductCardLayout = "grid" | "list" | "related" | "stack" | "catalog";
 
 export type ProductCardProps = {
   title?: string;
@@ -81,7 +81,7 @@ export type ProductCardProps = {
   taxonomySlug?: string | null;
   /** 계측 시 사용할 상품 ID (analyticsSource 설정 시 권장) */
   productId?: string;
-  /** grid | list: 가로 split. related: 상세 하단 세로형 */
+  /** grid | list: 가로 split. related: 세로형. catalog: /products 목록·검색 세로 그리드 */
   layout?: ProductCardLayout;
   /** 태그 최대 노출 개수 (기본 2) */
   maxTags?: number;
@@ -236,14 +236,16 @@ export default function ProductCard({
 
   const isListLayout = layout === "list";
   const isRelatedLayout = layout === "related";
+  const isCatalogLayout = layout === "catalog";
   const isStackLayout = layout === "stack";
+  const isVerticalCard = isRelatedLayout || isCatalogLayout;
 
   const highlightLabel = highlightTag ? PRODUCT_CARD_HIGHLIGHT_LABELS[highlightTag] : null;
   const hasPromotionOverlay = visibleCampaignBadges.some((b) => b.isPromotion);
   const overlayCampaignBadges =
     hasPromotionOverlay || !highlightLabel ? visibleCampaignBadges : [];
   const showHighlightPriceLine =
-    Boolean(highlightLabel) && (isListLayout || isRelatedLayout);
+    Boolean(highlightLabel) && (isListLayout || isRelatedLayout || isCatalogLayout);
   const useCompactSeasonalPrice = isRelatedLayout || isStackLayout;
   const seasonalBandInfo = getProductCardSeasonalBandInfo(seasonal_price_bands);
 
@@ -259,7 +261,7 @@ export default function ProductCard({
   const priceMainClass = cn(
     "font-price-strong font-bold leading-tight text-[var(--primary)] tabular-nums",
     "text-xl md:text-2xl",
-    isRelatedLayout &&
+    (isRelatedLayout || isCatalogLayout) &&
       (guideBridgeNarrowCopy ? "text-lg sm:text-xl md:text-2xl" : "text-base md:text-lg"),
   );
 
@@ -289,7 +291,7 @@ export default function ProductCard({
         {priceFormatted != null ? (
           <>
             <p className={priceMainClass}>
-              {isRelatedLayout ? `₩${priceFormatted}~` : `${priceFormatted}원~`}
+              {isRelatedLayout || isCatalogLayout ? `₩${priceFormatted}~` : `${priceFormatted}원~`}
             </p>
             {priceMeta ? (
               <p className="text-[10px] font-medium text-[var(--text-subtle)] sm:text-[11px]">{priceMeta}</p>
@@ -402,24 +404,28 @@ export default function ProductCard({
       <div
         className={cn(
           "flex min-h-0 flex-1 flex-col p-3",
+          isCatalogLayout && "gap-1",
           emphasizeFirstOnMobile && "max-sm:px-3.5 max-sm:pb-3.5 max-sm:pt-3",
         )}
       >
-        {infoDisplayChips.length > 0 ? (
-          <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1">
-            {infoDisplayChips.map((chip) => (
-              <span
-                key={`info-${chip.variant}-${chip.label}`}
-                className={cn(
-                  "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur sm:px-2 sm:py-1 sm:text-[11px]",
-                  infoDisplayChipSurfaceClass(chip.variant),
-                )}
-              >
-                {chip.label}
-              </span>
-            ))}
-          </div>
-        ) : null}
+        <div
+          className={cn(
+            "mb-1.5 flex min-w-0 flex-wrap items-center gap-1",
+            isCatalogLayout && "mb-0 min-h-[1.25rem]",
+          )}
+        >
+          {infoDisplayChips.map((chip) => (
+            <span
+              key={`info-${chip.variant}-${chip.label}`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none shadow-sm backdrop-blur sm:px-2 sm:py-1 sm:text-[11px]",
+                infoDisplayChipSurfaceClass(chip.variant),
+              )}
+            >
+              {chip.label}
+            </span>
+          ))}
+        </div>
         {guideBridgeNarrowCopy ? (
           <>
             {titleBlock(2, "sm")}
@@ -478,7 +484,12 @@ export default function ProductCard({
           </>
         ) : (
           <>
-            <div className="mb-1 flex items-start justify-between gap-2">
+            <div
+              className={cn(
+                "mb-1 flex items-start justify-between gap-2",
+                isCatalogLayout && "min-h-[1.25rem]",
+              )}
+            >
               {durationLabel ? (
                 <span className="inline-flex w-fit max-w-[65%] truncate rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                   {durationLabel}
@@ -488,11 +499,23 @@ export default function ProductCard({
               )}
               <CardRatingBlock ratingAvg={ratingAvg} reviewCount={reviewCount} />
             </div>
-            {titleBlock(2, "sm")}
-            {oneLine ? (
+            <div className={cn(isCatalogLayout && "min-h-[2.5rem] sm:min-h-[2.75rem]")}>
+              {titleBlock(2, "sm")}
+            </div>
+            {isCatalogLayout ? (
+              <p
+                className={cn(
+                  "mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]",
+                  "min-h-[1.125rem]",
+                  !oneLine && "invisible",
+                )}
+              >
+                {oneLine || "\u00a0"}
+              </p>
+            ) : oneLine ? (
               <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-[var(--text-muted)]">{oneLine}</p>
             ) : null}
-            <div className="mt-2">{priceBlock}</div>
+            <div className={cn("mt-auto pt-2", isCatalogLayout && "min-h-[2.75rem]")}>{priceBlock}</div>
             {showHighlightPriceLine ? (
               <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{highlightLabel}</p>
             ) : null}
@@ -678,6 +701,7 @@ export default function ProductCard({
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "inline-flex w-fit min-h-11 !px-3 !text-xs",
+          isCatalogLayout && "w-full justify-center",
           consultPressed && "pointer-events-none opacity-60",
         )}
         onClick={handleConsult}
@@ -686,7 +710,7 @@ export default function ProductCard({
       </button>
     ) : null;
 
-  const cardContent: ReactNode = isRelatedLayout ? relatedCardContent : gridListCardContent;
+  const cardContent: ReactNode = isVerticalCard ? relatedCardContent : gridListCardContent;
 
   const wrapperClass = cn(
     "group flex h-full w-full overflow-hidden",
@@ -695,7 +719,7 @@ export default function ProductCard({
       ? "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft-strong)] hover:border-[var(--border-strong)]"
       : "hover:shadow-md hover:border-[var(--primary)]/30",
     isListLayout && "max-w-[1344px]",
-    isRelatedLayout && "flex-col",
+    isVerticalCard && "flex-col",
     emphasizeFirstOnMobile &&
       isRelatedLayout &&
       "max-sm:shadow-md max-sm:ring-1 max-sm:ring-[var(--primary)]/20",
@@ -721,6 +745,33 @@ export default function ProductCard({
 
   /** consult가 있으면 Link/role=button 자손에 button을 두지 않음 (PR-UI-10B) */
   if (consultAction) {
+    if (isCatalogLayout) {
+      return (
+        <Card variant="interactive" className={cn(wrapperClass, "flex-col", className)}>
+          {hrefDetail ? (
+            <Link href={hrefDetail} className={cn("block min-w-0 flex-1", linkFocusClass)} onClick={handleCardClick}>
+              {cardContent}
+            </Link>
+          ) : (
+            <div
+              className={cn("min-w-0 flex-1 cursor-pointer", linkFocusClass)}
+              role="link"
+              tabIndex={0}
+              onClick={onClickDetail}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onClickDetail?.();
+                }
+              }}
+            >
+              {cardContent}
+            </div>
+          )}
+          <div className="shrink-0 px-3 pb-3 pt-0">{consultAction}</div>
+        </Card>
+      );
+    }
     const imageSpacerClass = isListLayout
       ? "w-[38%] min-w-[180px] max-w-[280px]"
       : "w-[42%] min-w-[140px] max-w-[220px]";

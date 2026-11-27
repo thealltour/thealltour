@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { DesiredDepartureBadge } from "@/components/admin/inquiries/DesiredDepartureBadge";
+import {
+  CORPORATE_ORG_TYPE_LABELS,
+  corporateBriefSummaryLines,
+  type CorporateOrgType,
+} from "@/lib/corporate/corporateBrief";
 import { stripDesiredDepartureLineFromContent } from "@/lib/inquiry/desiredDeparture";
 import type { Inquiry, ConsultationStatus, BookingStatus } from "@/types/inquiry";
 
@@ -62,6 +67,7 @@ export function MobileAdminInquiryCard({
   const [contentExpanded, setContentExpanded] = useState(false);
   const [metaExpanded, setMetaExpanded] = useState(false);
   const hasQuote = Boolean(inquiry.quote_snapshot);
+  const corporateBrief = inquiry.quote_snapshot?.corporate_brief;
   const rawContent = stripDesiredDepartureLineFromContent(inquiry.content ?? "");
   const metaLine = (inquiry.acquisition_summary ?? inquiry.source_path ?? "").trim();
 
@@ -118,7 +124,16 @@ export function MobileAdminInquiryCard({
         </div>
       </div>
 
-      {inquiry.product_title ? (
+      {corporateBrief ? (
+        <div className="mt-2 space-y-0.5">
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
+            {CORPORATE_ORG_TYPE_LABELS[corporateBrief.org_type as CorporateOrgType] ??
+              corporateBrief.org_type}
+            {corporateBrief.program_label ? ` · ${corporateBrief.program_label}` : ""}
+          </p>
+          <p className="text-xs text-[var(--text-subtle)]">{corporateBrief.org_name}</p>
+        </div>
+      ) : inquiry.product_title ? (
         <p className="mt-2 text-sm font-medium text-[var(--text-secondary)]">{inquiry.product_title}</p>
       ) : (
         <p className="mt-2 text-xs text-[var(--text-subtle)]">일반 문의</p>
@@ -187,8 +202,17 @@ export function MobileAdminInquiryCard({
 
       {hasQuote && showQuote && inquiry.quote_snapshot ? (
         <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--text-muted)]">
+          {corporateBrief ? (
+            <ul className="list-inside list-disc space-y-0.5 text-[var(--text-secondary)]">
+              {corporateBriefSummaryLines(
+                corporateBrief as Parameters<typeof corporateBriefSummaryLines>[0],
+              ).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
           {inquiry.quote_snapshot.quoteSummary?.total != null ? (
-            <p className="font-medium text-[var(--text-primary)]">
+            <p className="mt-2 font-medium text-[var(--text-primary)]">
               예상 합계: {inquiry.quote_snapshot.quoteSummary.total.toLocaleString()}원
             </p>
           ) : null}

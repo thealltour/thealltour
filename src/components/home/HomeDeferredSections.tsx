@@ -17,213 +17,135 @@ import type { RssPost } from "@/lib/rss.types";
 
 import type { HomeGolfCalendarModel } from "@/lib/products/golfDepartureCalendar";
 
-
-
 function SectionSkeleton({ className }: { className?: string }) {
-
   return (
-
     <div
-
       className={cn(
-
         "w-full min-h-[12rem] animate-pulse rounded-2xl bg-[var(--surface-muted)] ring-1 ring-[var(--border)]/60",
-
         className,
-
       )}
-
       aria-hidden
-
     />
-
   );
-
 }
-
-
 
 /** ExploreRailSection(헤더+가로 레일) 대략 높이 — CLS 완화용 */
-
 function ExploreRailSkeleton() {
-
-  return (
-
-    <SectionSkeleton className="min-h-[17.5rem] sm:min-h-[18.5rem]" />
-
-  );
-
+  return <SectionSkeleton className="min-h-[17.5rem] sm:min-h-[18.5rem]" />;
 }
 
-
-
 const GolfTourProductsSection = dynamic(() => import("@/components/home/GolfTourProductsSection"), {
-
   loading: () => <SectionSkeleton className="min-h-[18rem]" />,
-
 });
-
-
 
 const HomeGolfCalendar = dynamic(
-
   () => import("@/components/home/HomeGolfCalendar").then((m) => ({ default: m.HomeGolfCalendar })),
-
   { loading: () => <SectionSkeleton className="min-h-[14rem] max-md:min-h-[12rem]" /> },
-
 );
-
-
 
 const DestinationSection = dynamic(() => import("@/components/home/DestinationSection"), {
-
   loading: () => <ExploreRailSkeleton />,
-
 });
-
-
 
 const ThemeSection = dynamic(() => import("@/components/home/ThemeSection"), {
-
   loading: () => <ExploreRailSkeleton />,
-
 });
-
-
 
 const CuratedProductsSection = dynamic(() => import("@/components/home/CuratedProductsSection"), {
-
   loading: () => <SectionSkeleton className="min-h-[18rem]" />,
-
 });
 
-
+const HomeCorporateSection = dynamic(() => import("@/components/home/HomeCorporateSection"), {
+  loading: () => <SectionSkeleton className="min-h-[10rem]" />,
+});
 
 const HomeBlogSection = dynamic(
-
   () => import("@/components/home/HomeBlogSection").then((m) => ({ default: m.HomeBlogSection })),
-
   { loading: () => <SectionSkeleton className="min-h-[14rem]" /> },
-
 );
-
-
 
 const HomeReviewSection = dynamic(
-
   () => import("@/components/home/HomeReviewSection").then((m) => ({ default: m.HomeReviewSection })),
-
   { loading: () => <SectionSkeleton className="min-h-[16rem]" /> },
-
 );
 
-
-
 export type HomeDeferredRailProps = {
-
   items: ProductTaxonomy[];
-
   eyebrow?: string | null;
-
   title?: string | null;
-
   description?: string | null;
-
 };
-
-
 
 export type HomeDeferredGolfTourProps = {
-
   products: ProductCardSource[];
-
   moreHref?: string;
-
   eyebrow?: string | null;
-
   title?: string | null;
-
   description?: string | null;
-
 };
-
-
 
 export type HomeDeferredSectionsProps = {
-
   golfTour: HomeDeferredGolfTourProps;
-
   golfCalendarModel: HomeGolfCalendarModel | null;
-
   destinationRail: HomeDeferredRailProps;
-
   themeRail: HomeDeferredRailProps;
-
   curatedSettings: HomeCuratedSettings | null;
-
   curatedSections: HomeCuratedSectionWithProducts[];
-
   homeBlogPosts: RssPost[];
-
   homeReviews: Review[];
-
   tourismRegNo?: string;
-
+  pathwayGolfHref?: string;
+  pathwayGolfDatesHref?: string | null;
+  plannerEnabled?: boolean;
 };
 
-
-
 /**
-
- * 홈 히어로 아래 본문 블록 — 전환 퍼널 순서:
-
- * Golf → Responsive Calendar → Trust → Curated → Destination → Theme → Reviews → Blog
-
+ * 홈 히어로 아래 본문 블록 — 카탈로그형 순서:
+ * Curated(+바로가기) → Corporate → Golf → Destination → Theme → Reviews → Blog
  */
-
 export function HomeDeferredSections({
-
   golfTour,
-
   golfCalendarModel,
-
   destinationRail,
-
   themeRail,
-
   curatedSettings,
-
   curatedSections,
-
   homeBlogPosts,
-
   homeReviews,
-
   tourismRegNo,
-
+  pathwayGolfHref,
+  pathwayGolfDatesHref = null,
+  plannerEnabled,
 }: HomeDeferredSectionsProps) {
-
   return (
-
     <>
+      <CuratedProductsSection
+        settings={curatedSettings}
+        sections={curatedSections}
+        pathwayGolfHref={pathwayGolfHref}
+        pathwayGolfDatesHref={pathwayGolfDatesHref}
+        plannerEnabled={plannerEnabled}
+      />
+
+      <HomeCorporateSection />
 
       {/*
         골프 본문: 추천상품 → 출발 달력(1회).
-        히어로 CTA(#home-golf-tours / #home-golf-dates)와 경로 섹션(#home-golf-explore)이
-        여기로 스크롤한다. 달력은 복제하지 않는다.
+        바로가기(#home-golf-explore / #home-golf-dates)가 여기로 스크롤한다. 달력은 복제하지 않는다.
       */}
       {golfTour.products.length > 0 || golfCalendarModel ? (
-        <section id="home-golf-explore" aria-label="골프여행 찾기" className="scroll-mt-48 space-y-5 md:space-y-8">
+        <section id="home-golf-explore" aria-label="골프여행 찾기" className="scroll-mt-56 space-y-5 md:space-y-8 md:scroll-mt-64">
           <GolfTourProductsSection
             products={golfTour.products}
             moreHref={golfTour.moreHref}
             eyebrow={golfTour.eyebrow}
             title={golfTour.title}
             description={golfTour.description}
+            datesHref={pathwayGolfDatesHref}
           />
 
           {golfCalendarModel ? (
-            <div id="home-golf-dates" className="scroll-mt-48">
+            <div id="home-golf-dates" className="scroll-mt-56 md:scroll-mt-64">
               <HomeGolfCalendar model={golfCalendarModel} className="-mt-1 max-md:mb-0 md:-mt-2" />
             </div>
           ) : null}
@@ -232,30 +154,18 @@ export function HomeDeferredSections({
 
       <HomeTrustMicro tourismRegNo={tourismRegNo} />
 
-      <CuratedProductsSection settings={curatedSettings} sections={curatedSections} />
-
       <DestinationSection
-
         items={destinationRail.items}
-
         eyebrow={destinationRail.eyebrow}
-
         title={destinationRail.title}
-
         description={destinationRail.description}
-
       />
 
       <ThemeSection
-
         items={themeRail.items}
-
         eyebrow={themeRail.eyebrow}
-
         title={themeRail.title}
-
         description={themeRail.description}
-
       />
 
       <HomeCoupangTravelSection />
@@ -263,10 +173,6 @@ export function HomeDeferredSections({
       <HomeReviewSection reviews={homeReviews} />
 
       <HomeBlogSection posts={homeBlogPosts} />
-
     </>
-
   );
-
 }
-

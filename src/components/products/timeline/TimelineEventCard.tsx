@@ -51,10 +51,10 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
   const hasImages = mediaImages.length > 0;
 
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
-      <div className="flex items-start gap-3 space-y-0">
+    <article className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+      <div className="flex min-w-0 items-start gap-3 space-y-0">
         {(event.timeOfDay != null || event.timeText?.trim()) ? (
-          <div className="shrink-0 text-right">
+          <div className="w-12 shrink-0 text-right sm:w-14">
             <span className="block text-sm font-semibold text-[var(--primary)]">
               {event.timeText?.trim() || (event.timeOfDay != null ? TIMEOFDAY_LABELS[event.timeOfDay] : "")}
             </span>
@@ -63,14 +63,17 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
             )}
           </div>
         ) : null}
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1 space-y-2 overflow-hidden">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {brandIcon ? (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
                 <Icon name={brandIcon} decorative size={16} className="h-4 w-4" />
               </div>
             ) : null}
-            <h4 className="min-w-0 flex-1 text-lg font-semibold leading-tight text-[var(--text-primary)]" title={event.heading}>
+            <h4
+              className="min-w-0 flex-1 break-words text-lg font-semibold leading-tight text-[var(--text-primary)] [overflow-wrap:anywhere]"
+              title={event.heading}
+            >
               {event.heading}
             </h4>
           </div>
@@ -88,8 +91,8 @@ export function TimelineEventCard({ event, normalizeUrl }: TimelineEventCardProp
             <p
               className={
                 isNotice
-                  ? "text-sm leading-loose text-[var(--text-muted)] whitespace-pre-wrap [word-break:keep-all]"
-                  : "text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap"
+                  ? "break-words text-sm leading-loose text-[var(--text-muted)] whitespace-pre-wrap [overflow-wrap:anywhere]"
+                  : "break-words text-sm leading-7 text-[var(--text-muted)] whitespace-pre-wrap [overflow-wrap:anywhere]"
               }
             >
               {event.description}

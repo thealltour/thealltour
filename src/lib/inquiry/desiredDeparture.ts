@@ -63,7 +63,11 @@ export function parseInitialDesiredDeparture(initial?: string): DesiredDeparture
   const trimmed = initial?.trim() ?? "";
   if (!trimmed) return { date: "", flexible: false };
   if (/미정|유동/i.test(trimmed)) return { date: "", flexible: true };
-  if (isIsoDateYmd(trimmed)) return { date: trimmed, flexible: false };
+  if (isIsoDateYmd(trimmed)) {
+    // KST 오늘 이전은 견적 자동입력에 넣지 않는다
+    if (trimmed < kstTodayYmd()) return { date: "", flexible: false };
+    return { date: trimmed, flexible: false };
+  }
   return { date: "", flexible: false };
 }
 
@@ -140,6 +144,8 @@ export function hasQuoteSnapshotData(snapshot: Inquiry["quote_snapshot"]): boole
       snapshot.quoteSummary ||
       snapshot.inquiredAt ||
       snapshot.desiredDeparture ||
-      snapshot.golf_brief,
+      snapshot.golf_brief ||
+      snapshot.corporate_brief ||
+      snapshot.pointsUseRequested,
   );
 }

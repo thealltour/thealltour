@@ -19,12 +19,14 @@ type QuotePageContentProps = {
   >;
   productSummary?: QuoteSummary | null;
   initialDesiredDeparture?: string;
+  initialProgram?: string;
 };
 
 export function QuotePageContent({
   source,
   productSummary,
   initialDesiredDeparture,
+  initialProgram,
 }: QuotePageContentProps) {
   const productId = source?.product_id?.trim() ?? "";
   const sourcePath = source?.source_path?.trim() ?? "";
@@ -41,22 +43,22 @@ export function QuotePageContent({
   }, [productId, sourcePath, landingSlug, quoteCategory]);
 
   return (
-    <>
-      {productSummary && (
-        <div className="mb-6">
-          <QuoteSummaryCard
-            productTitle={productSummary.productTitle}
-            duration={productSummary.duration}
-            region={productSummary.region}
-            price={productSummary.price}
-          />
-        </div>
-      )}
+    <div className="space-y-6">
+      {productSummary ? (
+        <QuoteSummaryCard
+          productTitle={productSummary.productTitle}
+          duration={productSummary.duration}
+          region={productSummary.region}
+          price={productSummary.price}
+        />
+      ) : null}
       <InquiryForm
         source={source}
         productIdForTracking={productId || undefined}
         initialDesiredDeparture={initialDesiredDeparture}
+        initialProgram={initialProgram}
+        layout="quote"
       />
-    </>
+    </div>
   );
 }

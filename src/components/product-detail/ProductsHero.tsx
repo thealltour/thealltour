@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  elementIdFromHashHref,
+  scrollToElementId,
+} from "@/lib/navigation/inPageAnchor";
 
 type ProductsHeroVariant = "package" | "golf";
 
@@ -11,30 +15,29 @@ type SiteSettingsClient = {
   golf_hero_subcopy?: string;
 };
 
-const DEFAULT_PACKAGE_HEADLINE =
-  "패키지상품으로 원하시는 지역·예산에 맞춰 바로 상담까지 연결해 드려요.";
 const DEFAULT_PACKAGE_SUBCOPY =
-  "골프/패키지, 가족·지인·단체 여행까지. 관심 있는 지역과 대략적인 일정만 알려주시면, 담당자가 상품을 추려 1:1로 안내해 드립니다.";
+  "지역·테마·상품군으로 원하는 여행을 골라보세요.";
 
-const DEFAULT_GOLF_HEADLINE =
-  "골프/파크골프 전문 맞춤 설계로 라운딩 동선을 깔끔하게 잡아드립니다.";
 const DEFAULT_GOLF_SUBCOPY =
-  "선호하는 골프장, 라운딩 횟수, 동행 인원과 예산을 알려주시면, 시즌에 맞는 최적의 골프투어 코스를 추천해 드립니다.";
-
-const MOBILE_PACKAGE_TITLE = "여행상품";
-const MOBILE_PACKAGE_SUBTITLE = "원하는 여행상품을 찾아보세요";
-const MOBILE_GOLF_TITLE = "골프 여행상품";
-const MOBILE_GOLF_SUBTITLE = "원하는 골프상품을 찾아보세요";
+  "선호 지역과 출발일을 고르면 맞는 골프·파크골프 상품을 바로 확인할 수 있습니다.";
 
 type ProductsHeroProps = {
   variant: ProductsHeroVariant;
+  /** 선택된 지역·테마 taxonomy 이름 (있으면 제목 아래 표시) */
+  contextLabel?: string | null;
+  /** 골프 프리셋: 달력 앵커로 스크롤 */
+  golfDatesHref?: string | null;
 };
 
 /**
- * Desktop: settings 기반 풀 Hero.
- * Mobile (lg 미만): compact title + 1줄 subtitle — Browse Mode 세로 밀도 개선.
+ * 목록 첫 화면용 짧은 제목·소개.
+ * 패키지: 여행상품 / 골프: 골프·파크골프. 선택 taxonomy는 contextLabel.
  */
-export default function ProductsHero({ variant }: ProductsHeroProps) {
+export default function ProductsHero({
+  variant,
+  contextLabel = null,
+  golfDatesHref = null,
+}: ProductsHeroProps) {
   const [settings, setSettings] = useState<SiteSettingsClient | null>(null);
 
   useEffect(() => {
@@ -59,50 +62,54 @@ export default function ProductsHero({ variant }: ProductsHeroProps) {
     };
   }, [variant]);
 
-  const headline = useMemo(() => {
-    if (variant === "golf") {
-      if (settings?.golf_hero_headline && settings.golf_hero_headline.trim().length > 0) {
-        return settings.golf_hero_headline;
-      }
-      return DEFAULT_GOLF_HEADLINE;
-    }
-    if (settings?.products_hero_headline && settings.products_hero_headline.trim().length > 0) {
-      return settings.products_hero_headline;
-    }
-    return DEFAULT_PACKAGE_HEADLINE;
-  }, [settings, variant]);
+  const title = variant === "golf" ? "골프·파크골프" : "여행상품";
+  const context = contextLabel?.trim() || null;
+  const datesHref = golfDatesHref?.trim() || null;
 
   const subcopy = useMemo(() => {
     if (variant === "golf") {
       if (settings?.golf_hero_subcopy && settings.golf_hero_subcopy.trim().length > 0) {
-        return settings.golf_hero_subcopy;
+        return settings.golf_hero_subcopy.trim();
       }
       return DEFAULT_GOLF_SUBCOPY;
     }
     if (settings?.products_hero_subcopy && settings.products_hero_subcopy.trim().length > 0) {
-      return settings.products_hero_subcopy;
+      return settings.products_hero_subcopy.trim();
     }
     return DEFAULT_PACKAGE_SUBCOPY;
   }, [settings, variant]);
 
-  const mobileTitle = variant === "golf" ? MOBILE_GOLF_TITLE : MOBILE_PACKAGE_TITLE;
-  const mobileSubtitle = variant === "golf" ? MOBILE_GOLF_SUBTITLE : MOBILE_PACKAGE_SUBTITLE;
-
   return (
-    <section className="space-y-[var(--space-xs)]" aria-labelledby="products-hero-title">
-      <p className="section-label hidden text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] lg:block md:type-small">
-        {variant === "golf" ? "THEALL TOUR GOLF" : "THEALL TOUR PACKAGE"}
-      </p>
-      <h1
-        id="products-hero-title"
-        className="section-title type-h3 font-semibold leading-snug text-[var(--foreground)] lg:type-h2 lg:leading-[1.2] xl:type-h1"
-      >
-        <span className="lg:hidden">{mobileTitle}</span>
-        <span className="hidden lg:inline">{headline}</span>
-      </h1>
-      <p className="type-small max-w-2xl text-[var(--text-muted)] lg:leading-relaxed lg:type-body">
-        <span className="lg:hidden">{mobileSubtitle}</span>
-        <span className="hidden lg:inline">{subcopy}</span>
+    <section className="space-y-1.5 sm:space-y-2" aria-labelledby="products-hero-title">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0 space-y-1">
+          <h1
+            id="products-hero-title"
+            className="section-title type-h3 font-semibold leading-snug text-[var(--foreground)] md:type-h2"
+          >
+            {title}
+          </h1>
+          {context ? (
+            <p className="type-small font-medium text-[var(--primary)]">{context}</p>
+          ) : null}
+        </div>
+        {datesHref ? (
+          <a
+            href={datesHref}
+            className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            onClick={(e) => {
+              const id = elementIdFromHashHref(datesHref);
+              if (!id) return;
+              e.preventDefault();
+              scrollToElementId(id);
+            }}
+          >
+            출발일로 찾기
+          </a>
+        ) : null}
+      </div>
+      <p className="type-small max-w-2xl text-[var(--text-muted)] md:type-body md:leading-relaxed">
+        {subcopy}
       </p>
     </section>
   );

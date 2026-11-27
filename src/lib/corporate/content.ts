@@ -65,11 +65,8 @@ export type CorporateSegmentContent = {
   download: CorporateDownloadAsset | null;
 };
 
-/**
- * PR3 장면 사진 기대 경로. 전달본이 없으면 null로 두고 이 목록을 결과로 공유한다.
- * (거인투어 골프/리조트 팩은 장면 명세와 불일치해 연결하지 않음)
- */
-export const CORPORATE_PENDING_IMAGE_FILES = [
+/** 홈·허브·세그먼트에 연결된 장면 사진 경로 (실파일 검증용). */
+export const CORPORATE_IMAGE_FILES = [
   "public/images/corporate/hub-hotel-briefing.jpg",
   "public/images/corporate/business-reward-dinner.jpg",
   "public/images/corporate/public-enterprises-facility.jpg",
@@ -99,8 +96,16 @@ export const CORPORATE_HUB = {
     { title: "협의·조정", detail: "면담·견학·행사 등 협의 대상을 함께 좁혀 갑니다." },
     { title: "견적·확정", detail: "합의된 범위로 견적을 정리하고 진행 여부를 결정합니다." },
   ],
-  /** 홈·허브 공용 대표 사진 — 전달 시 hub-hotel-briefing.jpg */
-  image: null as CorporateImageAsset | null,
+  /** 홈·허브 공용 대표 사진 */
+  image: {
+    src: "/images/corporate/hub-hotel-briefing.jpg",
+    width: 1672,
+    height: 941,
+    alt: "호텔 로비에서 일정 자료를 보며 브리핑을 듣는 기업·단체 여행 일행",
+    mobileObjectPosition: "object-[70%_42%]",
+    desktopObjectPosition: "object-[62%_40%]",
+    showExampleCaption: true,
+  } satisfies CorporateImageAsset,
   download: {
     href: "/downloads/corporate/corporate-program-guide-4p.pdf",
     label: "기업·기관 단체 프로그램 공통 안내서",
@@ -172,7 +177,15 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "행사 장소와 시상 형식은 확정 전이면 협의 대상으로 표기합니다.",
       "방문·면담이 필요한 경우에도 후보 단계로만 안내합니다.",
     ],
-    image: null,
+    image: {
+      src: "/images/corporate/business-reward-dinner.jpg",
+      width: 1672,
+      height: 941,
+      alt: "해안 테라스에서 만찬을 나누는 기업 포상여행 일행",
+      mobileObjectPosition: "object-[55%_48%]",
+      desktopObjectPosition: "object-[52%_45%]",
+      showExampleCaption: true,
+    },
     download: {
       href: "/downloads/corporate/business-proposal-summary-1p.pdf",
       label: "기업 행사 제안 요약서",
@@ -232,7 +245,15 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "기관·운영사 면담과 시설 견학은 확정 일정이 아닙니다.",
       "가능 여부는 상담 후 협의하며, 화면에는 후보·협의 대상으로만 표기합니다.",
     ],
-    image: null,
+    image: {
+      src: "/images/corporate/public-enterprises-facility.jpg",
+      width: 1672,
+      height: 941,
+      alt: "안전모를 쓴 일행이 시설 담당자의 설명을 들으며 현대식 에너지 설비를 견학하는 모습",
+      mobileObjectPosition: "object-[58%_48%]",
+      desktopObjectPosition: "object-[55%_45%]",
+      showExampleCaption: true,
+    },
     download: {
       href: "/downloads/corporate/public-enterprises-training-brief-1p.pdf",
       label: "직무연수 검토자료",
@@ -292,7 +313,15 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "관계기관 면담은 확정된 일정이 아니며 면담 후보로만 표기합니다.",
       "현장 답사 범위는 협의 후 확정합니다.",
     ],
-    image: null,
+    image: {
+      src: "/images/corporate/public-institutions-field.jpg",
+      width: 1672,
+      height: 941,
+      alt: "산업 유산 재생 공간에서 안내자의 설명을 들으며 현장 답사하는 공공기관 일행",
+      mobileObjectPosition: "object-[65%_45%]",
+      desktopObjectPosition: "object-[60%_42%]",
+      showExampleCaption: true,
+    },
     download: {
       href: "/downloads/corporate/public-institutions-policy-brief-1p.pdf",
       label: "정책연수·답사 검토자료",
@@ -352,7 +381,15 @@ export const CORPORATE_SEGMENTS: readonly CorporateSegmentContent[] = [
       "지방의회 면담과 현장 방문은 수행 실적을 보장하지 않으며 후보로만 표기합니다.",
       "실제 면담·견학 가능 여부는 상담 후 협의합니다.",
     ],
-    image: null,
+    image: {
+      src: "/images/corporate/councils-briefing.jpg",
+      width: 1672,
+      height: 941,
+      alt: "회의실에서 해외 시의회 정책 브리핑을 경청하는 시찰단",
+      mobileObjectPosition: "object-[68%_40%]",
+      desktopObjectPosition: "object-[62%_38%]",
+      showExampleCaption: true,
+    },
     download: {
       href: "/downloads/corporate/councils-inspection-brief-1p.pdf",
       label: "의회 정책시찰 검토자료",
